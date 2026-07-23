@@ -13,9 +13,8 @@ import {
   LineBasicMaterial,
   type Scene,
 } from "three";
+import { AXIS_COLORS } from "./axisColors";
 
-/** Axis guide colors (X red, Y green, Z blue) - the usual gizmo convention. */
-const AXIS_COLORS = [0xff5566, 0x55dd66, 0x5599ff] as const;
 /** Half-length of a guide line (long enough to read as "infinite" across the viewport). */
 const GUIDE_HALF = 1000;
 

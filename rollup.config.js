@@ -59,6 +59,7 @@ function bundleStyles() {
     "graph-overlays.css",
     "timeline.css",
     "segmented.css",
+    "switch.css",
     "modal.css",
     "tooltip.css",
   ];

@@ -16,6 +16,27 @@
   display: block;
 }
 
+/* The modal transform tool's stand-in cursor (ui/tools/pointerWrap.ts): a drag holds a pointer lock
+   to wrap at the viewport edge, and the lock hides the real cursor, so this crosshair is what
+   visibly teleports. The negative margin centres it on the position the tool sets. */
+.viewport-cursor {
+  position: absolute;
+  z-index: 5;
+  width: 15px;
+  height: 15px;
+  margin: -8px 0 0 -8px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent));
+  background-size:
+    100% 1px,
+    1px 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* A dark rim keeps the crosshair readable over a bright particle or HDRI background. */
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.9));
+}
+
 /* Viewport N-panel (tasks 1, 8, 11): a Blender-style panel in the preview's top-right, toggled by
    N. A vertical strip of tabs on its outer (right) edge - Item (the selected object's name +
    position / rotation / scale) plus the moved-in view-settings tabs (Sun / Hemisphere / Scene /
@@ -202,12 +223,11 @@
   color: var(--panel-foreground);
 }
 
-/* Every control fills its (uniform) column: neutralise the intrinsic widths of the number,
-   toggle and dropdown controls so the grid can stretch them; the color swatch and segment group
-   already stretch. */
+/* Every control fills its (uniform) column: neutralise the intrinsic widths of the number and
+   dropdown controls so the grid can stretch them; the color swatch and segment group already
+   stretch. The switch is deliberately left out - it keeps its own fixed size. */
 .preview-settings .number-control,
-.preview-settings .dropdown,
-.preview-settings__row--bool .toggle-button {
+.preview-settings .dropdown {
   width: auto;
 }
 

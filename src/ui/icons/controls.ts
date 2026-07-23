@@ -39,13 +39,6 @@ export const controlIcons = {
     <path d="M3.5 8.5 6.5 11.5 12.5 4.5"/>
   </svg>`,
 
-  // Boolean row toggle (task 8): a switch in its track - a more literal on/off glyph than the bare
-  // checkmark. The button's accent fill still carries the actual state.
-  toggleSwitch: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <rect x="2" y="5" width="12" height="6" rx="3"/>
-    <circle cx="10.5" cy="8" r="1.9" fill="currentColor" stroke="none"/>
-  </svg>`,
-
   // Snap lock (task 5): a padlock - the gizmo's per-mode snap toggles read as "lock to increment".
   lock: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="3.5" y="7" width="9" height="6.4" rx="1"/>

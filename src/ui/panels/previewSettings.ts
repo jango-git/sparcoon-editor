@@ -14,6 +14,7 @@ import { ColorPicker } from "../components/colorPicker";
 import { Dropdown, type DropdownOption } from "../components/dropdown";
 import { NumberControl } from "../components/numberControl";
 import { createSegmentedControl } from "../components/segmentedControl";
+import { createSwitchControl } from "../components/switchControl";
 import { createToggleButton } from "../components/toggleButton";
 import type { Rgba } from "../components/color";
 import { createElement } from "../dom";
@@ -171,27 +172,15 @@ export function createPreviewSettingsGroups(
   ];
 }
 
-/**
- * A labelled boolean row: a "lit-when-on" icon toggle button instead of a checkbox. The button
- * carries a switch glyph and stretches across the value column (task 8, via `--bool`).
- */
+/** A labelled boolean row: the two-position switch, parked at the start of the value column. */
 function toggleRow(
   label: string,
   initial: boolean,
   onChange: (on: boolean) => void,
   description = "",
 ): HTMLElement {
-  const toggle = createToggleButton({
-    glyph: controlIcons.toggleSwitch,
-    title: label,
-    description,
-    value: initial,
-    onChange,
-  });
-  return field(label, toggle.element, {
-    ...PREVIEW_ROW,
-    rowClassName: "preview-settings__row preview-settings__row--bool",
-  });
+  const control = createSwitchControl({ title: label, description, value: initial, onChange });
+  return field(label, control.element, PREVIEW_ROW);
 }
 
 /** The transform-space segmented control - Global (globe) / Local (cube) icons, not text (task 6). */

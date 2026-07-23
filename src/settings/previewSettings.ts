@@ -59,8 +59,8 @@ export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   hemisphereSky: linearFromHex("bcc7d6"),
   hemisphereGround: linearFromHex("2b2620"),
   hemisphereIntensity: 0.7,
-  grid: false,
-  playerFigure: false,
+  grid: true,
+  playerFigure: true,
   background: linearFromHex("2b2e33"),
   activeEnvironmentName: undefined,
 };

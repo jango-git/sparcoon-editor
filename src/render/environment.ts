@@ -7,12 +7,13 @@
 import {
   BackSide,
   BoxGeometry,
+  BufferGeometry,
   Color,
   CubeCamera,
   type DataTexture,
   DirectionalLight,
   EdgesGeometry,
-  GridHelper,
+  Float32BufferAttribute,
   HalfFloatType,
   HemisphereLight,
   LightProbe,
@@ -31,6 +32,7 @@ import {
 import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js";
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
+import { AXIS_COLORS } from "./axisColors";
 import type { DecodedEnvironment } from "./environmentTexture";
 
 /** Y of the ground plane - shares the emitters' origin so particles rest on it, not above it. */
@@ -51,6 +53,9 @@ const PLAYER_SIZE: readonly [number, number, number] = [0.5, 2, 0.75];
 /** Cube face resolution for the SH bake - tiny; the probe only needs low-frequency (band-2) detail. */
 const BAKE_FACE_SIZE = 16;
 
+/** Grid color for every line that is not an axis - lighter than the ground, so the cells read. */
+const GRID_MINOR_COLOR = 0x565b66;
+
 export class SceneEnvironment {
   private readonly background = new Color();
   private readonly ground: Mesh;
@@ -68,7 +73,9 @@ export class SceneEnvironment {
   private readonly domeMaterial = new MeshBasicMaterial({ side: BackSide });
   /** The environment texture last baked into {@link probe}, so an unchanged texture skips the bake. */
   private bakedTexture: DataTexture | undefined;
-  private readonly grid: GridHelper;
+  private readonly grid: LineSegments;
+  private readonly gridGeometry: BufferGeometry;
+  private readonly gridMaterial: LineBasicMaterial;
   private readonly player: LineSegments;
   private readonly playerGeometry: EdgesGeometry;
   private readonly playerMaterial: LineBasicMaterial;
@@ -120,9 +127,11 @@ export class SceneEnvironment {
     this.hemisphereLight = new HemisphereLight(0xffffff, 0x000000, 0);
     scene.add(this.hemisphereLight);
 
-    // Grid overlaid just above the ground plane (a hair up to avoid z-fighting).
-    // Bright cool centre lines with lighter-than-ground minor lines keep it legible.
-    this.grid = new GridHelper(GROUND_SIZE, GROUND_SIZE, 0x9aa4b4, 0x565b66);
+    // Grid overlaid just above the ground plane (a hair up to avoid z-fighting). Tone mapping is
+    // off so the axis lines keep the literal color the gizmos use, whatever the exposure.
+    this.gridGeometry = createGridGeometry(GROUND_SIZE, GROUND_SIZE);
+    this.gridMaterial = new LineBasicMaterial({ vertexColors: true, toneMapped: false });
+    this.grid = new LineSegments(this.gridGeometry, this.gridMaterial);
     this.grid.position.y = GROUND_Y + 0.01;
     scene.add(this.grid);
 
@@ -181,7 +190,8 @@ export class SceneEnvironment {
     this.bakeTarget.dispose();
     this.domeGeometry.dispose();
     this.domeMaterial.dispose();
-    this.grid.dispose();
+    this.gridGeometry.dispose();
+    this.gridMaterial.dispose();
     this.playerGeometry.dispose();
     this.playerMaterial.dispose();
   }
@@ -218,6 +228,34 @@ export class SceneEnvironment {
       horizontal * Math.cos(azimuth),
     );
   }
+}
+
+/**
+ * The ground grid as one line-segment geometry, `divisions` cells per side. Colors are per-vertex
+ * so the two lines through the origin can wear their axis colors without a second draw call.
+ */
+function createGridGeometry(size: number, divisions: number): BufferGeometry {
+  const half = size / 2;
+  const step = size / divisions;
+  // Only an even division count puts a line on the axes; an odd one straddles the origin.
+  const centerIndex = divisions % 2 === 0 ? divisions / 2 : -1;
+  const minor = new Color(GRID_MINOR_COLOR);
+  const axisX = new Color(AXIS_COLORS[0]);
+  const axisZ = new Color(AXIS_COLORS[2]);
+  const positions: number[] = [];
+  const colors: number[] = [];
+  for (let i = 0; i <= divisions; i += 1) {
+    const offset = -half + i * step;
+    // Two lines per step: one running along X (at z = offset), one along Z (at x = offset).
+    positions.push(-half, 0, offset, half, 0, offset, offset, 0, -half, offset, 0, half);
+    const alongX = i === centerIndex ? axisX : minor;
+    const alongZ = i === centerIndex ? axisZ : minor;
+    colors.push(...alongX.toArray(), ...alongX.toArray(), ...alongZ.toArray(), ...alongZ.toArray());
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
+  return geometry;
 }
 
 /** Writes a linear RGBA (the editor's color model) onto a Three color, ignoring alpha. */

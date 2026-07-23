@@ -5,7 +5,8 @@
  * `Shift`+axis constrains to the plane of the other two, left-click / `Enter` confirm, and
  * right-click / `Esc` cancel back to the start pose. On confirm it commits the base transform
  * through {@link setEntityBaseChannel} - base only, never keyframes (keys come from `I` / the menu).
- * While a modal op runs, orbit controls are disabled and the timeline's transform drive is locked.
+ * While a modal op runs, orbit controls are disabled, the timeline's transform drive is locked, and
+ * the pointer wraps at the viewport edges ({@link WrappedPointer}) so a drag can run indefinitely.
  */
 
 import type { Object3D } from "three";
@@ -18,6 +19,7 @@ import type { GizmoSettingsStore } from "../../settings/gizmoSettings";
 import type { SceneEmitters } from "../../render/sceneEmitters";
 import type { TransformGuides } from "../../render/transformGuides";
 import type { EditorContext } from "../editorContext";
+import { WrappedPointer, wrapIntoRect } from "./pointerWrap";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 /** Grab is plane-cast from the cursor, so a fast mouse move can imply a huge jump; cap it per drag. */
@@ -50,10 +52,11 @@ interface DragStart {
   readonly axisDirections: readonly [Vector3, Vector3, Vector3];
   /** Free grab/rotate: the view-facing plane normal (camera forward at grab time). */
   readonly planeNormal: Vector3;
-  /** Rotate/scale: the entity origin projected to screen pixels, and the start angle/distance. */
+  /** Rotate/scale: the entity origin projected to screen pixels, and the angle/distance the drag
+   *  measures against - {@link TransformTool.compensateWrap} re-bases those two at an edge wrap. */
   readonly centerPixel: Vector2;
-  readonly startAngle: number;
-  readonly startDistance: number;
+  startAngle: number;
+  startDistance: number;
 }
 
 export class TransformTool {
@@ -69,6 +72,7 @@ export class TransformTool {
   private readonly store: Store;
   private readonly selection: SelectionStore;
   private readonly gizmoSettings: GizmoSettingsStore;
+  private readonly wrappedPointer: WrappedPointer;
 
   constructor(
     private readonly camera: PerspectiveCamera,
@@ -81,16 +85,28 @@ export class TransformTool {
     this.store = context.store;
     this.selection = context.selection;
     this.gizmoSettings = context.gizmoSettings;
+    this.wrappedPointer = new WrappedPointer(domElement);
     // Track the pointer continuously (so a keypress-initiated op knows where the mouse is) and
     // drive the live transform on the same move - `update()` no-ops while no op is active.
     window.addEventListener("pointermove", (event) => {
-      this.pointer.set(event.clientX, event.clientY);
       this.ctrlHeld = event.ctrlKey;
+      this.trackPointer(event);
       this.update();
     });
     window.addEventListener("keydown", (event) => this.onKeyDown(event), true);
     window.addEventListener("keyup", (event) => this.onKeyUp(event), true);
     window.addEventListener("pointerdown", (event) => this.onPointerDown(event), true);
+    document.addEventListener("pointerlockchange", () => {
+      if (this.start === undefined) {
+        // The lock engages asynchronously, so it can arrive after the op it was asked for already
+        // ended - drop it rather than leave the cursor hostage with nothing running.
+        this.wrappedPointer.release();
+      } else if (!this.wrappedPointer.isEngaged()) {
+        // The browser swallows the Esc that drops a lock, so a lock lost mid-op *is* the user's
+        // cancel; any other loss (a window blur) must not leave an op driving an invisible pointer.
+        this.finish(true);
+      }
+    });
   }
 
   public isActive(): boolean {
@@ -107,6 +123,10 @@ export class TransformTool {
     if (object === undefined) {
       return;
     }
+    // Seeded into the viewport before the start pose is captured: the pointer can be anywhere when
+    // the keypress arrives, and the references below must read the position the drag will.
+    this.pointer.copy(wrapIntoRect(this.pointer, this.domElement.getBoundingClientRect()));
+    this.wrappedPointer.engage(this.pointer);
     object.updateWorldMatrix(true, false);
 
     const startWorldQuaternion = object.getWorldQuaternion(new Quaternion());
@@ -140,8 +160,8 @@ export class TransformTool {
       axisDirections,
       planeNormal,
       centerPixel,
-      startAngle: Math.atan2(this.pointer.y - centerPixel.y, this.pointer.x - centerPixel.x),
-      startDistance: Math.max(1e-3, this.pointer.distanceTo(centerPixel)),
+      startAngle: angleAround(this.pointer, centerPixel),
+      startDistance: distanceAround(this.pointer, centerPixel),
     };
     this.constraint = FREE;
     this.captureDragReference(this.start);
@@ -194,8 +214,61 @@ export class TransformTool {
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    this.pointer.set(event.clientX, event.clientY);
+    if (!this.wrappedPointer.isEngaged()) {
+      // A locked event carries a frozen client position; the tracked pointer is the truth then.
+      this.pointer.set(event.clientX, event.clientY);
+    }
     this.finish(event.button === 2); // right-click cancels, anything else confirms
+  }
+
+  /**
+   * Advances the tracked pointer from a move event. Under the lock the event carries raw movement
+   * instead of a position the screen edge has clamped, so it accumulates and wraps here.
+   */
+  private trackPointer(event: PointerEvent): void {
+    if (!this.wrappedPointer.isEngaged()) {
+      this.pointer.set(event.clientX, event.clientY);
+      return;
+    }
+    const moved = new Vector2(this.pointer.x + event.movementX, this.pointer.y + event.movementY);
+    const wrapped = wrapIntoRect(moved, this.domElement.getBoundingClientRect());
+    if (!wrapped.equals(moved)) {
+      this.compensateWrap(moved, wrapped);
+    }
+    this.pointer.copy(wrapped);
+    this.wrappedPointer.moveTo(wrapped);
+  }
+
+  /**
+   * Shifts the running op's reference by whatever the jump from `from` to `to` alone would have
+   * changed, so a wrap reads as the same pose on both sides of the edge - only real mouse movement
+   * ever moves the entity.
+   */
+  private compensateWrap(from: Vector2, to: Vector2): void {
+    const start = this.start;
+    if (start === undefined) {
+      return;
+    }
+    switch (start.mode) {
+      case "grab": {
+        const before = this.computeDragPoint(from, start);
+        const after = this.computeDragPoint(to, start);
+        // Either cast can miss (a drag plane seen edge-on); an uncompensated wrap jumps the entity,
+        // which still beats freezing the drag at the edge.
+        if (before !== undefined && after !== undefined) {
+          this.dragReference.add(after.sub(before));
+        }
+        break;
+      }
+      case "rotate":
+        start.startAngle +=
+          angleAround(to, start.centerPixel) - angleAround(from, start.centerPixel);
+        break;
+      case "scale":
+        start.startDistance *=
+          distanceAround(to, start.centerPixel) / distanceAround(from, start.centerPixel);
+        break;
+    }
   }
 
   private setConstraint(next: Constraint): void {
@@ -253,11 +326,7 @@ export class TransformTool {
   }
 
   private updateRotate(start: DragStart): void {
-    const angle = Math.atan2(
-      this.pointer.y - start.centerPixel.y,
-      this.pointer.x - start.centerPixel.x,
-    );
-    let delta = angle - start.startAngle;
+    let delta = angleAround(this.pointer, start.centerPixel) - start.startAngle;
     // Free rotation spins about the view axis; a constraint spins about that axis.
     const axisIndex = this.constraint.kind === "free" ? undefined : this.constraint.axis;
     const axis =
@@ -277,7 +346,7 @@ export class TransformTool {
   }
 
   private updateScale(start: DragStart): void {
-    const ratio = Math.max(1e-3, this.pointer.distanceTo(start.centerPixel)) / start.startDistance;
+    const ratio = distanceAround(this.pointer, start.centerPixel) / start.startDistance;
     const scale = start.startScale.clone();
     const factors = this.scaleFactors(ratio);
     scale.set(scale.x * factors[0], scale.y * factors[1], scale.z * factors[2]);
@@ -372,6 +441,9 @@ export class TransformTool {
     }
     this.start = undefined;
     this.guides.clear();
+    // Cleared first: releasing the lock re-fires pointerlockchange, which reads `start` to tell a
+    // user cancel from this ordinary release.
+    this.wrappedPointer.release();
     this.emitters.setTransformLock(false);
     this.setControlsEnabled(true);
 
@@ -470,6 +542,16 @@ const AXIS_FOR_CODE: Record<string, 0 | 1 | 2 | undefined> = {
   KeyY: 1,
   KeyZ: 2,
 };
+
+/** Screen-space angle (radians) of `point` about `center`. */
+function angleAround(point: Vector2, center: Vector2): number {
+  return Math.atan2(point.y - center.y, point.x - center.x);
+}
+
+/** Screen-space distance of `point` from `center`, floored so scale never divides by zero. */
+function distanceAround(point: Vector2, center: Vector2): number {
+  return Math.max(1e-3, point.distanceTo(center));
+}
 
 /** Rounds `value` to the nearest multiple of `step` (a `step` of 0 is a no-op). */
 function snapRound(value: number, step: number): number {

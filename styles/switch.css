@@ -1,0 +1,42 @@
+/* Two-position on/off switch (components/switchControl.ts) */
+
+/* A fixed-size track, never sized by its column - a switch is the same object on every surface.
+   Sharp and transition-free like the rest of the chrome (reset.css), so the thumb lands at once. */
+.switch {
+  flex: none;
+  width: 36px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+/* The thumb travels inside the track (never over its edge): off parks it left, on pushes it right
+   with the free space, so the position alone carries the state even without the lit track. */
+.switch__thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--muted);
+}
+
+.switch:hover {
+  border-color: var(--accent);
+}
+
+.switch--on {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-deep));
+  border-color: var(--accent);
+}
+
+.switch--on .switch__thumb {
+  margin-left: auto;
+  background: var(--accent);
+}
+
+.switch:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
