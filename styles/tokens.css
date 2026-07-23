@@ -39,7 +39,12 @@
   /* Alpha checkerboard behind translucent swatches/gradients (color picker + ramp). */
   --checker: repeating-conic-gradient(var(--border-soft) 0% 25%, transparent 0% 50%) 0 0 / 10px 10px;
 
-  /* Text tiers */
+  /* Text tiers: --muted (brighter) / --dim (quieter) feed the group/subgroup/field caption
+     ladder used for structural, never-user-edited headings (viewport tabs, stats panels, the
+     timeline inspector) - group: 10px/uppercase/0.06em/weight 600/--muted; subgroup: same but
+     weight 400/--dim, a rarer divider one level down; field: --font-size-small, plain case,
+     --muted, repeats every row so legibility beats tracking. Clickable/user-named labels (node
+     titles, timeline outline rows, asset names) sit outside this ladder - they stay bright. */
   --muted: #9aa0a6;
   --dim: #6a7077;
 

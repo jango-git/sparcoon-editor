@@ -43,14 +43,15 @@ export function createPreviewSettingsGroups(
   const current = settings.get();
   const gizmoCurrent = gizmo.get();
 
-  // Value controls are built inline (not just declared) so they can be resynced via setValue when
-  // an active environment overwrites sun* with HDRI-derived values (see applyEnvironmentState).
-  const sunToggleRow = toggleRow(
-    t("preview.enabled"),
-    current.sun,
-    (on) => settings.update({ sun: on }),
-    t("preview.enabledTip"),
-  );
+  // Value controls are built inline (not just declared) so they can be resynced via set/setValue
+  // when an active environment overwrites sun* with HDRI-derived values (see applyEnvironmentState).
+  const sunEnabledControl = createSwitchControl({
+    title: t("preview.enabled"),
+    description: t("preview.enabledTip"),
+    value: current.sun,
+    onChange: (on) => settings.update({ sun: on }),
+  });
+  const sunToggleRow = field(t("preview.enabled"), sunEnabledControl.element, PREVIEW_ROW);
   const sunColorControl = new ColorPicker({
     value: current.sunColor,
     alpha: false,
@@ -86,7 +87,10 @@ export function createPreviewSettingsGroups(
     field(t("preview.elevation"), sunElevationControl.element, PREVIEW_ROW),
   ];
   const sunRows = [sunToggleRow, ...sunValueRows];
-  const hemisphereRows = [
+  // The manual Sun+Hemisphere fallback fields - hidden outright once a preset takes over (see
+  // applyEnvironmentState). Sun's own rows are never touched here: it keeps deriving from the
+  // preset (below) without ever being blocked.
+  const environmentFallbackRows = [
     toggleRow(
       t("preview.enabled"),
       current.hemisphere,
@@ -106,14 +110,16 @@ export function createPreviewSettingsGroups(
       (value) => settings.update({ hemisphereIntensity: value }),
     ),
   ];
-  // An active environment (ADR-0004) fully disables Hemisphere (incl. its toggle) and greys Sun's
-  // value rows, resyncing them since main.ts overwrites sun* once the HDRI derivation finishes.
+  const presetPickerRow = presetRow(settings, store, signals);
+  // An active environment (ADR-0004) fully replaces the manual fallback fields (hidden, not
+  // greyed), and keeps resyncing Sun's value controls since main.ts overwrites sun* once the HDRI
+  // derivation finishes - Sun itself is never hidden or blocked, the user can still edit it.
   const applyEnvironmentState = (): void => {
     const latest = settings.get();
     const active = latest.activeEnvironmentName !== undefined;
-    setRowsDisabled(sunValueRows, active);
-    setRowsDisabled(hemisphereRows, active);
+    setRowsHidden(environmentFallbackRows, active);
     if (active) {
+      sunEnabledControl.set(latest.sun);
       sunColorControl.setValue(latest.sunColor);
       sunIntensityControl.setValue(latest.sunIntensity);
       sunAzimuthControl.setValue(latest.sunAzimuth);
@@ -128,11 +134,11 @@ export function createPreviewSettingsGroups(
       label: t("preview.lighting"),
       glyph: viewportIcons.sun,
       rows: [
-        environmentRow(settings, store, signals),
         sectionTitle(t("preview.sun")),
         ...sunRows,
-        sectionTitle(t("preview.hemisphere")),
-        ...hemisphereRows,
+        sectionTitle(t("preview.environment")),
+        presetPickerRow,
+        ...environmentFallbackRows,
       ],
     },
     {
@@ -270,19 +276,20 @@ function sectionTitle(label: string): HTMLElement {
   });
 }
 
-/** Greys out (and blocks pointer input into) every row in `rows`, or restores them. */
-function setRowsDisabled(rows: readonly HTMLElement[], disabled: boolean): void {
+/** Hides every row in `rows` entirely (not just greyed), or restores them. */
+function setRowsHidden(rows: readonly HTMLElement[], hidden: boolean): void {
   for (const row of rows) {
-    row.classList.toggle("preview-settings__row--disabled", disabled);
+    row.classList.toggle("preview-settings__row--hidden", hidden);
   }
 }
 
 /**
- * The active-environment picker (ADR-0004): a dropdown of the content library's HDRI assets plus
- * "None". `options` is mutated in place (not replaced) so {@link Dropdown}, which reads it fresh
- * each time its menu opens, always sees the current library without its own resync API.
+ * The active-environment picker (ADR-0004), labelled "Preset" inside the Environment section: a
+ * dropdown of the content library's HDRI assets plus "None". `options` is mutated in place (not
+ * replaced) so {@link Dropdown}, which reads it fresh each time its menu opens, always sees the
+ * current library without its own resync API.
  */
-function environmentRow(
+function presetRow(
   settings: PreviewSettingsStore,
   store: Store,
   signals: SignalBus,
@@ -321,5 +328,5 @@ function environmentRow(
   // Environment edits commit as "view", and undo/redo now re-announces the original kind too.
   signals.on("sourceViewChanged", refresh);
 
-  return field(t("preview.environment"), dropdown.element, PREVIEW_ROW);
+  return field(t("preview.preset"), dropdown.element, PREVIEW_ROW);
 }

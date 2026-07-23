@@ -3,7 +3,7 @@
  * add-object "+". 16x16 line icons, `stroke="currentColor"`.
  */
 export const viewportIcons = {
-  // Lighting tab (Sun / Hemisphere / active-environment controls): a sun with rays.
+  // Lighting tab (Sun / Environment controls): a sun with rays.
   sun: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <circle cx="8" cy="8" r="3"/>
     <path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/>

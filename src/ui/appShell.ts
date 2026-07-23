@@ -48,6 +48,17 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   preview.element.append(transformPanel.element);
   const stats = createViewportStats();
   preview.element.append(stats.element);
+  // Any other viewport interaction (orbit/pan/zoom/select) collapses the open N-panel tab so it
+  // doesn't linger over the scene; a tab's own press/release manages its own open/close already
+  // (see viewportTransform.ts), so events landing on the tab strip are left alone.
+  const collapseOnViewportInteraction = (event: Event): void => {
+    if (event.target instanceof Node && transformPanel.tabs.contains(event.target)) {
+      return;
+    }
+    transformPanel.collapse();
+  };
+  preview.element.addEventListener("pointerdown", collapseOnViewportInteraction);
+  preview.element.addEventListener("wheel", collapseOnViewportInteraction);
   // Effect cost is whole-scene and structural, unlike fps/particles (pushed every frame by the
   // render loop via reportStats) - recompute only on a source edit. A mute toggle commits as a
   // view edit (sourceViewChanged), not structural, so both are listened for.

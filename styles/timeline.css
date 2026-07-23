@@ -320,7 +320,7 @@
    active object, so they carry a *paler* wash of the same accent as their header. */
 .timeline-track__label {
   padding-left: 28px;
-  color: var(--muted);
+  font-size: var(--font-size-small);
   background: color-mix(in srgb, var(--row-accent, var(--accent)) 8%, var(--panel-background));
 }
 
@@ -675,12 +675,14 @@
   border: 1px solid var(--accent);
 }
 
-/* Item inspector (right column): the selected keyframe / event's editable fields. */
+/* Item inspector (right column): the selected keyframe / event's editable fields. Group-tier
+   caption (tokens.css) - the panel's one heading, naming what is currently being edited. */
 .timeline-inspector__title {
   margin-bottom: 8px;
-  font-size: var(--font-size-small);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--muted);
 }
 

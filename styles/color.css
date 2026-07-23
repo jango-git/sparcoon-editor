@@ -7,9 +7,13 @@
 /* Swatch (the inline trigger) */
 .color-swatch {
   flex: 1;
-  min-width: 0;
+  /* Matches the switch control's fixed track width (switch.css) - the smallest a two-position
+     control reads as, so a color control never shrinks below it. */
+  min-width: 36px;
   height: 20px;
-  padding: 2px;
+  /* Overrides .param__input's padding: the fill must span the full content box, flush with
+     the border, or the checker behind it leaks out as a ring around the swatch. */
+  padding: 0;
   cursor: pointer;
   background: var(--surface-deep) var(--checker);
 }

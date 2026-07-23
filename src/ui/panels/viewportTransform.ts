@@ -35,8 +35,14 @@ const AXIS_KEYS = ["axis.x", "axis.y", "axis.z"] as const;
 /** The panel plus a handle to toggle it - the `N` hotkey collapses/expands the active tab. */
 export interface ViewportTransformPanel {
   readonly element: HTMLElement;
+  /** The tab strip element - a tab's own press/release already opens or collapses it, so
+   *  viewport-interaction auto-collapse must ignore presses that land here. */
+  readonly tabs: HTMLElement;
   /** Collapses/expands the content beside the (always-visible) tab strip. */
   toggle(): void;
+  /** Force-collapses the open tab, if any (no-op if already collapsed) - closes the panel on any
+   *  other viewport interaction (orbit/pan/select) so it doesn't linger over the scene. */
+  collapse(): void;
 }
 
 export function createViewportTransform(context: EditorContext): ViewportTransformPanel {
@@ -211,6 +217,12 @@ export function createViewportTransform(context: EditorContext): ViewportTransfo
     collapsed = !collapsed;
     paint();
   };
+  const collapse = (): void => {
+    if (!collapsed) {
+      collapsed = true;
+      paint();
+    }
+  };
   paint();
 
   const read = (channel: Channel): [number, number, number] => {
@@ -246,7 +258,7 @@ export function createViewportTransform(context: EditorContext): ViewportTransfo
   signals.on("sourceStructureChanged", update);
   update();
 
-  return { element: panel, toggle };
+  return { element: panel, toggle, collapse, tabs };
 }
 
 function axisTriplet(

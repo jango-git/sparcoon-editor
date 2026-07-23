@@ -114,14 +114,16 @@
 }
 
 /* A tab's content panel - hidden unless it is the active, non-collapsed tab. Its width tracks its
-   contents between a floor and a cap rather than a fixed 200px, so each tab is only as wide as it
-   needs and long localized labels widen the panel instead of clipping. */
+   contents up to a cap rather than a fixed 200px, so each tab is only as wide as it needs (a short
+   tab like Scene shrinks past what a wider tab like Item needs) and long localized labels widen the
+   panel instead of clipping. No floor: the fields inside (name, number-control, axis) already carry
+   their own usable-width min-widths, so a shared panel-level floor only fought a narrow tab's own
+   fit-to-content goal. */
 .viewport-transform__panel {
   display: none;
   flex-direction: column;
   gap: 6px;
   width: max-content;
-  min-width: 180px;
   max-width: 300px;
   padding: 8px;
   background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
@@ -169,17 +171,20 @@
   border: 1px solid var(--border-mid);
 }
 
+/* Subgroup-tier caption: a named cluster of fields within a tab (POSITION/ROTATION/SCALE;
+   Sun/Environment) - see tokens.css's caption-tier note for the full group/subgroup/field ladder. */
+.viewport-transform__section-title,
+.preview-settings__section-title {
+  color: var(--dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .viewport-transform__section {
   display: flex;
   flex-direction: column;
   gap: 3px;
-}
-
-.viewport-transform__section-title {
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .viewport-transform__comp {
@@ -188,6 +193,8 @@
   gap: 6px;
 }
 
+/* A field-component micro-label (X/Y/Z beside an axis control): quieter than a field label
+   proper since three repeat per row, not itself a rung on the caption ladder (tokens.css). */
 .viewport-transform__axis {
   flex: none;
   width: 12px;
@@ -203,11 +210,13 @@
 /* Preview view-settings rows (Sun / Hemisphere / Scene / Gizmo). The tabs themselves live in the
    viewport N-panel (.viewport-transform); this grid lays out each panel's rows in two columns that
    are uniform across the whole tab - a label column sized to the widest label, and a control column
-   that every control fills. Each row is `display: contents` so its label + single value
-   cell drop straight into these shared columns. */
+   sized to the widest control the tab actually needs (not stretched to whatever room the panel
+   has - a fixed-width switch next to a color swatch would otherwise inflate the swatch far past
+   its own control). Each row is `display: contents` so its label + single value cell drop straight
+   into these shared columns. */
 .preview-settings {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content max-content;
   align-items: center;
   column-gap: 8px;
   row-gap: 6px;
@@ -217,41 +226,47 @@
   display: contents;
 }
 
+/* Field-tier caption (tokens.css) - muted, not the control's own bright panel-foreground, so the
+   field's own value (the color/number/switch beside it) stays the visually loudest thing on the
+   row. Font-size inherited (--font-size-small, from .viewport-transform__panel). */
 .preview-settings__label {
   min-width: 0;
-  font-size: 12px;
-  color: var(--panel-foreground);
+  color: var(--muted);
 }
 
-/* Every control fills its (uniform) column: neutralise the intrinsic widths of the number and
-   dropdown controls so the grid can stretch them; the color swatch and segment group already
-   stretch. The switch is deliberately left out - it keeps its own fixed size. */
+/* Every control fills its (uniform, content-sized) column, so values still line up on one edge:
+   neutralise the intrinsic widths of the number and dropdown controls so the grid can stretch
+   them; the color swatch and segment group already stretch. The switch is deliberately left out -
+   it keeps its own fixed size, which is what sizes the column on a tab with no wider control. */
 .preview-settings .number-control,
 .preview-settings .dropdown {
   width: auto;
+}
+
+/* Without a cap, a long environment name would make the dropdown's own max-content contribution
+   (the intrinsic sizing basis of the control column) balloon past the panel's own max-width - the
+   grid doesn't clip its tracks, so the panel would visibly overflow. Bounded, the label's existing
+   ellipsis (params.css `.dropdown__label`) takes over instead. */
+.preview-settings .dropdown {
+  max-width: 160px;
 }
 
 .preview-settings .color-swatch {
   height: 18px;
 }
 
-/* Lighting tab subsection captions (Sun / Hemisphere) - a full-width row above each group,
-   matching the N-panel Item tab's section titles. */
+/* Lighting tab subsection captions (Sun / Environment) - full-width above each group; typography
+   is the shared subgroup-tier rule above. */
 .preview-settings__section-title {
   grid-column: 1 / -1;
   margin-top: 4px;
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
-/* An active environment overrides Sun/Hemisphere entirely (ADR-0004): grey their rows out and
-   block input, without hiding them - the `> *` targets the row's actual (boxed) children, since
-   the row itself is `display: contents` and cannot reliably carry paint properties. */
-.preview-settings__row--disabled > * {
-  opacity: 0.4;
-  pointer-events: none;
+/* An active environment preset fully replaces the manual Environment fallback fields (ADR-0004) -
+   hidden outright, not greyed; Sun's own rows never get this class, since it keeps deriving from
+   the preset without ever being blocked (previewSettings.ts). */
+.preview-settings__row--hidden {
+  display: none;
 }
 
 /* Snap rows pack a lock toggle and the step field into one value cell (the grid's control column). */
@@ -272,6 +287,9 @@
 
 .preview-settings .segment {
   flex: 1;
+  /* Matches the other controls' 20px row height (switch, number-control, dropdown) - the
+     segment's own 26px (segmented.css) is sized for its other, taller-target use elsewhere. */
+  height: 20px;
 }
 
 /* Add-object overlay - the "Spawn emitter" button in the bottom-right of the viewport

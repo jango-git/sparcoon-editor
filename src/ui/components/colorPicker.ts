@@ -272,7 +272,9 @@ export class ColorPicker implements ValueComponent<Rgba> {
       this.alphaFill.style.background = `linear-gradient(to right, ${cssRgba([r, g, b], 0)}, ${cssRgba([r, g, b], 1)})`;
     }
     if (this.preview !== undefined) {
-      this.preview.style.background = cssRgba([r, g, b], this.alpha);
+      // backgroundColor only, so the checker (color.css) stays underneath instead of being wiped
+      // by the `background` shorthand.
+      this.preview.style.backgroundColor = cssRgba([r, g, b], this.alpha);
     }
     if (this.hexInput !== undefined && document.activeElement !== this.hexInput) {
       this.hexInput.value = rgbToHex([r, g, b], this.showAlpha ? this.alpha : undefined);
