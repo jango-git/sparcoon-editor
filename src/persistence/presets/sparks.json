@@ -1,0 +1,1278 @@
+{
+  "format": "sparcoon-project",
+  "version": 1,
+  "source": {
+    "name": "Sparks",
+    "scene": {
+      "vfx": {
+        "id": "vfx_1",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "transformTracks": []
+      },
+      "emitters": [
+        {
+          "id": "emitter_415",
+          "name": "Sparks",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "material": "unlit",
+                  "renderMode": "blending",
+                  "geometry": "plane",
+                  "castShadow": true
+                },
+                "position": {
+                  "x": 1128,
+                  "y": 312
+                }
+              },
+              "node_636": {
+                "id": "node_636",
+                "type": "compose-transform",
+                "parameters": {
+                  "scale": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "position": [
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "position": {
+                  "x": 744,
+                  "y": 552
+                }
+              },
+              "node_645": {
+                "id": "node_645",
+                "type": "ramp",
+                "parameters": {
+                  "curve": {
+                    "points": [
+                      {
+                        "position": 0,
+                        "value": 0,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 1,
+                        "value": 0,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.075,
+                        "value": 0.007483230544749345,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.925,
+                        "value": 0.0075,
+                        "interpolation": "smooth"
+                      }
+                    ],
+                    "min": 0,
+                    "max": 0.015
+                  }
+                },
+                "position": {
+                  "x": -360,
+                  "y": 696
+                }
+              },
+              "node_646": {
+                "id": "node_646",
+                "type": "life-ratio",
+                "parameters": {},
+                "position": {
+                  "x": -552,
+                  "y": 696
+                }
+              },
+              "node_667": {
+                "id": "node_667",
+                "type": "color-ramp",
+                "parameters": {
+                  "gradient": {
+                    "stops": [
+                      {
+                        "position": 0.32,
+                        "color": [
+                          1,
+                          0.1946178304415756,
+                          0.009134058702220787,
+                          1
+                        ]
+                      },
+                      {
+                        "position": 0.55,
+                        "color": [
+                          0.7454042095403874,
+                          0.019382360956935744,
+                          0.0030352698354883727,
+                          1
+                        ]
+                      },
+                      {
+                        "position": 0,
+                        "color": [
+                          1,
+                          0.9215818562772946,
+                          0.7454042095403874,
+                          1
+                        ]
+                      },
+                      {
+                        "position": 1,
+                        "color": [
+                          0,
+                          0,
+                          0,
+                          1
+                        ]
+                      },
+                      {
+                        "position": 0.12,
+                        "color": [
+                          1,
+                          0.5840784178911643,
+                          0.07421356838014966,
+                          1
+                        ]
+                      },
+                      {
+                        "position": 0.8,
+                        "color": [
+                          0.06847816984440017,
+                          0.001517634917744192,
+                          0,
+                          1
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 456,
+                  "y": 168
+                }
+              },
+              "node_669": {
+                "id": "node_669",
+                "type": "spherical-clip",
+                "parameters": {
+                  "innerRadius": 0.35
+                },
+                "position": {
+                  "x": 816,
+                  "y": 168
+                }
+              },
+              "node_675": {
+                "id": "node_675",
+                "type": "ramp",
+                "parameters": {
+                  "curve": {
+                    "points": [
+                      {
+                        "position": 0,
+                        "value": 1,
+                        "interpolation": "sharp"
+                      },
+                      {
+                        "position": 1,
+                        "value": 0,
+                        "interpolation": "sharp"
+                      },
+                      {
+                        "position": 0.55,
+                        "value": 0,
+                        "interpolation": "sharp"
+                      }
+                    ],
+                    "min": 0,
+                    "max": 1
+                  }
+                },
+                "position": {
+                  "x": 456,
+                  "y": 336
+                }
+              },
+              "node_968": {
+                "id": "node_968",
+                "type": "align-to-velocity",
+                "parameters": {
+                  "axis": "y",
+                  "up": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "cameraAxis": "z",
+                  "flip": false,
+                  "perParticleCamera": true,
+                  "cameraModel": "point"
+                },
+                "position": {
+                  "x": -360,
+                  "y": 432
+                }
+              },
+              "node_970": {
+                "id": "node_970",
+                "type": "read-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": -624,
+                  "y": 432
+                }
+              },
+              "node_972": {
+                "id": "node_972",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec3",
+                  "y": 0.5
+                },
+                "position": {
+                  "x": 504,
+                  "y": 648
+                }
+              },
+              "node_977": {
+                "id": "node_977",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4
+                },
+                "position": {
+                  "x": 216,
+                  "y": 672
+                }
+              },
+              "node_985": {
+                "id": "node_985",
+                "type": "length",
+                "parameters": {},
+                "position": {
+                  "x": -360,
+                  "y": 624
+                }
+              },
+              "route_993": {
+                "id": "route_993",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 384,
+                  "y": 792
+                }
+              },
+              "route_997": {
+                "id": "route_997",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -48,
+                  "y": 792
+                }
+              },
+              "node_1009": {
+                "id": "node_1009",
+                "type": "remap",
+                "parameters": {
+                  "outMin": 1,
+                  "outMax": 10
+                },
+                "position": {
+                  "x": -48,
+                  "y": 624
+                }
+              },
+              "route_1025": {
+                "id": "route_1025",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 456,
+                  "y": 600
+                }
+              },
+              "route_1028": {
+                "id": "route_1028",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 336,
+                  "y": 456
+                }
+              },
+              "node_1031": {
+                "id": "node_1031",
+                "type": "life-ratio",
+                "parameters": {},
+                "position": {
+                  "x": 240,
+                  "y": 168
+                }
+              },
+              "route_1141": {
+                "id": "route_1141",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 96,
+                  "y": 792
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_717",
+                "from": {
+                  "nodeId": "node_646",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_645",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_876",
+                "from": {
+                  "nodeId": "node_667",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_669",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "id": "conn_986",
+                "from": {
+                  "nodeId": "node_970",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_985",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_991",
+                "from": {
+                  "nodeId": "node_977",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_972",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_995",
+                "from": {
+                  "nodeId": "route_993",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_972",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_996",
+                "from": {
+                  "nodeId": "route_993",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_972",
+                  "socketKey": "z"
+                }
+              },
+              {
+                "id": "conn_998",
+                "from": {
+                  "nodeId": "node_645",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_997",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_999",
+                "from": {
+                  "nodeId": "route_997",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_993",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_1010",
+                "from": {
+                  "nodeId": "node_985",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1009",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_1011",
+                "from": {
+                  "nodeId": "node_1009",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_977",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_1029",
+                "from": {
+                  "nodeId": "node_968",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_1028",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_1030",
+                "from": {
+                  "nodeId": "route_1028",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_1025",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_1035",
+                "from": {
+                  "nodeId": "node_1031",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_667",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_1119",
+                "from": {
+                  "nodeId": "route_1025",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_636",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_1126",
+                "from": {
+                  "nodeId": "node_972",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_636",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_1140",
+                "from": {
+                  "nodeId": "node_970",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_968",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_1142",
+                "from": {
+                  "nodeId": "route_997",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_1141",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_1143",
+                "from": {
+                  "nodeId": "route_1141",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_977",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_1146",
+                "from": {
+                  "nodeId": "node_1031",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_675",
+                  "socketKey": "t"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_675",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_669",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "slot": "particleTransform",
+                "from": {
+                  "nodeId": "node_636",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {
+                  "tryGpuSimulation": true,
+                  "expectedCapacity": 8192
+                },
+                "position": {
+                  "x": -864,
+                  "y": 960
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": -768,
+                  "y": 1512
+                }
+              },
+              "node_490": {
+                "id": "node_490",
+                "type": "read-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "phase": "update",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": -2400,
+                  "y": 1464
+                }
+              },
+              "node_491": {
+                "id": "node_491",
+                "type": "gravity",
+                "parameters": {
+                  "acceleration": [
+                    0,
+                    -9.81,
+                    0
+                  ]
+                },
+                "position": {
+                  "x": -2136,
+                  "y": 1464
+                }
+              },
+              "node_492": {
+                "id": "node_492",
+                "type": "delta-time",
+                "parameters": {},
+                "position": {
+                  "x": -2352,
+                  "y": 1584
+                }
+              },
+              "node_505": {
+                "id": "node_505",
+                "type": "read-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "phase": "update",
+                  "name": "position"
+                },
+                "position": {
+                  "x": -1320,
+                  "y": 1368
+                }
+              },
+              "node_509": {
+                "id": "node_509",
+                "type": "turbulence",
+                "parameters": {
+                  "amplitude": 5,
+                  "frequency": 5,
+                  "octaves": 2
+                },
+                "position": {
+                  "x": -1752,
+                  "y": 1464
+                }
+              },
+              "node_510": {
+                "id": "node_510",
+                "type": "plane-collision",
+                "parameters": {
+                  "friction": 0.25,
+                  "restitution": 0.25,
+                  "normal": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "radius": 0.05
+                },
+                "position": {
+                  "x": -1464,
+                  "y": 1464
+                }
+              },
+              "route_516": {
+                "id": "route_516",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -2136,
+                  "y": 1680
+                }
+              },
+              "route_517": {
+                "id": "route_517",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1872,
+                  "y": 1680
+                }
+              },
+              "route_518": {
+                "id": "route_518",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1032,
+                  "y": 1560
+                }
+              },
+              "route_519": {
+                "id": "route_519",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1176,
+                  "y": 1680
+                }
+              },
+              "node_559": {
+                "id": "node_559",
+                "type": "lifetime",
+                "parameters": {
+                  "lifetime": [
+                    2,
+                    2
+                  ],
+                  "min": 4,
+                  "max": 5
+                },
+                "position": {
+                  "x": -1104,
+                  "y": 984
+                }
+              },
+              "node_578": {
+                "id": "node_578",
+                "type": "firework",
+                "parameters": {
+                  "strength": 6,
+                  "angle": 0.05,
+                  "axis": [
+                    0,
+                    1,
+                    0
+                  ]
+                },
+                "position": {
+                  "x": -1800,
+                  "y": 936
+                }
+              },
+              "node_611": {
+                "id": "node_611",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": -1128,
+                  "y": 792
+                }
+              },
+              "node_879": {
+                "id": "node_879",
+                "type": "spawn-sphere",
+                "parameters": {
+                  "surfaceOnly": false,
+                  "radius": 0.15
+                },
+                "position": {
+                  "x": -2256,
+                  "y": 816
+                }
+              },
+              "node_889": {
+                "id": "node_889",
+                "type": "add-scaled-vector",
+                "parameters": {},
+                "position": {
+                  "x": -1032,
+                  "y": 1440
+                }
+              },
+              "node_896": {
+                "id": "node_896",
+                "type": "object-velocity",
+                "parameters": {},
+                "position": {
+                  "x": -1848,
+                  "y": 1056
+                }
+              },
+              "node_897": {
+                "id": "node_897",
+                "type": "add-scaled-vector",
+                "parameters": {
+                  "scale": 0.25
+                },
+                "position": {
+                  "x": -1128,
+                  "y": 1080
+                }
+              },
+              "node_935": {
+                "id": "node_935",
+                "type": "point-velocity",
+                "parameters": {},
+                "position": {
+                  "x": -1608,
+                  "y": 1104
+                }
+              },
+              "node_936": {
+                "id": "node_936",
+                "type": "object-angular-velocity",
+                "parameters": {},
+                "position": {
+                  "x": -1824,
+                  "y": 1128
+                }
+              },
+              "route_941": {
+                "id": "route_941",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1848,
+                  "y": 1200
+                }
+              },
+              "route_944": {
+                "id": "route_944",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1728,
+                  "y": 1200
+                }
+              },
+              "node_1100": {
+                "id": "node_1100",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": -1320,
+                  "y": 792
+                }
+              },
+              "node_1147": {
+                "id": "node_1147",
+                "type": "transform-direction",
+                "parameters": {},
+                "position": {
+                  "x": -1392,
+                  "y": 888
+                }
+              },
+              "node_1149": {
+                "id": "node_1149",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": -1848,
+                  "y": 864
+                }
+              },
+              "node_1150": {
+                "id": "node_1150",
+                "type": "matrix-to-mat3",
+                "parameters": {},
+                "position": {
+                  "x": -1656,
+                  "y": 864
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_539",
+                "from": {
+                  "nodeId": "node_492",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_491",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_540",
+                "from": {
+                  "nodeId": "node_492",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_516",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_541",
+                "from": {
+                  "nodeId": "route_516",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_517",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_545",
+                "from": {
+                  "nodeId": "route_517",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_519",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_550",
+                "from": {
+                  "nodeId": "route_517",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_509",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_890",
+                "from": {
+                  "nodeId": "node_505",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_889",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_892",
+                "from": {
+                  "nodeId": "route_519",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_889",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_937",
+                "from": {
+                  "nodeId": "node_936",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_935",
+                  "socketKey": "torque"
+                }
+              },
+              {
+                "id": "conn_940",
+                "from": {
+                  "nodeId": "node_935",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_897",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_942",
+                "from": {
+                  "nodeId": "node_879",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "route_941",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_945",
+                "from": {
+                  "nodeId": "route_941",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_944",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_946",
+                "from": {
+                  "nodeId": "route_944",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_935",
+                  "socketKey": "offset"
+                }
+              },
+              {
+                "id": "conn_1012",
+                "from": {
+                  "nodeId": "node_896",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_935",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_1017",
+                "from": {
+                  "nodeId": "node_490",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_491",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_1020",
+                "from": {
+                  "nodeId": "node_491",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_509",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_1045",
+                "from": {
+                  "nodeId": "node_509",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_510",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_1079",
+                "from": {
+                  "nodeId": "node_879",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_611",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_1101",
+                "from": {
+                  "nodeId": "node_1100",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_611",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_1151",
+                "from": {
+                  "nodeId": "node_1149",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1150",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_1152",
+                "from": {
+                  "nodeId": "node_1150",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1147",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_1153",
+                "from": {
+                  "nodeId": "node_578",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_1147",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_1154",
+                "from": {
+                  "nodeId": "node_1147",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_897",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_1171",
+                "from": {
+                  "nodeId": "node_510",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_889",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_1172",
+                "from": {
+                  "nodeId": "node_510",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "route_518",
+                  "socketKey": "in"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_559",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "route_518",
+                  "socketKey": "out"
+                },
+                "phase": "update"
+              },
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_889",
+                  "socketKey": "out"
+                },
+                "phase": "update"
+              },
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_611",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "node_897",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              }
+            ],
+            "attributes": [
+              {
+                "name": "velocity",
+                "type": "vec3"
+              }
+            ],
+            "comments": [
+              {
+                "id": "comment_1156",
+                "text": "Local position (sphere) and direction (firework), transforming them into world coordinates",
+                "position": {
+                  "x": -2280,
+                  "y": 744
+                },
+                "size": {
+                  "width": 1704,
+                  "height": 504
+                }
+              },
+              {
+                "id": "comment_1157",
+                "text": "Application of gravity, turbulence, and ground plane collisions",
+                "position": {
+                  "x": -2424,
+                  "y": 1320
+                },
+                "size": {
+                  "width": 1848,
+                  "height": 408
+                }
+              }
+            ]
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [],
+          "events": [
+            {
+              "id": "event_884",
+              "kind": "play",
+              "time": 0,
+              "rate": 2048,
+              "duration": 0
+            }
+          ],
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              -7.171623819695707e-18,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        }
+      ],
+      "activeEmitterId": "emitter_415",
+      "meshes": [],
+      "activeGraphKind": "emitter"
+    },
+    "assets": [],
+    "environments": [],
+    "meshAssets": [],
+    "timeline": {
+      "duration": 4,
+      "fps": 30
+    }
+  }
+}

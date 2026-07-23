@@ -46,13 +46,14 @@ export function removeEnvironmentAsset(store: Store, name: string): void {
   store.commit({ ...source, environments }, "view");
 }
 
-/** Empties the whole HDRI environment library. */
-export function clearEnvironmentAssets(store: Store): void {
+/** Sets which environment (by name) drives the viewport background/light probe, or `undefined`
+ *  for manual Sun + Hemisphere lighting. */
+export function setActiveEnvironment(store: Store, name: string | undefined): void {
   const source = store.getSource();
-  if (source.environments.length === 0) {
+  if (source.activeEnvironmentName === name) {
     return;
   }
-  store.commit({ ...source, environments: [] }, "view");
+  store.commit({ ...source, activeEnvironmentName: name }, "view");
 }
 
 /** Adds a GLB mesh asset; a duplicate name is a no-op (see {@link addTextureAsset}). */

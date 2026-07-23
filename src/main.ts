@@ -16,6 +16,7 @@ import { GizmoSettingsStore } from "./settings/gizmoSettings";
 import { createAutosave } from "./persistence/autosave";
 import { saveSource } from "./persistence/localStore";
 import { loadInitialState } from "./persistence/loadState";
+import { DEFAULT_PROJECT_PRESET, loadPresetSource } from "./persistence/presets";
 import { PreviewSettingsStore } from "./settings/previewSettings";
 import { detectRenderBackend } from "./settings/renderBackend";
 import { initTheme } from "./settings/theme";
@@ -78,7 +79,7 @@ async function bootstrap(): Promise<void> {
     true,
   );
 
-  const initialState = await loadInitialState();
+  const initialState = await loadInitialState(() => loadPresetSource(DEFAULT_PROJECT_PRESET));
   const signals = new SignalBus();
   const store = new Store(initialState, signals);
 
@@ -152,7 +153,7 @@ async function bootstrap(): Promise<void> {
   // Sun only once per (re)activation, so a manual Sun edit under HDRI isn't silently overwritten again.
   let derivedSunFor: DecodedEnvironment | undefined;
   function applyActiveEnvironment(): void {
-    const decoded = environments.resolve(previewSettings.get().activeEnvironmentName);
+    const decoded = environments.resolve(store.getSource().activeEnvironmentName);
     if (decoded === undefined) {
       derivedSunFor = undefined;
     } else if (decoded !== derivedSunFor) {
@@ -168,7 +169,6 @@ async function bootstrap(): Promise<void> {
     coordinator.setActiveEnvironment(decoded);
   }
   const environments = new EnvironmentTextureRegistry(applyActiveEnvironment);
-  previewSettings.subscribe(applyActiveEnvironment);
   // Mesh-geometry registry turns baked mesh assets into live BufferGeometry for "custom" geometry
   // sources; fully synchronous (no decode), so unlike TextureRegistry it needs no load-callback.
   const meshGeometries = new MeshGeometryRegistry();
@@ -213,9 +213,13 @@ async function bootstrap(): Promise<void> {
   signals.on("sourceStructureChanged", () => pipeline.scheduleRecompute());
   signals.on("sourceStructureChanged", () => autosave.schedule());
   signals.on("sourceViewChanged", () => autosave.schedule());
-  // Environment-library edits commit as "view" (they feed no compiled graph) and undo/redo now
-  // re-announces the original kind, so "view" alone covers every environment edit.
+  // Environment-library edits commit as "view" (they feed no compiled graph); a whole-document
+  // replace (preset/import) commits "structural" instead and can swap the library entirely, so
+  // both need to resync the decode cache and re-resolve the active pointer against it.
   signals.on("sourceViewChanged", () => environments.sync(store.getSource().environments));
+  signals.on("sourceStructureChanged", () => environments.sync(store.getSource().environments));
+  signals.on("sourceViewChanged", applyActiveEnvironment);
+  signals.on("sourceStructureChanged", applyActiveEnvironment);
   // A view-only transform edit (gizmo commit / inspector field / transform keyframe) never
   // recompiles, so it doesn't run the pipeline - re-pose the scene directly at the caret.
   signals.on("sourceViewChanged", () =>

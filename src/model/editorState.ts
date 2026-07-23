@@ -272,6 +272,9 @@ export interface SourceState {
   readonly assets: readonly TextureAsset[];
   /** The HDRI environment library (hdr); listed in the content sheet, not node-referenced. */
   readonly environments: readonly EnvironmentAsset[];
+  /** The `name` of the environment currently driving the viewport background/light probe, or
+   *  `undefined` for manual Sun + Hemisphere lighting. */
+  readonly activeEnvironmentName: string | undefined;
   /** The GLB mesh-asset library; listed in the content sheet, not node-referenced yet. */
   readonly meshAssets: readonly MeshAsset[];
   /** Scene-wide timeline settings (length); the per-emitter tracks live on each emitter. */
@@ -341,7 +344,7 @@ function buildGraph(
 /**
  * A starter emitter with a minimal **visible** effect: a lifetime + a sphere spawn
  * volume feed the behavior sink (particles that live and fill a cloud), and a constant
- * color feeds the render sink's albedo. So a fresh document already shows something in
+ * color feeds the render sink's albedo. So a newly added emitter already shows something in
  * the preview, demonstrating that each emitter's graphs drive its own runtime emitter.
  */
 export function createDefaultEmitter(id: string, name: string): EmitterDoc {
@@ -425,6 +428,25 @@ export function createDefaultVfx(id: string): VfxDoc {
   return { id, transform: IDENTITY_TRANSFORM, transformTracks: [] };
 }
 
+/** A genuinely blank emitter: only the mandatory sink nodes `buildGraph` adds, nothing wired to
+ *  them, no events - the "Empty" preset's basis, distinct from {@link createDefaultEmitter}'s
+ *  visible starter (still used by "Add Emitter"). */
+export function createEmptyEmitter(id: string, name: string): EmitterDoc {
+  return {
+    id,
+    name,
+    renderGraph: buildGraph(GraphKind.Render, [], []),
+    behaviorGraph: buildGraph(GraphKind.Behavior, [], []),
+    settings: DEFAULT_EMITTER_SETTINGS,
+    tracks: [],
+    events: [],
+    transform: IDENTITY_TRANSFORM,
+    transformTracks: [],
+    liveChannels: [],
+    liveParams: [],
+  };
+}
+
 /**
  * A starter VFX mesh: a plane rendered with a minimal visible material (a constant color feeding the
  * render sink's albedo). No behavior graph, no events - a mesh is a plain, un-simulated object posed
@@ -455,9 +477,9 @@ export function createDefaultVfxMesh(id: string, name: string): VfxMeshDoc {
   };
 }
 
-/** A fresh document: a VFX group holding one default emitter, which is the active one. No meshes. */
+/** A blank document: a VFX group holding one empty emitter, which is the active one. No meshes. */
 export function createInitialState(): EditorState {
-  const emitter = createDefaultEmitter("emitter_1", "Emitter");
+  const emitter = createEmptyEmitter("emitter_1", "Emitter");
   return {
     source: {
       name: "",
@@ -470,6 +492,7 @@ export function createInitialState(): EditorState {
       },
       assets: [],
       environments: [],
+      activeEnvironmentName: undefined,
       meshAssets: [],
       timeline: DEFAULT_TIMELINE,
     },

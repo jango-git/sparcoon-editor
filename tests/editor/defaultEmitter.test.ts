@@ -10,7 +10,8 @@ import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManua
 import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
 import { serializeGraph } from "../../src/domain/serialize";
-import { createDefaultEmitter } from "../../src/model/editorState";
+import { isSink } from "../../src/domain/sinks";
+import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 
 /**
  * The seeded starter emitter must actually render - otherwise the preview is empty.
@@ -47,5 +48,15 @@ describe("default emitter", () => {
     expect(artifacts.render).toBeDefined();
     expect(artifacts.behavior).toBeDefined();
     expect(typeof artifacts.hash).toBe("string");
+  });
+});
+
+describe("createInitialState", () => {
+  it("is genuinely blank - only the mandatory sink nodes, no starter content", () => {
+    const { source } = createInitialState();
+    const [emitter] = source.scene.emitters;
+    expect(Object.values(emitter.renderGraph.nodes).every(isSink)).toBe(true);
+    expect(Object.values(emitter.behaviorGraph.nodes).every(isSink)).toBe(true);
+    expect(emitter.events).toEqual([]);
   });
 });

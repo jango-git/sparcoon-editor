@@ -14,25 +14,27 @@
   display: flex;
 }
 
-/* A dialog centred in the viewport (the scrim's flex centring) with a gap on every side. Its height
-   follows its content between a floor (min-height) and a ceiling (max-height, the viewport itself),
-   beyond which the columns scroll, not the sheet. Assets sit in the main region; Project is a
-   separate block beside it (hence the row layout), running the full height on its own. */
+/* A dialog centred in the viewport (the scrim's flex centring) with a gap on every side. Capped at
+   a fixed max-width rather than stretching edge to edge - three fixed/capped-width blocks (Content,
+   Project, Help; hence the row layout) never need the full viewport - and tall by default (a high
+   min-height floor) so the unified vertical asset list and the Help reference both get room without
+   scrolling on typical screens. Beyond max-height each block scrolls internally, not the sheet. */
 .content-sheet {
   position: relative;
   z-index: var(--z-modal-sheet);
   display: flex;
   width: calc(100vw - 64px);
-  min-height: 50vh;
+  max-width: 1200px;
+  min-height: 72vh;
   max-height: calc(100vh - 64px);
   overflow: hidden;
   background: var(--panel-background);
   border: 1px solid var(--border-hard);
 }
 
-/* A square close button pinned to the sheet's top-right corner, lifted above the Project block it
-   overlays. Danger color/hover come from the shared .confirm-danger (same look as the reset button
-   below); this only sets its position and size. */
+/* A square close button pinned to the sheet's top-right corner, lifted above the Help block it
+   overlays (the rightmost of the three). Danger color/hover come from the shared .confirm-danger
+   (same look as a guarded delete/apply button); this only sets its position and size. */
 .content-sheet__close {
   position: absolute;
   top: 10px;
@@ -53,11 +55,15 @@
   outline-offset: -6px;
 }
 
+/* flex-shrink (not flex: none) so a narrower viewport compresses all three blocks rather than
+   overflowing the sheet's own overflow:hidden - min-width is each block's floor before its own
+   content starts truncating awkwardly. */
 .content-sheet__main {
-  flex: 1;
+  flex: 1 1 340px;
+  min-width: 260px;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-height: 0;
 }
 
 /* No divider under the header - the content-screen leans on spacing, not lines (cf. preview tabs). */
@@ -66,12 +72,6 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px 6px;
-}
-
-.content-sheet__title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 
 .content-sheet__spacer {
@@ -120,106 +120,67 @@
   display: none;
 }
 
-/* The three libraries side by side; the main region never scrolls - the lists do. */
-.content-sheet__body {
+/* The unified asset list: one scrollbar for the whole Content block, the three asset types
+   stacked as sections (content-group) rather than side-by-side columns. */
+.content-list {
   flex: 1;
   display: flex;
+  flex-direction: column;
   gap: 16px;
   min-height: 0;
   padding: 4px 16px 16px;
-}
-
-.content-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* A borderless muted heading, like the preview panels' section titles. */
-.content-column__title {
-  padding: 4px 2px 8px;
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* Only the HDRI column carries a header action (clear all) beside its title; the row inherits the
-   title's own padding so the two lay out identically to the plain (title-only) columns. */
-.content-column__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 2px 8px;
-}
-
-.content-column__header .content-column__title {
-  flex: 1;
-  padding: 0;
-}
-
-/* Sized down from .asset-row__remove (26px) to fit the header row without dominating the title. */
-.content-column__clear {
-  flex: none;
-  width: 22px;
-  height: 22px;
-}
-
-.content-column__clear svg {
-  width: 13px;
-  height: 13px;
-}
-
-/* Each library scrolls independently. */
-.content-column__list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 0;
   overflow-y: auto;
 }
 
-/* The empty-library hint and the Export placeholder: centred muted text, no scroll. */
-.content-column__empty,
-.content-column__placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  font-size: var(--font-size-small);
-  color: var(--muted);
-  text-align: center;
-}
-
-/* The Export block: the special one - its own full-height panel, borderless, set apart by a raised
-   fill so the recessed (surface-deep) input reads against it. */
-.content-export {
-  flex: none;
+/* One asset-type section (Images / HDRI / Meshes): a subgroup-tier title over its rows, no
+   independent scroll of its own - the parent .content-list is the one scroller. */
+.content-group {
   display: flex;
   flex-direction: column;
-  width: 520px;
-  padding: 12px 16px 16px;
-  background: var(--surface-raised);
+  gap: 6px;
 }
 
-/* The Export heading reads like the CONTENT title (not the muted column headings). */
+.content-group__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The empty-library hint: a single inline line, not a centred placeholder - it now sits inline
+   within the unified list rather than filling a whole standalone column. */
+.content-group__empty {
+  padding: 4px 8px;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+}
+
+/* The Project block: a raised fill (paired with Help, both set apart from the plain Content list)
+   so the recessed (surface-deep) input reads against it; a hairline separates it from Content. */
+.content-export {
+  flex: 1 1 380px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  background: var(--surface-raised);
+  border-left: 1px solid var(--border-mid);
+}
+
+/* Extra room under the block's own group-tier title, over the form's row gap. */
 .content-export__title {
   margin-bottom: 12px;
 }
 
-/* Fills the block under the title so the foot spacer can pin reset to the bottom; groups sit further
-   apart than the controls within a group. */
+/* Fills the block under the title; groups sit further apart than the controls within a group. Its
+   own scroll (independent of the sheet's fixed max-height) so a locale with longer labels never
+   silently clips instead of wrapping/scrolling. */
 .content-export__form {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* Controls that read as one unit (the embed flag over its TypeScript export). */
@@ -229,20 +190,16 @@
   gap: 8px;
 }
 
-/* Eats the slack so reset pins to the block foot, clear of the controls above. */
-.content-export__spacer {
-  flex: 1;
-}
-
 .content-export__field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
+/* Text colour is the shared field-tier caption (preview.css) - only the font-size is set locally,
+   since (unlike the viewport N-panel) nothing here establishes an ambient small font-size. */
 .content-export__label {
   font-size: var(--font-size-small);
-  color: var(--muted);
 }
 
 /* The block's prominent field - same height as the buttons below it; type size matches every other
@@ -282,17 +239,39 @@
   cursor: pointer;
 }
 
-/* Reset: the full-width destructive project-wipe pinned to the block foot; its danger look and
-   counting state come from .confirm-danger. */
-.content-export__reset {
+/* The Examples list: one .asset-row per bundled preset, no scroll (it's short by design). A preset
+   row's preview is a kind glyph (asset-row__preview's own well-background fallback state), like an
+   asset library row that never got a pixel thumbnail. */
+.content-export__examples {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+
+/* The per-row apply button: same danger/counting look as a delete (.confirm-danger), sized like
+   the outline buttons above it rather than the square per-row action/remove icons. A fixed width
+   (not content-sized padding) so the countdown-confirm's digit swap-in (attachCountdownConfirm
+   replaces the whole label with a lone number) never visibly resizes the button. */
+.content-export__preset-apply {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 88px;
   height: 28px;
   font-size: var(--font-size-small);
 }
 
-.content-export__reset svg {
+.content-export__preset-apply svg {
   width: 14px;
   height: 14px;
+}
+
+/* A light outline setting an Examples row apart from a plain library asset-row (which carries no
+   border of its own, only its fill). */
+.content-export__preset-row {
+  border: 1px solid var(--border-soft);
 }
 
 /* A row: thick enough to hold a preview, no taller than it needs, set off by a fill (no border). */
@@ -383,4 +362,68 @@
 .asset-row__remove svg {
   width: 14px;
   height: 14px;
+}
+
+/* The Help block: a static quick-reference, raised like Project (the pair reads as the sheet's
+   settings side) and given room to grow up to a cap - prose reflows better with flexible width
+   than the two fixed-width form-driven blocks beside it. */
+.content-help {
+  flex: 1 1 380px;
+  min-width: 260px;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  background: var(--surface-raised);
+  border-left: 1px solid var(--border-mid);
+}
+
+/* Its own scroll, independent of the sheet's fixed max-height. */
+.content-help__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.content-help__intro,
+.content-help__misc,
+.content-help__shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.content-help__line {
+  margin: 0;
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+  color: var(--panel-foreground);
+}
+
+/* One shortcut row: a key-combo chip (matching the viewport stats readout's own value chip) beside
+   its muted description. */
+.content-help__shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.content-help__shortcut-key {
+  flex: none;
+  padding: 1px 6px;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-foreground);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  white-space: nowrap;
+}
+
+.content-help__shortcut-label {
+  font-size: var(--font-size-small);
+  color: var(--muted);
 }

@@ -1,30 +1,27 @@
 /**
  * Content screen: a modal sheet (opens from the middlebar, closes on scrim/Escape) rather than a
- * persistent panel, since content isn't always needed. A header + three independently-scrolling
- * asset libraries (images, HDRIs, GLB meshes) sit beside a separate full-height Import/Export block;
- * a single "Upload asset" affordance (button or drag-drop) routes dropped files to their library by
- * type. The embed-assets flag is still inert - the TypeScript export takes its assets via
- * constructor, not embedded. A row's user count is real for textures (node references) and HDRIs
- * (active or not, ADR-0004), 0 for the not-yet-consumed mesh kind.
+ * persistent panel, since content isn't always needed. Three blocks sit side by side, all on one
+ * screen with no tabs: Content (one unified, vertically-scrolling asset list - images, HDRIs and
+ * GLB meshes stack as sections rather than three parallel columns), Project (name/save-load/
+ * examples/export) and Help (a static quick-reference). A single "Upload asset" affordance
+ * (button or drag-drop) routes dropped files to their library by type, and drag-drop is live over
+ * the whole sheet regardless of which block it lands on. The embed-assets flag is still inert -
+ * the TypeScript export takes its assets via constructor, not embedded. A row's user count is real
+ * for textures (node references) and HDRIs (active or not, ADR-0004), 0 for the not-yet-consumed
+ * mesh kind.
  */
 
 import { t } from "../i18n";
 import { selectTextureAssetUsage } from "../model/selectors";
 import type { SignalBus } from "../model/signals";
 import type { Store } from "../model/store";
-import type { PreviewSettingsStore } from "../settings/previewSettings";
 import { attachTooltip } from "./components/tooltip";
+import { helpBlock } from "./contentHelpPanel";
 import { createElement } from "./dom";
 import { assetIcons, glyphIcons, icon } from "./icons";
 import { HDRI_EXTENSIONS, MESH_EXTENSIONS, ingestFiles } from "./assetIngestion";
 import { exportBlock } from "./projectExportPanel";
-import {
-  clearAllEnvironmentsButton,
-  environmentRows,
-  fillColumn,
-  meshRows,
-  textureRows,
-} from "./assetRows";
+import { environmentRows, fillColumn, meshRows, textureRows } from "./assetRows";
 
 export interface AssetsModal {
   readonly element: HTMLElement;
@@ -32,11 +29,7 @@ export interface AssetsModal {
   close(): void;
 }
 
-export function createAssetsModal(
-  store: Store,
-  signals: SignalBus,
-  previewSettings: PreviewSettingsStore,
-): AssetsModal {
+export function createAssetsModal(store: Store, signals: SignalBus): AssetsModal {
   const uploadButton = createElement("button", {
     className: "content-sheet__upload",
     type: "button",
@@ -53,13 +46,13 @@ export function createAssetsModal(
   fileInput.multiple = true;
   fileInput.className = "content-sheet__file";
 
-  const imageList = createElement("div", { className: "content-column__list" });
-  const hdriList = createElement("div", { className: "content-column__list" });
-  const meshList = createElement("div", { className: "content-column__list" });
-  const clearAllHdri = clearAllEnvironmentsButton(store);
+  const imageList = createElement("div", { className: "content-group__rows" });
+  const hdriList = createElement("div", { className: "content-group__rows" });
+  const meshList = createElement("div", { className: "content-group__rows" });
 
-  // The assets side: a header (title + upload) over the three libraries. Export sits apart from it as
-  // its own full-height block (it is the special one), so the header spans only the asset columns.
+  // The Content block: a header (title + upload) over one unified, vertically-scrolling list - the
+  // three asset types stack as sections (see assetGroup) rather than side-by-side columns, so the
+  // block reads as one library with a single scrollbar, not three.
   const main = createElement("div", { className: "content-sheet__main" }, [
     createElement("div", { className: "content-sheet__header" }, [
       createElement("span", { className: "content-sheet__title", textContent: t("content.title") }),
@@ -67,16 +60,18 @@ export function createAssetsModal(
       uploadButton,
       fileInput,
     ]),
-    createElement("div", { className: "content-sheet__body" }, [
-      assetColumn(t("content.columnImages"), imageList),
-      assetColumn(t("content.columnHdri"), hdriList, clearAllHdri),
-      assetColumn(t("content.columnMeshes"), meshList),
+    createElement("div", { className: "content-list" }, [
+      assetGroup(t("content.columnImages"), imageList),
+      assetGroup(t("content.columnMeshes"), meshList),
+      assetGroup(t("content.columnHdri"), hdriList),
     ]),
   ]);
 
   const exportPanel = exportBlock(store);
+  const help = helpBlock();
   // Danger-tinted like the block's reset button - shares its .confirm-danger look, minus the
-  // countdown-confirm behavior (a close needs no guard).
+  // countdown-confirm behavior (a close needs no guard). Sits above the Help block it overlays,
+  // the rightmost of the three.
   const closeButton = createElement("button", {
     className: "content-sheet__close confirm-danger",
     type: "button",
@@ -86,21 +81,17 @@ export function createAssetsModal(
   const sheet = createElement("div", { className: "content-sheet" }, [
     main,
     exportPanel.element,
+    help.element,
     closeButton,
   ]);
   const scrim = createElement("div", { className: "modal-scrim" }, [sheet]);
 
   const render = (): void => {
     const usage = selectTextureAssetUsage(store);
-    const environments = environmentRows(
-      store,
-      previewSettings.get().activeEnvironmentName,
-      render,
-    );
+    const environments = environmentRows(store, render);
     fillColumn(imageList, t("content.emptyImages"), textureRows(store, usage));
     fillColumn(hdriList, t("content.emptyHdri"), environments);
     fillColumn(meshList, t("content.emptyMeshes"), meshRows(store));
-    clearAllHdri.hidden = environments.length === 0;
     exportPanel.sync();
   };
 
@@ -149,29 +140,21 @@ export function createAssetsModal(
   });
 
   // Re-render whenever the document changes (an upload/delete here, or an undo/redo). Texture edits
-  // are structural; environment/mesh edits are view-only - listen to both so every column refreshes.
+  // are structural; environment/mesh edits are view-only - listen to both so every section refreshes.
+  // This also covers the HDRI rows' active-environment badge (ADR-0004: now a document field) -
+  // picking one in the Lighting panel while this sheet is open still updates it.
   signals.on("sourceStructureChanged", render);
   signals.on("sourceViewChanged", render);
-  // The HDRI rows' user count follows the active environment, which lives outside the document
-  // (ADR-0004) - picking one in the Lighting panel while this sheet is open must still update it.
-  previewSettings.subscribe(render);
   render();
 
   return { element: scrim, open, close };
 }
 
-/**
- * One asset library block: a titled header over an independently scrolling list. `headerAction`
- * (the HDRI column's "clear all") sits beside the title instead of inside the scrolling list.
- */
-function assetColumn(title: string, list: HTMLElement, headerAction?: HTMLElement): HTMLElement {
+/** One asset-type section within the unified Content list: a subgroup title over its rows. */
+function assetGroup(title: string, rows: HTMLElement): HTMLElement {
   const titleElement = createElement("div", {
-    className: "content-column__title",
+    className: "content-group__title",
     textContent: title,
   });
-  const header =
-    headerAction === undefined
-      ? titleElement
-      : createElement("div", { className: "content-column__header" }, [titleElement, headerAction]);
-  return createElement("div", { className: "content-column" }, [header, list]);
+  return createElement("div", { className: "content-group" }, [titleElement, rows]);
 }

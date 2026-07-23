@@ -34,4 +34,9 @@ export const assetIcons = {
     <path d="M8 2 13.5 5v6L8 14 2.5 11V5z"/>
     <path d="M2.5 5 8 8l5.5-3M8 8v6"/>
   </svg>`,
+
+  // A dashed empty square: the blank-project preset's preview, no thumbnail applies.
+  blank: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="10" height="10" rx="1.5" stroke-dasharray="2.4 2.2"/>
+  </svg>`,
 };

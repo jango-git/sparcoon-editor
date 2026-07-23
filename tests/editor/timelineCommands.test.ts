@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
 import {
@@ -17,8 +16,9 @@ import {
 } from "../../src/model/commands";
 import { emitterEntity } from "../../src/model/entity";
 import type { PlayEvent } from "../../src/model/editorState";
+import { createTestState } from "../helpers/testDocument";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createTestState(), new SignalBus());
 const emitterId = (store: Store): string => store.getSource().scene.emitters[0].id;
 const ent = (id: string) => emitterEntity(id);
 const tracks = (store: Store) => store.getSource().scene.emitters[0].tracks;

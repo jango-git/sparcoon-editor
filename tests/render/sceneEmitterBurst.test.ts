@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
 import { FXWorld } from "sparcoon";
-import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
+import { createTestState } from "../helpers/testDocument";
 import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
 import { SceneEmitters } from "../../src/render/sceneEmitters";
@@ -13,7 +13,7 @@ import { SceneEmitters } from "../../src/render/sceneEmitters";
 // compileToArtifacts/emitModule tests build a bare FXEmitter directly. This closes that gap.
 describe("SceneEmitters: emitter burst through the live-preview path", () => {
   it("burst on the default emitter spawns particles and they survive FXWorld ticks", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createTestState(), new SignalBus());
     const scene = new Scene();
     const camera = new PerspectiveCamera();
     // The default emitter has "Try GPU simulation" on by default, but this stub claims WebGL1 -
@@ -43,7 +43,7 @@ describe("SceneEmitters: emitter burst through the live-preview path", () => {
   });
 
   it('burst still works with "Try GPU simulation" on, degrading to the JS driver in this headless suite', () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createTestState(), new SignalBus());
     const scene = new Scene();
     const camera = new PerspectiveCamera();
     // Claims WebGL2 so EmitterView.installEmitter actually wires the compiled standard-family

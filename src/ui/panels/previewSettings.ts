@@ -5,6 +5,7 @@
  */
 
 import { t } from "../../i18n";
+import { setActiveEnvironment } from "../../model/commands";
 import type { SignalBus } from "../../model/signals";
 import { selectEnvironmentAssets } from "../../model/selectors";
 import type { Store } from "../../model/store";
@@ -110,13 +111,13 @@ export function createPreviewSettingsGroups(
       (value) => settings.update({ hemisphereIntensity: value }),
     ),
   ];
-  const presetPickerRow = presetRow(settings, store, signals);
+  const presetPickerRow = presetRow(store, signals);
   // An active environment (ADR-0004) fully replaces the manual fallback fields (hidden, not
   // greyed), and keeps resyncing Sun's value controls since main.ts overwrites sun* once the HDRI
   // derivation finishes - Sun itself is never hidden or blocked, the user can still edit it.
   const applyEnvironmentState = (): void => {
     const latest = settings.get();
-    const active = latest.activeEnvironmentName !== undefined;
+    const active = store.getSource().activeEnvironmentName !== undefined;
     setRowsHidden(environmentFallbackRows, active);
     if (active) {
       sunEnabledControl.set(latest.sun);
@@ -127,7 +128,13 @@ export function createPreviewSettingsGroups(
     }
   };
   applyEnvironmentState();
+  // previewSettings changes cover Sun's own value resync (main.ts overwrites sun* there); the
+  // active environment itself now lives in the document, so its own changes need the source
+  // signals too - a whole-project replace (preset/import) commits "structural", a plain pick
+  // commits "view", never both (see Store.emitForKind).
   settings.subscribe(applyEnvironmentState);
+  signals.on("sourceStructureChanged", applyEnvironmentState);
+  signals.on("sourceViewChanged", applyEnvironmentState);
 
   return [
     {
@@ -289,11 +296,7 @@ function setRowsHidden(rows: readonly HTMLElement[], hidden: boolean): void {
  * replaced) so {@link Dropdown}, which reads it fresh each time its menu opens, always sees the
  * current library without its own resync API.
  */
-function presetRow(
-  settings: PreviewSettingsStore,
-  store: Store,
-  signals: SignalBus,
-): HTMLElement {
+function presetRow(store: Store, signals: SignalBus): HTMLElement {
   const NONE_VALUE = "";
   const options: DropdownOption[] = [{ value: NONE_VALUE, label: t("preview.environmentNone") }];
   const populateOptions = (): void => {
@@ -310,23 +313,25 @@ function presetRow(
   populateOptions();
   const dropdown = new Dropdown({
     options,
-    value: settings.get().activeEnvironmentName ?? NONE_VALUE,
+    value: store.getSource().activeEnvironmentName ?? NONE_VALUE,
     placeholder: t("preview.environmentNone"),
     onChange: (value): void =>
-      settings.update({ activeEnvironmentName: value === NONE_VALUE ? undefined : value }),
+      setActiveEnvironment(store, value === NONE_VALUE ? undefined : value),
   });
 
   const refresh = (): void => {
     populateOptions();
-    const active = settings.get().activeEnvironmentName;
+    const active = store.getSource().activeEnvironmentName;
     dropdown.setValue(
       active !== undefined && options.some((option) => option.value === active)
         ? active
         : NONE_VALUE,
     );
   };
-  // Environment edits commit as "view", and undo/redo now re-announces the original kind too.
+  // A plain pick or asset-library edit commits "view"; a whole-project replace (preset/import)
+  // commits "structural" - never both (see Store.emitForKind) - so both need a listener here.
   signals.on("sourceViewChanged", refresh);
+  signals.on("sourceStructureChanged", refresh);
 
   return field(t("preview.preset"), dropdown.element, PREVIEW_ROW);
 }

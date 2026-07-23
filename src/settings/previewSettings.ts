@@ -7,7 +7,7 @@
  */
 
 import { parseHex, srgbToLinearRgba, type Rgba } from "../ui/components/color";
-import { asBoolean, asFiniteNumber, asOptionalString, isRecord } from "../util/guards";
+import { asBoolean, asFiniteNumber, isRecord } from "../util/guards";
 import { PersistedStore } from "./persistedStore";
 
 export interface PreviewSettings {
@@ -33,11 +33,9 @@ export interface PreviewSettings {
   readonly grid: boolean;
   /** A wireframe player-figure box (2 x 0.5 x 0.75) as a scale reference. */
   readonly playerFigure: boolean;
-  /** The scene background color, linear RGBA. Ignored while {@link activeEnvironmentName} is set. */
+  /** The scene background color, linear RGBA. Ignored while an environment is active
+   *  (`SourceState.activeEnvironmentName`). */
   readonly background: Rgba;
-  /** The active environment asset's `name` (ADR-0004), or `undefined` for manual Sun + Hemisphere
-   *  lighting. View-only - never enters the document, so it is not exported. */
-  readonly activeEnvironmentName: string | undefined;
 }
 
 const STORAGE_KEY = "sparcoon-editor.preview";
@@ -62,7 +60,6 @@ export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   grid: true,
   playerFigure: true,
   background: linearFromHex("2b2e33"),
-  activeEnvironmentName: undefined,
 };
 
 /**
@@ -95,7 +92,6 @@ function parsePreviewSettings(raw: unknown): PreviewSettings {
     grid: asBoolean(raw["grid"], DEFAULT_PREVIEW_SETTINGS.grid),
     playerFigure: asBoolean(raw["playerFigure"], DEFAULT_PREVIEW_SETTINGS.playerFigure),
     background: asRgba(raw["background"], DEFAULT_PREVIEW_SETTINGS.background),
-    activeEnvironmentName: asOptionalString(raw["activeEnvironmentName"]),
   };
 }
 

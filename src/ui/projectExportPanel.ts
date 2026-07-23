@@ -1,20 +1,36 @@
 /**
  * The Import/Export block of the Content sheet: full-height, borderless, grouped top-down - name,
- * JSON import/export, TypeScript export, then the project reset guarded at the foot.
+ * JSON import/export, TypeScript export, then the bundled Examples list last (the one destructive
+ * action in the block, kept below the two that only ever add output).
  */
 
 import { t } from "../i18n";
-import { importProject, resetProject, setProjectName } from "../model/commands";
+import { importProject, setProjectName } from "../model/commands";
 import type { Store } from "../model/store";
+import { hydrateEnvironmentBlobs } from "../persistence/environmentBlobStore";
 import { emitProjectModule } from "../persistence/exportTypeScript";
+import {
+  EMPTY_PRESET,
+  loadPresetSource,
+  PROJECT_PRESETS,
+  SPARKS_PRESET,
+  type ProjectPreset,
+} from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
-import { actionIcons, assetIcons, icon } from "./icons";
+import { assetIcons, icon, timelineIcons } from "./icons";
 
-/** Presses to confirm the project reset (destructive, so guarded harder than a per-asset delete). */
-const RESET_CLICKS = 5;
+/** Presses to confirm applying a preset (destructive - replaces the whole project - so guarded
+ *  harder than a per-asset delete). */
+const PRESET_APPLY_CLICKS = 5;
+
+/** Each preset's row preview - a kind glyph, the same role a thumbnail plays for an asset row. */
+const PRESET_GLYPHS: Readonly<Record<string, string>> = {
+  [EMPTY_PRESET.id]: assetIcons.blank,
+  [SPARKS_PRESET.id]: timelineIcons.burst,
+};
 
 /**
  * Builds the Import/Export block. `sync` refreshes the name field from the document, skipping the
@@ -64,6 +80,18 @@ export function exportBlock(store: Store): { element: HTMLElement; sync: () => v
     fileInput,
   ]);
 
+  // Bundled starter projects - a small project-style row list, one per PROJECT_PRESETS entry
+  // (the empty document first). Each apply is guarded the same way a per-asset delete is.
+  const examplesTitle = createElement("div", {
+    className: "content-group__title",
+    textContent: t("content.examples"),
+  });
+  const examplesList = createElement(
+    "div",
+    { className: "content-export__examples" },
+    PROJECT_PRESETS.map((preset) => presetRow(store, preset)),
+  );
+
   // The embed flag is grouped above the TypeScript export it's meant to govern once wired (still
   // inert - see file doc); a visible label carries its name, the tooltip the detail.
   const embedField = createElement("label", { className: "content-export__embed" }, [
@@ -78,24 +106,12 @@ export function exportBlock(store: Store): { element: HTMLElement; sync: () => v
     typeScriptButton,
   ]);
 
-  // Reset: destructive project-wipe, moved here off the middlebar and anchored to the block foot.
-  // Guarded by the countdown-confirm control; the resting content (glyph + label) doubles as the
-  // icon it reverts to after a countdown, so both survive the innerHTML swap the control does.
-  const resetContent = `${actionIcons.reset}<span>${t("middlebar.reset")}</span>`;
-  const resetButton = createElement("button", {
-    className: "content-export__reset confirm-danger",
-    type: "button",
-  });
-  resetButton.innerHTML = resetContent;
-  attachTooltip(resetButton, t("middlebar.reset"), t("middlebar.resetTip"));
-  attachCountdownConfirm(resetButton, resetContent, RESET_CLICKS, () => resetProject(store));
-
   const form = createElement("div", { className: "content-export__form" }, [
     nameField,
     jsonRow,
     typeScriptGroup,
-    createElement("div", { className: "content-export__spacer" }),
-    resetButton,
+    examplesTitle,
+    examplesList,
   ]);
 
   const sync = (): void => {
@@ -157,6 +173,45 @@ async function importFromFile(file: File | undefined, store: Store): Promise<voi
     console.warn(`"${file.name}" is not a readable project file`);
     return;
   }
+  await hydrateEnvironmentBlobs(source.environments);
+  importProject(store, source);
+}
+
+/**
+ * One Examples row, styled like an asset library row: a kind-glyph preview, the preset's name, a
+ * countdown-guarded apply button - same guard/severity as a whole-project replace deserves.
+ */
+function presetRow(store: Store, preset: ProjectPreset): HTMLElement {
+  const preview = createElement("div", { className: "asset-row__preview" }, [
+    icon(PRESET_GLYPHS[preset.id] ?? assetIcons.blank),
+  ]);
+  const name = createElement("span", {
+    className: "asset-row__title",
+    textContent: t(preset.labelKey),
+  });
+  const applyContent = `${assetIcons.upload}<span>${t("content.applyPreset")}</span>`;
+  const applyButton = createElement("button", {
+    className: "content-export__preset-apply confirm-danger",
+    type: "button",
+  });
+  applyButton.innerHTML = applyContent;
+  attachTooltip(applyButton, t(preset.labelKey), t("content.applyPresetTip"));
+  attachCountdownConfirm(applyButton, applyContent, PRESET_APPLY_CLICKS, () => {
+    void applyPreset(store, preset);
+  });
+  return createElement("div", { className: "asset-row content-export__preset-row" }, [
+    preview,
+    name,
+    createElement("div", { className: "asset-row__spacer" }),
+    applyButton,
+  ]);
+}
+
+/** Loads a preset's source (bundled JSON fetch, or the built-in empty document) and replaces the
+ *  document with it - the same path a picked JSON file goes through. */
+async function applyPreset(store: Store, preset: ProjectPreset): Promise<void> {
+  const source = await loadPresetSource(preset);
+  await hydrateEnvironmentBlobs(source.environments);
   importProject(store, source);
 }
 

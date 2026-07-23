@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as ts from "typescript";
 import * as three from "three";
 import * as sparcoon from "sparcoon";
-import {
-  createInitialState,
-  createDefaultVfxMesh,
-  type SourceState,
-} from "../../src/model/editorState";
+import { createDefaultVfxMesh, type SourceState } from "../../src/model/editorState";
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
 import { ensureSinks } from "../../src/domain/sinks";
 import {
@@ -16,6 +12,7 @@ import {
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { createTestState } from "../helpers/testDocument";
 
 /**
  * Transpiles an emitted TS project module to CJS and evaluates it with the real `sparcoon` + `three`
@@ -59,7 +56,7 @@ function totalParticles(effect: three.Group): number {
 
 /** A source whose one emitter samples an external texture into albedo (drives the asset path). */
 function textureEmitterSource(): SourceState {
-  const base = createInitialState().source;
+  const base = createTestState().source;
   const emitter = base.scene.emitters[0];
   const renderGraph = ensureSinks(
     {
@@ -85,7 +82,7 @@ function textureEmitterSource(): SourceState {
 
 /** A source whose one emitter has a live position channel. */
 function fakePositionEmitterSource(): SourceState {
-  const base = createInitialState().source;
+  const base = createTestState().source;
   const emitter = base.scene.emitters[0];
   return {
     ...base,
@@ -106,7 +103,7 @@ function fakePositionEmitterSource(): SourceState {
 
 /** A source whose one emitter has a live Timeline Value track driving a `tint` uniform. */
 function fakeParamEmitterSource(): SourceState {
-  const base = createInitialState().source;
+  const base = createTestState().source;
   const emitter = base.scene.emitters[0];
   const renderGraph = ensureSinks(
     {
@@ -141,7 +138,7 @@ function fakeParamEmitterSource(): SourceState {
 
 describe("emitProjectModule - structure", () => {
   it("emits a self-contained class with per-entity artifacts and a scene spec", () => {
-    const text = emitProjectModule(createInitialState().source);
+    const text = emitProjectModule(createTestState().source);
 
     // Machine-emitted kernel bodies + untyped engine helpers -> the file opts out of strict checking
     // while keeping its exported class/interfaces typed for the consumer.
@@ -167,7 +164,7 @@ describe("emitProjectModule - structure", () => {
 
   it("renames a project whose class name would collide with a module identifier", () => {
     const rename = (source: SourceState, name: string): SourceState => ({ ...source, name });
-    const base = createInitialState().source;
+    const base = createTestState().source;
     expect(emitProjectModule(rename(base, "SPEC"))).toContain("export class SPECExport extends");
     expect(emitProjectModule(rename(base, "FX Effect Options"))).toContain(
       "export class FXEffectOptionsExport extends",
@@ -177,7 +174,7 @@ describe("emitProjectModule - structure", () => {
 
 describe("emitProjectModule - executes", () => {
   it("builds an emitter that spawns from its timeline burst event", () => {
-    const module = loadModule(emitProjectModule(createInitialState().source));
+    const module = loadModule(emitProjectModule(createTestState().source));
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
       play(): void;
       dispose(): void;
@@ -197,7 +194,7 @@ describe("emitProjectModule - executes", () => {
   });
 
   it("stop() clears live particles", () => {
-    const module = loadModule(emitProjectModule(createInitialState().source));
+    const module = loadModule(emitProjectModule(createTestState().source));
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
       play(): void;
       stop(): void;
@@ -216,7 +213,7 @@ describe("emitProjectModule - executes", () => {
   });
 
   it("emits distinct, namespaced artifacts for multiple emitters and drives them all", () => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const first = base.scene.emitters[0];
     const second = { ...first, id: "emitter_2", name: "Second" };
     const source: SourceState = {
@@ -244,7 +241,7 @@ describe("emitProjectModule - executes", () => {
   });
 
   it("builds a VFX mesh as a Mesh child", () => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const mesh = createDefaultVfxMesh("mesh_1", "Mesh");
     const source: SourceState = {
       ...base,
@@ -269,7 +266,7 @@ describe("emitProjectModule - executes", () => {
   });
 
   it("skips a degenerate zero-count burst instead of throwing out of update", () => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const emitter = base.scene.emitters[0];
     const source: SourceState = {
       ...base,
@@ -294,7 +291,7 @@ describe("emitProjectModule - executes", () => {
   });
 
   it("is inert after dispose (update/play/stop do not throw)", () => {
-    const module = loadModule(emitProjectModule(createInitialState().source));
+    const module = loadModule(emitProjectModule(createTestState().source));
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
       play(): void;
       stop(): void;
@@ -351,7 +348,7 @@ describe("emitProjectModule - shadow flags", () => {
   };
 
   const emitterWithShadows = (cast?: boolean, receive?: boolean): SourceState => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const emitter = base.scene.emitters[0];
     return {
       ...base,
@@ -369,7 +366,7 @@ describe("emitProjectModule - shadow flags", () => {
   });
 
   it("omits both flags when absent or explicitly false", () => {
-    const absent = emitProjectModule(createInitialState().source);
+    const absent = emitProjectModule(createTestState().source);
     expect(absent).not.toContain("castShadow");
     expect(absent).not.toContain("receiveShadow");
 
@@ -379,7 +376,7 @@ describe("emitProjectModule - shadow flags", () => {
   });
 
   it("emits a mesh's shadow flags into its spec literal", () => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const seed = createDefaultVfxMesh("mesh_1", "Mesh");
     const mesh = { ...seed, renderGraph: withSinkShadow(seed.renderGraph, true, true) };
     const text = emitProjectModule({ ...base, scene: { ...base.scene, meshes: [mesh] } });
@@ -406,7 +403,7 @@ describe("emitProjectModule - shadow flags", () => {
 
 describe("emitProjectModule - fake tracks / live update", () => {
   it("never re-poses the root transform - the consumer positions the exported effect directly", () => {
-    const module = loadModule(emitProjectModule(createInitialState().source));
+    const module = loadModule(emitProjectModule(createTestState().source));
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
       play(): void;
       dispose(): void;
@@ -473,7 +470,7 @@ describe("emitProjectModule - fake tracks / live update", () => {
     // Liveness is entity-level metadata (EmitterDoc.liveChannels/liveParams), not a track flag - a
     // channel/param can be marked live with zero authored keyframes, and stays excluded from the
     // export the moment it IS keyframed later, without ever depending on track existence.
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const emitter = base.scene.emitters[0];
     const source: SourceState = {
       ...base,
@@ -535,7 +532,7 @@ describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () =>
   };
 
   const emitterWithGpuFlag = (on: boolean): SourceState => {
-    const base = createInitialState().source;
+    const base = createTestState().source;
     const emitter = base.scene.emitters[0];
     return {
       ...base,
@@ -564,8 +561,8 @@ describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () =>
   });
 
   it("includes the GPU artifact by default (Try GPU simulation defaults on)", () => {
-    // No override - createInitialState()'s spawn sink never has the flag explicitly set.
-    const text = emitProjectModule(createInitialState().source);
+    // No override - createTestState()'s spawn sink never has the flag explicitly set.
+    const text = emitProjectModule(createTestState().source);
     expect(text).toContain("FXParticleKernelArtifact");
     expect(text).toContain("gpuBehavior");
   });

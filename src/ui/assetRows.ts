@@ -3,12 +3,7 @@
 import { Mesh } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { t } from "../i18n";
-import {
-  clearEnvironmentAssets,
-  removeEnvironmentAsset,
-  removeMeshAsset,
-  removeTextureAsset,
-} from "../model/commands";
+import { removeEnvironmentAsset, removeMeshAsset, removeTextureAsset } from "../model/commands";
 import type { EnvironmentAsset, MeshAsset, TextureAsset } from "../model/editorState";
 import { deleteEnvironmentBlob } from "../persistence/environmentBlobStore";
 import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
@@ -47,7 +42,7 @@ export interface AssetRow {
 export function fillColumn(list: HTMLElement, emptyHint: string, rows: readonly AssetRow[]): void {
   if (rows.length === 0) {
     list.replaceChildren(
-      createElement("div", { className: "content-column__empty", textContent: emptyHint }),
+      createElement("div", { className: "content-group__empty", textContent: emptyHint }),
     );
     return;
   }
@@ -68,19 +63,15 @@ export function textureRows(store: Store, usage: ReadonlyMap<string, number>): r
 }
 
 /**
- * @param activeEnvironmentName The scene's active HDRI (ADR-0004: preview state, not a graph
- * reference) - unlike a texture's node-reference count, an environment's "usage" is just whether
- * it is that one active asset, so `users` is always 0 or 1.
+ * `users` is unlike a texture's node-reference count: an HDRI's "usage" is just whether it is the
+ * document's one active environment (ADR-0004), so it's always 0 or 1.
  * @param onThumbnailReady A still-decoding HDRI has no thumbnail yet (RGBE decode is async); called
  * once one lands so the caller can re-list and pick it up from the cache.
  */
-export function environmentRows(
-  store: Store,
-  activeEnvironmentName: string | undefined,
-  onThumbnailReady: () => void,
-): readonly AssetRow[] {
+export function environmentRows(store: Store, onThumbnailReady: () => void): readonly AssetRow[] {
   const assets = selectEnvironmentAssets(store);
   const thumbnails = environmentThumbnails(assets, onThumbnailReady);
+  const activeEnvironmentName = store.getSource().activeEnvironmentName;
   return assets.map((asset: EnvironmentAsset) => {
     const active = asset.name === activeEnvironmentName;
     const thumbnailUrl = thumbnails.get(asset.name);
@@ -101,27 +92,6 @@ export function environmentRows(
       },
     };
   });
-}
-
-/**
- * The HDRI column header's "clear all" control: same guarded countdown-confirm as a per-row
- * delete, scoped to the whole library instead of one asset.
- */
-export function clearAllEnvironmentsButton(store: Store): HTMLElement {
-  const button = createElement("button", {
-    className: "content-column__clear confirm-danger",
-    type: "button",
-  });
-  button.innerHTML = actionIcons.trash;
-  attachTooltip(button, t("content.clearAllHdri"), t("content.clearAllHdriTip"));
-  attachCountdownConfirm(button, actionIcons.trash, DELETE_CLICKS, () => {
-    const names = selectEnvironmentAssets(store).map((asset) => asset.name);
-    clearEnvironmentAssets(store);
-    for (const name of names) {
-      void deleteEnvironmentBlob(name);
-    }
-  });
-  return button;
 }
 
 export function meshRows(store: Store): readonly AssetRow[] {

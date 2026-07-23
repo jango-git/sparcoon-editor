@@ -172,9 +172,12 @@
 }
 
 /* Subgroup-tier caption: a named cluster of fields within a tab (POSITION/ROTATION/SCALE;
-   Sun/Environment) - see tokens.css's caption-tier note for the full group/subgroup/field ladder. */
+   Sun/Environment), or a named cluster of rows in the Content sheet (Images/HDRI/Meshes;
+   Examples; Help's own subsections) - see tokens.css's caption-tier note for the full
+   group/subgroup/field ladder. */
 .viewport-transform__section-title,
-.preview-settings__section-title {
+.preview-settings__section-title,
+.content-group__title {
   color: var(--dim);
   font-size: 10px;
   text-transform: uppercase;
@@ -228,8 +231,11 @@
 
 /* Field-tier caption (tokens.css) - muted, not the control's own bright panel-foreground, so the
    field's own value (the color/number/switch beside it) stays the visually loudest thing on the
-   row. Font-size inherited (--font-size-small, from .viewport-transform__panel). */
-.preview-settings__label {
+   row. Font-size inherited here (--font-size-small, from .viewport-transform__panel); the Content
+   sheet's own field label (.content-export__label) has no such ambient context, so it sets its own
+   font-size locally (modal.css) rather than joining that part of this rule. */
+.preview-settings__label,
+.content-export__label {
   min-width: 0;
   color: var(--muted);
 }
@@ -357,13 +363,20 @@
   pointer-events: none;
 }
 
-.viewport-stats__title {
-  grid-column: 1 / -1;
+/* Group-tier caption (tokens.css's caption ladder) - the stats readout's own "STATS" heading and
+   the Content sheet's per-block headings (CONTENT / PROJECT / HELP, .content-sheet__title) share
+   this exact rung, one step brighter/bolder than the subgroup tier above. */
+.viewport-stats__title,
+.content-sheet__title {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+.viewport-stats__title {
+  grid-column: 1 / -1;
 }
 
 /* The row itself takes no box - its two children (value, label) become direct items of the

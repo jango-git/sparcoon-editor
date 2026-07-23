@@ -40,15 +40,15 @@ export {
   type TransformKeyMove,
 } from "./transformCommands";
 export { TRANSFORM_CHANNELS } from "../transform";
-export { importProject, resetProject, setProjectName } from "./projectCommands";
+export { importProject, setProjectName } from "./projectCommands";
 export {
   addEnvironmentAsset,
   addMeshAsset,
   addTextureAsset,
-  clearEnvironmentAssets,
   removeEnvironmentAsset,
   removeMeshAsset,
   removeTextureAsset,
+  setActiveEnvironment,
 } from "./assetCommands";
 export {
   addEmitter,

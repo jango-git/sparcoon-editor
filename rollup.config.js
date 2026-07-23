@@ -8,27 +8,28 @@ import serve from "rollup-plugin-serve";
 const isDevelopment = Boolean(process.env.ROLLUP_WATCH);
 
 /**
- * Copies the locale dictionaries (`src/i18n/locales/`) next to the bundle (`dist/locales/`) so
- * i18n fetches the active one at runtime instead of bundling all of them - mirroring the
- * `new URL("locales/...", import.meta.url)` resolution in src/i18n/index.ts.
+ * Copies every `.json` file from `sourceDir` next to the bundle (`dist/<outputName>/`) so runtime
+ * code can `fetch` one via `new URL("<outputName>/...", import.meta.url)` instead of bundling all
+ * of them as modules. Shared by the locale dictionaries (`src/i18n/locales/`) and the bundled
+ * project presets (`src/persistence/presets/`).
  */
-function copyLocales() {
-  const sourceDir = path.resolve("src/i18n/locales");
-  const outputDir = path.resolve("dist", "locales");
+function copyJsonAssets(sourceDir, outputName) {
+  const resolvedSourceDir = path.resolve(sourceDir);
+  const outputDir = path.resolve("dist", outputName);
   return {
-    name: "copy-locales",
+    name: `copy-${outputName}`,
     buildStart() {
-      for (const fileName of readdirSync(sourceDir)) {
+      for (const fileName of readdirSync(resolvedSourceDir)) {
         if (fileName.endsWith(".json")) {
-          this.addWatchFile(path.join(sourceDir, fileName));
+          this.addWatchFile(path.join(resolvedSourceDir, fileName));
         }
       }
     },
     writeBundle() {
       mkdirSync(outputDir, { recursive: true });
-      for (const fileName of readdirSync(sourceDir)) {
+      for (const fileName of readdirSync(resolvedSourceDir)) {
         if (fileName.endsWith(".json")) {
-          copyFileSync(path.join(sourceDir, fileName), path.join(outputDir, fileName));
+          copyFileSync(path.join(resolvedSourceDir, fileName), path.join(outputDir, fileName));
         }
       }
     },
@@ -90,7 +91,8 @@ export default {
     chunkFileNames: "[name]-[hash].js",
   },
   plugins: [
-    copyLocales(),
+    copyJsonAssets("src/i18n/locales", "locales"),
+    copyJsonAssets("src/persistence/presets", "presets"),
     bundleStyles(),
     nodeResolve({ browser: true }),
     typescript({ tsconfig: "./tsconfig.build.json" }),

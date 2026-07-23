@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
-import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
 import {
@@ -11,13 +10,14 @@ import {
 } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
 import { SceneEmitters } from "../../src/render/sceneEmitters";
+import { createTestState } from "../helpers/testDocument";
 
 // Regression for "a render-only edit restarts playback": a structural change confined to the
 // render half (e.g. the surface sink's Render Mode) must hot-swap the live FXEmitter in place
 // instead of a full rebuild - live particles must survive and `recompiled` must stay false.
 describe("SceneEmitters: render-only edits do not reset playback", () => {
   function buildScene(): { store: Store; emitters: SceneEmitters } {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createTestState(), new SignalBus());
     const scene = new Scene();
     const camera = new PerspectiveCamera();
     // JS driver only (matches sceneEmitterBurst.test.ts's no-real-WebGL headless policy) - the

@@ -37,7 +37,7 @@ export interface ApplicationShell {
 }
 
 export function mountApplicationShell(root: HTMLElement, context: EditorContext): ApplicationShell {
-  const { store, signals, panelFocus, panelFocusTracker, previewSettings } = context;
+  const { store, signals, panelFocus, panelFocusTracker } = context;
   const graphView = new GraphViewState();
 
   const preview = createPreviewPanel();
@@ -70,7 +70,7 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   const graph = createGraphPanel(context, graphView);
   const timeline = createTimelinePanel(context);
 
-  const assets = createAssetsModal(store, signals, previewSettings);
+  const assets = createAssetsModal(store, signals);
   const middlebar = createMiddlebar(context, { onOpenAssets: assets.open });
   const workspace = createWorkspace(preview.element, graph, timeline, middlebar);
 

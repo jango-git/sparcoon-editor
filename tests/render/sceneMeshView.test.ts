@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Mesh } from "three";
 import { BufferGeometry, PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
-import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
+import { createTestState } from "../helpers/testDocument";
 import {
   addVfxMesh,
   removeVfxMesh,
@@ -21,7 +21,7 @@ import { SceneEmitters } from "../../src/render/sceneEmitters";
 const STUB_RENDERER = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
 
 function harness(): { store: Store; emitters: SceneEmitters } {
-  const store = new Store(createInitialState(), new SignalBus());
+  const store = new Store(createTestState(), new SignalBus());
   const scene = new Scene();
   const camera = new PerspectiveCamera();
   const emitters = new SceneEmitters(
@@ -42,7 +42,7 @@ function harnessWithMeshGeometries(): {
   emitters: SceneEmitters;
   geometries: Record<string, BufferGeometry>;
 } {
-  const store = new Store(createInitialState(), new SignalBus());
+  const store = new Store(createTestState(), new SignalBus());
   const scene = new Scene();
   const camera = new PerspectiveCamera();
   const geometries: Record<string, BufferGeometry> = {};

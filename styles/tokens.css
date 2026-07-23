@@ -41,7 +41,7 @@
 
   /* Text tiers: --muted (brighter) / --dim (quieter) feed the group/subgroup/field caption
      ladder used for structural, never-user-edited headings (viewport tabs, stats panels, the
-     timeline inspector) - group: 10px/uppercase/0.06em/weight 600/--muted; subgroup: same but
+     timeline inspector, the Content sheet) - group: 10px/uppercase/0.06em/weight 600/--muted; subgroup: same but
      weight 400/--dim, a rarer divider one level down; field: --font-size-small, plain case,
      --muted, repeats every row so legibility beats tracking. Clickable/user-named labels (node
      titles, timeline outline rows, asset names) sit outside this ladder - they stay bright. */

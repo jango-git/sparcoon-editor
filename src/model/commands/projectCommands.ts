@@ -1,21 +1,11 @@
 /**
- * Document-level edits (whole project, not one graph). Resetting is structural (recomputes
- * derived) but still goes through history, so an accidental clear is undoable.
+ * Document-level edits (whole project, not one graph). Importing is structural (recomputes
+ * derived) but still goes through history, so an accidental replace is undoable.
  */
 
-import { createInitialState, type SourceState } from "../editorState";
+import type { SourceState } from "../editorState";
 import type { Store } from "../store";
 import { seedIdentifierCounterFromSource } from "./documentIdentifiers";
-
-/**
- * Clears the project back to an empty document, discarding all authored content - except the HDRI
- * library, which survives: it is workspace-level content the user builds up across projects, not
- * per-effect authoring, and re-uploading multi-MB HDRIs after every reset would be needless pain.
- */
-export function resetProject(store: Store): void {
-  const environments = store.getSource().environments;
-  store.commit({ ...createInitialState().source, environments }, "structural");
-}
 
 /**
  * Replaces the document with an imported one (from {@link deserializeProject}); seeds the id

@@ -1,5 +1,5 @@
 /**
- * Middlebar action-button glyphs: undo, redo, reset and the content screen. 16x16 line icons,
+ * Middlebar action-button glyphs: undo, redo and the content screen. 16x16 line icons,
  * `stroke="currentColor"`, 1.5 stroke, round caps/joins. `content` is the monitor glyph for the
  * content screen (textures/HDRIs/meshes + export).
  */
@@ -12,11 +12,6 @@ export const actionIcons = {
   redo: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M12 7H5.5a3 3 0 0 0 0 6H10"/>
     <path d="M9.5 4l3 3-3 3"/>
-  </svg>`,
-
-  reset: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M3 8a5 5 0 1 1 1.5 3.6"/>
-    <path d="M3 12.5V9h3.5"/>
   </svg>`,
 
   // A monitor: the content screen (textures/HDRIs/meshes + export), opened from the middlebar.

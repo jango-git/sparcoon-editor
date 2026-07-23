@@ -6,6 +6,8 @@
  * than breaking the caller, mirroring `util/storage.ts`'s localStorage helpers.
  */
 
+import type { EnvironmentAsset } from "../model/editorState";
+
 const DATABASE_NAME = "sparcoon-editor";
 const STORE_NAME = "environmentBlobs";
 const DATABASE_VERSION = 1;
@@ -62,4 +64,16 @@ export async function deleteEnvironmentBlob(name: string): Promise<void> {
 /** Drops every stored HDRI blob (the library's "clear all"). */
 export async function clearEnvironmentBlobs(): Promise<void> {
   await withStore("readwrite", (store) => store.clear());
+}
+
+/**
+ * Stores every environment's `dataUrl`, so a document brought in wholesale (File > Open, applying
+ * a preset) survives the next autosave the same way an uploaded HDRI does - without this, the
+ * autosave strip (`localStore.ts`) leaves nothing for `hydrateEnvironments` to rehydrate on the
+ * next reload.
+ */
+export async function hydrateEnvironmentBlobs(
+  environments: readonly EnvironmentAsset[],
+): Promise<void> {
+  await Promise.all(environments.map((asset) => putEnvironmentBlob(asset.name, asset.dataUrl)));
 }

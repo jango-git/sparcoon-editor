@@ -14,7 +14,6 @@ import {
 import { nextIdentifier } from "../model/commands/identifier";
 import {
   createDefaultVfx,
-  createInitialState,
   DEFAULT_EMITTER_SETTINGS,
   DEFAULT_TIMELINE,
   type AnimationTrack,
@@ -39,12 +38,16 @@ import {
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
-import { asFiniteNumber, isFiniteNumber, isRecord } from "../util/guards";
+import { asFiniteNumber, asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { getEnvironmentBlob, putEnvironmentBlob } from "./environmentBlobStore";
 import { loadSource } from "./localStore";
 
-export async function loadInitialState(): Promise<EditorState> {
-  const source = (await restoreSource()) ?? createInitialState().source;
+/** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
+ *  returning user with an existing document never pays for it. */
+export async function loadInitialState(
+  loadFallbackSource: () => Promise<SourceState>,
+): Promise<EditorState> {
+  const source = (await restoreSource()) ?? (await loadFallbackSource());
   seedIdentifierCounterFromSource(source);
   return { source, derived: {} };
 }
@@ -154,6 +157,7 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
     },
     assets: normalizeAssets(raw["assets"]),
     environments: normalizeEnvironments(raw["environments"]),
+    activeEnvironmentName: asOptionalString(raw["activeEnvironmentName"]),
     meshAssets: normalizeMeshAssets(raw["meshAssets"]),
     timeline: normalizeTimeline(raw["timeline"]),
   };
