@@ -1,0 +1,107 @@
+/*
+ * Design tokens. Two blocks: :root (dark, default) and
+ * :root[data-theme="light"] (light override). Theme is switched by setting the
+ * data-theme attribute on <html>. See STYLE_GUIDE section 1.
+ */
+
+:root {
+  /* Dynamic accent - a single HSL accent drives all "life" in the UI. */
+  --accent-hue: 28;
+  --accent-saturation: 90%;
+  --accent-lightness: 58%;
+  --accent: hsl(var(--accent-hue) var(--accent-saturation) var(--accent-lightness));
+  --on-accent: #fff;
+  --danger: #d9534f;
+
+  /* Per-entity-type accent hues - the shared "each object type has its own colour" data, mirrored
+     by src/theme/entityAccent.ts (the 3D selection gizmo reads the same hues). Emitter keeps the
+     app accent hue. */
+  --hue-emitter: var(--accent-hue);
+  --hue-group: 150;
+  --hue-mesh: 212;
+
+  /* Per-entity-type row accents (timeline outline): same saturation + lightness as the accent, only
+     the hue differs, so emitter / VFX group / mesh read apart by colour rather than brightness. */
+  --accent-emitter: hsl(var(--hue-emitter) var(--accent-saturation) var(--accent-lightness));
+  --accent-group: hsl(var(--hue-group) var(--accent-saturation) var(--accent-lightness));
+  --accent-mesh: hsl(var(--hue-mesh) var(--accent-saturation) var(--accent-lightness));
+
+  /* The small-text size used across labels, fields, node params and timeline rows. */
+  --font-size-small: 11px;
+
+  /* Surfaces */
+  --panel-background: #1b1d22;
+  --panel-foreground: #e6e6e6;
+  --stage-background: #0e0f12;
+  --stage-dot: rgba(255, 255, 255, 0.05);
+  --surface-raised: #2a2d33;
+  --surface-deep: #15171b;
+  /* Alpha checkerboard behind translucent swatches/gradients (color picker + ramp). */
+  --checker: repeating-conic-gradient(var(--border-soft) 0% 25%, transparent 0% 50%) 0 0 / 10px 10px;
+
+  /* Text tiers */
+  --muted: #9aa0a6;
+  --dim: #6a7077;
+
+  /* Borders */
+  --border-hard: #000;
+  --border-mid: #444;
+  --border-soft: #333;
+  --border-group: #535c6b;
+
+  /* Overlays */
+  --overlay-subtle: rgba(255, 255, 255, 0.04);
+  --well: rgba(0, 0, 0, 0.22);
+
+  --card-accent: var(--accent);
+
+  /* Timeline spawn events read amber against the blue value keyframes. Deliberately the
+     same amber in both themes so bursts/play-bars stay recognisable on either background. */
+  --timeline-event: #e0a33e;
+  /* The caret + the infinite play bar wear this violet while the timeline is infinite (an infinite
+     play, tasks 2/3), same S/L as the accent so it reads as a state, not a different brightness. */
+  --timeline-infinite: hsl(272 var(--accent-saturation) var(--accent-lightness));
+
+  /* Node category tints - a header/frame accent that marks a node's role. The output sink (the
+     graph's terminus) wears the app's own accent, so it reads as an accented/highlighted node at
+     a glance. Timeline Value (a named, runtime-tunable input feeding the graph) gets its own
+     violet hue, same lightness as the accent but less saturated, so it reads apart from both the
+     app accent and the socket-type palette rather than doubling as "just another accented node". */
+  --node-output: var(--accent);
+  --node-timeline-value: hsl(272 55% var(--accent-lightness));
+
+  /* Screen-space overlay stacking, centralised (exact legacy values; higher sits on top). Small
+     local z-indexes - an active tab, the marquee over the nodes - stay as inline literals. */
+  --z-add-node-menu: 1100;
+  --z-popover: 1200; /* dropdown menu + node help card */
+  --z-color-picker: 1300;
+  --z-modal-scrim: 2000;
+  --z-modal-sheet: 2001;
+  --z-timeline-marquee: 2050;
+  --z-context-menu: 2100;
+  --z-tooltip: 2200; /* shared hover tooltip - non-interactive, sits above every surface */
+}
+
+:root[data-theme="light"] {
+  --accent-lightness: 42%;
+  --on-accent: #fff;
+  --danger: #c0342f;
+
+  --panel-background: #ededf0;
+  --panel-foreground: #18191d;
+  --stage-background: #d4d5db;
+  --stage-dot: rgba(0, 0, 0, 0.06);
+  --surface-raised: #dfe0e5;
+  --surface-deep: #f8f8fb;
+
+  --muted: #606870;
+  --dim: #888f96;
+
+  --border-hard: #b0b2b8;
+  --border-mid: #9a9da3;
+  --border-soft: #c0c2c8;
+  --border-group: #757c8a;
+
+  --overlay-subtle: rgba(0, 0, 0, 0.05);
+  --well: rgba(0, 0, 0, 0.06);
+}

@@ -1,0 +1,41 @@
+{
+  "name": "sparcoon-editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Node-graph editor for the sparcoon particle VFX engine",
+  "type": "module",
+  "scripts": {
+    "dev": "rollup --config --watch",
+    "build": "rollup --config",
+    "typecheck": "tsc -b",
+    "lint": "eslint . && node scripts/check-dead-css-tokens.mjs",
+    "lint:tokens": "node scripts/check-dead-css-tokens.mjs",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run"
+  },
+  "dependencies": {
+    "fast-simplex-noise": "^4.0.0",
+    "ferrsign": "^0.0.4",
+    "sparcoon": "0.9.2",
+    "three": "^0.157.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "@types/three": "0.157.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^9.15.0",
+    "prettier": "^3.4.1",
+    "rollup": "^4.27.4",
+    "rollup-plugin-livereload": "^2.0.5",
+    "rollup-plugin-serve": "^1.1.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^4.1.9"
+  }
+}

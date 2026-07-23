@@ -1,0 +1,33 @@
+/* Shared hover tooltip (components/tooltip.ts) - a bold accent title over an optional muted
+   description, mirrored from the tesselot editor so every hover hint reads identically. Floating
+   and non-interactive; positioned in screen space by the helper. */
+.tooltip {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  max-width: 240px;
+  padding: 7px 9px;
+  background: color-mix(in srgb, var(--panel-background) 92%, transparent);
+  color: var(--panel-foreground);
+  border: 1px solid var(--border-soft);
+  font-size: 11px;
+  line-height: 1.45;
+  pointer-events: none;
+  display: none;
+}
+
+.tooltip--visible {
+  display: block;
+}
+
+.tooltip__title {
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.tooltip__desc {
+  margin-top: 2px;
+  color: var(--muted);
+  /* Multi-line hints (e.g. a node's stacked compile-error messages) keep their line breaks. */
+  white-space: pre-line;
+}

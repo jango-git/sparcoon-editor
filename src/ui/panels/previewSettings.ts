@@ -1,0 +1,336 @@
+/**
+ * Lighting / Scene / Gizmo view-settings groups, hosted as tabs by the viewport's transform panel
+ * (see {@link createViewportTransform}). View state only - never touches the model, commands or
+ * undo; the environment picker only reads the content library, like any other selector.
+ */
+
+import { t } from "../../i18n";
+import type { SignalBus } from "../../model/signals";
+import { selectEnvironmentAssets } from "../../model/selectors";
+import type { Store } from "../../model/store";
+import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
+import type { PreviewSettingsStore } from "../../settings/previewSettings";
+import { ColorPicker } from "../components/colorPicker";
+import { Dropdown, type DropdownOption } from "../components/dropdown";
+import { NumberControl } from "../components/numberControl";
+import { createSegmentedControl } from "../components/segmentedControl";
+import { createToggleButton } from "../components/toggleButton";
+import type { Rgba } from "../components/color";
+import { createElement } from "../dom";
+import { controlIcons, viewportIcons } from "../icons";
+import { field } from "../primitives/field";
+
+/** A view-settings tab: a label, its glyph and the rows of controls that fill its panel. */
+export interface PreviewSettingsGroup {
+  readonly label: string;
+  readonly glyph: string;
+  readonly rows: readonly HTMLElement[];
+}
+
+/** The class pair every Lighting/Scene/Gizmo settings row shares. */
+const PREVIEW_ROW = {
+  rowClassName: "preview-settings__row",
+  labelClassName: "preview-settings__label",
+} as const;
+
+export function createPreviewSettingsGroups(
+  settings: PreviewSettingsStore,
+  gizmo: GizmoSettingsStore,
+  store: Store,
+  signals: SignalBus,
+): PreviewSettingsGroup[] {
+  const current = settings.get();
+  const gizmoCurrent = gizmo.get();
+
+  // Value controls are built inline (not just declared) so they can be resynced via setValue when
+  // an active environment overwrites sun* with HDRI-derived values (see applyEnvironmentState).
+  const sunToggleRow = toggleRow(
+    t("preview.enabled"),
+    current.sun,
+    (on) => settings.update({ sun: on }),
+    t("preview.enabledTip"),
+  );
+  const sunColorControl = new ColorPicker({
+    value: current.sunColor,
+    alpha: false,
+    onChange: (value): void => settings.update({ sunColor: value }),
+  });
+  const sunIntensityControl = new NumberControl({
+    value: current.sunIntensity,
+    min: 0,
+    max: 10,
+    step: 0.05,
+    onChange: (value): void => settings.update({ sunIntensity: value }),
+  });
+  const sunAzimuthControl = new NumberControl({
+    value: current.sunAzimuth,
+    min: 0,
+    max: 360,
+    step: 1,
+    precision: 0,
+    onChange: (value): void => settings.update({ sunAzimuth: value }),
+  });
+  const sunElevationControl = new NumberControl({
+    value: current.sunElevation,
+    min: 0,
+    max: 90,
+    step: 1,
+    precision: 0,
+    onChange: (value): void => settings.update({ sunElevation: value }),
+  });
+  const sunValueRows = [
+    field(t("field.color"), sunColorControl.element, PREVIEW_ROW),
+    field(t("field.intensity"), sunIntensityControl.element, PREVIEW_ROW),
+    field(t("preview.azimuth"), sunAzimuthControl.element, PREVIEW_ROW),
+    field(t("preview.elevation"), sunElevationControl.element, PREVIEW_ROW),
+  ];
+  const sunRows = [sunToggleRow, ...sunValueRows];
+  const hemisphereRows = [
+    toggleRow(
+      t("preview.enabled"),
+      current.hemisphere,
+      (on) => settings.update({ hemisphere: on }),
+      t("preview.enabledTip"),
+    ),
+    colorRow(t("preview.skyColor"), current.hemisphereSky, (value) =>
+      settings.update({ hemisphereSky: value }),
+    ),
+    colorRow(t("preview.groundColor"), current.hemisphereGround, (value) =>
+      settings.update({ hemisphereGround: value }),
+    ),
+    numberRow(
+      t("field.intensity"),
+      current.hemisphereIntensity,
+      { min: 0, max: 5, step: 0.05 },
+      (value) => settings.update({ hemisphereIntensity: value }),
+    ),
+  ];
+  // An active environment (ADR-0004) fully disables Hemisphere (incl. its toggle) and greys Sun's
+  // value rows, resyncing them since main.ts overwrites sun* once the HDRI derivation finishes.
+  const applyEnvironmentState = (): void => {
+    const latest = settings.get();
+    const active = latest.activeEnvironmentName !== undefined;
+    setRowsDisabled(sunValueRows, active);
+    setRowsDisabled(hemisphereRows, active);
+    if (active) {
+      sunColorControl.setValue(latest.sunColor);
+      sunIntensityControl.setValue(latest.sunIntensity);
+      sunAzimuthControl.setValue(latest.sunAzimuth);
+      sunElevationControl.setValue(latest.sunElevation);
+    }
+  };
+  applyEnvironmentState();
+  settings.subscribe(applyEnvironmentState);
+
+  return [
+    {
+      label: t("preview.lighting"),
+      glyph: viewportIcons.sun,
+      rows: [
+        environmentRow(settings, store, signals),
+        sectionTitle(t("preview.sun")),
+        ...sunRows,
+        sectionTitle(t("preview.hemisphere")),
+        ...hemisphereRows,
+      ],
+    },
+    {
+      label: t("preview.scene"),
+      glyph: viewportIcons.scene,
+      rows: [
+        toggleRow(
+          t("preview.grid"),
+          current.grid,
+          (on) => settings.update({ grid: on }),
+          t("preview.gridTip"),
+        ),
+        toggleRow(
+          t("preview.playerFigure"),
+          current.playerFigure,
+          (on) => settings.update({ playerFigure: on }),
+          t("preview.playerFigureTip"),
+        ),
+        colorRow(t("preview.background"), current.background, (value) =>
+          settings.update({ background: value }),
+        ),
+      ],
+    },
+    {
+      // Gizmo: the modal transform tool's axis space (Local/Global) and per-mode snap increments.
+      label: t("preview.gizmo"),
+      glyph: viewportIcons.gizmo,
+      rows: [
+        spaceRow(gizmoCurrent.space, (space) => gizmo.update({ space })),
+        snapRow(t("preview.snapMove"), gizmoCurrent.move, (value) => gizmo.update({ move: value })),
+        snapRow(t("preview.snapRotate"), gizmoCurrent.rotate, (value) =>
+          gizmo.update({ rotate: value }),
+        ),
+        snapRow(t("field.scale"), gizmoCurrent.scale, (value) => gizmo.update({ scale: value })),
+      ],
+    },
+  ];
+}
+
+/**
+ * A labelled boolean row: a "lit-when-on" icon toggle button instead of a checkbox. The button
+ * carries a switch glyph and stretches across the value column (task 8, via `--bool`).
+ */
+function toggleRow(
+  label: string,
+  initial: boolean,
+  onChange: (on: boolean) => void,
+  description = "",
+): HTMLElement {
+  const toggle = createToggleButton({
+    glyph: controlIcons.toggleSwitch,
+    title: label,
+    description,
+    value: initial,
+    onChange,
+  });
+  return field(label, toggle.element, {
+    ...PREVIEW_ROW,
+    rowClassName: "preview-settings__row preview-settings__row--bool",
+  });
+}
+
+/** The transform-space segmented control - Global (globe) / Local (cube) icons, not text (task 6). */
+function spaceRow(
+  initial: "global" | "local",
+  onChange: (space: "global" | "local") => void,
+): HTMLElement {
+  const control = createSegmentedControl(
+    [
+      {
+        key: "global",
+        label: t("preview.global"),
+        glyph: viewportIcons.spaceGlobal,
+        description: t("preview.globalTip"),
+      },
+      {
+        key: "local",
+        label: t("preview.local"),
+        glyph: viewportIcons.spaceLocal,
+        description: t("preview.localTip"),
+      },
+    ] as const,
+    initial,
+    onChange,
+  );
+  return field(t("preview.space"), control.element, PREVIEW_ROW);
+}
+
+/** A snap row: an on/off toggle button plus the increment the mode rounds to. */
+function snapRow(
+  label: string,
+  initial: SnapSetting,
+  onChange: (setting: SnapSetting) => void,
+): HTMLElement {
+  let state = initial;
+  const toggle = createToggleButton({
+    glyph: controlIcons.lock,
+    title: t("preview.snapTitle", { label }),
+    description: t("preview.snapTip"),
+    value: initial.enabled,
+    onChange: (on) => {
+      state = { ...state, enabled: on };
+      onChange(state);
+    },
+  });
+
+  const step = new NumberControl({
+    value: initial.step,
+    min: 0.001,
+    step: 0.05,
+    onChange: (value): void => {
+      state = { ...state, step: value };
+      onChange(state);
+    },
+  });
+
+  // A single value cell (lock toggle + step) so the row keeps the two-column grid (task 1).
+  const value = createElement("div", { className: "preview-settings__value" }, [
+    toggle.element,
+    step.element,
+  ]);
+  return field(label, value, PREVIEW_ROW);
+}
+
+/** A labelled color-picker row (opaque, no alpha); the swatch fills its value column (tasks 1, 8). */
+function colorRow(label: string, initial: Rgba, onChange: (value: Rgba) => void): HTMLElement {
+  const picker = new ColorPicker({ value: initial, alpha: false, onChange });
+  return field(label, picker.element, PREVIEW_ROW);
+}
+
+/** A labelled scrubbable numeric row. */
+function numberRow(
+  label: string,
+  initial: number,
+  bounds: { min?: number; max?: number; step?: number; precision?: number },
+  onChange: (value: number) => void,
+): HTMLElement {
+  const control = new NumberControl({ value: initial, ...bounds, onChange });
+  return field(label, control.element, PREVIEW_ROW);
+}
+
+/** A muted subsection caption spanning the tab's full width (grid-column set in CSS). */
+function sectionTitle(label: string): HTMLElement {
+  return createElement("div", {
+    className: "preview-settings__section-title",
+    textContent: label,
+  });
+}
+
+/** Greys out (and blocks pointer input into) every row in `rows`, or restores them. */
+function setRowsDisabled(rows: readonly HTMLElement[], disabled: boolean): void {
+  for (const row of rows) {
+    row.classList.toggle("preview-settings__row--disabled", disabled);
+  }
+}
+
+/**
+ * The active-environment picker (ADR-0004): a dropdown of the content library's HDRI assets plus
+ * "None". `options` is mutated in place (not replaced) so {@link Dropdown}, which reads it fresh
+ * each time its menu opens, always sees the current library without its own resync API.
+ */
+function environmentRow(
+  settings: PreviewSettingsStore,
+  store: Store,
+  signals: SignalBus,
+): HTMLElement {
+  const NONE_VALUE = "";
+  const options: DropdownOption[] = [{ value: NONE_VALUE, label: t("preview.environmentNone") }];
+  const populateOptions = (): void => {
+    options.length = 1;
+    for (const asset of selectEnvironmentAssets(store)) {
+      options.push({ value: asset.name, label: asset.label });
+    }
+  };
+  // Populated before construction, not after: Dropdown renders its label from `options` in its own
+  // constructor, so building it against the still-empty placeholder-only array (then patching
+  // `options` a moment later via `refresh`) left a restored `activeEnvironmentName` displaying as
+  // "None" on reload - `setValue`'s no-op-when-unchanged guard never re-ran the label sync once
+  // `options` caught up, since `current` had already been set correctly at construction time.
+  populateOptions();
+  const dropdown = new Dropdown({
+    options,
+    value: settings.get().activeEnvironmentName ?? NONE_VALUE,
+    placeholder: t("preview.environmentNone"),
+    onChange: (value): void =>
+      settings.update({ activeEnvironmentName: value === NONE_VALUE ? undefined : value }),
+  });
+
+  const refresh = (): void => {
+    populateOptions();
+    const active = settings.get().activeEnvironmentName;
+    dropdown.setValue(
+      active !== undefined && options.some((option) => option.value === active)
+        ? active
+        : NONE_VALUE,
+    );
+  };
+  // Environment edits commit as "view", and undo/redo now re-announces the original kind too.
+  signals.on("sourceViewChanged", refresh);
+
+  return field(t("preview.environment"), dropdown.element, PREVIEW_ROW);
+}

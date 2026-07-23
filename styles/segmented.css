@@ -1,0 +1,55 @@
+/* Segmented control (STYLE_GUIDE section 4.7) */
+
+.segment-group {
+  display: inline-flex;
+}
+
+/* `position: relative` is unconditional (not just on hover/active) so every segment has a
+   stacking context to raise via z-index below - otherwise whichever segment paints later in DOM
+   order wins the shared -1px border regardless of which one is actually active/hovered. */
+.segment {
+  position: relative;
+  height: 26px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.segment + .segment {
+  margin-left: -1px;
+}
+
+.segment:hover,
+.segment--active {
+  z-index: 1;
+}
+
+/* Icon segment (e.g. the gizmo Global/Local space toggle): a square cell holding a centred glyph
+   in place of the text label. */
+.segment--icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+}
+
+.segment--icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.segment:hover {
+  border-color: var(--card-accent);
+  color: var(--card-accent);
+}
+
+.segment--active {
+  color: var(--card-accent);
+  border-color: var(--card-accent);
+  background: color-mix(in srgb, var(--card-accent) 14%, transparent);
+}

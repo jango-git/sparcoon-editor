@@ -1,0 +1,1901 @@
+{
+  "$out": {
+    "description": "The surface sink: wire the base color into Color (required) and, optionally, per-particle/per-vertex transforms. Render Mode picks how alpha composites - blending (Additivity Factor 0=over..1=additive), alphaHash (stochastic), alphaTest (hard cutout at Alpha Threshold), or opaque; Additivity Factor shows only in blending and Alpha Threshold in every mode but opaque. Geometry picks the primitive or a custom mesh asset; for a particle emitter, Sort Every N re-sorts particles back-to-front every N frames (0 = off).",
+    "inputs": {
+      "additivity": {
+        "label": "Additivity Factor"
+      },
+      "albedo": {
+        "label": "Color"
+      },
+      "alphaThreshold": {
+        "label": "Alpha Threshold"
+      },
+      "particleTransform": {
+        "label": "Particle Transform"
+      },
+      "vertexTransform": {
+        "label": "Vertex Transform"
+      }
+    },
+    "label": "Surface",
+    "params": {
+      "castShadow": {
+        "label": "Cast Shadow"
+      },
+      "geometry": {
+        "label": "Geometry"
+      },
+      "receiveShadow": {
+        "label": "Receive Shadow"
+      },
+      "renderMode": {
+        "label": "Render Mode"
+      },
+      "sortInterval": {
+        "label": "Sort Every"
+      }
+    }
+  },
+  "$route": {
+    "label": "Route"
+  },
+  "$spawn": {
+    "description": "The spawn sink: values wired here are written once, at particle birth (initial position, lifetime and any declared attributes). Try GPU Simulation asks both the live preview and the exporter to also compile this behavior graph to run on the GPU (WebGL2) - a best-effort request, not a guarantee: a graph using a JS-only construct falls back to the CPU simulation for this emitter, and the GPU version only actually runs on a device that supports it. Expected Capacity sizes this emitter's particle buffers - a CPU-simulated emitter starts at this count and grows as needed, while a GPU-simulated one is capped at exactly this count with no growth; either way, changing it rebuilds the emitter and restarts playback.",
+    "inputs": {
+      "lifetime": {
+        "label": "Lifetime"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "positionX": {
+        "label": "Position X"
+      },
+      "positionY": {
+        "label": "Position Y"
+      },
+      "positionZ": {
+        "label": "Position Z"
+      }
+    },
+    "label": "Spawn",
+    "params": {
+      "expectedCapacity": {
+        "label": "Expected Capacity"
+      },
+      "tryGpuSimulation": {
+        "label": "Try GPU Simulation"
+      }
+    }
+  },
+  "$update": {
+    "description": "The update sink: values wired here are written every simulation step (moving position, updating attributes over the particle's life).",
+    "inputs": {
+      "position": {
+        "label": "Position"
+      },
+      "positionX": {
+        "label": "Position X"
+      },
+      "positionY": {
+        "label": "Position Y"
+      },
+      "positionZ": {
+        "label": "Position Z"
+      }
+    },
+    "label": "Update"
+  },
+  "add-scaled-vector": {
+    "description": "Adds a value scaled by a factor: out = a + b * scale.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      },
+      "scale": {
+        "label": "Scale"
+      }
+    },
+    "label": "Add Scaled Vector",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["fma", "multiply add", "madd", "scale add", "euler", "velocity"]
+  },
+  "align-to-velocity": {
+    "description": "A rotation (mat3) that turns one local axis to point along Velocity and another to face the camera - orient a mesh to both face its direction of travel and billboard toward the camera.",
+    "inputs": {
+      "velocity": {
+        "label": "Velocity"
+      },
+      "position": {
+        "label": "Position"
+      }
+    },
+    "label": "Align To Velocity",
+    "outputs": {
+      "out": {
+        "label": "Rotation"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      },
+      "flip": {
+        "label": "Flip"
+      },
+      "cameraAxis": {
+        "label": "Camera Axis"
+      },
+      "cameraModel": {
+        "label": "Camera Model"
+      }
+    },
+    "searchTags": [
+      "orient",
+      "direction",
+      "look rotation",
+      "face travel",
+      "rotate",
+      "billboard",
+      "camera"
+    ]
+  },
+  "ambient-shading": {
+    "description": "Shades a color with indirect-only diffuse lighting (ambient + light probe + hemisphere).",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "emission": {
+        "label": "Emission"
+      },
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "label": "Ambient Shading",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    }
+  },
+  "animated-texture": {
+    "description": "Cross-fades a sprite sheet: previous/current frame UVs and a blend factor from a (wrapped) ratio.",
+    "inputs": {
+      "columns": {
+        "label": "Columns"
+      },
+      "lifetimeRatio": {
+        "label": "Lifetime"
+      },
+      "rows": {
+        "label": "Rows"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Animated Texture",
+    "outputs": {
+      "factor": {
+        "label": "Factor"
+      },
+      "uvCurrent": {
+        "label": "UV Current"
+      },
+      "uvPrevious": {
+        "label": "UV Previous"
+      }
+    },
+    "searchTags": ["sprite", "flipbook", "sheet", "atlas", "sequence"]
+  },
+  "binary-op": {
+    "description": "Applies a two-input operation (add, multiply, min, pow, step, ...) to same-typed values.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      }
+    },
+    "label": "Binary Operation",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "params": {
+      "op": {
+        "label": "Operation"
+      }
+    },
+    "searchTags": [
+      "+",
+      "-",
+      "*",
+      "/",
+      "plus",
+      "minus",
+      "times",
+      "arithmetic",
+      "cross",
+      "cross product"
+    ]
+  },
+  "box-collision": {
+    "description": "Bounces particles off an axis-aligned box, with radius, restitution and friction.",
+    "inputs": {
+      "center": {
+        "label": "Box Center"
+      },
+      "friction": {
+        "label": "Friction"
+      },
+      "halfExtents": {
+        "label": "Box Half-Extents"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "radius": {
+        "label": "Radius"
+      },
+      "restitution": {
+        "label": "Restitution"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Box Collision",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["cube", "crate", "wall", "bounce", "collide", "collision", "aabb"]
+  },
+  "blend": {
+    "description": "Composites two colors with a chosen blend mode.",
+    "inputs": {
+      "base": {
+        "label": "Base"
+      },
+      "blend": {
+        "label": "Blend"
+      }
+    },
+    "label": "Blend",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "params": {
+      "mode": {
+        "label": "Mode"
+      }
+    },
+    "searchTags": ["mix", "composite", "over"]
+  },
+  "camera-distance": {
+    "description": "View-space distance from the camera to the particle.",
+    "label": "Distance to Camera",
+    "outputs": {
+      "out": {
+        "label": "Distance"
+      }
+    },
+    "searchTags": ["depth", "view", "z"]
+  },
+  "clamp": {
+    "description": "Clamps a value between a low and high bound (defaults saturate to [0, 1]).",
+    "inputs": {
+      "hi": {
+        "label": "High"
+      },
+      "lo": {
+        "label": "Low"
+      },
+      "x": {
+        "label": "Value"
+      }
+    },
+    "label": "Clamp",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["limit", "bound"]
+  },
+  "color-ramp": {
+    "description": "Maps a scalar 0..1 input through a color gradient, emitting an RGBA color.",
+    "inputs": {
+      "t": {
+        "label": "T"
+      }
+    },
+    "label": "Color Ramp",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "params": {
+      "gradient": {
+        "label": "Gradient"
+      }
+    },
+    "searchTags": ["gradient", "palette", "color"]
+  },
+  "combine": {
+    "description": "Assembles float components into a vector.",
+    "inputs": {
+      "w": {
+        "label": "W"
+      },
+      "x": {
+        "label": "X"
+      },
+      "y": {
+        "label": "Y"
+      },
+      "z": {
+        "label": "Z"
+      }
+    },
+    "label": "Combine",
+    "outputs": {
+      "out": {
+        "label": "Vector"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["pack", "compose", "make vector", "merge"]
+  },
+  "combine-color": {
+    "description": "Combines an RGB color and an alpha into a single RGBA color.",
+    "inputs": {
+      "alpha": {
+        "label": "Alpha"
+      },
+      "rgb": {
+        "label": "RGB"
+      }
+    },
+    "label": "Combine Color",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "searchTags": ["pack", "compose", "rgba", "color"]
+  },
+  "combine-mat2": {
+    "description": "Assembles a mat2 from two column vectors (column-major).",
+    "inputs": {
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      }
+    },
+    "label": "Combine Mat2",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "combine-mat3": {
+    "description": "Assembles a mat3 from three column vectors (column-major).",
+    "inputs": {
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      },
+      "z": {
+        "label": "Column 2"
+      }
+    },
+    "label": "Combine Mat3",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "combine-mat4": {
+    "description": "Assembles a mat4 from four column vectors (column-major).",
+    "inputs": {
+      "w": {
+        "label": "Column 3"
+      },
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      },
+      "z": {
+        "label": "Column 2"
+      }
+    },
+    "label": "Combine Mat4",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "compose-transform": {
+    "description": "Builds a mat4 from position, rotation (mat3) and scale (T * R * S).",
+    "inputs": {
+      "position": {
+        "label": "Position"
+      },
+      "rotation": {
+        "label": "Rotation"
+      },
+      "scale": {
+        "label": "Scale"
+      }
+    },
+    "label": "Compose Transform",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "constant": {
+    "description": "A constant value of the node's type, baked in at compile time.",
+    "inputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "label": "Constant",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["value", "literal", "number", "vector"]
+  },
+  "curl-noise": {
+    "description": "Divergence-free vector noise (2D/3D), for fluid-like particle flow.",
+    "inputs": {
+      "epsilon": {
+        "label": "Epsilon"
+      },
+      "frequency": {
+        "label": "Frequency"
+      },
+      "gain": {
+        "label": "Gain"
+      },
+      "lacunarity": {
+        "label": "Lacunarity"
+      },
+      "p": {
+        "label": "Position"
+      },
+      "seed": {
+        "label": "Seed"
+      }
+    },
+    "label": "Curl Noise",
+    "outputs": {
+      "out": {
+        "label": "Flow"
+      }
+    },
+    "params": {
+      "octaves": {
+        "label": "Octaves"
+      }
+    },
+    "searchTags": ["curl", "flow", "fluid"]
+  },
+  "delta-time": {
+    "description": {
+      "behavior": "The simulation timestep of the current update, in seconds.",
+      "render": "Time elapsed since the previous frame, in seconds."
+    },
+    "label": "Delta Time",
+    "outputs": {
+      "out": {
+        "label": "Delta"
+      }
+    },
+    "searchTags": ["dt", "timestep", "frame time"]
+  },
+  "determinant": {
+    "description": "The scalar determinant of a matrix.",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Determinant",
+    "outputs": {
+      "out": {
+        "label": "Determinant"
+      }
+    }
+  },
+  "dissolve": {
+    "description": "Erodes alpha with a noise field advancing over the particle lifetime.",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "edge": {
+        "label": "Edge"
+      },
+      "scale": {
+        "label": "Scale"
+      }
+    },
+    "label": "Dissolve",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "searchTags": ["erode", "burn", "clip", "threshold"]
+  },
+  "dot": {
+    "description": "The scalar dot product of two vectors.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      }
+    },
+    "label": "Dot",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["product", "projection"]
+  },
+  "drag": {
+    "description": "Exponentially damps velocity, frame-rate independent.",
+    "inputs": {
+      "damping": {
+        "label": "Damping"
+      },
+      "dt": {
+        "label": "Delta Time"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Drag",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["friction", "damping", "resistance", "slow", "air"]
+  },
+  "euler-to-rotation": {
+    "description": "Builds a mat3 rotation from Euler angles (radians, XYZ order).",
+    "inputs": {
+      "angles": {
+        "label": "Euler"
+      }
+    },
+    "label": "Euler to Rotation",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "firework": {
+    "description": "Seeds an outward burst velocity in a random cone direction around an axis.",
+    "inputs": {
+      "angle": {
+        "label": "Cone Angle"
+      },
+      "axis": {
+        "label": "Axis"
+      },
+      "strength": {
+        "label": "Strength"
+      }
+    },
+    "label": "Firework",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["explosion", "explode", "burst", "rocket", "spark", "blast", "cone"]
+  },
+  "fresnel": {
+    "description": "A camera-correct rim/edge factor derived from a world-space surface normal.",
+    "inputs": {
+      "normal": {
+        "label": "Normal"
+      },
+      "power": {
+        "label": "Power"
+      }
+    },
+    "label": "Fresnel",
+    "outputs": {
+      "out": {
+        "label": "Factor"
+      }
+    },
+    "searchTags": ["rim", "edge", "glow", "facing"]
+  },
+  "gravity": {
+    "description": "Applies a constant acceleration to velocity.",
+    "inputs": {
+      "acceleration": {
+        "label": "Acceleration"
+      },
+      "dt": {
+        "label": "Delta Time"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Gravity",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["fall", "down", "weight", "acceleration"]
+  },
+  "hsl-adjust": {
+    "description": "Shifts an RGBA color's hue, saturation and lightness in HSL space.",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "hueShift": {
+        "label": "Hue Shift"
+      },
+      "lightness": {
+        "label": "Lightness"
+      },
+      "saturation": {
+        "label": "Saturation"
+      }
+    },
+    "label": "HSL Adjust",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "searchTags": ["hue", "saturation", "lightness", "tint", "color"]
+  },
+  "initial-velocity": {
+    "description": "Seeds velocity as a direction scaled by a random speed.",
+    "inputs": {
+      "direction": {
+        "label": "Direction"
+      },
+      "speed": {
+        "label": "Speed"
+      }
+    },
+    "label": "Initial Velocity",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["start speed", "birth velocity", "launch"]
+  },
+  "integrate": {
+    "description": "Advances a value by a rate over dt (Euler); e.g. rotation by torque.",
+    "inputs": {
+      "dt": {
+        "label": "Delta Time"
+      },
+      "rate": {
+        "label": "Rate"
+      },
+      "value": {
+        "label": "Value"
+      }
+    },
+    "label": "Integrate",
+    "outputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "searchTags": ["euler", "step", "advance", "velocity", "rate"]
+  },
+  "integrate-motion": {
+    "description": "Advances position by a velocity input over dt (Euler); bind its output to position.",
+    "inputs": {
+      "dt": {
+        "label": "Delta Time"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Integrate Motion",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "searchTags": ["euler", "move", "velocity", "position"]
+  },
+  "inverse": {
+    "description": "Inverts a matrix.",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Inverse",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "inverse-view-matrix": {
+    "description": "The inverse of the view matrix (view -> world space), as a mat4 (render-only).",
+    "label": "Inverse View Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "inverse-world-matrix": {
+    "description": "The inverse of the object's world matrix (world => object space), as a mat4.",
+    "label": "Inverse World Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "lambert-shading": {
+    "description": "Shades a color with diffuse Lambert lighting (direct + indirect + shadows).",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "emission": {
+        "label": "Emission"
+      },
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "label": "Lambert Shading",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    }
+  },
+  "length": {
+    "description": "The Euclidean length of a vector.",
+    "inputs": {
+      "v": {
+        "label": "Vector"
+      }
+    },
+    "label": "Length",
+    "outputs": {
+      "out": {
+        "label": "Length"
+      }
+    },
+    "searchTags": ["magnitude", "distance", "norm"]
+  },
+  "life-ratio": {
+    "description": "Normalized particle age, clamp(age / lifetime, 0, 1).",
+    "label": "Life Ratio",
+    "outputs": {
+      "out": {
+        "label": "Ratio"
+      }
+    },
+    "searchTags": ["age", "normalized age", "progress"]
+  },
+  "lifetime": {
+    "description": "Seeds a random particle lifetime from a [min, max] range.",
+    "inputs": {
+      "max": {
+        "label": "Max"
+      },
+      "min": {
+        "label": "Min"
+      }
+    },
+    "label": "Lifetime",
+    "outputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "searchTags": ["life", "duration", "age", "max age"]
+  },
+  "lightness-blending-mask": {
+    "description": "Fades a color by its own brightness (dark pixels drop out).",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "edge0": {
+        "label": "Edge 0"
+      },
+      "edge1": {
+        "label": "Edge 1"
+      }
+    },
+    "label": "Lightness Blending Mask",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    }
+  },
+  "look-at-camera": {
+    "description": "A camera-facing rotation (mat3) - the billboard orientation, as a node. Axis locks to a cylindrical billboard that only rotates around that axis.",
+    "inputs": {
+      "roll": {
+        "label": "Roll"
+      },
+      "position": {
+        "label": "Position"
+      }
+    },
+    "label": "Look At Camera",
+    "outputs": {
+      "out": {
+        "label": "Rotation"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      },
+      "cameraModel": {
+        "label": "Camera Model"
+      }
+    }
+  },
+  "matrix-multiply": {
+    "description": "Composes two same-dimension matrices (a * b).",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      }
+    },
+    "label": "Matrix Multiply",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "matrix-to-mat3": {
+    "description": "The rotation/scale part of a mat4 (its upper-left 3x3 block), as a mat3.",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Matrix To Mat3",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "mix": {
+    "description": "Linearly interpolates between two values by a factor t.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      },
+      "t": {
+        "label": "Factor"
+      }
+    },
+    "label": "Mix",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["lerp", "interpolate", "blend"]
+  },
+  "noise": {
+    "description": "Coherent noise (fBm) sampled at a 1D/2D/3D coordinate, returning a scalar [-1, 1].",
+    "inputs": {
+      "frequency": {
+        "label": "Frequency"
+      },
+      "gain": {
+        "label": "Gain"
+      },
+      "lacunarity": {
+        "label": "Lacunarity"
+      },
+      "p": {
+        "label": "Position"
+      },
+      "seed": {
+        "label": "Seed"
+      }
+    },
+    "label": "Noise",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "octaves": {
+        "label": "Octaves"
+      }
+    },
+    "searchTags": ["simplex", "perlin"]
+  },
+  "normal-map": {
+    "description": "Interprets a sampled color as a tangent-space normal map, in world space.",
+    "inputs": {
+      "color": {
+        "label": "Map"
+      },
+      "strength": {
+        "label": "Strength"
+      }
+    },
+    "label": "Normal Map",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "searchTags": ["normal", "bump", "texture", "tangent", "detail"]
+  },
+  "normal-matrix": {
+    "description": "The normal matrix transpose(inverse(mat3(model))) from a model mat4.",
+    "inputs": {
+      "model": {
+        "label": "Model"
+      }
+    },
+    "label": "Normal Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "object-angular-velocity": {
+    "description": "The object's world-space torque (axis * radians/second), as a vec3.",
+    "label": "Object Torque",
+    "outputs": {
+      "out": {
+        "label": "Torque"
+      }
+    }
+  },
+  "object-velocity": {
+    "description": "The object's world-space linear velocity (units/second), as a vec3.",
+    "label": "Object Velocity",
+    "outputs": {
+      "out": {
+        "label": "Velocity"
+      }
+    }
+  },
+  "plane-collision": {
+    "description": "Bounces particles off an infinite plane, with radius, restitution and friction.",
+    "inputs": {
+      "friction": {
+        "label": "Friction"
+      },
+      "normal": {
+        "label": "Plane Normal"
+      },
+      "point": {
+        "label": "Plane Point"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "radius": {
+        "label": "Radius"
+      },
+      "restitution": {
+        "label": "Restitution"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Plane Collision",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["floor", "ground", "bounce", "collide", "collision"]
+  },
+  "point-force": {
+    "description": "Accelerates particles toward or away from a point, with a falloff mode.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "dt": {
+        "label": "Delta Time"
+      },
+      "strength": {
+        "label": "Strength"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Point Force",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "params": {
+      "falloff": {
+        "label": "Falloff"
+      }
+    },
+    "searchTags": ["attract", "attractor", "repel", "magnet", "pull", "gravity well"]
+  },
+  "point-velocity": {
+    "description": "The velocity of a point offset from the object's origin: velocity + cross(torque, offset).",
+    "inputs": {
+      "offset": {
+        "label": "Offset"
+      },
+      "torque": {
+        "label": "Torque"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Point Velocity",
+    "outputs": {
+      "out": {
+        "label": "Velocity"
+      }
+    }
+  },
+  "ramp": {
+    "description": "Remaps a scalar 0..1 input through an editable curve (smooth or sharp anchors).",
+    "inputs": {
+      "t": {
+        "label": "T"
+      }
+    },
+    "label": "Curve",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "curve": {
+        "label": "Curve"
+      }
+    }
+  },
+  "random": {
+    "description": "A fresh per-particle random in [0, 1); store into an attribute to persist it.",
+    "label": "Random",
+    "outputs": {
+      "out": {
+        "label": "Random"
+      }
+    },
+    "searchTags": ["rand", "jitter", "hash", "noise"]
+  },
+  "read-attribute": {
+    "description": {
+      "behavior": "Reads a named per-particle attribute buffer as its value output (the CPU-side reader; e.g. the current velocity fed to a force).",
+      "render": "Reads a named per-particle attribute (written by a behavior store-attribute) as its value output."
+    },
+    "label": "Read Attribute",
+    "outputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["get", "property", "velocity", "read"]
+  },
+  "read-attribute-components": {
+    "description": {
+      "behavior": "Reads a named per-particle attribute buffer, split straight into its float components (x/y/z/w up to its width) - the CPU-side reader, fused with a split.",
+      "render": "Reads a named per-particle attribute (written by a behavior store-attribute), split straight into its float components (x/y/z/w up to its width) - fused with a split."
+    },
+    "label": "Read Attribute Components",
+    "outputs": {
+      "w": {
+        "label": "W"
+      },
+      "x": {
+        "label": "X"
+      },
+      "y": {
+        "label": "Y"
+      },
+      "z": {
+        "label": "Z"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["get", "property", "velocity", "read", "split", "unpack", "decompose"]
+  },
+  "read-state": {
+    "description": "Reads a chosen per-particle builtin (position, age, lifetime, or dt) as a float.",
+    "label": "Read State",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "builtin": {
+        "label": "Builtin"
+      }
+    },
+    "searchTags": ["builtin", "get", "state"]
+  },
+  "remap": {
+    "description": "Linearly remaps a value from an input range to an output range.",
+    "inputs": {
+      "inMax": {
+        "label": "In Max"
+      },
+      "inMin": {
+        "label": "In Min"
+      },
+      "outMax": {
+        "label": "Out Max"
+      },
+      "outMin": {
+        "label": "Out Min"
+      },
+      "x": {
+        "label": "Value"
+      }
+    },
+    "label": "Remap",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["range", "map", "fit", "rescale"]
+  },
+  "rotate-uv": {
+    "description": "Rotates UVs about their center by a live angle.",
+    "inputs": {
+      "angle": {
+        "label": "Angle"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Rotate UV",
+    "outputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "searchTags": ["spin", "coordinates"]
+  },
+  "rotation-matrix": {
+    "description": "Builds a mat3 rotation about an axis by an angle (Rodrigues' formula).",
+    "inputs": {
+      "angle": {
+        "label": "Angle"
+      },
+      "axis": {
+        "label": "Axis"
+      }
+    },
+    "label": "Rotation Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "scale-matrix": {
+    "description": "Builds a mat3 diagonal scale from a per-axis scale vector.",
+    "inputs": {
+      "scale": {
+        "label": "Scale"
+      }
+    },
+    "label": "Scale Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "smoothstep": {
+    "description": "Smooth Hermite interpolation of a value between two edges.",
+    "inputs": {
+      "edge0": {
+        "label": "Edge 0"
+      },
+      "edge1": {
+        "label": "Edge 1"
+      },
+      "x": {
+        "label": "Value"
+      }
+    },
+    "label": "Smoothstep",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "searchTags": ["ease", "smooth", "hermite"]
+  },
+  "spawn-box": {
+    "description": "Scatters particles inside (or over the surface of) an axis-aligned box.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "size": {
+        "label": "Size"
+      }
+    },
+    "label": "Spawn Box",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "surfaceOnly": {
+        "label": "Surface Only"
+      }
+    },
+    "searchTags": ["emit", "emitter", "cube", "shape", "source"]
+  },
+  "spawn-cone": {
+    "description": "Scatters particles inside (or on the surface of) a cone about an axis.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "height": {
+        "label": "Height"
+      },
+      "radius": {
+        "label": "Base Radius"
+      }
+    },
+    "label": "Spawn Cone",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      },
+      "surfaceOnly": {
+        "label": "Surface Only"
+      }
+    },
+    "searchTags": ["emit", "emitter", "shape", "source"]
+  },
+  "spawn-cylinder": {
+    "description": "Scatters particles inside (or on the lateral surface of) a cylinder about an axis.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "length": {
+        "label": "Length"
+      },
+      "radius": {
+        "label": "Radius"
+      }
+    },
+    "label": "Spawn Cylinder",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      },
+      "surfaceOnly": {
+        "label": "Surface Only"
+      }
+    },
+    "searchTags": ["emit", "emitter", "tube", "shape", "source"]
+  },
+  "spawn-disc": {
+    "description": "Scatters particles over a flat ring (inner/outer radius) about an axis.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "innerRadius": {
+        "label": "Inner Radius"
+      },
+      "outerRadius": {
+        "label": "Outer Radius"
+      }
+    },
+    "label": "Spawn Disc",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      }
+    },
+    "searchTags": ["emit", "emitter", "disk", "circle", "shape", "source"]
+  },
+  "spawn-sphere": {
+    "description": "Scatters particles inside or on the surface of a sphere.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "radius": {
+        "label": "Radius"
+      }
+    },
+    "label": "Spawn Sphere",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "surfaceOnly": {
+        "label": "Surface Only"
+      }
+    },
+    "searchTags": ["emit", "emitter", "ball", "shape", "source"]
+  },
+  "spawn-torus": {
+    "description": "Scatters particles inside (or on the surface of) a torus about an axis.",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "major": {
+        "label": "Major Radius"
+      },
+      "minor": {
+        "label": "Minor Radius"
+      }
+    },
+    "label": "Spawn Torus",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "params": {
+      "axis": {
+        "label": "Axis"
+      },
+      "surfaceOnly": {
+        "label": "Surface Only"
+      }
+    },
+    "searchTags": ["emit", "emitter", "donut", "ring", "shape", "source"]
+  },
+  "sphere-collision": {
+    "description": "Bounces particles off a solid sphere, with radius, restitution and friction.",
+    "inputs": {
+      "center": {
+        "label": "Sphere Center"
+      },
+      "friction": {
+        "label": "Friction"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "radius": {
+        "label": "Radius"
+      },
+      "restitution": {
+        "label": "Restitution"
+      },
+      "sphereRadius": {
+        "label": "Sphere Radius"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Sphere Collision",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["ball", "orb", "bounce", "collide", "collision"]
+  },
+  "spherical-clip": {
+    "description": "Multiplies alpha by a soft circular mask centered on the UV.",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "innerRadius": {
+        "label": "Inner Radius"
+      }
+    },
+    "label": "Spherical Clip",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "searchTags": ["clip", "cull", "sphere mask"]
+  },
+  "spherical-normal": {
+    "description": "A rounded surface normal from the billboard UV (flat particle shaded as a sphere).",
+    "label": "Spherical Normal",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "searchTags": ["normal", "shading", "round", "sphere", "bump"]
+  },
+  "split": {
+    "description": "Splits a vector into its float components.",
+    "inputs": {
+      "v": {
+        "label": "Vector"
+      }
+    },
+    "label": "Split",
+    "outputs": {
+      "w": {
+        "label": "W"
+      },
+      "x": {
+        "label": "X"
+      },
+      "y": {
+        "label": "Y"
+      },
+      "z": {
+        "label": "Z"
+      }
+    },
+    "searchTags": ["unpack", "decompose", "components"]
+  },
+  "split-color": {
+    "description": "Splits an RGBA color into its RGB color and alpha.",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "label": "Split Color",
+    "outputs": {
+      "alpha": {
+        "label": "Alpha"
+      },
+      "rgb": {
+        "label": "RGB"
+      }
+    },
+    "searchTags": ["unpack", "channels", "rgba", "color"]
+  },
+  "split-mat2": {
+    "description": "Splits a mat2 into its two column vectors (column-major).",
+    "inputs": {
+      "v": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Split Mat2",
+    "outputs": {
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      }
+    }
+  },
+  "split-mat3": {
+    "description": "Splits a mat3 into its three column vectors (column-major).",
+    "inputs": {
+      "v": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Split Mat3",
+    "outputs": {
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      },
+      "z": {
+        "label": "Column 2"
+      }
+    }
+  },
+  "split-mat4": {
+    "description": "Splits a mat4 into its four column vectors (column-major).",
+    "inputs": {
+      "v": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Split Mat4",
+    "outputs": {
+      "w": {
+        "label": "Column 3"
+      },
+      "x": {
+        "label": "Column 0"
+      },
+      "y": {
+        "label": "Column 1"
+      },
+      "z": {
+        "label": "Column 2"
+      }
+    }
+  },
+  "store-attribute": {
+    "description": "Writes its value input into a named per-particle attribute buffer, read on the GPU by read-attribute.",
+    "inputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "label": "Store Attribute",
+    "outputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "phase": {
+        "label": "Phase"
+      },
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["set", "write", "save"]
+  },
+  "surface-normal": {
+    "description": "The particle's world-space surface normal, for lighting, fresnel, and normal masks.",
+    "label": "Surface Normal",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "searchTags": ["normal", "surface", "shading", "fresnel", "rim", "facing"]
+  },
+  "texture": {
+    "description": "Samples a named texture asset at the given UV (defaulting to the particle UV); the sampler is an external uniform bound by the host.",
+    "inputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Texture",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "params": {},
+    "searchTags": ["sampler", "image", "map", "texture"]
+  },
+  "tile-uv": {
+    "description": "Tiles and offsets UVs.",
+    "inputs": {
+      "offset": {
+        "label": "Offset"
+      },
+      "tiles": {
+        "label": "Tiles"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Tile UV",
+    "outputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "searchTags": ["repeat", "wrap", "coordinates"]
+  },
+  "time": {
+    "description": "The global clock, in seconds since start.",
+    "label": "Time",
+    "outputs": {
+      "out": {
+        "label": "Time"
+      }
+    },
+    "searchTags": ["clock", "elapsed", "seconds"]
+  },
+  "timeline-value": {
+    "description": {
+      "behavior": "A named, runtime-tunable value exposed as a live kernel binding (driven live or by a timeline). The behavior half of Timeline Value.",
+      "render": "A named, runtime-tunable value exposed as a shader uniform (driven live or by a timeline). Unlike Constant it is not baked and costs a slot."
+    },
+    "label": "Timeline Value",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      },
+      "value": {
+        "label": "Default"
+      }
+    },
+    "searchTags": ["uniform", "parameter", "input", "exposed", "tunable"]
+  },
+  "transform-direction": {
+    "description": "Transforms a direction by a mat3 (linear, ignores translation).",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      },
+      "v": {
+        "label": "Vector"
+      }
+    },
+    "label": "Transform Direction",
+    "outputs": {
+      "out": {
+        "label": "Vector"
+      }
+    }
+  },
+  "transform-point": {
+    "description": "Transforms a point by a mat4 (applies translation); returns a vec3.",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      },
+      "p": {
+        "label": "Point"
+      }
+    },
+    "label": "Transform Point",
+    "outputs": {
+      "out": {
+        "label": "Point"
+      }
+    }
+  },
+  "translation-matrix": {
+    "description": "Builds a mat4 affine translation from an offset vector.",
+    "inputs": {
+      "offset": {
+        "label": "Offset"
+      }
+    },
+    "label": "Translation Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "transpose": {
+    "description": "Transposes a matrix.",
+    "inputs": {
+      "m": {
+        "label": "Matrix"
+      }
+    },
+    "label": "Transpose",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "turbulence": {
+    "description": "Layers several octaves of value noise (fBm) into velocity.",
+    "inputs": {
+      "amplitude": {
+        "label": "Amplitude"
+      },
+      "dt": {
+        "label": "Delta Time"
+      },
+      "frequency": {
+        "label": "Frequency"
+      },
+      "octaves": {
+        "label": "Octaves"
+      },
+      "time": {
+        "label": "Time"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Turbulence",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["wind", "chaos", "fbm", "flow", "noise"]
+  },
+  "unary-op": {
+    "description": "Applies a one-input function (abs, sqrt, sin, normalize, ...) to a value.",
+    "inputs": {
+      "x": {
+        "label": "Value"
+      }
+    },
+    "label": "Unary Operation",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "params": {
+      "op": {
+        "label": "Operation"
+      }
+    },
+    "searchTags": ["function", "invert"]
+  },
+  "uv": {
+    "description": "The interpolated particle UV coordinate.",
+    "label": "UV",
+    "outputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "searchTags": ["texcoord", "coordinates"]
+  },
+  "view-matrix": {
+    "description": "The camera's world -> view matrix, as a mat4 (render-only).",
+    "label": "View Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  },
+  "vortex": {
+    "description": "Swirls particles tangentially around an axis, with optional inward pull.",
+    "inputs": {
+      "axis": {
+        "label": "Axis"
+      },
+      "center": {
+        "label": "Center"
+      },
+      "dt": {
+        "label": "Delta Time"
+      },
+      "inward": {
+        "label": "Inward"
+      },
+      "strength": {
+        "label": "Strength"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Vortex",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["swirl", "spin", "spiral", "tornado", "whirl", "twist"]
+  },
+  "world-matrix": {
+    "description": "The object's world (model) matrix, as a mat4.",
+    "label": "World Matrix",
+    "outputs": {
+      "out": {
+        "label": "Matrix"
+      }
+    }
+  }
+}

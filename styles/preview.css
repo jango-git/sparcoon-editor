@@ -1,0 +1,349 @@
+/* Preview */
+
+.preview {
+  position: relative;
+  background-color: var(--stage-background);
+  background-image: radial-gradient(var(--stage-dot) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+.preview__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Viewport N-panel (tasks 1, 8, 11): a Blender-style panel in the preview's top-right, toggled by
+   N. A vertical strip of tabs on its outer (right) edge - Item (the selected object's name +
+   position / rotation / scale) plus the moved-in view-settings tabs (Sun / Hemisphere / Scene /
+   Gizmo) - each revealing its own content panel to the left. */
+.viewport-transform {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  /* A small gap sets the open panel off from the tab strip rather than butting against it (task 3). */
+  gap: 4px;
+}
+
+/* Content area holding the tab panels; sits left of the strip. */
+.viewport-transform__content {
+  flex: none;
+}
+
+/* The tab strip on the outer (right) edge; its tabs stack vertically. */
+.viewport-transform__tabs {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Vertical tab (task 6): icon over a top-to-bottom label. Stays visible when the panel is
+   collapsed (it is the handle that reopens it) and wears the accent while its panel is open. */
+.viewport-transform__tab {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+/* Merge the seam between stacked tabs. */
+.viewport-transform__tab + .viewport-transform__tab {
+  margin-top: -1px;
+}
+
+/* The hovered/active tab floats above its neighbours so its full border is never covered. */
+.viewport-transform__tab:hover,
+.viewport-transform__tab--active {
+  z-index: 1;
+}
+
+.viewport-transform__tab svg {
+  width: 15px;
+  height: 15px;
+}
+
+.viewport-transform__tab-label {
+  writing-mode: vertical-rl;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.viewport-transform__tab:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.viewport-transform__tab--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+}
+
+/* A tab's content panel - hidden unless it is the active, non-collapsed tab. Its width tracks its
+   contents between a floor and a cap rather than a fixed 200px, so each tab is only as wide as it
+   needs and long localized labels widen the panel instead of clipping (tasks 4, 7). */
+.viewport-transform__panel {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  min-width: 180px;
+  max-width: 300px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+  border: 1px solid var(--border-mid);
+  font-size: var(--font-size-small);
+}
+
+.viewport-transform__panel--open {
+  display: flex;
+}
+
+/* Name row (task 10): a "Name" label before the editable name field. */
+.viewport-transform__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The selected object's icon before the name field (task 5) - emitter gem or VFX cube. */
+.viewport-transform__name-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.viewport-transform__name-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.viewport-transform__name {
+  flex: 1;
+  /* A floor so the max-content panel still gives the name field a usable width (task 4). */
+  min-width: 110px;
+  height: 22px;
+  padding: 0 6px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--panel-foreground);
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+}
+
+.viewport-transform__section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.viewport-transform__section-title {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.viewport-transform__comp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewport-transform__axis {
+  flex: none;
+  width: 12px;
+  color: var(--dim);
+}
+
+.viewport-transform__comp .number-control {
+  flex: 1;
+  /* A floor so the axis fields keep a scrub target under the max-content panel (task 4). */
+  min-width: 64px;
+}
+
+/* Preview view-settings rows (Sun / Hemisphere / Scene / Gizmo). The tabs themselves live in the
+   viewport N-panel (.viewport-transform); this grid lays out each panel's rows in two columns that
+   are uniform across the whole tab - a label column sized to the widest label, and a control column
+   that every control fills (task 1). Each row is `display: contents` so its label + single value
+   cell drop straight into these shared columns. */
+.preview-settings {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+}
+
+.preview-settings__row {
+  display: contents;
+}
+
+.preview-settings__label {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--panel-foreground);
+}
+
+/* Every control fills its (uniform) column: neutralise the intrinsic widths of the number,
+   toggle and dropdown controls so the grid can stretch them; the color swatch and segment group
+   already stretch. */
+.preview-settings .number-control,
+.preview-settings .dropdown,
+.preview-settings__row--bool .toggle-button {
+  width: auto;
+}
+
+.preview-settings .color-swatch {
+  height: 18px;
+}
+
+/* Lighting tab subsection captions (Sun / Hemisphere) - a full-width row above each group,
+   matching the N-panel Item tab's section titles. */
+.preview-settings__section-title {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* An active environment overrides Sun/Hemisphere entirely (ADR-0004): grey their rows out and
+   block input, without hiding them - the `> *` targets the row's actual (boxed) children, since
+   the row itself is `display: contents` and cannot reliably carry paint properties. */
+.preview-settings__row--disabled > * {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Snap rows pack a lock toggle and the step field into one value cell (the grid's control column). */
+.preview-settings__value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-settings__value .number-control {
+  flex: 1;
+}
+
+/* Icon segments (the Space Global/Local toggle) split their column evenly. */
+.preview-settings .segment-group {
+  width: 100%;
+}
+
+.preview-settings .segment {
+  flex: 1;
+}
+
+/* Add-object overlay - the "Spawn emitter" button in the bottom-right of the viewport
+   (viewportObjects.ts). */
+.viewport-objects {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  /* Stretch so Spawn mesh matches the wider Spawn emitter button. */
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* A labelled icon+text button (task 9): "+ Spawn emitter". */
+.viewport-objects__button {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--panel-foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.viewport-objects__button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.viewport-objects__button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Preview performance stats - a small readout (FPS, particles, effect cost) in the bottom-left of
+   the viewport (the top-left hosts the transform panel). A grid, not a column of independent
+   rows: the two columns (value, label) are shared across every row, so the value column
+   auto-sizes to its widest row instead of a hardcoded width (see .viewport-stats__row below). */
+.viewport-stats {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 8px;
+  row-gap: 4px;
+  padding: 6px 8px;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-foreground);
+  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  border: 1px solid var(--border-mid);
+  /* Never intercept orbit drags started over the readout. */
+  pointer-events: none;
+}
+
+.viewport-stats__title {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* The row itself takes no box - its two children (value, label) become direct items of the
+   `.viewport-stats` grid above, so they land in the shared value/label columns. */
+.viewport-stats__row {
+  display: contents;
+}
+
+/* Every value lands in the grid's value column, sized to the widest one across the panel (plus
+   this padding as headroom) - not a hardcoded width. */
+.viewport-stats__value {
+  align-self: center;
+  padding: 1px 4px;
+  text-align: right;
+  font-weight: 600;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+}
+
+.viewport-stats__label {
+  align-self: center;
+  color: var(--muted);
+}

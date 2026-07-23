@@ -1,0 +1,284 @@
+{
+  "cycle": {
+    "message": "graph contains a cycle through node \"{nodeId}\""
+  },
+  "bad-param-stage": {
+    "message": "{context}: \"stage\" must be \"vertex\" | \"fragment\""
+  },
+  "bad-param-phase": {
+    "message": "{context}: \"phase\" must be \"spawn\" | \"update\""
+  },
+  "param-uniform-type-conflict": {
+    "message": "param uniform \"{name}\" is declared as both {priorType} and {newType}"
+  },
+  "bad-structural-param-value": {
+    "message": "param \"{key}\" must be one of {allowed}; got {got}"
+  },
+  "structural-param-immutable": {
+    "message": "structural param \"{key}\" of a manual node cannot change under a stable id - recreate the node with a new id"
+  },
+  "unknown-render-stage": {
+    "message": "node \"{nodeId}\" declares unknown stage \"{stage}\"; render nodes must be \"vertex\" or \"fragment\""
+  },
+  "stage-input-mismatch": {
+    "message": "input \"{socketKey}\" of {consumerStage} node \"{consumerNodeId}\" reads a {producerStage}-stage value from node \"{producerNodeId}\"; a {producerStage} value cannot flow into the {consumerStage} stage"
+  },
+  "stage-output-mismatch": {
+    "message": "output slot \"{slot}\" is filled in the {slotStage} stage but node \"{nodeId}\" produces its value in the {producerStage} stage"
+  },
+  "opaque-type-crosses-stage": {
+    "message": "opaque type {typeId} cannot cross shader stages through a varying"
+  },
+  "varying-from-fragment-stage": {
+    "message": "node \"{nodeId}\" allocated a varying from the fragment stage; varyings are produced in the vertex stage"
+  },
+  "output-not-produced": {
+    "message": "node \"{nodeId}\" is bound to output slot \"{slot}\" but produced no value for socket \"{socketKey}\""
+  },
+  "bad-finite-number": {
+    "message": "FXNodeDefinition: {where} expects a finite number"
+  },
+  "bad-finite-number-range": {
+    "message": "FXNodeDefinition: {where} must be within [{min}, {max}]"
+  },
+  "bad-finite-vector": {
+    "message": "FXNodeDefinition: {where} expects {width} finite numbers"
+  },
+  "bad-finite-scalar-or-vector": {
+    "message": "FXNodeDefinition: {where} expects a finite number or a 1-4 component vector"
+  },
+  "bad-curve-value": {
+    "message": "FXNodeDefinition: {where} expects a curve ({ points: [...] })"
+  },
+  "bad-curve-point": {
+    "message": "FXNodeDefinition: {where} expects curve points of finite { position, value } numbers"
+  },
+  "bad-curve-interpolation": {
+    "message": "FXNodeDefinition: {where} curve point interpolation must be \"smooth\" or \"sharp\""
+  },
+  "bad-gradient-value": {
+    "message": "FXNodeDefinition: {where} expects a gradient ({ stops: [...] })"
+  },
+  "empty-gradient": {
+    "message": "FXNodeDefinition: {where} expects at least one gradient stop"
+  },
+  "bad-gradient-stop": {
+    "message": "FXNodeDefinition: {where} expects stops of { position: number, color: [r,g,b,a] }"
+  },
+  "bad-enum-value": {
+    "message": "FXNodeDefinition: {where} expects one of [{options}]"
+  },
+  "bad-flag-value": {
+    "message": "FXNodeDefinition: {where} expects a boolean"
+  },
+  "bad-node-stage": {
+    "message": "FXNodeDefinition: {type}.stage expects \"vertex\" | \"fragment\""
+  },
+  "bad-node-phase": {
+    "message": "FXNodeDefinition: {type}.phase expects \"spawn\" | \"update\""
+  },
+  "bad-target-buffer-identifier": {
+    "message": "target \"{targetName}\" buffer \"{bufferName}\" is not a valid identifier (it is spliced into the generated kernel source)"
+  },
+  "duplicate-target-buffer": {
+    "message": "target \"{targetName}\" declares buffer \"{bufferName}\" more than once"
+  },
+  "bad-target-buffer-stride": {
+    "message": "target \"{targetName}\" buffer \"{bufferName}\" stride {stride} must be a positive integer"
+  },
+  "undeclared-target-buffer": {
+    "message": "target \"{targetName}\" {label} names buffer \"{buffer}\", which is not declared"
+  },
+  "bad-target-offset": {
+    "message": "target \"{targetName}\" {label} offset {offset} must be an integer"
+  },
+  "target-offset-out-of-bounds": {
+    "message": "target \"{targetName}\" {label} offset {offset} is outside buffer \"{buffer}\" (stride {stride})"
+  },
+  "bad-target-input-identifier": {
+    "message": "target \"{targetName}\" input \"{inputName}\" is not a valid identifier"
+  },
+  "duplicate-target-input": {
+    "message": "target \"{targetName}\" declares input \"{inputName}\" more than once"
+  },
+  "spawn-input-has-dt": {
+    "message": "target \"{targetName}\" declares input \"dt\", but a spawn kernel has no dt"
+  },
+  "dt-input-has-offsets": {
+    "message": "target \"{targetName}\" declares input \"dt\" with offsets; \"dt\" is the synthesized timestep and must be offset-less"
+  },
+  "target-input-offset-count-mismatch": {
+    "message": "target \"{targetName}\" input \"{inputName}\" has {offsetCount} offset(s) but its {typeId} type needs {typeComponents}"
+  },
+  "offsetless-input-not-reserved": {
+    "message": "target \"{targetName}\" input \"{inputName}\" declares no offsets; offset-less inputs are reserved for \"dt\", \"PARTICLE_INDEX\", and the model matrix"
+  },
+  "duplicate-target-output": {
+    "message": "target \"{targetName}\" declares output slot \"{outputSlot}\" more than once"
+  },
+  "target-output-offset-count-mismatch": {
+    "message": "target \"{targetName}\" output \"{outputSlot}\" has {offsetCount} offset(s) but its {typeId} type needs {typeComponents}"
+  },
+  "duplicate-output-offset-write": {
+    "message": "target \"{targetName}\" output \"{outputSlot}\" writes offset {offset} more than once (a component would be silently overwritten)"
+  },
+  "duplicate-integration-offset-write": {
+    "message": "target \"{targetName}\" integration writes offset {offset} in more than one step (a later step silently overwrites an earlier one)"
+  },
+  "integration-ref-not-target-input": {
+    "message": "target \"{targetName}\" integration contains a \"{refKind}\" ref (\"{refName}\"); integration expressions may only read target inputs"
+  },
+  "integration-ref-not-scalar": {
+    "message": "target \"{targetName}\" integration reads input \"{refName}\" as a {typeId}; integration refs must be scalar"
+  },
+  "integration-reads-dt-in-spawn": {
+    "message": "target \"{targetName}\" integration reads \"dt\", but a spawn kernel has no dt"
+  },
+  "integration-input-not-declared": {
+    "message": "target \"{targetName}\" integration reads input \"{refName}\", which is not declared"
+  },
+  "phase-buffer-not-in-update": {
+    "message": "spawn target \"{spawnName}\" declares buffer \"{bufferName}\", which the update target \"{updateName}\" does not declare (the host allocates buffers from the update target only)"
+  },
+  "phase-buffer-stride-mismatch": {
+    "message": "buffer \"{bufferName}\" has stride {spawnStride} in spawn target \"{spawnName}\" but stride {updateStride} in update target \"{updateName}\""
+  },
+  "bad-behavior-targets-shape": {
+    "message": "behavior targets must be an object"
+  },
+  "unresolvable-target-input": {
+    "message": "FXKernelContext.readTargetInput: builtin \"{name}\" is not a resolvable vector"
+  },
+  "malformed-target-shape": {
+    "message": "target \"{targetName}\" is malformed: {path} must be {expected}"
+  },
+  "unknown-target-value-type": {
+    "message": "target \"{targetName}\" {label} has an unknown value type \"{glslTypeName}\" ({components} component(s)); use the canonical FX_VALUE_TYPES entries"
+  },
+  "bad-render-input-identifier": {
+    "message": "target \"{targetName}\" input \"{inputName}\" is not a valid GLSL identifier"
+  },
+  "render-input-is-glsl-keyword": {
+    "message": "target \"{targetName}\" input \"{inputName}\" is a GLSL keyword"
+  },
+  "render-input-matches-generated-pattern": {
+    "message": "target \"{targetName}\" input \"{inputName}\" matches the compiler-generated \"u_/v_..._<digits>\" identifier form, which is reserved"
+  },
+  "unknown-render-input-stage": {
+    "message": "target \"{targetName}\" input \"{inputName}\" names unknown stage \"{stage}\""
+  },
+  "unknown-render-output-stage": {
+    "message": "target \"{targetName}\" output \"{outputSlot}\" names unknown stage \"{stage}\""
+  },
+  "ir-matrix-mul-dimension-mismatch": {
+    "message": "sparcoon IR: mul of matrices needs equal dimensions, got {aType} and {bType}"
+  },
+  "ir-matrix-vector-mul-width-mismatch": {
+    "message": "sparcoon IR: mul {aType} * {bType}: matrix dimension must match the vector width"
+  },
+  "ir-vector-matrix-mul-width-mismatch": {
+    "message": "sparcoon IR: mul {aType} * {bType}: vector width must match the matrix dimension"
+  },
+  "ir-matrix-mul-unsupported": {
+    "message": "sparcoon IR: mul is not defined for {aType} and {bType}"
+  },
+  "ir-matrix-add-sub-mismatch": {
+    "message": "sparcoon IR: {op} of matrices needs two equal matrix types, got {aType} and {bType}"
+  },
+  "ir-matrix-op-unsupported": {
+    "message": "sparcoon IR: {op} is not defined for {aType} and {bType}"
+  },
+  "ir-arithmetic-bad-operand-type": {
+    "message": "sparcoon IR: {op} expects float/vecN operands, got {aType} and {bType}"
+  },
+  "ir-mod-int-unsupported": {
+    "message": "sparcoon IR: mod is not defined for int/ivecN (GLSL's mod() has no integer overload)"
+  },
+  "ir-arithmetic-no-left-splat": {
+    "message": "sparcoon IR: {op} does not splat a scalar left operand against {bType}"
+  },
+  "ir-arithmetic-type-mismatch": {
+    "message": "sparcoon IR: {op} type mismatch: {aType} and {bType}"
+  },
+  "ir-comparison-bad-operand-type": {
+    "message": "sparcoon IR: comparison {op} requires float operands, got {aType} and {bType}"
+  },
+  "ir-int-literal-not-integer": {
+    "message": "sparcoon IR: litInt expects an integer value, got {value}"
+  },
+  "ir-vector-literal-bad-width": {
+    "message": "sparcoon IR: litVec needs 2..4 components, got {count}"
+  },
+  "ir-negate-bad-operand": {
+    "message": "sparcoon IR: neg expects a float/vecN operand, got {typeId}"
+  },
+  "ir-unknown-function": {
+    "message": "sparcoon IR: unknown function \"{name}\""
+  },
+  "ir-no-matching-overload": {
+    "message": "sparcoon IR: no signature of \"{name}\" accepts ({argumentTypes})"
+  },
+  "ir-swizzle-bad-channel-count": {
+    "message": "sparcoon IR: swizzle needs 1..4 channels, got \"{channels}\""
+  },
+  "ir-swizzle-bad-source": {
+    "message": "sparcoon IR: swizzle needs a vec2/vec3/vec4 source, got {typeId}"
+  },
+  "ir-swizzle-unknown-channel": {
+    "message": "sparcoon IR: invalid swizzle channel \"{channel}\" (expected x/y/z/w)"
+  },
+  "ir-swizzle-channel-out-of-range": {
+    "message": "sparcoon IR: swizzle channel \"{channel}\" out of range for {typeId}"
+  },
+  "ir-column-bad-source": {
+    "message": "sparcoon IR: column needs a mat2/mat3/mat4 source, got {typeId}"
+  },
+  "ir-column-index-out-of-range": {
+    "message": "sparcoon IR: column index {index} out of range for {typeId} (0..{maxIndex})"
+  },
+  "ir-construct-bad-target-type": {
+    "message": "sparcoon IR: construct target must be vec2/vec3/vec4, got {typeId}"
+  },
+  "ir-construct-bad-argument-type": {
+    "message": "sparcoon IR: construct argument must be float/vecN, got {typeId}"
+  },
+  "ir-construct-component-count-mismatch": {
+    "message": "sparcoon IR: construct({typeId}) needs {expected} components, got {got}"
+  },
+  "ir-construct-matrix-bad-form": {
+    "message": "sparcoon IR: construct({typeId}) needs {dimension} vec{dimension} columns, {scalarCount} floats, or a single matrix to resize"
+  },
+  "ir-no-implicit-int-float-conversion": {
+    "message": "sparcoon IR: cannot implicitly convert {fromType} to {targetType} - use an explicit int/float cast"
+  },
+  "ir-bad-numeric-conversion": {
+    "message": "sparcoon IR: cannot convert {fromType} to {targetType}"
+  },
+  "ir-to-int-bad-operand": {
+    "message": "sparcoon IR: toInt expects a float operand, got {typeId}"
+  },
+  "ir-to-float-bad-operand": {
+    "message": "sparcoon IR: toFloat expects an int operand, got {typeId}"
+  },
+  "ir-select-condition-not-float": {
+    "message": "sparcoon IR: select condition must be float, got {typeId}"
+  },
+  "ir-select-branch-type-mismatch": {
+    "message": "sparcoon IR: select branches must share a type, got {aType} and {bType}"
+  },
+  "ir-bad-vector-width": {
+    "message": "sparcoon IR: {context} supports 1..4 components, got {count}"
+  },
+  "node-factory-type-mismatch": {
+    "message": "FXNodeRegistry: factory for \"{requestedType}\" produced a node of type \"{producedType}\""
+  },
+  "unhandled-blend-mode": {
+    "message": "blend: unsupported mode \"{mode}\""
+  },
+  "glsl-float-not-finite": {
+    "message": "sparcoon IR: non-finite number {value} cannot be printed as a GLSL literal"
+  },
+  "glsl-int-not-finite": {
+    "message": "sparcoon IR: {value} cannot be printed as a GLSL int literal (not a finite integer)"
+  }
+}

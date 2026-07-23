@@ -1,0 +1,309 @@
+/* Nodes */
+
+.node {
+  /* Content-sized, then snapped to the grid: nodeView.finalizeSize() measures the natural
+     width and rounds it up to a whole number of cells (min 6, max 16). Height falls out of
+     the flex column - the title cell plus the body grid's rows, each one cell tall - so the
+     box lands on the grid lines. The 1px frame is an inset box-shadow, NOT a border: a real
+     border would add its 2px (top+bottom) to the auto height and push the box 2px off the
+     grid. `--node-frame` carries the frame colour so the selection/category variants recolour
+     it without re-declaring the shadow. `max-content` is the pre-measurement default. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  min-width: 144px;
+  max-width: 384px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-background);
+  --node-frame: var(--border-mid);
+  box-shadow: inset 0 0 0 1px var(--node-frame);
+  user-select: none;
+  cursor: grab;
+}
+
+.node--selected {
+  --node-frame: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-background));
+}
+
+/* The permanent output sink: a subtle accent frame so it reads as the graph's terminus. */
+.node--output {
+  --node-frame: color-mix(in srgb, var(--node-output) 45%, var(--border-mid));
+}
+
+/* category tint fills are translucent (mixed against `transparent`, not `--panel-background`):
+   `.node__title`/`.node__body` stretch flush to `.node`'s own edges, and an opaque fill would
+   paint over (occlude) the parent's inset `box-shadow` frame, since children paint after a
+   box's own background+box-shadow. Same reasoning as the ordinary `.node__title`'s translucent
+   `--overlay-subtle` - category nodes just tint that overlay instead of replacing it. */
+.node--output .node__title {
+  background: color-mix(in srgb, var(--node-output) 18%, transparent);
+}
+
+.node--output .node__body,
+.node--output .node__attributes {
+  background: color-mix(in srgb, var(--node-output) 9%, transparent);
+}
+
+/* Timeline Value nodes (a named, runtime-tunable input): a violet frame so a graph's live
+   inputs read apart from its ordinary operator nodes at a glance. */
+.node--timeline-value {
+  --node-frame: color-mix(in srgb, var(--node-timeline-value) 45%, var(--border-mid));
+}
+
+.node--timeline-value .node__title {
+  background: color-mix(in srgb, var(--node-timeline-value) 18%, transparent);
+}
+
+.node--timeline-value .node__body {
+  background: color-mix(in srgb, var(--node-timeline-value) 9%, transparent);
+}
+
+/* Selecting a category node keeps its own tint (accent for sinks, violet for Timeline Value)
+   rather than switching to the generic accent - it just saturates: a full-strength
+   frame and a deeper header/body fill so the selection reads in the node's color. */
+.node--output.node--selected {
+  --node-frame: var(--node-output);
+  /* Overrides `.node--selected`'s app-accent background - else it would show through the now-
+     translucent title/body category overlays and mix the app accent into the category tint. */
+  background: color-mix(in srgb, var(--node-output) 8%, var(--panel-background));
+}
+
+.node--output.node--selected .node__title {
+  background: color-mix(in srgb, var(--node-output) 32%, transparent);
+}
+
+.node--output.node--selected .node__body,
+.node--output.node--selected .node__attributes {
+  background: color-mix(in srgb, var(--node-output) 16%, transparent);
+}
+
+.node--timeline-value.node--selected {
+  --node-frame: var(--node-timeline-value);
+  /* Overrides `.node--selected`'s app-accent background - else it would show through the now-
+     translucent title/body category overlays and mix the app accent into the category tint. */
+  background: color-mix(in srgb, var(--node-timeline-value) 8%, var(--panel-background));
+}
+
+.node--timeline-value.node--selected .node__title {
+  background: color-mix(in srgb, var(--node-timeline-value) 32%, transparent);
+}
+
+.node--timeline-value.node--selected .node__body {
+  background: color-mix(in srgb, var(--node-timeline-value) 16%, transparent);
+}
+
+/* A node the compiler blamed for an error. Rather than recolor the node itself, we frame it
+   from the outside - a red outline set off from the card by a small padding, with an "ERROR"
+   tab above it - so it reads as a window spotlighting the problem while the node keeps its own
+   look (category tint, selection accent). Red is reserved for error/invalid states
+   (socketColors.ts). The node's own box keeps `overflow: visible`, so these pseudo-elements
+   extend past its edges; a raised z-index floats the frame above neighbouring nodes. */
+.node--error {
+  z-index: 3;
+}
+
+.node--error::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 1px solid var(--danger);
+  pointer-events: none;
+}
+
+.node--error::after {
+  content: "ERROR";
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  transform: translateY(-100%);
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--on-accent);
+  background: var(--danger);
+  pointer-events: none;
+}
+
+.node__title {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--panel-foreground);
+  background: var(--overlay-subtle);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* The node's name fills the header, leaving room for the help icon at the far right. */
+.node__title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Live cost badge - the node's current complexity (domain/graphStats.ts), left of the help icon.
+   Same framed-value-box look as the Stats panels' rows (.graph-stats__value / .viewport-stats__value),
+   height-locked to the 16px help icon (.node__help) it sits beside so both read as one row. */
+.node__cost {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-foreground);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+}
+
+/* Header help "?" - a dim squared glyph at the far right of the title (opposite the name) that
+   brightens on hover and opens the node's help card (nodeView.buildHelpIcon). */
+.node__help {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  color: var(--dim);
+  cursor: help;
+}
+
+.node__help:hover {
+  color: var(--accent);
+}
+
+.node__help svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Render-sink material selector: a full-width tab strip, the node's first body row,
+   exactly one grid cell tall so the node stays on the grid. */
+.node__tabs {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.node__tabs .segment-group {
+  display: flex;
+  flex: 1;
+}
+
+.node__tabs .segment {
+  flex: 1;
+  height: 20px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-small);
+}
+
+/* The node body is one CSS grid so dots, names and controls line up across every row.
+   Five columns - [input dot][input label][centre control][output label][output dot] - with
+   the centre lane taking the slack. Every row is exactly one grid cell tall (grid-auto-rows),
+   so the node's height stays a whole number of cells. Side padding matches the title's. */
+.node__body {
+  display: grid;
+  grid-template-columns: auto auto minmax(48px, 1fr) auto auto;
+  grid-auto-rows: 24px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 8px;
+}
+
+/* The centre lane holds one control (a default-value editor or a param widget) and lets it
+   fill the lane; a fixed-size checkbox opts out. Swallows pointerdown (see nodeView) so
+   editing a field never starts a node drag. */
+.node__center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.node__center > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.node__center > .param__checkbox {
+  flex: none;
+}
+
+/* A socket's name label. Output labels right-align so they hug their dot on the right edge. */
+.socket__label {
+  min-width: 0;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.socket__label--out {
+  justify-self: end;
+  text-align: right;
+  /* A spacer between the centre content (input default / param) and the output on the same
+     row. Living on the output label, it only reserves width when an output exists - input-only
+     rows (e.g. on sinks) stay tight to the right edge. */
+  margin-left: 12px;
+}
+
+/* The output dot sits at the grid's right edge; the input dot at its left. */
+.socket__dot--in {
+  justify-self: start;
+}
+
+.socket__dot--out {
+  justify-self: end;
+}
+
+.socket__dot {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  background: var(--surface-deep);
+  /* Outlined in the data type's color (set per dot in nodeView); filled with it when
+     the port carries an edge or is hovered. Falls back to a neutral border if unset. */
+  border: 1px solid var(--socket-color, var(--border-mid));
+  cursor: crosshair;
+}
+
+/* Enlarge the click/hover target to a square the height of the socket row (24px)
+   while the visible dot stays 11px. The transparent pseudo is part of the dot, so
+   pointerdown, :hover and elementFromPoint all resolve to the dot itself. */
+.socket__dot::before {
+  content: "";
+  position: absolute;
+  inset: -6.5px;
+}
+
+/* A connected port reads filled; hovering any port previews its type color too. */
+.socket__dot:hover,
+.socket__dot--filled {
+  background: var(--socket-color, var(--accent));
+  border-color: var(--socket-color, var(--accent));
+}

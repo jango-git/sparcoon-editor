@@ -1,0 +1,167 @@
+/* Curve editor (inline scalar curve) */
+.curve-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The node reserves a whole number of grid rows for the curve block (CURVE_ROW_SPAN). Stretch the
+   block to fill that area and let the curve (its plot) take the slack, so the content lands exactly
+   on the grid step - no couple-px gap between the last row and the node's bottom border. */
+.param--block:has(.curve-editor) {
+  align-self: stretch;
+}
+
+.param--block:has(.curve-editor) .curve-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.curve-editor__plot-wrap {
+  position: relative;
+  /* Grows to absorb the block's leftover height so the content exactly fills the reserved grid
+     rows (no empty slack below the last settings row); never shrinks below its resting size. */
+  flex: 1;
+  min-height: 96px;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  touch-action: none;
+}
+
+.curve-editor__plot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: copy;
+  display: block;
+}
+
+.curve-editor__grid line {
+  stroke: var(--border-mid);
+  stroke-width: 0.5;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.curve-editor__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.curve-editor__handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.curve-editor__handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* A sharp anchor is drawn as a diamond to read as a corner; a smooth one is round. */
+.curve-editor__handle--smooth {
+  border-radius: 50%;
+}
+
+.curve-editor__handle--sharp {
+  border-radius: 0;
+}
+
+.curve-editor__handle--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The settings host stacks its rows (anchor editor, value range) vertically; each row is a full-width
+   flex row below. Without this the host would inherit no direction and the rows would not stack. */
+.curve-editor__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Settings rows: controls left-packed at a uniform gap, starting from the plot's left edge. (An
+   edge-to-edge space-between left ugly gaps between the fields and the trailing action buttons.) */
+.curve-editor__range,
+.curve-editor__editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.curve-editor__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.curve-editor__field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.curve-editor__field-label {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.curve-editor__field .number-control {
+  flex: none;
+  width: 48px;
+}
+
+.curve-editor__interpolation,
+.curve-editor__normalize {
+  flex: none;
+  height: 20px;
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+/* Fixed width (border-box) so toggling the label (Smooth <-> Sharp, and their translations) never
+   resizes the button and shifts the row. Wide enough for the longest label across locales. */
+.curve-editor__interpolation {
+  min-width: 64px;
+  text-align: center;
+}
+
+.curve-editor__interpolation:hover,
+.curve-editor__normalize:hover {
+  color: var(--panel-foreground);
+  border-color: var(--accent);
+}
+
+/* The delete button's danger look is the shared `.confirm-danger` (guarded countdown trash); this
+   only sizes the cell and its glyph, mirroring `.timeline-row__remove`. */
+.curve-editor__delete {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
+.curve-editor__delete svg {
+  width: 13px;
+  height: 13px;
+}
+
+.curve-editor__delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

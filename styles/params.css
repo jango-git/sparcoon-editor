@@ -1,0 +1,361 @@
+/* Node parameter widgets
+   Body params live in the same body grid as the sockets: a label spanning the two socket
+   columns and a control in the centre lane. Only the tall gradient block still uses `.param`
+   as a full-width, multi-row cell. */
+
+.param {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.param__label {
+  min-width: 0;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.param__input {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: var(--font-size-small);
+  color: var(--panel-foreground);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+}
+
+.param__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Custom dropdown (replaces the native <select>) - a flat field trigger + a floating,
+   screen-space option menu (so pan/zoom never displaces it). STYLE_GUIDE sections 0/3. */
+.dropdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  /* The trigger also carries `.param__input`, so it inherits that field's chrome; match its
+     height too (20px) so a closed dropdown sits flush with the number/text fields beside it. */
+  height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown__label--placeholder {
+  color: var(--dim);
+}
+
+.dropdown__caret {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.dropdown:hover,
+.dropdown--open {
+  border-color: var(--accent);
+}
+
+.dropdown:hover .dropdown__caret,
+.dropdown--open .dropdown__caret {
+  color: var(--accent);
+}
+
+.dropdown__menu {
+  position: fixed;
+  z-index: var(--z-popover);
+  max-height: 50vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+}
+
+.dropdown__item {
+  height: 24px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: var(--font-size-small);
+  text-align: left;
+  white-space: nowrap;
+  color: var(--panel-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.dropdown__item:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.dropdown__item--active {
+  color: var(--accent);
+}
+
+.dropdown__item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Trailing badge (e.g. the locale code) shown after a single-line option label. */
+.dropdown__item-hint {
+  flex: none;
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: var(--font-size-small);
+}
+
+/* Multi-column variant (the language switch), matched to the tesselot dropdown-pop: a padded
+   floating card whose options are bordered cells stacking a bold label over a dimmed hint, the
+   active/hovered cell carrying the accent border. */
+.dropdown__menu--grid {
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+}
+
+.dropdown__menu--grid .dropdown__item {
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+}
+
+.dropdown__menu--grid .dropdown__item:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.dropdown__menu--grid .dropdown__item--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.dropdown__menu--grid .dropdown__item-label {
+  flex: none;
+  font-weight: 600;
+}
+
+.dropdown__menu--grid .dropdown__item-hint {
+  margin-left: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom checkbox - a flat, sharp box that fills with the accent and draws a tick
+   when checked (matches the editor's monochrome-plus-accent chrome). */
+.param__checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.param__checkbox:hover {
+  border-color: var(--accent);
+}
+
+.param__checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.param__checkbox:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--on-accent);
+  border-bottom: 2px solid var(--on-accent);
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.param__checkbox:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.param__placeholder {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-small);
+  color: var(--dim);
+}
+
+.param__vector {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+}
+
+/* Numeric scrub control (EXAMPLES/ENumberControl, retuned to editor tokens) */
+
+.number-control {
+  position: relative;
+  /* Auto-size to the shown value (the display span drives the width), with a two-grid-cell
+     floor so short values still read and give a comfortable scrub/click target. The width
+     tracks the display text; the edit <input> is an absolute overlay so it doesn't disturb it. */
+  flex: none;
+  width: fit-content;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  overflow: hidden;
+  user-select: none;
+  font-family: inherit;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-foreground);
+}
+
+.number-control[data-state="view"] {
+  cursor: default;
+}
+
+.number-control[data-state="hover"] {
+  cursor: ew-resize;
+  border-color: var(--border-group);
+}
+
+.number-control[data-state="scrubbing"] {
+  cursor: ew-resize;
+  border-color: var(--accent);
+}
+
+.number-control[data-state="edit"] {
+  cursor: text;
+  border-color: var(--accent);
+}
+
+/* Muted (task: infinite-play toggle): grayed and inert - setDisabled(true) also forces the
+   control back to "view" and cancels any in-flight scrub, so this and [data-state="view"] always
+   apply together. */
+.number-control--disabled {
+  cursor: default;
+  color: var(--dim);
+  background: var(--surface-raised);
+  border-color: var(--border-soft);
+}
+
+.number-control__display {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 16px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Overlaid on the display (not in flow), so the field's width is set solely by the display
+   text and never jumps when entering edit mode. */
+.number-control__input {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.number-control--compact .number-control__display,
+.number-control--compact .number-control__input {
+  padding: 0 3px;
+}
+
+.number-control__decrement,
+.number-control__increment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 7px;
+  cursor: pointer;
+}
+
+.number-control__decrement {
+  left: 0;
+}
+.number-control__increment {
+  right: 0;
+}
+
+.number-control__decrement:hover,
+.number-control__increment:hover {
+  background: var(--overlay-subtle);
+  color: var(--panel-foreground);
+}
+
+/* Chevrons only show while hovering the field; hidden in view and edit. */
+.number-control[data-state="view"] .number-control__decrement,
+.number-control[data-state="view"] .number-control__increment,
+.number-control[data-state="edit"] .number-control__decrement,
+.number-control[data-state="edit"] .number-control__increment {
+  display: none;
+}
+
+.number-control[data-state="view"] .number-control__input,
+.number-control[data-state="hover"] .number-control__input,
+.number-control[data-state="scrubbing"] .number-control__input {
+  display: none;
+}
+
+/* Kept in flow (just hidden) so it still sizes the field while the overlaid input is shown. */
+.number-control[data-state="edit"] .number-control__display {
+  visibility: hidden;
+}
+
+body.number-control-scrubbing,
+body.number-control-scrubbing * {
+  cursor: ew-resize !important;
+}

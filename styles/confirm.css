@@ -1,0 +1,24 @@
+/* Countdown-confirm control (components/countdownConfirm.ts): a danger-tinted guarded button, shared
+   by the timeline row remove and the middlebar reset - each caller adds only its own size class. The
+   `counting` class (set by the control while a countdown is live) fills danger like :hover, and
+   tabular-nums keeps the remaining-clicks digit from shifting width as it counts down. */
+.confirm-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border-mid));
+  cursor: pointer;
+}
+
+.confirm-danger:hover,
+.confirm-danger.counting {
+  color: var(--on-accent);
+  background: var(--danger);
+  border-color: var(--danger);
+}

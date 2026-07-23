@@ -1,0 +1,284 @@
+{
+  "cycle": {
+    "message": "граф містить цикл через ноду \"{nodeId}\""
+  },
+  "bad-param-stage": {
+    "message": "{context}: параметр \"stage\" має бути \"vertex\" | \"fragment\""
+  },
+  "bad-param-phase": {
+    "message": "{context}: параметр \"phase\" має бути \"spawn\" | \"update\""
+  },
+  "param-uniform-type-conflict": {
+    "message": "параметр-уніформ \"{name}\" оголошено одночасно як {priorType} і {newType}"
+  },
+  "bad-structural-param-value": {
+    "message": "параметр \"{key}\" має бути одним із {allowed}; отримано {got}"
+  },
+  "structural-param-immutable": {
+    "message": "структурний параметр \"{key}\" службової ноди не може змінитися при стабільному id - перестворіть ноду з новим id"
+  },
+  "unknown-render-stage": {
+    "message": "нода \"{nodeId}\" оголошує невідому стадію \"{stage}\"; ноди рендера мають бути \"vertex\" або \"fragment\""
+  },
+  "stage-input-mismatch": {
+    "message": "вхід \"{socketKey}\" ноди {consumerStage} \"{consumerNodeId}\" читає значення стадії {producerStage} від ноди \"{producerNodeId}\"; значення стадії {producerStage} не може потрапити в стадію {consumerStage}"
+  },
+  "stage-output-mismatch": {
+    "message": "вихідний слот \"{slot}\" заповнюється в стадії {slotStage}, але нода \"{nodeId}\" видає значення в стадії {producerStage}"
+  },
+  "opaque-type-crosses-stage": {
+    "message": "непрозорий тип {typeId} не може перетинати стадії шейдера через varying"
+  },
+  "varying-from-fragment-stage": {
+    "message": "нода \"{nodeId}\" виділила varying з фрагментної стадії; varying створюються у вершинній стадії"
+  },
+  "output-not-produced": {
+    "message": "нода \"{nodeId}\" прив'язана до вихідного слоту \"{slot}\", але не видала значення для сокета \"{socketKey}\""
+  },
+  "bad-finite-number": {
+    "message": "FXNodeDefinition: {where} має бути скінченним числом"
+  },
+  "bad-finite-number-range": {
+    "message": "FXNodeDefinition: {where} має бути в діапазоні [{min}, {max}]"
+  },
+  "bad-finite-vector": {
+    "message": "FXNodeDefinition: {where} має бути масивом із {width} скінченних чисел"
+  },
+  "bad-finite-scalar-or-vector": {
+    "message": "FXNodeDefinition: {where} має бути скінченним числом або вектором з 1-4 компонент"
+  },
+  "bad-curve-value": {
+    "message": "FXNodeDefinition: {where} має бути кривою ({ points: [...] })"
+  },
+  "bad-curve-point": {
+    "message": "FXNodeDefinition: {where} має містити точки кривої зі скінченними числами { position, value }"
+  },
+  "bad-curve-interpolation": {
+    "message": "FXNodeDefinition: {where} інтерполяція точки кривої має бути \"smooth\" або \"sharp\""
+  },
+  "bad-gradient-value": {
+    "message": "FXNodeDefinition: {where} має бути градієнтом ({ stops: [...] })"
+  },
+  "empty-gradient": {
+    "message": "FXNodeDefinition: {where} має містити хоча б одну точку градієнта"
+  },
+  "bad-gradient-stop": {
+    "message": "FXNodeDefinition: {where} має містити точки вигляду { position: number, color: [r,g,b,a] }"
+  },
+  "bad-enum-value": {
+    "message": "FXNodeDefinition: {where} має бути одним із [{options}]"
+  },
+  "bad-flag-value": {
+    "message": "FXNodeDefinition: {where} має бути булевим значенням"
+  },
+  "bad-node-stage": {
+    "message": "FXNodeDefinition: {type}.stage має бути \"vertex\" | \"fragment\""
+  },
+  "bad-node-phase": {
+    "message": "FXNodeDefinition: {type}.phase має бути \"spawn\" | \"update\""
+  },
+  "bad-target-buffer-identifier": {
+    "message": "таргет \"{targetName}\" буфер \"{bufferName}\" не є допустимим ідентифікатором (він підставляється у згенерований вихідний код кернела)"
+  },
+  "duplicate-target-buffer": {
+    "message": "таргет \"{targetName}\" оголошує буфер \"{bufferName}\" більше одного разу"
+  },
+  "bad-target-buffer-stride": {
+    "message": "таргет \"{targetName}\" буфер \"{bufferName}\" страйд {stride} має бути додатним цілим числом"
+  },
+  "undeclared-target-buffer": {
+    "message": "таргет \"{targetName}\" {label} називає буфер \"{buffer}\", який не оголошено"
+  },
+  "bad-target-offset": {
+    "message": "таргет \"{targetName}\" {label} зміщення {offset} має бути цілим числом"
+  },
+  "target-offset-out-of-bounds": {
+    "message": "таргет \"{targetName}\" {label} зміщення {offset} виходить за межі буфера \"{buffer}\" (страйд {stride})"
+  },
+  "bad-target-input-identifier": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" не є допустимим ідентифікатором"
+  },
+  "duplicate-target-input": {
+    "message": "таргет \"{targetName}\" оголошує вхід \"{inputName}\" більше одного разу"
+  },
+  "spawn-input-has-dt": {
+    "message": "таргет \"{targetName}\" оголошує вхід \"dt\", але spawn-кернел не має dt"
+  },
+  "dt-input-has-offsets": {
+    "message": "таргет \"{targetName}\" оголошує вхід \"dt\" зі зміщеннями; \"dt\" - синтезований крок часу і має бути без зміщень"
+  },
+  "target-input-offset-count-mismatch": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" має {offsetCount} зміщення(нь), але його тип {typeId} потребує {typeComponents}"
+  },
+  "offsetless-input-not-reserved": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" не оголошує зміщень; входи без зміщень зарезервовані для \"dt\", \"PARTICLE_INDEX\" та матриці моделі"
+  },
+  "duplicate-target-output": {
+    "message": "таргет \"{targetName}\" оголошує вихідний слот \"{outputSlot}\" більше одного разу"
+  },
+  "target-output-offset-count-mismatch": {
+    "message": "таргет \"{targetName}\" вихід \"{outputSlot}\" має {offsetCount} зміщення(нь), але його тип {typeId} потребує {typeComponents}"
+  },
+  "duplicate-output-offset-write": {
+    "message": "таргет \"{targetName}\" вихід \"{outputSlot}\" записує зміщення {offset} більше одного разу (компонент буде мовчки перезаписано)"
+  },
+  "duplicate-integration-offset-write": {
+    "message": "таргет \"{targetName}\" інтеграція записує зміщення {offset} більш ніж в одному кроці (пізніший крок мовчки перезаписує ранiший)"
+  },
+  "integration-ref-not-target-input": {
+    "message": "таргет \"{targetName}\" інтеграція містить ref типу \"{refKind}\" (\"{refName}\"); вирази інтеграції можуть читати лише входи таргета"
+  },
+  "integration-ref-not-scalar": {
+    "message": "таргет \"{targetName}\" інтеграція читає вхід \"{refName}\" як {typeId}; ref'и інтеграції мають бути скалярами"
+  },
+  "integration-reads-dt-in-spawn": {
+    "message": "таргет \"{targetName}\" інтеграція читає \"dt\", але spawn-кернел не має dt"
+  },
+  "integration-input-not-declared": {
+    "message": "таргет \"{targetName}\" інтеграція читає вхід \"{refName}\", який не оголошено"
+  },
+  "phase-buffer-not-in-update": {
+    "message": "spawn-таргет \"{spawnName}\" оголошує буфер \"{bufferName}\", який update-таргет \"{updateName}\" не оголошує (хост виділяє буфери лише з update-таргета)"
+  },
+  "phase-buffer-stride-mismatch": {
+    "message": "буфер \"{bufferName}\" має страйд {spawnStride} у spawn-таргеті \"{spawnName}\", але страйд {updateStride} в update-таргеті \"{updateName}\""
+  },
+  "bad-behavior-targets-shape": {
+    "message": "behavior targets мають бути обʼєктом"
+  },
+  "unresolvable-target-input": {
+    "message": "FXKernelContext.readTargetInput: builtin \"{name}\" не є розв'язним вектором"
+  },
+  "malformed-target-shape": {
+    "message": "таргет \"{targetName}\" є некоректним: {path} має бути {expected}"
+  },
+  "unknown-target-value-type": {
+    "message": "таргет \"{targetName}\" {label} має невідомий тип значення \"{glslTypeName}\" ({components} компонент(и/ів)); використовуйте канонічні записи FX_VALUE_TYPES"
+  },
+  "bad-render-input-identifier": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" не є допустимим ідентифікатором GLSL"
+  },
+  "render-input-is-glsl-keyword": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" є ключовим словом GLSL"
+  },
+  "render-input-matches-generated-pattern": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" збігається зі згенерованою компілятором формою ідентифікатора \"u_/v_..._<цифри>\", яка зарезервована"
+  },
+  "unknown-render-input-stage": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" називає невідому стадію \"{stage}\""
+  },
+  "unknown-render-output-stage": {
+    "message": "таргет \"{targetName}\" вихід \"{outputSlot}\" називає невідому стадію \"{stage}\""
+  },
+  "ir-matrix-mul-dimension-mismatch": {
+    "message": "sparcoon IR: множення матриць потребує однакової розмірності, отримано {aType} і {bType}"
+  },
+  "ir-matrix-vector-mul-width-mismatch": {
+    "message": "sparcoon IR: множення {aType} * {bType}: розмірність матриці має збігатися з шириною вектора"
+  },
+  "ir-vector-matrix-mul-width-mismatch": {
+    "message": "sparcoon IR: множення {aType} * {bType}: ширина вектора має збігатися з розмірністю матриці"
+  },
+  "ir-matrix-mul-unsupported": {
+    "message": "sparcoon IR: множення не визначене для {aType} і {bType}"
+  },
+  "ir-matrix-add-sub-mismatch": {
+    "message": "sparcoon IR: {op} матриць потребує двох однакових типів матриць, отримано {aType} і {bType}"
+  },
+  "ir-matrix-op-unsupported": {
+    "message": "sparcoon IR: {op} не визначена для {aType} і {bType}"
+  },
+  "ir-arithmetic-bad-operand-type": {
+    "message": "sparcoon IR: {op} очікує операнди float/vecN, отримано {aType} і {bType}"
+  },
+  "ir-mod-int-unsupported": {
+    "message": "sparcoon IR: mod не визначений для int/ivecN (GLSL mod() не має цілочисельного перевантаження)"
+  },
+  "ir-arithmetic-no-left-splat": {
+    "message": "sparcoon IR: {op} не розмножує скалярний лівий операнд на {bType}"
+  },
+  "ir-arithmetic-type-mismatch": {
+    "message": "sparcoon IR: невідповідність типів у {op}: {aType} і {bType}"
+  },
+  "ir-comparison-bad-operand-type": {
+    "message": "sparcoon IR: порівняння {op} потребує операндів float, отримано {aType} і {bType}"
+  },
+  "ir-int-literal-not-integer": {
+    "message": "sparcoon IR: litInt очікує ціле значення, отримано {value}"
+  },
+  "ir-vector-literal-bad-width": {
+    "message": "sparcoon IR: litVec потребує 2..4 компоненти, отримано {count}"
+  },
+  "ir-negate-bad-operand": {
+    "message": "sparcoon IR: neg очікує операнд float/vecN, отримано {typeId}"
+  },
+  "ir-unknown-function": {
+    "message": "sparcoon IR: невідома функція \"{name}\""
+  },
+  "ir-no-matching-overload": {
+    "message": "sparcoon IR: жодна сигнатура \"{name}\" не приймає ({argumentTypes})"
+  },
+  "ir-swizzle-bad-channel-count": {
+    "message": "sparcoon IR: swizzle потребує 1..4 канали, отримано \"{channels}\""
+  },
+  "ir-swizzle-bad-source": {
+    "message": "sparcoon IR: swizzle потребує джерело vec2/vec3/vec4, отримано {typeId}"
+  },
+  "ir-swizzle-unknown-channel": {
+    "message": "sparcoon IR: недопустимий канал swizzle \"{channel}\" (очікується x/y/z/w)"
+  },
+  "ir-swizzle-channel-out-of-range": {
+    "message": "sparcoon IR: канал swizzle \"{channel}\" поза діапазоном для {typeId}"
+  },
+  "ir-column-bad-source": {
+    "message": "sparcoon IR: column потребує джерело mat2/mat3/mat4, отримано {typeId}"
+  },
+  "ir-column-index-out-of-range": {
+    "message": "sparcoon IR: індекс стовпця {index} поза діапазоном для {typeId} (0..{maxIndex})"
+  },
+  "ir-construct-bad-target-type": {
+    "message": "sparcoon IR: ціль construct має бути vec2/vec3/vec4, отримано {typeId}"
+  },
+  "ir-construct-bad-argument-type": {
+    "message": "sparcoon IR: аргумент construct має бути float/vecN, отримано {typeId}"
+  },
+  "ir-construct-component-count-mismatch": {
+    "message": "sparcoon IR: construct({typeId}) потребує {expected} компонент(и/ів), отримано {got}"
+  },
+  "ir-construct-matrix-bad-form": {
+    "message": "sparcoon IR: construct({typeId}) потребує {dimension} стовпців vec{dimension}, {scalarCount} чисел з рухомою комою, або одну матрицю для зміни розміру"
+  },
+  "ir-no-implicit-int-float-conversion": {
+    "message": "sparcoon IR: не можна неявно перетворити {fromType} на {targetType} - використайте явне приведення int/float"
+  },
+  "ir-bad-numeric-conversion": {
+    "message": "sparcoon IR: неможливо перетворити {fromType} на {targetType}"
+  },
+  "ir-to-int-bad-operand": {
+    "message": "sparcoon IR: toInt очікує операнд float, отримано {typeId}"
+  },
+  "ir-to-float-bad-operand": {
+    "message": "sparcoon IR: toFloat очікує операнд int, отримано {typeId}"
+  },
+  "ir-select-condition-not-float": {
+    "message": "sparcoon IR: умова select має бути float, отримано {typeId}"
+  },
+  "ir-select-branch-type-mismatch": {
+    "message": "sparcoon IR: гілки select мають мати однаковий тип, отримано {aType} і {bType}"
+  },
+  "ir-bad-vector-width": {
+    "message": "sparcoon IR: {context} підтримує 1..4 компоненти, отримано {count}"
+  },
+  "node-factory-type-mismatch": {
+    "message": "FXNodeRegistry: фабрика для \"{requestedType}\" створила ноду типу \"{producedType}\""
+  },
+  "unhandled-blend-mode": {
+    "message": "blend: непідтримуваний режим \"{mode}\""
+  },
+  "glsl-float-not-finite": {
+    "message": "sparcoon IR: нескінченне число {value} не можна надрукувати як GLSL-літерал"
+  },
+  "glsl-int-not-finite": {
+    "message": "sparcoon IR: {value} не можна надрукувати як цілочисельний GLSL-літерал (не скінченне ціле число)"
+  }
+}

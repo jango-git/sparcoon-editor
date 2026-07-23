@@ -1,0 +1,8 @@
+{
+  // Rollup's compile config: the strict typecheck (tsc -b) is noEmit, so this
+  // overlay just flips emission on. Type-safety stays the job of `npm run typecheck`.
+  "extends": ["./tsconfig.json"],
+  "compilerOptions": {
+    "noEmit": false
+  }
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Sparcoon Editor</title>
+
+    <!--
+      Resolve the persisted theme synchronously, before first paint, so there is
+      no flash of the wrong theme. See STYLE_GUIDE section 1.1. The key and its
+      dark/light/auto values mirror src/settings/theme.ts - keep them in sync.
+    -->
+    <script>
+      (function resolveThemeBeforePaint() {
+        try {
+          var stored = localStorage.getItem("sparcoon-editor.theme");
+          var mode = stored === null ? "auto" : stored;
+          var resolved =
+            mode === "auto"
+              ? window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark"
+              : mode;
+          document.documentElement.setAttribute("data-theme", resolved);
+        } catch (error) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+
+    <link rel="stylesheet" href="./dist/styles.css" />
+  </head>
+  <body>
+    <div id="application"></div>
+    <script type="module" src="./dist/main.js"></script>
+  </body>
+</html>

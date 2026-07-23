@@ -1,0 +1,169 @@
+/* Middlebar */
+
+/* Sits between the viewport+graph region and the timeline (panelLayout.ts); the row resizers are
+   its top and bottom seams, so it carries no border of its own. flex:none keeps it at content
+   height in the column - its own height never changes, only the regions above/below it do. */
+.middlebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--panel-background);
+}
+
+.middlebar__spacer {
+  flex: 1;
+}
+
+/* Icon-only square button - a fixed 28x28 cell with the glyph centred (STYLE_GUIDE section 4.1). */
+.middlebar__button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--panel-foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.middlebar__button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Active applies to the theme toggles (sun/moon); both active reads as "auto". */
+.middlebar__button:hover:not(:disabled),
+.middlebar__button--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.middlebar__button:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+
+/* A thin vertical seam between middlebar control clusters (STYLE_GUIDE section 7). */
+.middlebar__separator {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--border-mid);
+}
+
+/* Graph switch: two separate icon+label buttons (Behavior / Render), spaced apart, the
+   active graph carrying the accent (STYLE_GUIDE section 4.7 look, but not a joined strip). */
+.graph-switch {
+  display: flex;
+  gap: 6px;
+}
+
+/* `display: flex` above (author origin) beats the UA `[hidden] { display: none }`, so the switch
+   would still show when JS sets `hidden` (a VFX mesh has no graph choice). Re-assert none, with the
+   extra class specificity needed to win. */
+.graph-switch[hidden] {
+  display: none;
+}
+
+.graph-switch__button {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.graph-switch__button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.graph-switch__button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.graph-switch__button--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Floating variant: the switch sits over the graph's top-left corner (moved off the middlebar).
+   Its buttons need an opaque backdrop so the dotted graph grid doesn't bleed through them. */
+.graph-switch--floating {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+}
+
+.graph-switch--floating .graph-switch__button {
+  background: var(--panel-background);
+}
+
+.graph-switch--floating .graph-switch__button--active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel-background));
+}
+
+/* Language switch: a compact middlebar-chrome trigger showing the active locale badge (e.g. "EN").
+   Overrides the `.dropdown` node-field look with the middlebar button's border/background so it sits
+   with the theme + navigation clusters. The floating option grid comes from `.dropdown__menu`. */
+.middlebar__lang.dropdown {
+  height: 28px;
+  padding: 0 8px;
+  gap: 6px;
+  color: var(--panel-foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.middlebar__lang.dropdown:hover,
+.middlebar__lang.dropdown--open {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.middlebar__lang .dropdown__caret {
+  color: inherit;
+}
+
+/* Input-mode toggle: the mouse/touchpad icons sit flush as one unit, borders merged like a
+   segment pair. */
+.middlebar__theme {
+  display: flex;
+}
+
+.middlebar__theme .middlebar__button {
+  position: relative;
+}
+
+.middlebar__theme .middlebar__button + .middlebar__button {
+  margin-left: -1px;
+}
+
+/* The highlighted (or hovered) toggle floats its accent border above its neighbour. */
+.middlebar__theme .middlebar__button:hover:not(:disabled),
+.middlebar__theme .middlebar__button--active {
+  z-index: 1;
+}
+
+/* Theme switch: a `.segment-group` (light / auto / dark), sized to match the middlebar's other
+   28px controls instead of the segmented control's default 26px row height. */
+.middlebar__theme-switch .segment--icon {
+  width: 28px;
+  height: 28px;
+}

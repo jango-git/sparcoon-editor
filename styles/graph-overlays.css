@@ -1,0 +1,364 @@
+/* Wire layer
+   An SVG inside the transformed content layer, so wires pan/zoom with the
+   nodes. Zero-sized with visible overflow: the paths draw in graph
+   coordinates well outside the nominal box. Purely visual (never eats
+   pointer events - edges are edited by dragging their socket endpoints). */
+
+.graph__wires {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wire {
+  fill: none;
+  stroke: var(--border-mid);
+  stroke-width: 2px;
+}
+
+.wire--pending {
+  stroke: var(--accent);
+  stroke-dasharray: 5 4;
+}
+
+/* Route (reroute knot)
+   A headerless three-cell node - an input dot, a draggable body, an output dot - used to
+   tidy wire layout. It reuses the node drag/select machinery but drops the card's title. */
+.node--route {
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px;
+  background: var(--surface-raised);
+  /* Frame is the base `.node` inset box-shadow (--node-frame defaults to --border-mid); no
+     `border` here, else it would re-add a layout border and double up with the shadow. */
+}
+
+.node--route.node--selected {
+  /* --node-frame comes from `.node--selected` (accent); only the fill differs here. */
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-raised));
+}
+
+/* Knife stroke (Alt-drag wire cut)
+   A screen-space overlay above the nodes; purely visual, never eats pointer events. */
+.graph__knife {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.graph__knife path {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2px;
+  stroke-dasharray: 4 3;
+}
+
+/* Comment boxes
+   The back layer sits inside the transformed content (so comments pan/zoom with the graph)
+   behind the wires and nodes. The body is click-through - only the header and the corner
+   handles capture pointer events - so nodes over a comment and a marquee across it still work. */
+.graph__comments {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.comment {
+  position: absolute;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent);
+  pointer-events: none;
+}
+
+.comment--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.comment--selected .comment__header {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.comment__header {
+  pointer-events: auto;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--panel-foreground);
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: grab;
+  outline: none;
+}
+
+.comment--editing .comment__header {
+  cursor: text;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel-background));
+}
+
+/* Edge + corner grab handles. The edge strips run the full side and stay invisible (they
+   only need to change the cursor and catch a drag); the corner squares sit on top of them. */
+.comment__handle {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* Edge strips: a thin band straddling each side. */
+.comment__handle--n,
+.comment__handle--s {
+  left: 6px;
+  right: 6px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.comment__handle--e,
+.comment__handle--w {
+  top: 6px;
+  bottom: 6px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.comment__handle--n {
+  top: -4px;
+}
+
+.comment__handle--s {
+  bottom: -4px;
+}
+
+.comment__handle--w {
+  left: -4px;
+}
+
+.comment__handle--e {
+  right: -4px;
+}
+
+/* Corner zones: invisible diagonal-resize catchers (no visible grip - the editor shows no
+   handle chrome); they just widen the corner hit area and set the cursor. */
+.comment__handle--nw,
+.comment__handle--ne,
+.comment__handle--sw,
+.comment__handle--se {
+  width: 12px;
+  height: 12px;
+}
+
+.comment__handle--nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.comment__handle--ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.comment__handle--sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.comment__handle--se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+/* Behavior-sink attribute editor */
+
+.node__attributes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* The lone "add attribute" row at the foot of a behavior sink: name / type / confirm. */
+.attr__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.attr__new-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.attr__new-name--invalid {
+  outline: 1px solid var(--danger);
+}
+
+.attr__type {
+  width: 52px;
+}
+
+.attr__add {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--overlay-subtle);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+}
+
+.attr__add svg {
+  width: 12px;
+  height: 12px;
+}
+
+.attr__add:hover {
+  color: var(--panel-foreground);
+  border-color: var(--border-mid);
+}
+
+/* Delete is guarded by the shared countdown-confirm control (confirm.css); sizing only here. */
+.attr__remove {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+
+.attr__remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* On a sink's `attr:<name>` input row the remove button is a grid cell in the right lane;
+   keep it compact and right-aligned rather than stretched across the span. */
+.node__body > .attr__remove {
+  justify-self: end;
+  align-self: center;
+}
+
+/* Add-node dialog (STYLE_GUIDE section 4.2) */
+
+.add-node-menu {
+  position: fixed;
+  z-index: var(--z-add-node-menu);
+  width: 224px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+}
+
+.add-node-menu__search {
+  width: 100%;
+  height: 30px;
+  flex: none;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--panel-foreground);
+  background: var(--surface-deep);
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  outline: none;
+}
+
+.add-node-menu__search::placeholder {
+  color: var(--dim);
+}
+
+/* Stepped scrolling: the wheel advances exactly one row (addNodeMenu.ts), so scrollTop
+   stays a multiple of the row height and no partial row is ever shown. */
+.add-node-menu__list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-mid) transparent;
+}
+
+.add-node-menu__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.add-node-menu__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.add-node-menu__list::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+  border: 2px solid var(--panel-background);
+}
+
+.add-node-menu__list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-group);
+}
+
+.add-node-menu__item {
+  height: 28px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--panel-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.add-node-menu__item:hover,
+.add-node-menu__item--active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.add-node-menu__empty {
+  padding: 8px 10px;
+  font-size: var(--font-size-small);
+  color: var(--dim);
+}
+
+/* Node help card - the shared floating documentation panel (helpCard.ts), shown above the
+   add-node menu on hover / keyboard-highlight and above a node header, spanning the full width
+   of whichever opened it (width set inline). Non-interactive (never steals the pointer). */
+.node-help {
+  position: fixed;
+  z-index: var(--z-popover);
+  padding: 8px 10px;
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+  pointer-events: none;
+}
+
+.node-help__title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--panel-foreground);
+}
+
+.node-help__body {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}

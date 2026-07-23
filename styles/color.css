@@ -1,0 +1,285 @@
+/* Color controls
+   A swatch button + floating HSV picker, and a gradient (color-ramp) editor.
+   Flat, sharp-cornered, accent on interaction (STYLE_GUIDE sections 0/3); popovers are
+   screen-space (position: fixed) so pan/zoom never displaces them, like the
+   dropdown menu. Alpha reads over a shared checkerboard. */
+
+/* Swatch (the inline trigger) */
+.color-swatch {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 2px;
+  cursor: pointer;
+  background: var(--surface-deep) var(--checker);
+}
+
+.color-swatch:hover,
+.color-swatch--open {
+  border-color: var(--accent);
+}
+
+.color-swatch__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Picker popover */
+.color-picker {
+  position: fixed;
+  z-index: var(--z-color-picker);
+  width: 200px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+}
+
+.color-picker__sv {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.color-picker__sv-white,
+.color-picker__sv-black {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.color-picker__sv-white {
+  background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+}
+
+.color-picker__sv-black {
+  background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+}
+
+.color-picker__sv-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.color-picker__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-picker__hue,
+.color-picker__alpha {
+  position: relative;
+  height: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.color-picker__hue {
+  background: linear-gradient(
+    to right,
+    #f00 0%,
+    #ff0 17%,
+    #0f0 33%,
+    #0ff 50%,
+    #00f 67%,
+    #f0f 83%,
+    #f00 100%
+  );
+}
+
+.color-picker__alpha {
+  background: var(--checker);
+}
+
+.color-picker__alpha-fill {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.color-picker__thumb {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.color-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-picker__preview {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-mid);
+  background-color: transparent;
+  background-image: var(--checker);
+}
+
+.color-picker__hex {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  text-transform: lowercase;
+}
+
+/* A Texture node's preview: a centred square, its height set by the grid-aligned block
+   below the picker and its width matched via aspect-ratio. The chosen texture is a `contain`
+   background on the inner layer (so its intrinsic size never widens the card), over the same
+   transparency checker the content list uses (see .asset-row__thumb). Empty until a pick. */
+.texture-preview {
+  align-self: stretch;
+  justify-self: stretch;
+  min-height: 0;
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.texture-preview__image {
+  height: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--border-soft);
+  background:
+    var(--preview-texture, none) center / contain no-repeat,
+    repeating-conic-gradient(var(--overlay-subtle) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px
+      var(--surface-deep);
+}
+
+/* Color-ramp (gradient) editor */
+.param--block {
+  height: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.param--block > .param__label {
+  max-width: none;
+}
+
+.color-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.color-ramp__bar-wrap {
+  position: relative;
+  background: var(--checker);
+}
+
+.color-ramp__bar {
+  height: 20px;
+  cursor: copy;
+  border: 1px solid var(--border-mid);
+}
+
+.color-ramp__stops {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px;
+}
+
+.color-ramp__stop {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+/* A downward pin: a small square with a pointer notch toward the bar. */
+.color-ramp__stop::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--border-mid);
+}
+
+.color-ramp__stop-dot {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border-mid);
+}
+
+/* Selected: accent ring on the dot (keep its own color visible) + accent pin notch. */
+.color-ramp__stop--selected .color-ramp__stop-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.color-ramp__stop--selected::before {
+  background: var(--accent);
+}
+
+.color-ramp__editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-ramp__editor .color-swatch {
+  flex: none;
+  width: 28px;
+}
+
+.color-ramp__editor .number-control {
+  flex: none;
+  width: 52px;
+}
+
+/* The color-ramp stop delete button (the curve anchor delete uses the guarded-trash look). */
+.color-ramp__delete {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.color-ramp__delete:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.color-ramp__delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

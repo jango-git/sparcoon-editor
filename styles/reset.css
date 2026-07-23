@@ -1,0 +1,52 @@
+/*
+ * Base chrome. Flat, monochrome, sharp corners, zero transitions.
+ * See STYLE_GUIDE sections 0, 3, 7.
+ *
+ * Frame is a top region over a resizable bottom band, split by draggable dividers:
+ *   preview | graph      (top region - fills the height above the bottom band)
+ *   outline | timeline   (bottom band - a draggable height, moved together)
+ * The preview|graph and outline|timeline splits are independent. Middlebar carries the
+ * graph switch. Assets is a bottom modal sheet, not part of frame.
+ */
+
+:root {
+  /* Shared vertical rhythm so an outline row lines up with a timeline row. */
+  --row-height: 26px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  background: var(--stage-background);
+  color: var(--panel-foreground);
+}
+
+body {
+  overflow: hidden;
+  /* The whole editor is a direct-manipulation surface - no prose to select. Blanket
+     text selection off so a drag never leaves a stray highlight; re-enabled on the
+     text fields that genuinely need it below. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  font-family: inherit;
+}

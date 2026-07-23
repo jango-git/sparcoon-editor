@@ -1,0 +1,386 @@
+/* Content screen (assets + export) - STYLE_GUIDE section 4.10 */
+
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-scrim);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--stage-background) 70%, transparent);
+}
+
+.modal-scrim--open {
+  display: flex;
+}
+
+/* A dialog centred in the viewport (the scrim's flex centring) with a gap on every side. Its height
+   follows its content between a floor (min-height) and a ceiling (max-height, the viewport itself),
+   beyond which the columns scroll, not the sheet. Assets sit in the main region; Project is a
+   separate block beside it (hence the row layout), running the full height on its own. */
+.content-sheet {
+  position: relative;
+  z-index: var(--z-modal-sheet);
+  display: flex;
+  width: calc(100vw - 64px);
+  min-height: 50vh;
+  max-height: calc(100vh - 64px);
+  overflow: hidden;
+  background: var(--panel-background);
+  border: 1px solid var(--border-hard);
+}
+
+/* A square close button pinned to the sheet's top-right corner, lifted above the Project block it
+   overlays. Danger color/hover come from the shared .confirm-danger (same look as the reset button
+   below); this only sets its position and size. */
+.content-sheet__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+}
+
+.content-sheet__close svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A subtle accent outline while files are dragged over the sheet. */
+.content-sheet--dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.content-sheet__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* No divider under the header - the content-screen leans on spacing, not lines (cf. preview tabs). */
+.content-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 6px;
+}
+
+.content-sheet__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.content-sheet__spacer {
+  flex: 1;
+}
+
+/* Icon + label outline buttons (the upload affordance and the Import/Export controls): not filled,
+   highlighting on hover/press - no transition, the highlight lands at once. */
+.content-sheet__upload,
+.content-export__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  font-size: var(--font-size-small);
+  color: var(--panel-foreground);
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.content-sheet__upload:hover,
+.content-export__button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.content-sheet__upload:active,
+.content-export__button:active {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.content-sheet__upload svg,
+.content-export__button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.content-sheet__upload {
+  padding: 0 12px 0 10px;
+}
+
+/* Native file input is driven by the Upload button - kept out of the layout. */
+.content-sheet__file {
+  display: none;
+}
+
+/* The three libraries side by side; the main region never scrolls - the lists do. */
+.content-sheet__body {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+  padding: 4px 16px 16px;
+}
+
+.content-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A borderless muted heading, like the preview panels' section titles. */
+.content-column__title {
+  padding: 4px 2px 8px;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Only the HDRI column carries a header action (clear all) beside its title; the row inherits the
+   title's own padding so the two lay out identically to the plain (title-only) columns. */
+.content-column__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+
+.content-column__header .content-column__title {
+  flex: 1;
+  padding: 0;
+}
+
+/* Sized down from .asset-row__remove (26px) to fit the header row without dominating the title. */
+.content-column__clear {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.content-column__clear svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Each library scrolls independently. */
+.content-column__list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The empty-library hint and the Export placeholder: centred muted text, no scroll. */
+.content-column__empty,
+.content-column__placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* The Export block: the special one - its own full-height panel, borderless, set apart by a raised
+   fill so the recessed (surface-deep) input reads against it. */
+.content-export {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  padding: 12px 16px 16px;
+  background: var(--surface-raised);
+}
+
+/* The Export heading reads like the CONTENT title (not the muted column headings). */
+.content-export__title {
+  margin-bottom: 12px;
+}
+
+/* Fills the block under the title so the foot spacer can pin reset to the bottom; groups sit further
+   apart than the controls within a group. */
+.content-export__form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+/* Controls that read as one unit (the embed flag over its TypeScript export). */
+.content-export__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Eats the slack so reset pins to the block foot, clear of the controls above. */
+.content-export__spacer {
+  flex: 1;
+}
+
+.content-export__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.content-export__label {
+  font-size: var(--font-size-small);
+  color: var(--muted);
+}
+
+/* The block's prominent field - same height as the buttons below it; type size matches every other
+   field in the sheet (nodes' own param inputs included), not a one-off larger size. */
+.content-export__input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  font-size: var(--font-size-small);
+}
+
+/* The Import/Export JSON pair on one line. */
+.content-export__row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Both buttons share the row width. */
+.content-export__row .content-export__button {
+  flex: 1;
+  padding: 0 10px;
+}
+
+.content-export__button {
+  justify-content: center;
+  padding: 0 12px;
+}
+
+/* The embed-assets flag: checkbox + label, gating the TypeScript export below it (tooltip has the
+   detail). */
+.content-export__embed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* Reset: the full-width destructive project-wipe pinned to the block foot; its danger look and
+   counting state come from .confirm-danger. */
+.content-export__reset {
+  gap: 6px;
+  height: 28px;
+  font-size: var(--font-size-small);
+}
+
+.content-export__reset svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A row: thick enough to hold a preview, no taller than it needs, set off by a fill (no border). */
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--surface-raised) 45%, transparent);
+}
+
+.asset-row__preview {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--muted);
+  background: var(--well);
+  overflow: hidden;
+}
+
+.asset-row__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* A checker so a transparent PNG's shape stays readable. */
+  background: repeating-conic-gradient(var(--overlay-subtle) 0% 25%, transparent 0% 50%) 0 0 / 14px
+    14px;
+}
+
+.asset-row__title {
+  min-width: 0;
+  font-size: var(--font-size-small);
+  color: var(--panel-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-row__spacer {
+  flex: 1;
+}
+
+/* The user count in a boxed chip - the same height as the row's other controls. */
+.asset-row__count {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: var(--well);
+  border: 1px solid var(--border-soft);
+}
+
+/* Row controls: flat square icon buttons carrying their colour at rest (like .middlebar__button), not
+   only on hover. The delete button also carries .confirm-danger (countdown-confirm) for its danger
+   tint and counting state. */
+.asset-row__action,
+.asset-row__remove {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
+
+.asset-row__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--panel-foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.asset-row__action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.asset-row__action svg,
+.asset-row__remove svg {
+  width: 14px;
+  height: 14px;
+}
