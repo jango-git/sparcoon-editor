@@ -20,6 +20,7 @@ import { deserializeProject, serializeProject } from "../persistence/projectFile
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
+import type { EditorContext } from "./editorContext";
 import { assetIcons, icon, timelineIcons } from "./icons";
 
 /** Presses to confirm applying a preset (destructive - replaces the whole project - so guarded
@@ -36,7 +37,8 @@ const PRESET_GLYPHS: Readonly<Record<string, string>> = {
  * Builds the Import/Export block. `sync` refreshes the name field from the document, skipping the
  * update while the field is focused so it can't stomp mid-edit text.
  */
-export function exportBlock(store: Store): { element: HTMLElement; sync: () => void } {
+export function exportBlock(context: EditorContext): { element: HTMLElement; sync: () => void } {
+  const { store } = context;
   const title = createElement("div", {
     className: "content-sheet__title content-export__title",
     textContent: t("content.columnProject"),
@@ -64,7 +66,7 @@ export function exportBlock(store: Store): { element: HTMLElement; sync: () => v
   fileInput.accept = "application/json,.json";
   fileInput.className = "content-sheet__file";
   fileInput.addEventListener("change", () => {
-    void importFromFile(fileInput.files?.[0], store);
+    void importFromFile(fileInput.files?.[0], context);
     fileInput.value = "";
   });
 
@@ -89,7 +91,7 @@ export function exportBlock(store: Store): { element: HTMLElement; sync: () => v
   const examplesList = createElement(
     "div",
     { className: "content-export__examples" },
-    PROJECT_PRESETS.map((preset) => presetRow(store, preset)),
+    PROJECT_PRESETS.map((preset) => presetRow(context, preset)),
   );
 
   // The embed flag is grouped above the TypeScript export it's meant to govern once wired (still
@@ -163,8 +165,11 @@ function downloadText(text: string, name: string, extension: string, mime: strin
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-/** Reads a picked JSON file and replaces the document, warning (without touching it) on a bad file. */
-async function importFromFile(file: File | undefined, store: Store): Promise<void> {
+/** Reads a picked JSON file and replaces the document, warning (without touching it) on a bad file.
+ *  Also resets the viewport's own persisted settings (Lighting/Scene/Gizmo) to factory defaults -
+ *  they live outside the document, so a document replace alone would otherwise leave the previous
+ *  project's studio setup and gizmo preferences in place. */
+async function importFromFile(file: File | undefined, context: EditorContext): Promise<void> {
   if (file === undefined) {
     return;
   }
@@ -174,14 +179,16 @@ async function importFromFile(file: File | undefined, store: Store): Promise<voi
     return;
   }
   await hydrateEnvironmentBlobs(source.environments);
-  importProject(store, source);
+  importProject(context.store, source);
+  context.previewSettings.reset();
+  context.gizmoSettings.reset();
 }
 
 /**
  * One Examples row, styled like an asset library row: a kind-glyph preview, the preset's name, a
  * countdown-guarded apply button - same guard/severity as a whole-project replace deserves.
  */
-function presetRow(store: Store, preset: ProjectPreset): HTMLElement {
+function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
   const preview = createElement("div", { className: "asset-row__preview" }, [
     icon(PRESET_GLYPHS[preset.id] ?? assetIcons.blank),
   ]);
@@ -197,7 +204,7 @@ function presetRow(store: Store, preset: ProjectPreset): HTMLElement {
   applyButton.innerHTML = applyContent;
   attachTooltip(applyButton, t(preset.labelKey), t("content.applyPresetTip"));
   attachCountdownConfirm(applyButton, applyContent, PRESET_APPLY_CLICKS, () => {
-    void applyPreset(store, preset);
+    void applyPreset(context, preset);
   });
   return createElement("div", { className: "asset-row content-export__preset-row" }, [
     preview,
@@ -208,11 +215,14 @@ function presetRow(store: Store, preset: ProjectPreset): HTMLElement {
 }
 
 /** Loads a preset's source (bundled JSON fetch, or the built-in empty document) and replaces the
- *  document with it - the same path a picked JSON file goes through. */
-async function applyPreset(store: Store, preset: ProjectPreset): Promise<void> {
+ *  document with it - the same path a picked JSON file goes through, viewport settings reset
+ *  included. */
+async function applyPreset(context: EditorContext, preset: ProjectPreset): Promise<void> {
   const source = await loadPresetSource(preset);
   await hydrateEnvironmentBlobs(source.environments);
-  importProject(store, source);
+  importProject(context.store, source);
+  context.previewSettings.reset();
+  context.gizmoSettings.reset();
 }
 
 /** A safe download stem from the project name: keep word characters, fall back when nothing remains. */

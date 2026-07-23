@@ -42,9 +42,10 @@
 }
 
 /* Three-position variant (components/triSwitchControl.ts): same track language as .switch, but
-   taller (matches the middlebar's 28px controls) with the thumb always lit (there's no "off" among
-   three named modes) and carrying an icon, since left/center/right position alone doesn't read as
-   unambiguously as on/off does. */
+   taller (matches the middlebar's 28px controls). Unlike on/off, left/center/right position alone
+   doesn't read as unambiguously as two states do, so every zone shows its own icon all the time
+   (not just the active one); the thumb slides behind the active zone's icon to pick it out, and
+   also drives drag-to-select (`touch-action: none` so a horizontal drag isn't stolen for scrolling). */
 .tri-switch {
   position: relative;
   flex: none;
@@ -55,6 +56,7 @@
   background: var(--surface-deep);
   border: 1px solid var(--border-mid);
   cursor: pointer;
+  touch-action: none;
 }
 
 .tri-switch:hover {
@@ -62,11 +64,26 @@
 }
 
 .tri-switch__zone {
+  position: relative;
+  z-index: 1;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   padding: 0;
+  color: var(--muted);
   cursor: pointer;
+}
+
+.tri-switch__zone svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tri-switch__zone--active {
+  color: var(--on-accent);
 }
 
 .tri-switch__zone:focus-visible {
@@ -75,22 +92,16 @@
 }
 
 /* Slides between the three zones via a CSS var the control sets on select (`--tri-switch-index`,
-   0/1/2) rather than a JS-computed pixel offset, so the geometry stays declarative in one place. */
+   0/1/2) rather than a JS-computed pixel offset, so the geometry stays declarative in one place.
+   Sits behind the zone buttons (which carry the icons) via z-index, not DOM order, so it reads as
+   a highlight picking out one zone's icon rather than a second icon layer. */
 .tri-switch__thumb {
   position: absolute;
+  z-index: 0;
   top: 2px;
   bottom: 2px;
   left: calc(2px + var(--tri-switch-index, 0) * (100% - 4px) / 3);
   width: calc((100% - 4px) / 3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--accent);
-  color: var(--on-accent);
   pointer-events: none;
-}
-
-.tri-switch__thumb svg {
-  width: 14px;
-  height: 14px;
 }

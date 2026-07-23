@@ -15,7 +15,7 @@ export class PersistedStore<T extends object> {
 
   constructor(
     private readonly key: string,
-    fallback: T,
+    private readonly fallback: T,
     parse: (raw: unknown) => T,
   ) {
     const raw = readJson(key);
@@ -27,18 +27,29 @@ export class PersistedStore<T extends object> {
   }
 
   public update(patch: Partial<T>): void {
-    this.value = { ...this.value, ...patch };
-    writeJson(this.key, this.value);
-    for (const listener of this.listeners) {
-      listener(this.value);
-    }
+    this.commit({ ...this.value, ...patch });
   }
 
-  /** Subscribe to changes; returns an unsubscribe. The listener fires on every {@link update}. */
+  /** Restores factory defaults - same persist-and-notify path as {@link update}, so every
+   *  subscriber (including a control's own resync) redraws from the restored value. */
+  public reset(): void {
+    this.commit(this.fallback);
+  }
+
+  /** Subscribe to changes; returns an unsubscribe. The listener fires on every {@link update} and
+   *  {@link reset}. */
   public subscribe(listener: SettingsListener<T>): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  private commit(next: T): void {
+    this.value = next;
+    writeJson(this.key, this.value);
+    for (const listener of this.listeners) {
+      listener(this.value);
+    }
   }
 }

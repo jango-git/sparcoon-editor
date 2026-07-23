@@ -70,7 +70,7 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   const graph = createGraphPanel(context, graphView);
   const timeline = createTimelinePanel(context);
 
-  const assets = createAssetsModal(store, signals);
+  const assets = createAssetsModal(context);
   const middlebar = createMiddlebar(context, { onOpenAssets: assets.open });
   const workspace = createWorkspace(preview.element, graph, timeline, middlebar);
 

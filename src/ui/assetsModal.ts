@@ -13,11 +13,10 @@
 
 import { t } from "../i18n";
 import { selectTextureAssetUsage } from "../model/selectors";
-import type { SignalBus } from "../model/signals";
-import type { Store } from "../model/store";
 import { attachTooltip } from "./components/tooltip";
 import { helpBlock } from "./contentHelpPanel";
 import { createElement } from "./dom";
+import type { EditorContext } from "./editorContext";
 import { assetIcons, glyphIcons, icon } from "./icons";
 import { HDRI_EXTENSIONS, MESH_EXTENSIONS, ingestFiles } from "./assetIngestion";
 import { exportBlock } from "./projectExportPanel";
@@ -29,7 +28,8 @@ export interface AssetsModal {
   close(): void;
 }
 
-export function createAssetsModal(store: Store, signals: SignalBus): AssetsModal {
+export function createAssetsModal(context: EditorContext): AssetsModal {
+  const { store, signals } = context;
   const uploadButton = createElement("button", {
     className: "content-sheet__upload",
     type: "button",
@@ -67,7 +67,7 @@ export function createAssetsModal(store: Store, signals: SignalBus): AssetsModal
     ]),
   ]);
 
-  const exportPanel = exportBlock(store);
+  const exportPanel = exportBlock(context);
   const help = helpBlock();
   // Danger-tinted like the block's reset button - shares its .confirm-danger look, minus the
   // countdown-confirm behavior (a close needs no guard). Sits above the Help block it overlays,

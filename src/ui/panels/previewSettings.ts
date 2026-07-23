@@ -29,6 +29,14 @@ export interface PreviewSettingsGroup {
   readonly rows: readonly HTMLElement[];
 }
 
+/** A settings row plus a resync hook, so a store {@link PersistedStore.reset} (preset apply /
+ *  project load) can push the restored value into the control that renders it, not just the
+ *  store behind it. */
+interface SettingsRow<TValue> {
+  readonly element: HTMLElement;
+  readonly setValue: (value: TValue) => void;
+}
+
 /** The class pair every Lighting/Scene/Gizmo settings row shares. */
 const PREVIEW_ROW = {
   rowClassName: "preview-settings__row",
@@ -45,7 +53,8 @@ export function createPreviewSettingsGroups(
   const gizmoCurrent = gizmo.get();
 
   // Value controls are built inline (not just declared) so they can be resynced via set/setValue
-  // when an active environment overwrites sun* with HDRI-derived values (see applyEnvironmentState).
+  // when an active environment overwrites sun* with HDRI-derived values, or a whole-store reset
+  // restores factory defaults (see applyPreviewState).
   const sunEnabledControl = createSwitchControl({
     title: t("preview.enabled"),
     description: t("preview.enabledTip"),
@@ -89,36 +98,62 @@ export function createPreviewSettingsGroups(
   ];
   const sunRows = [sunToggleRow, ...sunValueRows];
   // The manual Sun+Hemisphere fallback fields - hidden outright once a preset takes over (see
-  // applyEnvironmentState). Sun's own rows are never touched here: it keeps deriving from the
-  // preset (below) without ever being blocked.
+  // applyPreviewState). Sun's own rows are never touched here: it keeps deriving from the
+  // environment (below) without ever being blocked.
+  const hemisphereToggleRow = toggleRow(
+    t("preview.enabled"),
+    current.hemisphere,
+    (on) => settings.update({ hemisphere: on }),
+    t("preview.enabledTip"),
+  );
+  const hemisphereSkyRow = colorRow(t("preview.skyColor"), current.hemisphereSky, (value) =>
+    settings.update({ hemisphereSky: value }),
+  );
+  const hemisphereGroundRow = colorRow(
+    t("preview.groundColor"),
+    current.hemisphereGround,
+    (value) => settings.update({ hemisphereGround: value }),
+  );
+  const hemisphereIntensityRow = numberRow(
+    t("field.intensity"),
+    current.hemisphereIntensity,
+    { min: 0, max: 5, step: 0.05 },
+    (value) => settings.update({ hemisphereIntensity: value }),
+  );
   const environmentFallbackRows = [
-    toggleRow(
-      t("preview.enabled"),
-      current.hemisphere,
-      (on) => settings.update({ hemisphere: on }),
-      t("preview.enabledTip"),
-    ),
-    colorRow(t("preview.skyColor"), current.hemisphereSky, (value) =>
-      settings.update({ hemisphereSky: value }),
-    ),
-    colorRow(t("preview.groundColor"), current.hemisphereGround, (value) =>
-      settings.update({ hemisphereGround: value }),
-    ),
-    numberRow(
-      t("field.intensity"),
-      current.hemisphereIntensity,
-      { min: 0, max: 5, step: 0.05 },
-      (value) => settings.update({ hemisphereIntensity: value }),
-    ),
+    hemisphereToggleRow,
+    hemisphereSkyRow,
+    hemisphereGroundRow,
+    hemisphereIntensityRow,
   ];
   const presetPickerRow = presetRow(store, signals);
+  const gridRow = toggleRow(
+    t("preview.grid"),
+    current.grid,
+    (on) => settings.update({ grid: on }),
+    t("preview.gridTip"),
+  );
+  const playerFigureRow = toggleRow(
+    t("preview.playerFigure"),
+    current.playerFigure,
+    (on) => settings.update({ playerFigure: on }),
+    t("preview.playerFigureTip"),
+  );
+  const backgroundRow = colorRow(t("preview.background"), current.background, (value) =>
+    settings.update({ background: value }),
+  );
   // An active environment (ADR-0004) fully replaces the manual fallback fields (hidden, not
   // greyed), and keeps resyncing Sun's value controls since main.ts overwrites sun* once the HDRI
-  // derivation finishes - Sun itself is never hidden or blocked, the user can still edit it.
-  const applyEnvironmentState = (): void => {
+  // derivation finishes - Sun itself is never hidden or blocked, the user can still edit it. Every
+  // other row resyncs unconditionally, so a store reset (preset apply / project load) redraws the
+  // whole Lighting/Scene tab from the restored defaults, not just Sun.
+  const applyPreviewState = (): void => {
     const latest = settings.get();
     const active = store.getSource().activeEnvironmentName !== undefined;
-    setRowsHidden(environmentFallbackRows, active);
+    setRowsHidden(
+      environmentFallbackRows.map((row) => row.element),
+      active,
+    );
     if (active) {
       sunEnabledControl.set(latest.sun);
       sunColorControl.setValue(latest.sunColor);
@@ -126,15 +161,42 @@ export function createPreviewSettingsGroups(
       sunAzimuthControl.setValue(latest.sunAzimuth);
       sunElevationControl.setValue(latest.sunElevation);
     }
+    hemisphereToggleRow.setValue(latest.hemisphere);
+    hemisphereSkyRow.setValue(latest.hemisphereSky);
+    hemisphereGroundRow.setValue(latest.hemisphereGround);
+    hemisphereIntensityRow.setValue(latest.hemisphereIntensity);
+    gridRow.setValue(latest.grid);
+    playerFigureRow.setValue(latest.playerFigure);
+    backgroundRow.setValue(latest.background);
   };
-  applyEnvironmentState();
-  // previewSettings changes cover Sun's own value resync (main.ts overwrites sun* there); the
-  // active environment itself now lives in the document, so its own changes need the source
-  // signals too - a whole-project replace (preset/import) commits "structural", a plain pick
-  // commits "view", never both (see Store.emitForKind).
-  settings.subscribe(applyEnvironmentState);
-  signals.on("sourceStructureChanged", applyEnvironmentState);
-  signals.on("sourceViewChanged", applyEnvironmentState);
+  applyPreviewState();
+  // previewSettings changes cover Sun's own value resync (main.ts overwrites sun* there) and a
+  // full reset; the active environment itself lives in the document, so its own changes need the
+  // source signals too - a whole-project replace (preset/import) commits "structural", a plain
+  // pick commits "view", never both (see Store.emitForKind).
+  settings.subscribe(applyPreviewState);
+  signals.on("sourceStructureChanged", applyPreviewState);
+  signals.on("sourceViewChanged", applyPreviewState);
+
+  const spaceRowControl = spaceRow(gizmoCurrent.space, (space) => gizmo.update({ space }));
+  const moveSnapRow = snapRow(t("preview.snapMove"), gizmoCurrent.move, (value) =>
+    gizmo.update({ move: value }),
+  );
+  const rotateSnapRow = snapRow(t("preview.snapRotate"), gizmoCurrent.rotate, (value) =>
+    gizmo.update({ rotate: value }),
+  );
+  const scaleSnapRow = snapRow(t("field.scale"), gizmoCurrent.scale, (value) =>
+    gizmo.update({ scale: value }),
+  );
+  // Resyncs the Gizmo tab on every gizmo-store change - unlike Lighting/Scene, nothing else in the
+  // editor writes to it, but a preset apply / project load still resets it to factory defaults.
+  gizmo.subscribe(() => {
+    const latest = gizmo.get();
+    spaceRowControl.setValue(latest.space);
+    moveSnapRow.setValue(latest.move);
+    rotateSnapRow.setValue(latest.rotate);
+    scaleSnapRow.setValue(latest.scale);
+  });
 
   return [
     {
@@ -145,41 +207,23 @@ export function createPreviewSettingsGroups(
         ...sunRows,
         sectionTitle(t("preview.environment")),
         presetPickerRow,
-        ...environmentFallbackRows,
+        ...environmentFallbackRows.map((row) => row.element),
       ],
     },
     {
       label: t("preview.scene"),
       glyph: viewportIcons.scene,
-      rows: [
-        toggleRow(
-          t("preview.grid"),
-          current.grid,
-          (on) => settings.update({ grid: on }),
-          t("preview.gridTip"),
-        ),
-        toggleRow(
-          t("preview.playerFigure"),
-          current.playerFigure,
-          (on) => settings.update({ playerFigure: on }),
-          t("preview.playerFigureTip"),
-        ),
-        colorRow(t("preview.background"), current.background, (value) =>
-          settings.update({ background: value }),
-        ),
-      ],
+      rows: [gridRow.element, playerFigureRow.element, backgroundRow.element],
     },
     {
       // Gizmo: the modal transform tool's axis space (Local/Global) and per-mode snap increments.
       label: t("preview.gizmo"),
       glyph: viewportIcons.gizmo,
       rows: [
-        spaceRow(gizmoCurrent.space, (space) => gizmo.update({ space })),
-        snapRow(t("preview.snapMove"), gizmoCurrent.move, (value) => gizmo.update({ move: value })),
-        snapRow(t("preview.snapRotate"), gizmoCurrent.rotate, (value) =>
-          gizmo.update({ rotate: value }),
-        ),
-        snapRow(t("field.scale"), gizmoCurrent.scale, (value) => gizmo.update({ scale: value })),
+        spaceRowControl.element,
+        moveSnapRow.element,
+        rotateSnapRow.element,
+        scaleSnapRow.element,
       ],
     },
   ];
@@ -191,16 +235,19 @@ function toggleRow(
   initial: boolean,
   onChange: (on: boolean) => void,
   description = "",
-): HTMLElement {
+): SettingsRow<boolean> {
   const control = createSwitchControl({ title: label, description, value: initial, onChange });
-  return field(label, control.element, PREVIEW_ROW);
+  return {
+    element: field(label, control.element, PREVIEW_ROW),
+    setValue: (value) => control.set(value),
+  };
 }
 
 /** The transform-space segmented control - Global (globe) / Local (cube) icons, not text. */
 function spaceRow(
   initial: "global" | "local",
   onChange: (space: "global" | "local") => void,
-): HTMLElement {
+): SettingsRow<"global" | "local"> {
   const control = createSegmentedControl(
     [
       {
@@ -219,7 +266,10 @@ function spaceRow(
     initial,
     onChange,
   );
-  return field(t("preview.space"), control.element, PREVIEW_ROW);
+  return {
+    element: field(t("preview.space"), control.element, PREVIEW_ROW),
+    setValue: (value) => control.setValue(value),
+  };
 }
 
 /** A snap row: an on/off toggle button plus the increment the mode rounds to. */
@@ -227,7 +277,7 @@ function snapRow(
   label: string,
   initial: SnapSetting,
   onChange: (setting: SnapSetting) => void,
-): HTMLElement {
+): SettingsRow<SnapSetting> {
   let state = initial;
   const toggle = createToggleButton({
     glyph: controlIcons.lock,
@@ -255,13 +305,27 @@ function snapRow(
     toggle.element,
     step.element,
   ]);
-  return field(label, value, PREVIEW_ROW);
+  return {
+    element: field(label, value, PREVIEW_ROW),
+    setValue(setting: SnapSetting): void {
+      state = setting;
+      toggle.set(setting.enabled);
+      step.setValue(setting.step);
+    },
+  };
 }
 
 /** A labelled color-picker row (opaque, no alpha); the swatch fills its value column. */
-function colorRow(label: string, initial: Rgba, onChange: (value: Rgba) => void): HTMLElement {
+function colorRow(
+  label: string,
+  initial: Rgba,
+  onChange: (value: Rgba) => void,
+): SettingsRow<Rgba> {
   const picker = new ColorPicker({ value: initial, alpha: false, onChange });
-  return field(label, picker.element, PREVIEW_ROW);
+  return {
+    element: field(label, picker.element, PREVIEW_ROW),
+    setValue: (value) => picker.setValue(value),
+  };
 }
 
 /** A labelled scrubbable numeric row. */
@@ -270,9 +334,12 @@ function numberRow(
   initial: number,
   bounds: { min?: number; max?: number; step?: number; precision?: number },
   onChange: (value: number) => void,
-): HTMLElement {
+): SettingsRow<number> {
   const control = new NumberControl({ value: initial, ...bounds, onChange });
-  return field(label, control.element, PREVIEW_ROW);
+  return {
+    element: field(label, control.element, PREVIEW_ROW),
+    setValue: (value) => control.setValue(value),
+  };
 }
 
 /** A muted subsection caption spanning the tab's full width (grid-column set in CSS). */

@@ -104,7 +104,7 @@ export class SceneEnvironment {
     });
     this.ground = new Mesh(this.groundGeometry, this.groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
-    this.ground.position.y = GROUND_Y;
+    this.ground.position.y = GROUND_Y - 0.025;
     this.ground.receiveShadow = true;
     scene.add(this.ground);
 
