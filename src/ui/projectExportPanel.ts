@@ -84,11 +84,11 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
 
   // Bundled starter projects - a small project-style row list, one per PROJECT_PRESETS entry
   // (the empty document first). Each apply is guarded the same way a per-asset delete is.
-  const examplesTitle = createElement("div", {
+  const presetsTitle = createElement("div", {
     className: "content-group__title",
-    textContent: t("content.examples"),
+    textContent: t("content.presetsTitle"),
   });
-  const examplesList = createElement(
+  const presetsList = createElement(
     "div",
     { className: "content-export__examples" },
     PROJECT_PRESETS.map((preset) => presetRow(context, preset)),
@@ -112,8 +112,8 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     nameField,
     jsonRow,
     typeScriptGroup,
-    examplesTitle,
-    examplesList,
+    presetsTitle,
+    presetsList,
   ]);
 
   const sync = (): void => {
@@ -214,9 +214,8 @@ function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
   ]);
 }
 
-/** Loads a preset's source (bundled JSON fetch, or the built-in empty document) and replaces the
- *  document with it - the same path a picked JSON file goes through, viewport settings reset
- *  included. */
+/** Loads a preset's bundled JSON and replaces the document with it - the same path a picked JSON
+ *  file goes through, viewport settings reset included. */
 async function applyPreset(context: EditorContext, preset: ProjectPreset): Promise<void> {
   const source = await loadPresetSource(preset);
   await hydrateEnvironmentBlobs(source.environments);

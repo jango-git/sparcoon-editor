@@ -1,0 +1,175 @@
+{
+  "format": "sparcoon-project",
+  "version": 1,
+  "source": {
+    "name": "Empty",
+    "scene": {
+      "vfx": {
+        "id": "vfx_1",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "transformTracks": []
+      },
+      "emitters": [
+        {
+          "id": "emitter_1",
+          "name": "Emitter",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_2": {
+                "id": "node_2",
+                "type": "constant",
+                "parameters": {
+                  "type": "color",
+                  "value": [
+                    1,
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "position": {
+                  "x": 264,
+                  "y": 96
+                }
+              }
+            },
+            "connections": [],
+            "outputBindings": [
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_2",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {
+                  "tryGpuSimulation": true
+                },
+                "position": {
+                  "x": 480,
+                  "y": 72
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 264
+                }
+              },
+              "node_5": {
+                "id": "node_5",
+                "type": "lifetime",
+                "parameters": {
+                  "min": 0.5,
+                  "max": 0.5
+                },
+                "position": {
+                  "x": 264,
+                  "y": 96
+                }
+              }
+            },
+            "connections": [],
+            "outputBindings": [
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_5",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [],
+          "events": [
+            {
+              "id": "event_4",
+              "kind": "play",
+              "time": 0,
+              "rate": 1,
+              "duration": 0
+            }
+          ],
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        }
+      ],
+      "activeEmitterId": "emitter_1",
+      "meshes": [],
+      "activeGraphKind": "emitter"
+    },
+    "assets": [],
+    "environments": [],
+    "meshAssets": [],
+    "timeline": {
+      "duration": 5,
+      "fps": 30
+    }
+  }
+}

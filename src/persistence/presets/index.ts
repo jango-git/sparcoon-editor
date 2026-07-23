@@ -14,11 +14,15 @@ import { deserializeProject } from "../projectFile";
 export interface ProjectPreset {
   readonly id: string;
   readonly labelKey: TKey;
-  /** Absent for the built-in empty document; otherwise a filename fetched from this directory. */
-  readonly fileName?: string;
+  /** Filename fetched from this directory. */
+  readonly fileName: string;
 }
 
-export const EMPTY_PRESET: ProjectPreset = { id: "empty", labelKey: "content.presetEmpty" };
+export const EMPTY_PRESET: ProjectPreset = {
+  id: "empty",
+  labelKey: "content.presetEmpty",
+  fileName: "empty.json",
+};
 export const SPARKS_PRESET: ProjectPreset = {
   id: "sparks",
   labelKey: "content.presetSparks",
@@ -28,14 +32,11 @@ export const SPARKS_PRESET: ProjectPreset = {
 /** Empty first, so it reads as the "start over" option. */
 export const PROJECT_PRESETS: readonly ProjectPreset[] = [EMPTY_PRESET, SPARKS_PRESET];
 
-export const DEFAULT_PROJECT_PRESET = SPARKS_PRESET;
+export const DEFAULT_PROJECT_PRESET = EMPTY_PRESET;
 
-/** Never throws - an unreadable/unreachable preset falls back to the empty document, with a
- *  console warning, the same way a corrupt saved document does. */
+/** Never throws - an unreadable/unreachable preset falls back to the programmatic empty document,
+ *  with a console warning, the same way a corrupt saved document does. */
 export async function loadPresetSource(preset: ProjectPreset): Promise<SourceState> {
-  if (preset.fileName === undefined) {
-    return createInitialState().source;
-  }
   try {
     // Resolve next to the bundle (dist/presets/...), mirroring the copy-locales build step
     // (i18n/index.ts) - a bare `preset.fileName` would resolve against the bundle chunk's own

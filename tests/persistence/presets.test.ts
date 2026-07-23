@@ -27,10 +27,16 @@ describe("bundled project presets", () => {
   });
 
   it("the Sparks preset's bundled JSON parses to a valid document", () => {
-    expect(SPARKS_PRESET.fileName).toBeDefined();
-    const source = deserializeProject(readBundledPreset(SPARKS_PRESET.fileName ?? ""));
+    const source = deserializeProject(readBundledPreset(SPARKS_PRESET.fileName));
     expect(source).toBeDefined();
     expect(source?.name).toBe("Sparks");
+    expect(source?.scene.emitters.length).toBeGreaterThan(0);
+  });
+
+  it("the Empty preset's bundled JSON parses to a valid document", () => {
+    const source = deserializeProject(readBundledPreset(EMPTY_PRESET.fileName));
+    expect(source).toBeDefined();
+    expect(source?.name).toBe("Empty");
     expect(source?.scene.emitters.length).toBeGreaterThan(0);
   });
 });
