@@ -117,7 +117,7 @@
   height: 15px;
 }
 
-/* A labelled toolbar control cluster (Frame, Length, FPS). */
+/* A labelled toolbar control cluster (Length, FPS). */
 .timeline__group {
   display: flex;
   align-items: center;
@@ -131,12 +131,6 @@
 }
 
 .timeline__unit {
-  color: var(--dim);
-}
-
-.timeline__readout {
-  font-size: var(--font-size-small);
-  font-variant-numeric: tabular-nums;
   color: var(--dim);
 }
 
@@ -356,14 +350,14 @@
    danger-tinted look is the shared `.confirm-danger`; this only sets the row-remove size. */
 .timeline-row__remove {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   font-size: 11px;
 }
 
 .timeline-row__remove svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 /* Mute control (outline eye): unlike `.timeline-row__action`, always shown (opacity 1) at rest, not
@@ -372,8 +366,8 @@
    the open/slashed-eye glyphs in script, not CSS. */
 .timeline-row__visibility {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -385,8 +379,8 @@
 }
 
 .timeline-row__visibility svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 .timeline-row__visibility:hover {
@@ -404,8 +398,8 @@
    entity's header hides them (its remove stays), so a resting timeline reads clean. */
 .timeline-row__action {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,8 +413,8 @@
 }
 
 .timeline-row__action svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 .timeline-row--active .timeline-row__action,
@@ -831,6 +825,107 @@
  * Drag the pill to pan; drag either end handle to zoom; ctrl/cmd + wheel over the lanes zooms to the
  * cursor. The pill's left/width mirror the visible fraction of the timeline.
  */
+/*
+ * Seconds ruler, docked above the grid. `rulerLane` is a flex sibling between two spacers sized to
+ * the label/inspector columns, so its own x origin already lines up with the lanes' below with no
+ * extra offset math (the flag's `left` needs none - see TimelineViewport). Border-bottom lives only
+ * on the two spacers, the scrollbar's own mirror image on the facing edge (bottom here, top there);
+ * the lane itself stays unbordered so the flag sits flush against the caret's triangle right below.
+ */
+/* Three columns, like the grid below: label/inspector-width spacers flanking a lane with its own
+   (darker) fill. The spacers deliberately do NOT reuse the colour of the column they cap - that
+   would read as a continuation of the outline/inspector panel rather than the ruler's own corner -
+   so they share the scrollbar's own corner tone instead (see .timeline__scrollbar below). */
+.timeline__ruler {
+  flex: none;
+  height: 20px;
+  display: flex;
+}
+
+/* No border-bottom on the ruler itself - only on these corner spacers. The lane in between stays
+   unbordered so the flag sits flush against the caret's top-cap triangle right below it; a border
+   there would draw a line between the two instead of one continuous shape. */
+.timeline__ruler-labels,
+.timeline__ruler-inspector {
+  flex: none;
+  background: color-mix(in srgb, var(--surface-raised) 88%, var(--panel-foreground));
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.timeline__ruler-labels {
+  width: var(--timeline-label-width);
+}
+
+.timeline__ruler-inspector {
+  width: var(--timeline-inspector-width);
+  border-left: 1px solid var(--border-soft);
+}
+
+.timeline__ruler-lane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  /* Clips here, not on the outer .timeline__ruler: a tick label (or the flag) near either edge is
+     an absolutely-positioned descendant, which paints above the plain in-flow spacer backgrounds
+     regardless of DOM order - without this, it draws over the label/inspector corners instead of
+     stopping at the lane's own edge. */
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-deep) 92%, var(--panel-foreground));
+}
+
+.timeline__ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-soft);
+}
+
+.timeline__ruler-tick-label {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The playhead's own flag (Blender-style): the caret's current frame, pinned over its x on the
+   ruler. Flush with the ruler's own bottom edge and wider than the caret's top-cap triangle right
+   below it (.timeline__playhead-cap--top), so the two read as one continuous shape instead of a
+   floating label over a disconnected line - no separate pointer/tail of its own, and no rounded
+   corners, matching the rest of the chrome. Colour matches the caret 1:1 (plain accent, or the
+   infinite variant), never its own fixed colour. Draggable/clickable like the caret (wired by the
+   panel, alongside the caret's own scrub listener) - never `pointer-events: none`. */
+.timeline__ruler-flag {
+  position: absolute;
+  top: 3px;
+  bottom: 0;
+  /* Reserves room for a 2-digit frame number even when the current one is shorter (e.g. "5"), so
+     the box doesn't narrow and re-widen as playback crosses single/double digits; a 3+ digit
+     number still grows it past this floor. */
+  min-width: calc(2ch + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-accent);
+  background: var(--accent);
+  z-index: 2;
+  cursor: ew-resize;
+}
+
+.timeline__ruler-flag--infinite {
+  background: var(--timeline-infinite);
+}
+
 /* The label column and inspector are cleared with padding (not margin) so the strip's own background
    fills them: the reserved gutter under the object list reads as a tone between the object-list
    column (surface-raised) and the scroll background, not a stark dark rectangle. */
@@ -848,7 +943,6 @@
   position: relative;
   flex: 1;
   height: 8px;
-  border-radius: 4px;
   background: color-mix(in srgb, var(--panel-foreground) 6%, transparent);
 }
 
@@ -857,7 +951,6 @@
   top: 0;
   bottom: 0;
   min-width: 18px;
-  border-radius: 4px;
   background: color-mix(in srgb, var(--panel-foreground) 22%, transparent);
   cursor: grab;
 }
@@ -888,7 +981,6 @@
   content: "";
   width: 2px;
   height: 10px;
-  border-radius: 1px;
   background: color-mix(in srgb, var(--panel-background) 55%, transparent);
 }
 

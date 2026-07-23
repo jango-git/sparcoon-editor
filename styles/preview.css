@@ -259,7 +259,9 @@
    is the shared subgroup-tier rule above. */
 .preview-settings__section-title {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  /* Extra room over the row-gap's own 6px, so a section reads apart from the previous one's last
+     row at a glance instead of looking like one more field in it. */
+  margin-top: 12px;
 }
 
 /* An active environment preset fully replaces the manual Environment fallback fields (ADR-0004) -

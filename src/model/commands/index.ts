@@ -80,3 +80,9 @@ export {
   setTimelineFps,
   updateEvent,
 } from "./timelineCommands";
+export {
+  clipboardItemTime,
+  pasteTimelineItems,
+  type ClipboardTimelineItem,
+  type PastedTimelineItem,
+} from "./timelineClipboardCommands";

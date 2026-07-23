@@ -160,10 +160,3 @@
 .middlebar__theme .middlebar__button--active {
   z-index: 1;
 }
-
-/* Theme switch: a `.segment-group` (light / auto / dark), sized to match the middlebar's other
-   28px controls instead of the segmented control's default 26px row height. */
-.middlebar__theme-switch .segment--icon {
-  width: 28px;
-  height: 28px;
-}

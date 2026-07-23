@@ -7,6 +7,8 @@ import { t } from "../../i18n";
 import {
   addBurstEvent,
   addPlayEvent,
+  clipboardItemTime,
+  pasteTimelineItems,
   removeEvent,
   removeKeyframe,
   removeTransformKeyframe,
@@ -15,6 +17,7 @@ import {
   setLiveParam,
   setProjectName,
   setTransformKeyframe,
+  type ClipboardTimelineItem,
 } from "../../model/commands";
 import {
   projectDisplayName,
@@ -51,6 +54,7 @@ import {
   timelineValueRows,
   type TimelineValueRow,
 } from "./timelineQueries";
+import { copyTimelineSelection } from "./timelineClipboard";
 import { buildLabel, buildMeshLabel } from "./timelineRowLabel";
 import { beginPlayheadScrub } from "./timelineScrub";
 import { beginItemDrag, type ItemDragContext } from "./timelineItemDrag";
@@ -80,6 +84,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   const selection = new Set<string>();
   let markers: Marker[] = [];
   let refByKey = new Map<string, ItemRef>();
+  let clipboard: readonly ClipboardTimelineItem[] = [];
 
   const duration = (): number => store.getSource().timeline.duration;
   const fps = (): number => store.getSource().timeline.fps;
@@ -93,9 +98,9 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     createElement("div", { className: "timeline__playhead-cap timeline__playhead-cap--top" }),
     createElement("div", { className: "timeline__playhead-cap timeline__playhead-cap--bottom" }),
   ]);
-  playhead.addEventListener("pointerdown", (down) =>
-    beginPlayheadScrub(down, { rows, transport, duration, fps }),
-  );
+  const scrubPlayhead = (down: PointerEvent): void =>
+    beginPlayheadScrub(down, { rows, transport, duration, fps });
+  playhead.addEventListener("pointerdown", scrubPlayhead);
   const stage = createElement("div", { className: "timeline__stage" }, [scroll, playhead]);
   const inspector = createElement("div", { className: "timeline__inspector" });
   const grid = createElement("div", { className: "timeline__grid" }, [stage, inspector]);
@@ -112,8 +117,15 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     duration,
     fps,
     progress: (): number => fraction(transport.getTime(), duration()),
+    currentTime: (): number => transport.getTime(),
+    isInfinite: (): boolean => transport.isInfinite(),
   });
+  element.prepend(viewport.rulerElement);
   element.append(viewport.element);
+  // The ruler flag scrubs exactly like the caret it names; a press anywhere else on the ruler
+  // scrubs too, so there is no dead zone between them.
+  viewport.flag.addEventListener("pointerdown", scrubPlayhead);
+  viewport.rulerLane.addEventListener("pointerdown", scrubPlayhead);
 
   // Repaint after any selection change: restyle the markers + rebuild the inspector. Shared by the
   // drag / marquee controllers (through their contexts) and the panel's own selection edits.
@@ -159,6 +171,26 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     }
     removeSelected();
   };
+  // Copy snapshots the selection's current values (no store write, so it never touches undo
+  // history); paste re-mints ids at the playhead, preserving the copied items' relative spacing.
+  const copySelection = (): void => {
+    if (selection.size === 0) {
+      return;
+    }
+    clipboard = copyTimelineSelection(store, selection, refByKey);
+  };
+  const pasteClipboard = (): void => {
+    if (clipboard.length === 0) {
+      return;
+    }
+    const earliest = Math.min(...clipboard.map(clipboardItemTime));
+    const pastedRefs = pasteTimelineItems(store, clipboard, transport.getTime() - earliest);
+    selection.clear();
+    for (const pastedRef of pastedRefs) {
+      selection.add(selectionKey(pastedRef));
+    }
+    refresh();
+  };
   router.registerPanel(EditorPanel.Timeline, [
     { code: "Delete", run: deleteSelection },
     { code: "Backspace", run: deleteSelection },
@@ -166,6 +198,9 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     { code: "KeyX", run: deleteSelection },
     // F frames the whole timeline into view (Blender-style "view all").
     { code: "KeyF", run: (): void => viewport.fitTimeline() },
+    // Same modifier pattern as the graph panel's own copy/paste (preventDefault: false on copy).
+    { code: "KeyC", modifier: true, run: copySelection, preventDefault: false },
+    { code: "KeyV", modifier: true, run: pasteClipboard },
   ]);
 
   /** Repaints only the playhead position - called on every transport tick. */

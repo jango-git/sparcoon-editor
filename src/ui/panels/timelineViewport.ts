@@ -9,17 +9,20 @@
  * each lane `zoom x` the viewport width (the label column stays fixed via sticky CSS), and
  * `scrollLeft` picks the visible slice. Because every marker/scrub/drag maps pointer-X through a
  * lane's live `getBoundingClientRect()`, they keep working under zoom with no change. This class
- * repositions the overlays that live outside the scroller: the caret, the gray margin gutters, and
- * the frame-tick spacing published to CSS.
+ * repositions the overlays that live outside the scroller: the caret, the gray margin gutters, the
+ * frame-tick spacing published to CSS, and the seconds ruler docked above the grid (with the
+ * caret's own current-frame flag pinned to it).
  *
  * View state is transient editor focus (like the transport), never persisted.
  */
 
+import { t } from "../../i18n";
+import { frameOf } from "../../model/frames";
 import { createElement } from "../dom";
 import { beginPointerDrag } from "../primitives/drag";
 import { fractionAcross } from "../primitives/geometry";
 import { clamp } from "../primitives/math";
-import { fraction, rangeSpan } from "./timelineFormat";
+import { fraction, rangeSpan, timeAtFraction, trimNumber } from "./timelineFormat";
 
 /** The visible window never shrinks below this fraction of the padded range (the max horizontal zoom). */
 const MIN_SPAN = 0.02;
@@ -33,21 +36,32 @@ const FIT_MARGIN = 0.05;
 const MINOR_TICK_MIN_PX = 9;
 /** Every Nth minor tick is a brighter major line (Blender-style major/minor rhythm). */
 const MAJOR_TICK_EVERY = 5;
+/** Smallest gap (px) between labelled ruler ticks - wider than a bare gridline needs, so the text
+ *  never crowds. */
+const RULER_LABEL_MIN_PX = 40;
 
-/** The 1-2-5 "nice" ladder of frames-per-tick, so tick density steps logarithmically with zoom. */
+/** The 1-2-5 "nice" ladder, so tick density steps logarithmically with zoom - shared by the lane's
+ *  frame-tick spacing (whole frames only) and the ruler's second-tick spacing (fractional seconds
+ *  allowed), which differ in unit and in how far the ladder is let to shrink. */
 const TICK_STEPS = [1, 2, 5];
 
-/** The smallest nice frames-per-tick that is at least `minFrames` (never finer than one frame). */
-function niceTickFrames(minFrames: number): number {
-  let decade = 1;
-  for (;;) {
+/**
+ * The smallest nice step (from the 1-2-5 ladder, scaled by powers of ten) that is at least
+ * `minValue`. `minDecade` floors how far the ladder's own power-of-ten base may shrink - 1 for the
+ * lane's frame ticks (fractional frames don't exist), 0 (unbounded) for the ruler's second ticks,
+ * which instead clamp the returned value to one frame's duration afterward - a floor that isn't
+ * itself a power of ten doesn't fit this parameter.
+ */
+function niceStep(minValue: number, minDecade = 1): number {
+  const largestTickStep = Math.max(...TICK_STEPS);
+  const decade = Math.max(minDecade, 10 ** Math.floor(Math.log10(minValue / largestTickStep)));
+  for (let candidateDecade = decade; ; candidateDecade *= 10) {
     for (const step of TICK_STEPS) {
-      const frames = step * decade;
-      if (frames >= minFrames) {
-        return frames;
+      const value = step * candidateDecade;
+      if (value >= minValue) {
+        return value;
       }
     }
-    decade *= 10;
   }
 }
 
@@ -66,16 +80,33 @@ export interface TimelineViewportConfig {
   readonly fps: () => number;
   /** The caret's position as a fraction [0, 1] across the padded lane. */
   readonly progress: () => number;
+  /** The playhead's raw time (seconds) - the ruler flag's frame number. */
+  readonly currentTime: () => number;
+  /** Whether an infinite play event is active - the flag matches the caret's own colour swap. */
+  readonly isInfinite: () => boolean;
 }
 
 export class TimelineViewport {
   /** The bottom scrollbar element to mount under the grid. */
   public readonly element: HTMLElement;
+  /** The seconds ruler to mount above the grid. */
+  public readonly rulerElement: HTMLElement;
+  /** The current-frame flag (Blender-style), pinned over the caret's x on the ruler - draggable
+   *  like the caret itself (wired by the panel, which owns the scrub gesture). */
+  public readonly flag: HTMLElement;
+  /** The ruler's tick-bearing zone, flexed between its fixed-width label/inspector spacers so
+   *  absolutely-positioned children (ticks, the flag) share the lanes' own coordinate space. A
+   *  press anywhere on it also scrubs, like the flag (wired by the panel alongside the flag's own
+   *  listener, which owns the scrub gesture). */
+  public readonly rulerLane: HTMLElement;
   private readonly thumb: HTMLElement;
   private readonly track: HTMLElement;
   /** Translucent gray washes over the padded margins before frame 0 and past the end. */
   private readonly gutterBefore: HTMLElement;
   private readonly gutterAfter: HTMLElement;
+  /** Ticks are rebuilt every repaint (their count/spacing changes with zoom); tracked separately
+   *  from the flag so a rebuild never has to recreate or re-measure that persistent element. */
+  private rulerTicks: HTMLElement[] = [];
   /** Visible fraction of the padded range; zoom = 1 / span. */
   private span = 1;
 
@@ -101,6 +132,19 @@ export class TimelineViewport {
     this.gutterBefore.hidden = true;
     this.gutterAfter.hidden = true;
     this.config.stage.append(this.gutterBefore, this.gutterAfter);
+
+    // Flanking spacers sized to the label/inspector columns; the lane between them gets its own
+    // (darker) fill so the strip reads as three columns, not one (colours defined in timeline.css).
+    const rulerLabels = createElement("div", { className: "timeline__ruler-labels" });
+    const rulerInspector = createElement("div", { className: "timeline__ruler-inspector" });
+    this.rulerLane = createElement("div", { className: "timeline__ruler-lane" });
+    this.flag = createElement("div", { className: "timeline__ruler-flag" });
+    this.rulerLane.append(this.flag);
+    this.rulerElement = createElement("div", { className: "timeline__ruler" }, [
+      rulerLabels,
+      this.rulerLane,
+      rulerInspector,
+    ]);
 
     this.thumb.addEventListener("pointerdown", (down) => this.beginThumbDrag(down));
     leftHandle.addEventListener("pointerdown", (down) => this.beginHandleDrag(down, "left"));
@@ -131,21 +175,31 @@ export class TimelineViewport {
     this.paint();
   }
 
-  /** Repositions the caret overlay for the current progress + scroll (called on every transport tick). */
+  /** Repositions the caret overlay and its ruler flag for the current progress + scroll (called on
+   *  every transport tick). */
   public positionPlayhead(): void {
     const lane = this.laneWidth();
     if (lane === 0) {
       this.config.playhead.hidden = true;
+      this.flag.hidden = true;
       return;
     }
     const visibleX = this.config.progress() * lane - this.config.scroll.scrollLeft;
     if (visibleX < -0.5 || visibleX > this.viewportLaneWidth() + 0.5) {
       // The caret's time lies outside the zoomed-in window - drop it rather than draw it on the labels.
       this.config.playhead.hidden = true;
+      this.flag.hidden = true;
       return;
     }
     this.config.playhead.hidden = false;
     this.config.playhead.style.left = `${this.labelWidth() + visibleX}px`;
+    this.flag.hidden = false;
+    // The flag lives inside `rulerLane`, a flex sibling of the label spacer (see its CSS) - unlike
+    // the caret above, its `left` needs no separate label-width offset.
+    this.flag.style.left = `${visibleX}px`;
+    this.flag.textContent = String(frameOf(this.config.currentTime(), this.config.fps()));
+    // Matches the caret's own colour swap while an infinite play event runs.
+    this.flag.classList.toggle("timeline__ruler-flag--infinite", this.config.isInfinite());
   }
 
   /** Frames the authored timeline [0, duration] (the F hotkey), with a small margin on each edge
@@ -168,6 +222,7 @@ export class TimelineViewport {
     this.positionPlayhead();
     this.updateGutters();
     this.updateTicks();
+    this.updateRuler();
   }
 
   private applyZoom(): void {
@@ -264,12 +319,65 @@ export class TimelineViewport {
       return;
     }
     const framePx = lane / rangeSpan(total) / fps;
-    const minorFrames = niceTickFrames(MINOR_TICK_MIN_PX / framePx);
+    const minorFrames = niceStep(MINOR_TICK_MIN_PX / framePx);
     const minorPx = minorFrames * framePx;
     const style = this.config.rows.style;
     style.setProperty("--timeline-tick-px", `${minorPx}px`);
     style.setProperty("--timeline-major-px", `${minorPx * MAJOR_TICK_EVERY}px`);
     style.setProperty("--timeline-tick-offset", `${fraction(0, total) * lane}px`);
+  }
+
+  /**
+   * Rebuilds the ruler's labelled ticks for the current zoom/scroll: always seconds and fractions
+   * of a second (the flag beside it names the frame instead - see positionPlayhead), on the same
+   * "nice" 1-2-5 ladder {@link updateTicks} steps the lane's own frame gridlines with, just in a
+   * continuous unit - so zooming in refines the label down through tenths, hundredths, thousandths
+   * of a second instead of switching units. Floored at one frame's duration regardless of how far
+   * the nice-step ladder itself would shrink: a finer step would label positions the caret can
+   * never actually land on (it always snaps to the frame grid). Ticks are plain children of
+   * `rulerLane`, tracked separately from the persistent flag so only they get torn down each
+   * repaint.
+   */
+  private updateRuler(): void {
+    for (const tick of this.rulerTicks) {
+      tick.remove();
+    }
+    this.rulerTicks = [];
+    const lane = this.laneWidth();
+    const total = this.config.duration();
+    const fps = this.config.fps();
+    if (lane <= 0 || total <= 0 || fps <= 0) {
+      return;
+    }
+    const pixelsPerSecond = lane / rangeSpan(total);
+    const secondsPerTick = Math.max(niceStep(RULER_LABEL_MIN_PX / pixelsPerSecond, 0), 1 / fps);
+    const scroll = this.config.scroll.scrollLeft;
+    const viewportLane = this.viewportLaneWidth();
+    const startTime = timeAtFraction(scroll / lane, total);
+    const endTime = timeAtFraction((scroll + viewportLane) / lane, total);
+    const firstSeconds = Math.ceil(startTime / secondsPerTick) * secondsPerTick;
+    for (let index = 0; ; index++) {
+      const seconds = firstSeconds + index * secondsPerTick;
+      if (seconds > endTime) {
+        break;
+      }
+      this.addRulerTick(
+        fraction(seconds, total) * lane - scroll,
+        `${trimNumber(seconds)}${t("transport.unitSeconds")}`,
+      );
+    }
+  }
+
+  /** Appends one labelled tick to `rulerLane` at pixel offset `x`. */
+  private addRulerTick(x: number, text: string): void {
+    const label = createElement("span", {
+      className: "timeline__ruler-tick-label",
+      textContent: text,
+    });
+    const tick = createElement("div", { className: "timeline__ruler-tick" }, [label]);
+    tick.style.left = `${x}px`;
+    this.rulerLane.append(tick);
+    this.rulerTicks.push(tick);
   }
 
   /** Zooms to `newSpan`, keeping the timeline fraction `focus` pinned to its current screen spot. */

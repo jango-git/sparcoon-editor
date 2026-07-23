@@ -7,9 +7,8 @@
     "light": "Light theme",
     "auto": "Auto theme",
     "dark": "Dark theme",
-    "lightTip": "Always use the light appearance.",
-    "autoTip": "Follow the operating system's appearance.",
-    "darkTip": "Always use the dark appearance."
+    "mode": "Theme",
+    "modeTip": "Light, Auto (follows the operating system), or Dark."
   },
   "inputMode": {
     "mouse": "Mouse navigation",

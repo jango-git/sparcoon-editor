@@ -1,13 +1,13 @@
 /**
- * The transport + timeline-settings controls, hoisted onto the middlebar: transport buttons, frame /
- * length / FPS fields (the editor's scrubbable {@link NumberControl}) and the "restart on rebuild"
- * toggle. Only drives {@link TransportStore} and the timeline-setting commands, and reflects
- * transport ticks + authored-length changes back into its fields; holds no document state.
+ * The transport + timeline-settings controls, hoisted onto the middlebar: transport buttons, length /
+ * FPS fields (the editor's scrubbable {@link NumberControl}) and the "restart on rebuild" toggle.
+ * Only drives {@link TransportStore} and the timeline-setting commands, and reflects transport ticks
+ * + authored-length changes back into its fields; holds no document state.
  */
 
 import { t } from "../i18n";
 import { setTimelineDuration, setTimelineFps } from "../model/commands";
-import { frameCount, frameOf, timeOfFrame } from "../model/frames";
+import { frameOf, timeOfFrame } from "../model/frames";
 import type { SignalBus } from "../model/signals";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
@@ -40,16 +40,6 @@ export function createTransportControls(
     t("transport.stepForward"),
     t("transport.stepForwardTip"),
   );
-  const readout = createElement("span", { className: "timeline__readout" });
-
-  const frameControl = new NumberControl({
-    value: 0,
-    min: 0,
-    step: 1,
-    precision: 0,
-    compact: true,
-    onChange: (frame): void => transport.seek(timeOfFrame(Math.max(0, Math.round(frame)), fps())),
-  });
   const lengthControl = new NumberControl({
     value: duration(),
     min: 0.1,
@@ -89,7 +79,6 @@ export function createTransportControls(
 
   const element = createElement("div", { className: "transport-bar" }, [
     createElement("div", { className: "timeline__transport" }, [back, play, forward]),
-    group(t("field.frame"), [frameControl.element, readout]),
     group(t("field.duration"), [lengthControl.element, unit(t("transport.unitSeconds"))]),
     group(t("field.fps"), [fpsControl.element]),
     restart.element,
@@ -103,8 +92,6 @@ export function createTransportControls(
   // tear out the SVG under the pointer, so a second press never lands as a `click`.
   let shownPlaying: boolean | undefined = undefined;
   const updateTransport = (): void => {
-    frameControl.setValue(frameOf(transport.getTime(), fps()));
-    readout.textContent = `/ ${frameCount(duration(), fps())}`;
     const playing = transport.isPlaying();
     if (playing !== shownPlaying) {
       shownPlaying = playing;

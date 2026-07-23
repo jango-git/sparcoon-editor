@@ -7,7 +7,7 @@
 import { getThemeMode, onThemeChanged, setThemeMode, type ThemeMode } from "../settings/theme";
 import { availableLocales, getLocale, localeBadge, LOCALE_NAMES, setLocale, t } from "../i18n";
 import { createElement } from "./dom";
-import { createSegmentedControl, type SegmentOption } from "./components/segmentedControl";
+import { createTriSwitchControl, type TriSwitchOption } from "./components/triSwitchControl";
 import { Dropdown } from "./components/dropdown";
 import { attachTooltip } from "./components/tooltip";
 import type { EditorContext } from "./editorContext";
@@ -32,29 +32,24 @@ function iconButton(
   return button;
 }
 
-/** A three-position segmented control (light / auto / dark) - one click picks that mode outright. */
+/** A three-position switch (light / auto / dark) - one click picks that mode outright. */
 function createThemeToggle(): HTMLElement {
-  const options: readonly SegmentOption<ThemeMode>[] = [
-    {
-      key: "light",
-      label: t("theme.light"),
-      glyph: themeIcons.light,
-      description: t("theme.lightTip"),
-    },
-    {
-      key: "auto",
-      label: t("theme.auto"),
-      glyph: themeIcons.auto,
-      description: t("theme.autoTip"),
-    },
-    {
-      key: "dark",
-      label: t("theme.dark"),
-      glyph: themeIcons.dark,
-      description: t("theme.darkTip"),
-    },
+  const options: readonly [
+    TriSwitchOption<ThemeMode>,
+    TriSwitchOption<ThemeMode>,
+    TriSwitchOption<ThemeMode>,
+  ] = [
+    { key: "light", glyph: themeIcons.light, label: t("theme.light") },
+    { key: "auto", glyph: themeIcons.auto, label: t("theme.auto") },
+    { key: "dark", glyph: themeIcons.dark, label: t("theme.dark") },
   ];
-  const control = createSegmentedControl(options, getThemeMode(), setThemeMode);
+  const control = createTriSwitchControl({
+    options,
+    title: t("theme.mode"),
+    description: t("theme.modeTip"),
+    value: getThemeMode(),
+    onChange: setThemeMode,
+  });
   control.element.classList.add("middlebar__theme-switch");
   onThemeChanged(() => control.setValue(getThemeMode()));
   return control.element;

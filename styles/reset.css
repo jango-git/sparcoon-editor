@@ -11,7 +11,7 @@
 
 :root {
   /* Shared vertical rhythm so an outline row lines up with a timeline row. */
-  --row-height: 26px;
+  --row-height: 30px;
 }
 
 *,

@@ -78,6 +78,6 @@ export function formatChannel(
   return formatValue(value);
 }
 
-function trimNumber(value: number): string {
+export function trimNumber(value: number): string {
   return Number.parseFloat(value.toFixed(3)).toString();
 }

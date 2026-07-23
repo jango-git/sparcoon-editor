@@ -103,7 +103,7 @@ function withBaseChannel(
 }
 
 /** Bakes `value` at time `t` on `entity`'s `channel` track (creating the track on first key). */
-function withTrackKey(
+export function withTrackKey(
   tracks: readonly TransformTrack[],
   channel: TransformChannel,
   key: Keyframe,

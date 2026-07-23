@@ -89,6 +89,21 @@ function updateTracks(
   }
 }
 
+/** Bakes `key` onto the track named `name` (creating the track on first key). */
+export function withNamedTrackKey(
+  tracks: readonly AnimationTrack[],
+  name: string,
+  key: Keyframe,
+): readonly AnimationTrack[] {
+  const existing = tracks.find((track) => track.name === name);
+  if (existing === undefined) {
+    return [...tracks, { name, keys: [key] }];
+  }
+  return tracks.map((track) =>
+    track.name === name ? { ...track, keys: withKey(track.keys, key) } : track,
+  );
+}
+
 /**
  * Bakes Timeline Value `name` = `value` at time `time` on `entity`'s track (creating it on first
  * key, overwriting any key already at `time`). The `I`-key action; `value` is the node's
@@ -106,15 +121,7 @@ export function setKeyframe(
     time: snapTime(store.getSource(), time),
     value: cloneValue(value),
   };
-  updateTracks(store, entity, (tracks) => {
-    const existing = tracks.find((track) => track.name === name);
-    if (existing === undefined) {
-      return [...tracks, { name, keys: [key] }];
-    }
-    return tracks.map((track) =>
-      track.name === name ? { ...track, keys: withKey(track.keys, key) } : track,
-    );
-  });
+  updateTracks(store, entity, (tracks) => withNamedTrackKey(tracks, name, key));
 }
 
 /**
@@ -193,7 +200,7 @@ function updateEvents(
 }
 
 /** Keeps the events list ordered by time, so the dispatcher and lane read them left-to-right. */
-function sortedByTime(events: readonly TimelineEvent[]): readonly TimelineEvent[] {
+export function sortedByTime(events: readonly TimelineEvent[]): readonly TimelineEvent[] {
   return [...events].sort((a, b) => a.time - b.time);
 }
 

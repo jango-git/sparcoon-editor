@@ -40,3 +40,57 @@
   outline: 1px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* Three-position variant (components/triSwitchControl.ts): same track language as .switch, but
+   taller (matches the middlebar's 28px controls) with the thumb always lit (there's no "off" among
+   three named modes) and carrying an icon, since left/center/right position alone doesn't read as
+   unambiguously as on/off does. */
+.tri-switch {
+  position: relative;
+  flex: none;
+  display: flex;
+  width: 72px;
+  height: 28px;
+  padding: 2px;
+  background: var(--surface-deep);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.tri-switch:hover {
+  border-color: var(--accent);
+}
+
+.tri-switch__zone {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tri-switch__zone:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Slides between the three zones via a CSS var the control sets on select (`--tri-switch-index`,
+   0/1/2) rather than a JS-computed pixel offset, so the geometry stays declarative in one place. */
+.tri-switch__thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: calc(2px + var(--tri-switch-index, 0) * (100% - 4px) / 3);
+  width: calc((100% - 4px) / 3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  pointer-events: none;
+}
+
+.tri-switch__thumb svg {
+  width: 14px;
+  height: 14px;
+}
