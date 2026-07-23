@@ -1,4 +1,4 @@
-# Sparcoon Editor
+# <img src="assets/logo.svg" width="30" height="30" alt="" align="top" /> Sparcoon Editor
 
 A browser-based node editor for authoring particle effects for the
 [sparcoon](https://github.com/jango-git/sparcoon/tree/experimental) runtime.
