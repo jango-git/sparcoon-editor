@@ -18,7 +18,7 @@ const CURSOR_OFFSET = 18;
 /**
  * Where the card is placed: at the anchor element's center (the default) or under the pointer. A
  * long timeline event is much wider than the cursor, so its hint tracks the pointer instead of
- * floating off at the element's centre (task 3).
+ * floating off at the element's centre.
  */
 export type TooltipAnchor = "element" | "pointer";
 

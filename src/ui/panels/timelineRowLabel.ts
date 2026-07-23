@@ -119,7 +119,7 @@ function buildRowLabel(config: RowLabelConfig): HTMLElement {
   children.push(buildVisibilityButton(config.hidden, config.onToggleHidden));
   if (config.removable) {
     // A trash button guarded by the countdown-confirm control: three clicks to remove, the button
-    // counting down and reverting to the trash glyph if left idle (task 2).
+    // counting down and reverting to the trash glyph if left idle.
     const remove = createElement("button", { className: "timeline-row__remove confirm-danger" });
     remove.type = "button";
     remove.innerHTML = actionIcons.trash;

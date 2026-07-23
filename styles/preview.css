@@ -37,7 +37,7 @@
   filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.9));
 }
 
-/* Viewport N-panel (tasks 1, 8, 11): a Blender-style panel in the preview's top-right, toggled by
+/* Viewport N-panel: a Blender-style panel in the preview's top-right, toggled by
    N. A vertical strip of tabs on its outer (right) edge - Item (the selected object's name +
    position / rotation / scale) plus the moved-in view-settings tabs (Sun / Hemisphere / Scene /
    Gizmo) - each revealing its own content panel to the left. */
@@ -48,7 +48,7 @@
   z-index: 3;
   display: flex;
   align-items: flex-start;
-  /* A small gap sets the open panel off from the tab strip rather than butting against it (task 3). */
+  /* A small gap sets the open panel off from the tab strip rather than butting against it. */
   gap: 4px;
 }
 
@@ -64,7 +64,7 @@
   flex-direction: column;
 }
 
-/* Vertical tab (task 6): icon over a top-to-bottom label. Stays visible when the panel is
+/* Vertical tab: icon over a top-to-bottom label. Stays visible when the panel is
    collapsed (it is the handle that reopens it) and wears the accent while its panel is open. */
 .viewport-transform__tab {
   flex: none;
@@ -115,7 +115,7 @@
 
 /* A tab's content panel - hidden unless it is the active, non-collapsed tab. Its width tracks its
    contents between a floor and a cap rather than a fixed 200px, so each tab is only as wide as it
-   needs and long localized labels widen the panel instead of clipping (tasks 4, 7). */
+   needs and long localized labels widen the panel instead of clipping. */
 .viewport-transform__panel {
   display: none;
   flex-direction: column;
@@ -133,14 +133,14 @@
   display: flex;
 }
 
-/* Name row (task 10): a "Name" label before the editable name field. */
+/* Name row: a "Name" label before the editable name field. */
 .viewport-transform__name-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-/* The selected object's icon before the name field (task 5) - emitter gem or VFX cube. */
+/* The selected object's icon before the name field - emitter gem or VFX cube. */
 .viewport-transform__name-icon {
   flex: none;
   width: 16px;
@@ -158,7 +158,7 @@
 
 .viewport-transform__name {
   flex: 1;
-  /* A floor so the max-content panel still gives the name field a usable width (task 4). */
+  /* A floor so the max-content panel still gives the name field a usable width. */
   min-width: 110px;
   height: 22px;
   padding: 0 6px;
@@ -196,14 +196,14 @@
 
 .viewport-transform__comp .number-control {
   flex: 1;
-  /* A floor so the axis fields keep a scrub target under the max-content panel (task 4). */
+  /* A floor so the axis fields keep a scrub target under the max-content panel. */
   min-width: 64px;
 }
 
 /* Preview view-settings rows (Sun / Hemisphere / Scene / Gizmo). The tabs themselves live in the
    viewport N-panel (.viewport-transform); this grid lays out each panel's rows in two columns that
    are uniform across the whole tab - a label column sized to the widest label, and a control column
-   that every control fills (task 1). Each row is `display: contents` so its label + single value
+   that every control fills. Each row is `display: contents` so its label + single value
    cell drop straight into these shared columns. */
 .preview-settings {
   display: grid;
@@ -288,7 +288,7 @@
   gap: 6px;
 }
 
-/* A labelled icon+text button (task 9): "+ Spawn emitter". */
+/* A labelled icon+text button: "+ Spawn emitter". */
 .viewport-objects__button {
   height: 28px;
   display: flex;

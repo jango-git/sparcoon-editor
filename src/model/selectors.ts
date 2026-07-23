@@ -95,7 +95,7 @@ export function selectSceneCost(store: Store): number {
 
 /**
  * Whether the scene holds an infinite play event (a `play` with `duration` 0): the timeline never
- * ends, so the transport parks the caret at the last frame while the sim runs on (task 2).
+ * ends, so the transport parks the caret at the last frame while the sim runs on.
  */
 export function hasInfinitePlay(store: Store): boolean {
   return store

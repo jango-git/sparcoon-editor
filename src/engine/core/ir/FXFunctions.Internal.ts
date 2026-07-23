@@ -201,8 +201,8 @@ float noise(vec3 p){
 /**
  * The scalar (CPU/behavior) twin of {@link FX_NOISE_GLSL_STANDARD_HELPER}: JS has no `int` type
  * or ES-1.00-style bitwise restriction, so the JS form always uses the integer hash (matching
- * `glslStandard`, never `glslBaseline`) - the same symmetry `snoise` used to have between GLSL and
- * JS, now anchored on the cheaper/higher-quality primitive instead of simplex. `Math.imul` plus
+ * `glslStandard`, never `glslBaseline`) - keeping GLSL and JS symmetric on the cheaper/higher-
+ * quality integer-hash primitive rather than simplex. `Math.imul` plus
  * `| 0` truncation at each step mirrors GLSL's 32-bit `int` wraparound so the two tracks agree.
  * Takes vector components as separate float args (see the `noise` case in `scalarize`).
  */

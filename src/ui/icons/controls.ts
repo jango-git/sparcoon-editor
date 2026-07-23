@@ -39,7 +39,7 @@ export const controlIcons = {
     <path d="M3.5 8.5 6.5 11.5 12.5 4.5"/>
   </svg>`,
 
-  // Snap lock (task 5): a padlock - the gizmo's per-mode snap toggles read as "lock to increment".
+  // Snap lock: a padlock - the gizmo's per-mode snap toggles read as "lock to increment".
   lock: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="3.5" y="7" width="9" height="6.4" rx="1"/>
     <path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/>

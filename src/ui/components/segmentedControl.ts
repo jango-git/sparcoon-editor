@@ -17,7 +17,7 @@ export interface SegmentOption<TKey extends string> {
   readonly label: string;
   /** An icon segment: renders this glyph instead of the label text, with `label` as its tooltip. */
   readonly glyph?: string;
-  /** Second (muted) tooltip line - what this option does. Shown on icon segments (task 5). */
+  /** Second (muted) tooltip line - what this option does. Shown on icon segments. */
   readonly description?: string;
 }
 

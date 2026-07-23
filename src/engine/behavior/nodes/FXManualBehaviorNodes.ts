@@ -58,7 +58,7 @@ export function registerManualBehaviorNodes(registry: FXNodeRegistry<FXBehaviorN
 
 /**
  * Whitelists a manual node's `phase` param, rejecting a malformed value loudly rather than
- * silently defaulting it to `fallback` (audit-4 N5) - mirrors `coerceStage` in `FXManualRenderNodes.ts`.
+ * silently defaulting it to `fallback` - mirrors `coerceStage` in `FXManualRenderNodes.ts`.
  */
 function coercePhase(phase: unknown, fallback: FXBehaviorPhase): FXBehaviorPhase {
   if (phase === undefined) {

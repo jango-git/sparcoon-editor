@@ -46,7 +46,7 @@ export function describeEvent(event: TimelineEvent): string {
   if (event.kind === "burst") {
     return t("timeline.burstTooltip", { t: trimNumber(event.time), count: String(event.count) });
   }
-  // A play with duration 0 emits forever (task 2) - its tooltip says so instead of "0s".
+  // A play with duration 0 emits forever - its tooltip says so instead of "0s".
   if (event.duration <= 0) {
     return t("timeline.playInfiniteTooltip", {
       t: trimNumber(event.time),

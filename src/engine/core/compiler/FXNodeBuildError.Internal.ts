@@ -3,7 +3,7 @@ import { FXCompilerErrorException } from "./FXCompilerError";
 
 /**
  * Normalizes a build-time throw into an {@link FXCompilerErrorException} carrying the node's id,
- * so a code-gen-only failure (audit-3 M4) is node-attributed instead of an untagged crash.
+ * so a code-gen-only failure is node-attributed instead of an untagged crash.
  */
 export function tagNodeBuildError(
   error: unknown,

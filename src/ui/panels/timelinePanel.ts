@@ -200,7 +200,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
       }
     }
     // A growing filler row carries the timeline visual (ticks / gutters / caret) and its lane
-    // interactions down over any space left below the objects (task 7).
+    // interactions down over any space left below the objects.
     rows.append(buildFillerRow(total));
     finishRender();
   }
@@ -214,7 +214,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     ]);
   }
 
-  /** The per-type accent class carrying an entity's `--row-accent` hue (task 3). */
+  /** The per-type accent class carrying an entity's `--row-accent` hue. */
   function rowTypeClass(entity: SceneEntity): string {
     switch (entity.kind) {
       case "emitter":
@@ -316,7 +316,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
           },
         ]),
     );
-    // The header lane also mirrors every keyframe from the emitter's sub-rows (task 6), so its
+    // The header lane also mirrors every keyframe from the emitter's sub-rows, so its
     // animation reads at a glance even when the object is collapsed.
     appendSummaryKeys(eventLane, [...emitter.transformTracks, ...emitter.tracks], total);
     const header = createElement("div", { className: headerClass(entity, active) }, [
@@ -384,7 +384,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   /**
    * One Timeline Value sub-row: label (name + add-key + live toggle) and its keyframe lane, empty
    * until `row.track` exists. Shown for every name a `timeline-value` node declares, whether or not
-   * it has been keyframed yet (task: show timeline-value rows immediately).
+   * it has been keyframed yet.
    */
   function buildTimelineValueRow(
     entity: SceneEntity,
@@ -467,7 +467,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
         time,
         channelValueAt(base, tracks, channel, time),
       );
-    // The label's add-key button inserts at the caret (task 5); the lane's context menu at the click.
+    // The label's add-key button inserts at the caret; the lane's context menu at the click.
     const label = buildChannelLabel(
       entity,
       channel,

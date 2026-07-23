@@ -113,7 +113,7 @@ async function bootstrap(): Promise<void> {
   // Gizmo preferences: axis space (Local/Global) + per-mode snap increments.
   const gizmoSettings = new GizmoSettingsStore();
   // How the editor is navigated (mouse vs trackpad) - one global state read by the graph and the
-  // viewport, set from the middlebar toggle (tasks 11-12).
+  // viewport, set from the middlebar toggle.
   const inputMode = new InputModeState();
   const context: EditorContext = {
     store,
@@ -140,7 +140,7 @@ async function bootstrap(): Promise<void> {
     () => transport.isPlaying(),
     shell.reportStats,
   );
-  // Viewport navigation follows the global input mode (task 12): touchpad pans on two-finger
+  // Viewport navigation follows the global input mode: touchpad pans on two-finger
   // scroll and pinch-zooms; mouse keeps the wheel-zoom.
   const applyInputMode = (): void => coordinator.setTouchpad(inputMode.mode === InputMode.Touchpad);
   inputMode.onChange(applyInputMode);
@@ -288,7 +288,7 @@ async function bootstrap(): Promise<void> {
         ),
     },
   ]);
-  // Left-click (no drag) picks via raycast (task 9); a moved pointer (orbit) or the modal transform
+  // Left-click (no drag) picks via raycast; a moved pointer (orbit) or the modal transform
   // tool owning the pointer both suppress it. Bound on the container so overlay dead-zones still resolve.
   {
     const PICK_THRESHOLD = 4;

@@ -48,7 +48,7 @@ export class FXBehaviorNodeStoreAttribute extends FXBehaviorNode {
   }
 
   /** All params (`name`/`type`/`phase`) are structural: none can be re-applied under a stable
-   * id, so an in-place change is rejected as `bad-param` (audit-3 R5). */
+   * id, so an in-place change is rejected as `bad-param`. */
   public override applyParams(params: Readonly<Record<string, unknown>>): void {
     checkStructuralParam(params, "name", this.attributeRequest.name);
     checkStructuralParam(params, "type", this.attributeRequest.type.id, NUMERIC_VALUE_TYPES);

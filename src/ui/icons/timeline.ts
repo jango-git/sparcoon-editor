@@ -47,7 +47,7 @@ export const timelineIcons = {
   </svg>`,
 
   // Infinite: a lemniscate - the play event's "runs forever" toggle, matching the infinite marker's
-  // own gradient (task: infinite toggle).
+  // own gradient.
   infinite: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M11.54 5.64C14.5 5.64 14.5 10.28 11.54 10.28 8.59 10.28 7.41 5.64 4.15 5.64 1.5 5.64 1.5 10.28 4.15 10.28 7.41 10.28 8.59 5.64 11.54 5.64Z"/>
   </svg>`,

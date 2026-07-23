@@ -183,7 +183,7 @@ function toggleRow(
   return field(label, control.element, PREVIEW_ROW);
 }
 
-/** The transform-space segmented control - Global (globe) / Local (cube) icons, not text (task 6). */
+/** The transform-space segmented control - Global (globe) / Local (cube) icons, not text. */
 function spaceRow(
   initial: "global" | "local",
   onChange: (space: "global" | "local") => void,
@@ -237,7 +237,7 @@ function snapRow(
     },
   });
 
-  // A single value cell (lock toggle + step) so the row keeps the two-column grid (task 1).
+  // A single value cell (lock toggle + step) so the row keeps the two-column grid.
   const value = createElement("div", { className: "preview-settings__value" }, [
     toggle.element,
     step.element,
@@ -245,7 +245,7 @@ function snapRow(
   return field(label, value, PREVIEW_ROW);
 }
 
-/** A labelled color-picker row (opaque, no alpha); the swatch fills its value column (tasks 1, 8). */
+/** A labelled color-picker row (opaque, no alpha); the swatch fills its value column. */
 function colorRow(label: string, initial: Rgba, onChange: (value: Rgba) => void): HTMLElement {
   const picker = new ColorPicker({ value: initial, alpha: false, onChange });
   return field(label, picker.element, PREVIEW_ROW);

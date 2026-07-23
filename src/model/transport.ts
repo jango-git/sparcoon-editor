@@ -16,7 +16,7 @@ export class TransportStore {
   /**
    * @param duration Accessor for the authored timeline length (seconds); read every tick.
    * @param infinite Accessor for whether the timeline is infinite (an infinite play event exists):
-   *   playback then parks the caret at the last frame instead of looping (task 2).
+   *   playback then parks the caret at the last frame instead of looping.
    */
   constructor(
     private readonly duration: () => number,
@@ -117,7 +117,7 @@ export class TransportStore {
     if (this.lastTimestamp !== undefined && duration > 0) {
       const deltaTime = (timestamp - this.lastTimestamp) / 1000;
       // An infinite timeline parks the caret at the last frame while the sim (gated on isPlaying,
-      // not the caret) keeps running past it (task 2); otherwise loop back to the start.
+      // not the caret) keeps running past it; otherwise loop back to the start.
       this.time = this.infinite()
         ? Math.min(this.time + deltaTime, duration)
         : (this.time + deltaTime) % duration;

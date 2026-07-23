@@ -16,7 +16,7 @@ export const viewportIcons = {
   </svg>`,
 
   // Gizmo (transform tool): a four-way move manipulator - arrows out of a common centre. Kept
-  // visually distinct from the Scene tripod so the two tabs no longer share a glyph (task 2).
+  // visually distinct from the Scene tripod so the two tabs do not share a glyph.
   gizmo: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M8 2.4v11.2M2.4 8h11.2"/>
     <path d="M6.4 4 8 2.4 9.6 4M6.4 12 8 13.6 9.6 12M4 6.4 2.4 8 4 9.6M12 6.4 13.6 8 12 9.6"/>

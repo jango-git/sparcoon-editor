@@ -139,7 +139,7 @@ export class SceneEnvironment {
     this.playerGeometry = new EdgesGeometry(new BoxGeometry(...PLAYER_SIZE));
     this.playerMaterial = new LineBasicMaterial({ color: 0x00e0a0 });
     this.player = new LineSegments(this.playerGeometry, this.playerMaterial);
-    // Offset +1 on x so the figure stands clear of the emitter origin (task 4).
+    // Offset +1 on x so the figure stands clear of the emitter origin.
     this.player.position.set(1, GROUND_Y + PLAYER_SIZE[1] / 2, 0);
     scene.add(this.player);
 

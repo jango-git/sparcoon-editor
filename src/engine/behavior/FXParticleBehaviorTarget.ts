@@ -51,7 +51,7 @@ export interface FXKernelTargetOutput {
  * these, one per phase; the compiler routes each node to its phase target by its declared
  * phase. Described as data (not code) so a host can define its own target without touching
  * the kernel context/builder. `integration` (structured epilogue writes) is unused by the
- * default particle targets - motion is now an explicit `integrate-motion` graph node - but
+ * default particle targets - motion is an explicit `integrate-motion` graph node instead - but
  * stays available for a custom target.
  */
 export interface FXKernelTarget {
@@ -143,9 +143,9 @@ const POSITION_BUFFER = FX_CORE_POSITION;
 const LIFECYCLE_BUFFER = FX_CORE_LIFECYCLE;
 
 /**
- * The core builtins a node may read: position and age/lifetime/id. Everything else that used to
- * be a builtin (velocity, scale, rotation, torque, per-particle randoms) is now an ordinary
- * user-declared attribute, read through the attribute channel instead.
+ * The core builtins a node may read: position and age/lifetime/id. Every other per-particle value
+ * (velocity, scale, rotation, torque, per-particle randoms) is an ordinary user-declared attribute,
+ * read through the attribute channel instead.
  */
 const scalarReadInputs: readonly FXKernelTargetInput[] = [
   { name: "PARTICLE_POSITION_X", type: FLOAT, offsets: [FX_POSITION_X], buffer: POSITION_BUFFER },

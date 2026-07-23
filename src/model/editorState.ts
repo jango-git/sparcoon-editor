@@ -99,7 +99,7 @@ export interface EmitterDoc {
   readonly transformTracks: readonly TransformTrack[];
   /**
    * Transform channels excluded from the TS export and left for the consumer to pose directly
-   * through the exported effect's `getEmitter`/`getMesh` (task: fake tracks / live update).
+   * through the exported effect's `getEmitter`/`getMesh`.
    * Independent of `transformTracks` - a channel can be live with or without keyframes (any
    * keyframes just never reach the export), so marking/unmarking never depends on track existence.
    */
@@ -107,12 +107,12 @@ export interface EmitterDoc {
   /** Timeline Value names excluded from the export and driven only through `setEmitterParam`/
    * `setMeshParam` instead. See {@link liveChannels} - independent of `tracks`. */
   readonly liveParams: readonly string[];
-  /** Hidden in the preview + outline (task: mute). Editor-only - never affects the TS export. */
+  /** Hidden in the preview + outline. Editor-only - never affects the TS export. */
   readonly hidden?: boolean;
 }
 
 /**
- * The **VFX** entity: the single group that owns every emitter in the scene (task 5). It carries
+ * The **VFX** entity: the single group that owns every emitter in the scene. It carries
  * its own transform + transform tracks so the whole effect can be posed and animated as one unit,
  * and appears in the timeline as the top entity above the emitters.
  *
@@ -154,7 +154,7 @@ export interface VfxMeshDoc {
   readonly liveChannels: readonly TransformChannel[];
   /** See {@link EmitterDoc.liveParams}. */
   readonly liveParams: readonly string[];
-  /** Hidden in the preview + outline (task: mute). Editor-only - never affects the TS export. */
+  /** Hidden in the preview + outline. Editor-only - never affects the TS export. */
   readonly hidden?: boolean;
 }
 

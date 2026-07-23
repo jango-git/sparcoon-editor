@@ -69,9 +69,9 @@ export class FXBehaviorNodeReadAttribute extends FXBehaviorNode {
   }
 
   /**
-   * `name`/`type` are structural - an in-place change is rejected as `bad-param` (audit-3 R5).
+   * `name`/`type` are structural - an in-place change is rejected as `bad-param`.
    * `phase` is inferred, so it is only checked for a legal spelling; a malformed value still
-   * fails loudly (audit-4 N5).
+   * fails loudly.
    */
   public override applyParams(params: Readonly<Record<string, unknown>>): void {
     checkAttributeStructuralParams(params, this.sourceName, this.valueType);

@@ -34,7 +34,7 @@ const MESH_GEM_RADIUS = 0.15;
 
 const COLOR_IDLE = new Color(0x8894a6);
 
-/** The selected-outline tint for `kind` - its shared accent hue (task 3), as an sRGB color. */
+/** The selected-outline tint for `kind` - its shared accent hue, as an sRGB color. */
 function selectedColor(kind: MarkerKind): Color {
   return new Color().setHSL(
     ENTITY_ACCENT_HUE[kind] / 360,
@@ -47,7 +47,7 @@ function selectedColor(kind: MarkerKind): Color {
 export interface GizmoMarker {
   /** The Object3D to add under the tracked object - moves/rotates/scales with it. */
   readonly object: Object3D;
-  /** Invisible mesh sized to the gizmo, raycast to pick this object in the viewport (task 9). */
+  /** Invisible mesh sized to the gizmo, raycast to pick this object in the viewport. */
   readonly pickTarget: Object3D;
   /** Tints the outline to show whether this object is the selected one. */
   setSelected(selected: boolean): void;

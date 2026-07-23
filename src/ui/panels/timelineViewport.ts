@@ -73,7 +73,7 @@ export class TimelineViewport {
   public readonly element: HTMLElement;
   private readonly thumb: HTMLElement;
   private readonly track: HTMLElement;
-  /** Translucent gray washes over the padded margins before frame 0 and past the end (tasks 3, 4). */
+  /** Translucent gray washes over the padded margins before frame 0 and past the end. */
   private readonly gutterBefore: HTMLElement;
   private readonly gutterAfter: HTMLElement;
   /** Visible fraction of the padded range; zoom = 1 / span. */
@@ -221,7 +221,7 @@ export class TimelineViewport {
 
   /**
    * Grays the padded margins that fall inside the view: the strip before frame 0 and the strip past
-   * the authored end (tasks 3, 4). Both are translucent washes over the lanes, so the per-row zebra
+   * the authored end. Both are translucent washes over the lanes, so the per-row zebra
    * still reads through them; they are positioned in the same visible-X space as the caret.
    */
   private updateGutters(): void {
@@ -252,7 +252,7 @@ export class TimelineViewport {
   }
 
   /**
-   * Publishes the frame-tick spacing to CSS (task 6): the lanes paint vertical gridlines sized by
+   * Publishes the frame-tick spacing to CSS: the lanes paint vertical gridlines sized by
    * `--timeline-tick-px` / `--timeline-major-px`. The interval steps 1-2-5 frames with zoom so ticks
    * stay legible, never finer than one frame, aligned to frame 0 by `--timeline-tick-offset`.
    */

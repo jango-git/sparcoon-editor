@@ -265,7 +265,7 @@
   border-color: var(--accent);
 }
 
-/* Muted (task: infinite-play toggle): grayed and inert - setDisabled(true) also forces the
+/* Muted: grayed and inert - setDisabled(true) also forces the
    control back to "view" and cancels any in-flight scrub, so this and [data-state="view"] always
    apply together. */
 .number-control--disabled {

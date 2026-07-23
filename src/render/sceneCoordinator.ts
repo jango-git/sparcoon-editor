@@ -109,7 +109,7 @@ export class SceneCoordinator {
     this.controls.enableZoom = false;
     this.controls.update();
 
-    // Touchpad navigation (task 12): touchpad mode pans/pinch-zooms, mouse mode dollies - onWheel
+    // Touchpad navigation: touchpad mode pans/pinch-zooms, mouse mode dollies - onWheel
     // drives both (OrbitControls' own wheel-zoom stays off). On the container so it works over overlays.
     container.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
 
@@ -159,7 +159,7 @@ export class SceneCoordinator {
   }
 
   /**
-   * Switches viewport navigation between mouse and touchpad (task 12). In touchpad mode a plain
+   * Switches viewport navigation between mouse and touchpad. In touchpad mode a plain
    * two-finger scroll pans and a pinch (Ctrl+wheel) zooms; in mouse mode the wheel dollies. Either
    * way {@link onWheel} drives the zoom - OrbitControls' own wheel-zoom stays off (set in the ctor).
    */

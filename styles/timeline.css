@@ -20,7 +20,7 @@
 .timeline {
   --timeline-label-width: 232px;
   --timeline-inspector-width: 240px;
-  /* Frame-tick + zebra tints, shared by the lane background layers (tasks 4, 6). The ticks are kept
+  /* Frame-tick + zebra tints, shared by the lane background layers. The ticks are kept
      faint so they read as a grid, not foreground content. */
   --timeline-zebra: color-mix(in srgb, var(--panel-foreground) 3%, transparent);
   --timeline-tick-line: color-mix(in srgb, var(--panel-foreground) 4%, transparent);
@@ -45,7 +45,7 @@
 }
 
 /* Transport buttons match the middlebar's icon-only cells (28x28) so the whole bar reads as one
-   family (task 3). */
+   family. */
 .timeline__transport-btn {
   width: 28px;
   height: 28px;
@@ -73,7 +73,7 @@
   border-color: var(--accent);
 }
 
-/* Icon toggle button - replaces checkboxes (tasks 2, 8). Off reads as a muted icon cell;
+/* Icon toggle button - replaces checkboxes. Off reads as a muted icon cell;
    when on it lights up with a filled accent background (STYLE_GUIDE section 4.1 look). */
 .toggle-button {
   flex: none;
@@ -186,7 +186,7 @@
     var(--timeline-label-width) + (100% - var(--timeline-label-width)) * var(--timeline-zoom, 1)
   );
   /* Fill the scroll viewport as a column so the trailing filler row can grow into any space left
-     below the object rows (task 7). Object rows keep their fixed height (flex: none). */
+     below the object rows. Object rows keep their fixed height (flex: none). */
   display: flex;
   flex-direction: column;
   min-height: 100%;
@@ -199,7 +199,7 @@
   height: var(--row-height);
 }
 
-/* Filler row (task 7): grows to fill the space below the last object so the lane visual (ticks +
+/* Filler row: grows to fill the space below the last object so the lane visual (ticks +
    gutters + caret) and its click/marquee/pan interactions continue to the bottom of the panel. */
 .timeline-row--filler {
   flex: 1 1 auto;
@@ -211,7 +211,7 @@
   cursor: default;
 }
 
-/* Each entity type carries its own accent hue (task 3) via --row-accent, consumed by the icon badge,
+/* Each entity type carries its own accent hue via --row-accent, consumed by the icon badge,
    the selected-block tint and this object's keyframes. Defaults to the app accent (untyped rows). */
 .timeline-row--emitter {
   --row-accent: var(--accent-emitter);
@@ -255,7 +255,7 @@
   cursor: pointer;
 }
 
-/* Hover an object's label in the OUTLINE column to highlight its whole block - name + lane (task 2);
+/* Hover an object's label in the OUTLINE column to highlight its whole block - name + lane;
    hovering the lane (the timeline) does not. Selectable object rows only, excluding the active one
    (already accent-tinted). The label brightens on its own :hover; the lane follows via :has(). */
 .timeline-row:not(.timeline-row--track):not(.timeline-row--filler):not(.timeline-row--active)
@@ -271,8 +271,8 @@
   background-color: color-mix(in srgb, var(--panel-foreground) 6%, transparent);
 }
 
-/* The tinted background alone marks the active row (task 6) - no left accent stripe. Tinted by the
-   entity type's accent (task 3). */
+/* The tinted background alone marks the active row - no left accent stripe. Tinted by the
+   entity type's accent. */
 .timeline-row--active .timeline-row__label {
   color: var(--panel-foreground);
   background: color-mix(in srgb, var(--row-accent, var(--accent)) 16%, var(--surface-raised));
@@ -290,7 +290,7 @@
 }
 
 /* Object badge before an entity's name (emitter gem / VFX cube / mesh). Carries the entity type's
-   accent hue (task 3) so the types read apart at a glance: a muted tint at rest, its full accent
+   accent hue so the types read apart at a glance: a muted tint at rest, its full accent
    when hovered or active. */
 .timeline-row__icon {
   flex: none;
@@ -317,7 +317,7 @@
 
 /* Value sub-row: an animated track listed under its emitter - indented, with its name at the
    start of the label and only that track's keyframes on its lane. Sub-rows only render for the
-   active object, so they carry a *paler* wash of the same accent as their header (task 2). */
+   active object, so they carry a *paler* wash of the same accent as their header. */
 .timeline-track__label {
   padding-left: 28px;
   color: var(--muted);
@@ -351,7 +351,7 @@
   border: 1px solid var(--accent);
 }
 
-/* Remove control (task 2): a square-bordered trash button guarded by the countdown-confirm
+/* Remove control: a square-bordered trash button guarded by the countdown-confirm
    component (three clicks to delete). Always shown (on every removable row, active or not). The
    danger-tinted look is the shared `.confirm-danger`; this only sets the row-remove size. */
 .timeline-row__remove {
@@ -398,7 +398,7 @@
   color: var(--dim);
 }
 
-/* Row-action buttons (tasks 1, 2): add-burst / add-play on an emitter header and add-key on a
+/* Row-action buttons: add-burst / add-play on an emitter header and add-key on a
    transform sub-row. Square-bordered icon cells matching the middlebar's icon buttons. Shown only for
    the selected entity - its active header and its (only-then-rendered) track sub-rows; an inactive
    entity's header hides them (its remove stays), so a resting timeline reads clean. */
@@ -453,7 +453,7 @@
 
 /* Lane: the time track for one object; keyframes are positioned by time within it. No divider
    line - rows are told apart by the alternating wash below. It also carries the frame-tick
-   gridlines (task 6): a 1px line tiled at the minor and major periods that TimelineViewport
+   gridlines: a 1px line tiled at the minor and major periods that TimelineViewport
    publishes for the current zoom. Each layer is a single-line tile sized to its period (so it
    tiles seamlessly) and shifted by `--timeline-tick-offset` to align a line to frame 0. */
 .timeline-row__lane {
@@ -498,8 +498,8 @@
 }
 
 /* A baked keyframe: a small diamond centred on its time (left set inline as a %). Above the caret
-   (z 3 vs its z 2) so a key under the playhead is still grabbable (task 4). Wears the owning entity
-   type's accent hue (task 3). */
+   (z 3 vs its z 2) so a key under the playhead is still grabbable. Wears the owning entity
+   type's accent hue. */
 .timeline-key {
   position: absolute;
   top: 50%;
@@ -516,7 +516,7 @@
   cursor: grabbing;
 }
 
-/* Summary diamonds mirrored onto an object's header row (task 6): smaller, dimmed and
+/* Summary diamonds mirrored onto an object's header row: smaller, dimmed and
    non-interactive - they only indicate that the collapsed object carries keys there. */
 .timeline-key--summary {
   width: 6px;
@@ -548,7 +548,7 @@
 }
 
 /* A widened, transparent hit strip so the 1px caret line is easy to grab for scrubbing. Markers
-   (z 3) still sit above it, so a press on a key/event under the caret hits the marker (task 4). */
+   (z 3) still sit above it, so a press on a key/event under the caret hits the marker. */
 .timeline__playhead::before {
   content: "";
   position: absolute;
@@ -559,8 +559,8 @@
   transform: translateX(-50%);
 }
 
-/* The padded margins that gray out inactive time before frame 0 and past the authored end (tasks
-   3, 4): translucent washes positioned in px by TimelineViewport. Translucent so each row's zebra +
+/* The padded margins that gray out inactive time before frame 0 and past the authored end:
+   translucent washes positioned in px by TimelineViewport. Translucent so each row's zebra +
    frame ticks still read through, keeping the alternation across the gray area. */
 .timeline__gutter {
   position: absolute;
@@ -600,7 +600,7 @@
   border-bottom: 6px solid var(--accent);
 }
 
-/* Infinite timeline (task 2): the caret (line + caps) switches to the infinite colour. */
+/* Infinite timeline: the caret (line + caps) switches to the infinite colour. */
 .timeline__playhead--infinite {
   background: var(--timeline-infinite);
 }
@@ -614,7 +614,7 @@
 }
 
 /* Spawn-event markers on a lane: a burst dot and a play bar (its width spans the duration). Above
-   the caret (z 3 vs its z 2) so an event under the playhead is still grabbable (task 4). */
+   the caret (z 3 vs its z 2) so an event under the playhead is still grabbable. */
 .timeline-event {
   position: absolute;
   top: 50%;
@@ -642,13 +642,13 @@
   background: color-mix(in srgb, var(--timeline-event) 40%, transparent);
 }
 
-/* An infinite play (duration 0, tasks 2/3): it wears the caret's violet and continues PAST the
+/* An infinite play (duration 0): it wears the caret's violet and continues PAST the
    timeline end to the right, reading as unbounded because nothing marks its far edge. */
 .timeline-event--infinite {
   background: color-mix(in srgb, var(--timeline-infinite) 40%, transparent);
 }
 
-/* A selected keyframe rings on the outside; a selected event rings on the INSIDE (task 5) so the
+/* A selected keyframe rings on the outside; a selected event rings on the INSIDE so the
    ring never spills past a play bar clipped to the timeline end. Each rings in its OWN color
    (the owning row's accent for a key, the spawn-event amber for a burst/play) rather than the
    generic app accent, so selection reads as "this item" and not just "something is selected". */
@@ -684,7 +684,7 @@
   color: var(--muted);
 }
 
-/* The empty-state hint is centred in the inspector block (task 7); `margin: auto` centres it
+/* The empty-state hint is centred in the inspector block; `margin: auto` centres it
    both ways in the flex column, so real inspector content still stacks from the top. */
 .timeline-inspector__hint {
   margin: auto;
@@ -713,7 +713,7 @@
   min-width: 0;
 }
 
-/* The play event's infinite-duration toggle (task: infinite toggle): sits left of the duration
+/* The play event's infinite-duration toggle: sits left of the duration
    NumberControl inside the same control column - the row's [label]|[controls] boundary doesn't
    move, the NumberControl (flex: 1) just shares the remaining space with this fixed-width button.
    Wears the same violet as an infinite play's own marker/caret when active. */
@@ -831,7 +831,7 @@
  */
 /* The label column and inspector are cleared with padding (not margin) so the strip's own background
    fills them: the reserved gutter under the object list reads as a tone between the object-list
-   column (surface-raised) and the scroll background, not a stark dark rectangle (task 2). */
+   column (surface-raised) and the scroll background, not a stark dark rectangle. */
 .timeline__scrollbar {
   flex: none;
   height: 14px;
@@ -868,7 +868,7 @@
   cursor: grabbing;
 }
 
-/* The pill's editable ends (task 5): a grab strip at each end whose visible grip line signals that
+/* The pill's editable ends: a grab strip at each end whose visible grip line signals that
    the border can be dragged to zoom (the far end pinned), Blender-style. The grip brightens with the
    thumb and turns accent when its own end is hovered. */
 .timeline__scrollbar-handle {

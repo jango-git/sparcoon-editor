@@ -107,11 +107,11 @@ export function eventMarkers(
     marker.style.left = `${timeFraction * 100}%`;
     if (event.kind === "play") {
       if (event.duration <= 0) {
-        // An infinite play (task 2) runs PAST the timeline end to the lane's right edge (task 3).
+        // An infinite play runs PAST the timeline end to the lane's right edge.
         marker.classList.add("timeline-event--infinite");
         marker.style.width = `${(1 - timeFraction) * 100}%`;
       } else {
-        // A finite play is clipped to the timeline end, not the padded lane edge (task 3).
+        // A finite play is clipped to the timeline end, not the padded lane edge.
         const windowEnd = fraction(total, total);
         const span = clamp(spanFraction(event.duration, total), 0, windowEnd - timeFraction);
         marker.style.width = `${span * 100}%`;

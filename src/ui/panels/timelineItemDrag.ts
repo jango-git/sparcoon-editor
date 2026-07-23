@@ -87,7 +87,7 @@ export function beginItemDrag(down: PointerEvent, ref: ItemRef, ctx: ItemDragCon
         const time = snapTimeToFrame(item.startTime + delta, ctx.fps());
         const timeFraction = fraction(time, total);
         item.element.style.left = `${timeFraction * 100}%`;
-        // A dragged finite play stays clipped to the timeline end (task 3); an infinite one runs
+        // A dragged finite play stays clipped to the timeline end; an infinite one runs
         // past it, out to the lane edge.
         if (item.playSeconds !== undefined) {
           const span =
