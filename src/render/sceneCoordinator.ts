@@ -63,8 +63,9 @@ export class SceneCoordinator {
   /** The decoded active-environment textures (ADR-0004), set externally as the library resolves them. */
   private activeEnvironment: DecodedEnvironment | undefined;
   private readonly resizeObserver: ResizeObserver;
-  private previousTimestamp?: number;
+  private previousTimestamp: number | undefined;
   private running = false;
+  private frameHandle: number | undefined;
   // In touchpad mode the wheel pans (two-finger scroll) / pinch-zooms; in mouse mode it dollies.
   // Either way {@link onWheel} owns the zoom (OrbitControls' wheel-zoom stays off); see {@link setTouchpad}.
   private touchpad = false;
@@ -125,6 +126,13 @@ export class SceneCoordinator {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+
+    // A backgrounded tab still fires (throttled) rAF callbacks, so without this the frame after
+    // the tab regains visibility sees a huge raw timestamp gap and feeds it straight into
+    // FXWorld.update as one giant simulation step - a burst of particles aged/spawned at once.
+    // Halting the loop while hidden and resuming with a fresh timestamp anchor avoids both that
+    // and any simulation progressing unseen in the background.
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
   }
 
   /** The preview camera - handed to emitters that opt into camera depth-sorting (render sink). */
@@ -196,11 +204,16 @@ export class SceneCoordinator {
       return;
     }
     this.running = true;
-    requestAnimationFrame((timestamp) => this.frame(timestamp));
+    this.frameHandle = requestAnimationFrame((timestamp) => this.frame(timestamp));
   }
 
   public destroy(): void {
     this.running = false;
+    if (this.frameHandle !== undefined) {
+      cancelAnimationFrame(this.frameHandle);
+      this.frameHandle = undefined;
+    }
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.environment.destroy();
@@ -264,6 +277,22 @@ export class SceneCoordinator {
     this.controls.update();
   }
 
+  /** Halts ticking while the tab is hidden, resuming with a fresh timestamp anchor once it is
+   *  visible again - see the constructor's `visibilitychange` registration for why. */
+  private readonly handleVisibilityChange = (): void => {
+    if (document.hidden) {
+      if (this.frameHandle !== undefined) {
+        cancelAnimationFrame(this.frameHandle);
+        this.frameHandle = undefined;
+      }
+      return;
+    }
+    if (this.running && this.frameHandle === undefined) {
+      this.previousTimestamp = undefined;
+      this.frameHandle = requestAnimationFrame((timestamp) => this.frame(timestamp));
+    }
+  };
+
   private frame(timestamp: number): void {
     if (!this.running) {
       return;
@@ -279,7 +308,7 @@ export class SceneCoordinator {
     FXWorld.update(simulationDelta);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame((next) => this.frame(next));
+    this.frameHandle = requestAnimationFrame((next) => this.frame(next));
   }
 
   /**

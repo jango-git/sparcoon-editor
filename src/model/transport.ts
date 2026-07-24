@@ -21,7 +21,13 @@ export class TransportStore {
   constructor(
     private readonly duration: () => number,
     private readonly infinite: () => boolean = () => false,
-  ) {}
+  ) {
+    // A backgrounded tab still fires (throttled) rAF callbacks, so without this the tick after
+    // the tab regains visibility sees a huge raw timestamp gap and jumps/wraps the playhead in
+    // one step. Halting ticking while hidden and resuming with a fresh timestamp anchor avoids
+    // that and keeps the playhead frozen (not silently advancing) while the tab is unseen.
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+  }
 
   /** Whether a structural rebuild should restart the timeline (rewind to 0). Editor preference. */
   public get restartOnRebuild(): boolean {
@@ -108,6 +114,22 @@ export class TransportStore {
       this.listeners.delete(listener);
     };
   }
+
+  /** Halts ticking while the tab is hidden, resuming with a fresh timestamp anchor once it is
+   *  visible again - see the constructor's `visibilitychange` registration for why. */
+  private readonly handleVisibilityChange = (): void => {
+    if (document.hidden) {
+      if (this.frameHandle !== undefined) {
+        cancelAnimationFrame(this.frameHandle);
+        this.frameHandle = undefined;
+      }
+      return;
+    }
+    if (this.playing && this.frameHandle === undefined) {
+      this.lastTimestamp = undefined;
+      this.frameHandle = requestAnimationFrame((timestamp) => this.tick(timestamp));
+    }
+  };
 
   private tick(timestamp: number): void {
     if (!this.playing) {
