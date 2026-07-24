@@ -234,7 +234,7 @@
     "help": "Help",
     "helpGettingStarted": "Getting started",
     "helpIntroGraphs": "{behavior} shapes how particles spawn and move; {render} shapes how they are drawn.",
-    "helpIntroTiers": "{baseline} targets WebGL1; {standard} targets WebGL2 and unlocks more nodes.",
+    "helpIntroTiers": "{baseline} targets WebGL1, {standard} targets WebGL2; the same nodes exist on both, but some are implemented more simply on the older backend.",
     "helpIntroUndo": "Every change here (uploads, presets, renames) is undoable like any other edit.",
     "helpMisc": "Misc",
     "helpMiscCountdown": "Buttons like Delete or Load need several clicks in a row to confirm; each click counts down, and leaving one idle reverts it to its original icon.",

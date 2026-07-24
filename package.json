@@ -2,7 +2,30 @@
   "name": "sparcoon-editor",
   "version": "0.0.0",
   "private": true,
-  "description": "Node-graph editor for the sparcoon particle VFX engine",
+  "description": "Browser-based node editor for three.js visual effects, exported as a self-contained TypeScript module for the sparcoon runtime",
+  "keywords": [
+    "three",
+    "threejs",
+    "three.js",
+    "vfx",
+    "visual-effects",
+    "particles",
+    "particle-system",
+    "particle-editor",
+    "node-editor",
+    "shader-graph",
+    "glsl",
+    "webgl",
+    "playable-ads",
+    "sparcoon"
+  ],
+  "homepage": "https://jango-git.github.io/sparcoon-editor/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jango-git/sparcoon-editor.git"
+  },
+  "license": "MIT",
+  "author": "jango",
   "type": "module",
   "scripts": {
     "dev": "rollup --config --watch",
