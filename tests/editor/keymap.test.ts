@@ -98,4 +98,20 @@ describe("runKeymap", () => {
     expect(runKeymap([{ code: "KeyA", run }], keyEvent({ code: "KeyB" }))).toBe(false);
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("skips a matching binding over an editable target unless it opts in", () => {
+    const save = vi.fn();
+    const undo = vi.fn();
+    const keymap: KeyBinding[] = [
+      { code: "KeyS", modifier: true, allowInEditable: true, run: save },
+      { code: "KeyZ", modifier: true, run: undo },
+    ];
+    const saveEvent = keyEvent({ code: "KeyS", ctrlKey: true });
+    expect(runKeymap(keymap, saveEvent, true)).toBe(true);
+    expect(save).toHaveBeenCalledOnce();
+    expect(saveEvent.preventDefault).toHaveBeenCalledOnce();
+
+    expect(runKeymap(keymap, keyEvent({ code: "KeyZ", ctrlKey: true }), true)).toBe(false);
+    expect(undo).not.toHaveBeenCalled();
+  });
 });

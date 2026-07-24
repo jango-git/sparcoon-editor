@@ -1,7 +1,7 @@
 /**
- * Global (undo/redo) and transport (Space play/pause, <-/-> frame step) hotkeys, contributed to the
- * {@link HotkeyRouter} as declarative keymaps. Transport keys are scoped to the Viewport and
- * Timeline only - the graph owns its own editing keys.
+ * Global (undo/redo, Ctrl+S save) and transport (Space play/pause, <-/-> frame step) hotkeys,
+ * contributed to the {@link HotkeyRouter} as declarative keymaps. Transport keys are scoped to the
+ * Viewport and Timeline only - the graph owns its own editing keys.
  */
 
 import { frameOf, timeOfFrame } from "../model/frames";
@@ -10,6 +10,7 @@ import type { TransportStore } from "../model/transport";
 import { EditorPanel } from "./focus/panelFocus";
 import type { HotkeyRouter } from "./focus/hotkeyRouter";
 import type { Keymap } from "./focus/keymap";
+import { saveProjectJson } from "./projectExportPanel";
 
 export function installHotkeys(
   router: HotkeyRouter,
@@ -29,6 +30,9 @@ function globalKeymap(store: Store): Keymap {
   return [
     { code: "KeyZ", modifier: true, shift: false, run: () => store.undo() },
     { code: "KeyZ", modifier: true, shift: true, run: () => store.redo() },
+    // allowInEditable: the browser's own Save Page dialog is never wanted here, including while
+    // a param field or the project name input owns focus.
+    { code: "KeyS", modifier: true, allowInEditable: true, run: () => saveProjectJson(store) },
   ];
 }
 

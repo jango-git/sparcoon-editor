@@ -72,7 +72,7 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
 
   // Save the project to a JSON file, or load one back: save sends out (up-arrow), load pulls in (down).
   const saveButton = exportButton(assetIcons.download, t("content.saveJson"));
-  saveButton.addEventListener("click", () => exportProject(store));
+  saveButton.addEventListener("click", () => saveProjectJson(store));
   const loadButton = exportButton(assetIcons.upload, t("content.loadJson"));
   loadButton.addEventListener("click", () => fileInput.click());
 
@@ -125,8 +125,10 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
   return { element: createElement("div", { className: "content-export" }, [title, form]), sync };
 }
 
-/** Serializes the current document to a JSON file and triggers a download named after the project. */
-function exportProject(store: Store): void {
+/** Serializes the current document to a JSON file and triggers a download named after the project.
+ *  Exported so the Ctrl+S hotkey (installHotkeys in hotkeys.ts) can share this exact save path
+ *  with the Import/Export panel's own Save button. */
+export function saveProjectJson(store: Store): void {
   downloadText(
     serializeProject(store.getSource()),
     store.getSource().name,

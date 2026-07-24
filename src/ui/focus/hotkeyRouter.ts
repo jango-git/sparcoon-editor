@@ -1,8 +1,10 @@
 /**
  * The single `keydown` entry point: one window listener that skips editable targets (a text field /
- * contentEditable owns its own keystrokes), then tries the global keymap, then the active panel's
- * keymap. Reads {@link PanelFocus} live on every keystroke, so switching panels switches keymaps
- * with no re-registration.
+ * contentEditable owns its own keystrokes) for most bindings, then tries the global keymap, then
+ * the active panel's keymap. A binding can opt into firing even over an editable target via
+ * {@link KeyBinding.allowInEditable} - reserved for chords like Ctrl+S with no native text-editing
+ * meaning, where falling through to the browser is never wanted. Reads {@link PanelFocus} live on
+ * every keystroke, so switching panels switches keymaps with no re-registration.
  */
 
 import type { EditorPanel, PanelFocus } from "./panelFocus";
@@ -43,12 +45,14 @@ export class HotkeyRouter {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    // A field being typed into (including a comment header being renamed) owns its keystrokes.
-    // This guard also protects native chords like Ctrl+C/Ctrl+V inside an input.
-    if (isEditableTarget(event.target ?? undefined)) {
+    // A field being typed into (including a comment header being renamed) owns its keystrokes,
+    // protecting native chords like Ctrl+C/Ctrl+V inside an input - unless the binding opted into
+    // allowInEditable (Ctrl+S has no such native meaning and must never reach the browser).
+    const editableTarget = isEditableTarget(event.target ?? undefined);
+    if (runKeymap(this.globalKeymap, event, editableTarget)) {
       return;
     }
-    if (runKeymap(this.globalKeymap, event)) {
+    if (editableTarget) {
       return;
     }
     const panelKeymap = this.panelKeymaps.get(this.focus.get());
