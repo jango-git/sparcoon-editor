@@ -24,7 +24,6 @@ import type {
 import { incomingConnection, isKeyframeValue } from "../../domain/graphModel";
 import {
   GraphKind,
-  READABLE_BUILTINS,
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
   ROUTE_TYPE,
@@ -61,6 +60,7 @@ import {
   removeEdgesFromOutput,
   removeNode,
   removeOutputBinding,
+  renameAttribute,
   renameComment,
   replaceNodeParams,
   setAttributeType,
@@ -463,9 +463,10 @@ export class GraphCanvas {
           this.textureAssetOptions(metadata),
           // A behavior sink's declared attributes are its `attr:<name>` input rows. Both phase
           // sinks get the row (an attribute is written from either), but only Spawn's carries a
-          // remove button and an element-type picker - attributes are declared from Spawn, so
-          // Update only ever *uses* them; passing `undefined` here drops both controls from its
-          // rows while leaving the socket itself (and its inline value editor) fully wireable.
+          // rename field, a remove button, and an element-type picker - attributes are declared
+          // from Spawn, so Update only ever *uses* them; passing `undefined` here drops all three
+          // controls from its rows while leaving the socket itself (and its inline value editor)
+          // fully wireable.
           node.type === SPAWN_SINK_TYPE
             ? (name: string): void => removeAttribute(this.store, "behaviorGraph", name)
             : undefined,
@@ -473,9 +474,14 @@ export class GraphCanvas {
             ? (name: string, type: AttributeTypeName): void =>
                 setAttributeType(this.store, "behaviorGraph", name, type)
             : undefined,
+          node.type === SPAWN_SINK_TYPE
+            ? (oldName: string, newName: string): boolean =>
+                renameAttribute(this.store, "behaviorGraph", oldName, newName)
+            : undefined,
           costs.get(nodeId),
           sinkCosts.get(nodeId),
           paletteAccess,
+          (): number => this.viewport.scale,
         );
         if (isSink(node)) {
           view.element.classList.add("node--output");
@@ -1356,7 +1362,7 @@ export class GraphCanvas {
    * A node's socket-shape signature - a change forces a view rebuild. A behavior sink keys off
    * the graph's attribute set, the surface sink (`$out`) off its render mode; every other node
    * keys off its resolved socket shape plus whatever else can reshape its editor (connected
-   * inputs, its `valueType` choice, or - for `read-attribute`/`texture` - the library it picks from).
+   * inputs, its `valueType` choice, or - for `custom-attribute`/`texture` - the library it picks from).
    */
   private shapeKeyFor(node: GraphNode, graph: EditorGraph): string {
     if (node.type === RENDER_SINK_TYPE) {
@@ -1403,9 +1409,14 @@ export class GraphCanvas {
     const editorShape =
       valueTypeKey === undefined ? "" : `|valueType:${String(node.parameters[valueTypeKey])}`;
     const base = `${shape}|in:${wiredInputs}${editorShape}`;
-    // A read-attribute node's picker lists the declared attributes; rebuild it when that
-    // set changes so a freshly-declared (or removed/retyped) attribute shows up at once.
-    if (node.type === "read-attribute") {
+    // A custom-attribute(-components) node's picker lists the declared attributes; rebuild
+    // it when that set changes so a freshly-declared (or removed/retyped) attribute shows up at
+    // once. Checked via the same customParams flag `attributeConfigFor` uses (not a type-string
+    // list), so both twins stay covered without hand-syncing.
+    const isAttributeNode = metadata?.customParams?.some(
+      (parameter) => parameter.kind === "attribute-name",
+    );
+    if (isAttributeNode === true) {
       return `${base}|attrs:${JSON.stringify(selectBehaviorGraph(this.store).attributes)}`;
     }
     // A Texture's picker lists the library's assets and its body previews the chosen
@@ -1421,8 +1432,9 @@ export class GraphCanvas {
   }
 
   /**
-   * For an attribute node (`read-attribute`): the picker config listing the graph's declared
-   * attributes. Choosing one is a structural edit, so it replaces the node (new id).
+   * For a `custom-attribute` node: the picker config listing the graph's declared
+   * attributes (host builtins have their own dedicated `builtin-attribute` node instead, so
+   * they never appear here). Choosing one is a structural edit, so it replaces the node (new id).
    */
   private attributeConfigFor(
     metadata: ReturnType<typeof metaForNode>,
@@ -1434,12 +1446,8 @@ export class GraphCanvas {
     if (isAttributeNode !== true) {
       return undefined;
     }
-    // Readable builtins (position/age/lifetime) precede the declared attributes on both graphs:
-    // the behavior and render read nodes both resolve them to the matching `PARTICLE_*` target
-    // inputs (the render side reads the `p_position`/`p_lifecycle` varyings).
-    const builtins = READABLE_BUILTINS;
     return {
-      options: [...builtins, ...selectBehaviorGraph(this.store).attributes].map((attribute) => ({
+      options: selectBehaviorGraph(this.store).attributes.map((attribute) => ({
         name: attribute.name,
         type: attribute.type,
       })),
@@ -1478,9 +1486,10 @@ export class GraphCanvas {
     // the attribute editor below them.
     element.style.height = "auto";
     element.append(
-      buildSinkAttributes({
-        onAdd: (name, type) => addAttribute(this.store, "behaviorGraph", name, type),
-      }),
+      buildSinkAttributes(
+        { onAdd: (name, type) => addAttribute(this.store, "behaviorGraph", name, type) },
+        (): number => this.viewport.scale,
+      ),
     );
   }
 }

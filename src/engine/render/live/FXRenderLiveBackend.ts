@@ -9,7 +9,7 @@ import type { FXTarget } from "../target/FXTarget";
 
 /** {@link FXLiveBackend} for the GLSL render backend: validates/hashes/compiles a render graph and
  *  hands the compiled IR to `onInstall`, which the owning material swaps in on a recompile. The
- *  target is derived per snapshot from the graph's own `read-attribute` requests. */
+ *  target is derived per snapshot from the graph's own `custom-attribute` requests. */
 export class FXRenderLiveBackend extends FXTargetLiveBackend<
   FXRenderNode,
   FXCompiledShader,

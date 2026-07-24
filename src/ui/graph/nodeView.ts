@@ -37,6 +37,7 @@ import { buildHelpIcon } from "./nodeHelpIcon";
 import { attachTooltip } from "../components/tooltip";
 import {
   buildAttributeRow,
+  buildAttributeName,
   buildAttributeRemove,
   buildAttributeType,
   type AttributeNodeConfig,
@@ -117,6 +118,7 @@ export class NodeView {
     textureAssets: readonly TextureAssetOption[] = [],
     onRemoveAttribute?: (name: string) => void,
     onSetAttributeType?: (name: string, type: AttributeTypeName) => void,
+    onRenameAttribute?: (oldName: string, newName: string) => boolean,
     // Live cost at construction time (see `update`'s `cost` parameter for how it stays current).
     // `undefined` when the node has no engine-computed cost (a sink) - the badge is then omitted.
     cost?: number,
@@ -127,16 +129,25 @@ export class NodeView {
     sinkCost?: number,
     // Forwarded to every color-flagged field's picker/ramp (see NodeWidgets' matching param).
     paletteAccess?: PaletteAccess,
+    // Live graph zoom (graphCanvas.ts's `() => this.viewport.scale`), forwarded to every dropdown
+    // this card builds so a popup's rows visually match the zoomed trigger they hang from.
+    scale?: () => number,
   ) {
     this.nodeType = node.type;
-    this.widgets = new NodeWidgets(metadata, onParamChange, onLiveParamChange, paletteAccess);
+    this.widgets = new NodeWidgets(
+      metadata,
+      onParamChange,
+      onLiveParamChange,
+      paletteAccess,
+      scale,
+    );
     const allParameters = metadata === undefined ? [] : Object.entries(metadata.params);
     // A free-text parameter name (a named uniform/binding slot), rendered as a body text field.
     const paramNameKey = metadata?.customParams?.find(
       (customParam) => customParam.kind === "param-name",
     )?.key;
-    // An attribute node (`read-attribute`) is driven by an attribute picker; its type and
-    // placement are derived, so those params are hidden.
+    // An attribute node (`custom-attribute`(-components)) is driven by an attribute picker;
+    // its type and placement are derived, so those params are hidden.
     const isAttributeNode =
       metadata?.customParams?.some((customParam) => customParam.kind === "attribute-name") ?? false;
     // `constant` is a pure inline-literal source - it never takes an input wire, so its
@@ -192,12 +203,26 @@ export class NodeView {
     }));
     const inputRows = allInputs.map((socket): Cell[] => {
       const cells: Cell[] = [];
+      // A behavior sink's declared attributes are input rows keyed `attr:<name>`; the whole
+      // attribute lives on its input row - never mirrored in a separate list below. Only Spawn's
+      // caller passes `onRemoveAttribute`, so only there does the row also carry a rename field
+      // (in place of the plain label), a type picker, and a remove button in the (unused, sinks
+      // have no outputs) right lane - Update's row stays a plain, wireable input with its
+      // ordinary label.
+      const attributeName =
+        onRemoveAttribute !== undefined ? attributeNameFromSlot(socket.key) : undefined;
       if (!hideInputSockets) {
         cells.push({
           element: this.buildDot(node.id, socket, "input", onSocketPointerDown),
           col: COL_IN_DOT,
         });
-        cells.push({ element: this.buildLabel(socket, "input"), col: COL_IN_LABEL });
+        cells.push({
+          element:
+            attributeName !== undefined && onRenameAttribute !== undefined
+              ? buildAttributeName(attributeName, onRenameAttribute)
+              : this.buildLabel(socket, "input"),
+          col: COL_IN_LABEL,
+        });
       }
       if (socket.control !== undefined && !connectedInputs.has(socket.key)) {
         const control = centerCell(this.widgets.createSocketControl(node, socket));
@@ -210,18 +235,17 @@ export class NodeView {
             : { element: control, col: COL_CENTER },
         );
       }
-      // A behavior sink's declared attributes are input rows keyed `attr:<name>`; the whole
-      // attribute lives on its input row - never mirrored in a separate list below. Only Spawn's
-      // caller passes `onRemoveAttribute`, so only there does the row also carry a remove button
-      // and a type picker in the (unused, sinks have no outputs) right lane - Update's row stays a
-      // plain, wireable input.
-      if (onRemoveAttribute !== undefined) {
-        const attributeName = attributeNameFromSlot(socket.key);
-        if (attributeName !== undefined) {
-          if (onSetAttributeType !== undefined) {
-            const typePicker = buildAttributeType(attributeName, socket.type, onSetAttributeType);
-            cells.push({ element: typePicker, col: COL_CENTER });
-          }
+      if (attributeName !== undefined) {
+        if (onSetAttributeType !== undefined) {
+          const typePicker = buildAttributeType(
+            attributeName,
+            socket.type,
+            onSetAttributeType,
+            scale,
+          );
+          cells.push({ element: typePicker, col: COL_CENTER });
+        }
+        if (onRemoveAttribute !== undefined) {
           const remove = buildAttributeRemove(attributeName, onRemoveAttribute);
           cells.push({ element: remove, col: COL_OUT_LABEL, colEnd: COL_END });
         }
@@ -250,6 +274,7 @@ export class NodeView {
             widgets: this.widgets,
             onParamChange: this.onParamChange,
             labelledRow: (label, control) => this.labelledRow(label, control),
+            scale,
           }),
         );
       } else {
@@ -258,8 +283,12 @@ export class NodeView {
     }
     if (isAttributeNode && attribute !== undefined) {
       bodyRows.push(
-        buildAttributeRow(node, attribute, this.widgets, (label, control) =>
-          this.labelledRow(label, control),
+        buildAttributeRow(
+          node,
+          attribute,
+          this.widgets,
+          (label, control) => this.labelledRow(label, control),
+          scale,
         ),
       );
     }

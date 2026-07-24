@@ -27,7 +27,7 @@ interface NodeTextParamEntry {
 interface NodeTextEntry {
   readonly label?: string;
   /** A plain string, or (only for a node whose text genuinely differs by domain, e.g.
-   *  `read-attribute`/`timeline-value`) a `{ render: "...", behavior: "..." }`-shaped variant map. */
+   *  `custom-attribute`/`timeline-value`) a `{ render: "...", behavior: "..." }`-shaped variant map. */
   readonly description?: string | NodeTextVariant;
   readonly inputs?: Readonly<Record<string, NodeTextSocketEntry>>;
   readonly outputs?: Readonly<Record<string, NodeTextSocketEntry>>;

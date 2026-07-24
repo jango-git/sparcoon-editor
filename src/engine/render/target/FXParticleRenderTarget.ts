@@ -20,8 +20,8 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "PARTICLE_POSITION_X", type: FLOAT, stages: BOTH_STAGES },
   { name: "PARTICLE_POSITION_Y", type: FLOAT, stages: BOTH_STAGES },
   { name: "PARTICLE_POSITION_Z", type: FLOAT, stages: BOTH_STAGES },
-  // A single `vec3` (the `p_position` varying), so `read-attribute(position)` reads the core
-  // builtin symmetrically to the behavior side.
+  // A single `vec3` (the `p_position` varying), so `builtin-attribute`'s position output
+  // reads the core builtin symmetrically to the behavior side.
   { name: "PARTICLE_POSITION", type: VEC3, stages: BOTH_STAGES },
   { name: "PARTICLE_AGE", type: FLOAT, stages: BOTH_STAGES },
   { name: "PARTICLE_LIFETIME", type: FLOAT, stages: BOTH_STAGES },
@@ -146,8 +146,8 @@ const MESH_BUILTINS: readonly FXTargetInput[] = PARTICLE_BUILTINS.filter(
 );
 
 /** The VFX-mesh render target. No particle builtins and no per-particle attributes, so a render
- *  node reading one (`read-attribute`, `life-ratio`, `dissolve`) fails validation against it -
- *  that missing-input rejection IS the intended palette restriction. */
+ *  node reading one (`custom-attribute`, `life-ratio`, `dissolve`) fails validation against
+ *  it - that missing-input rejection IS the intended palette restriction. */
 export const FX_MESH_TARGET: FXTarget = {
   name: "mesh",
   inputs: MESH_BUILTINS,

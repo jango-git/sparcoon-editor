@@ -34,7 +34,7 @@ function makeRegistry(): { registry: FXNodeRegistry<FakeNode>; created: FakeNode
     return node;
   });
   registry.register("attribute", (params) => {
-    // Mirrors the real store/read-attribute factories: the name is validated at the
+    // Mirrors the real store/custom-attribute factories: the name is validated at the
     // source, so a malformed one throws a typed `bad-attribute-name` on create.
     assertValidAttributeName(String(params?.["name"] ?? ""), "store-attribute.name");
     const node = new FakeNode({ type: "attribute", outputs: [socket("out")] });

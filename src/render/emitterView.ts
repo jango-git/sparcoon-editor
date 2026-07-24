@@ -213,8 +213,9 @@ export class EmitterView implements GraphApplier {
     behaviorSnapshot: FXGraphSnapshotData,
     config: RenderSinkConfig,
     spawnConfig: SpawnSinkConfig,
-    // The sole source of truth for which attributes exist - checked against every read-attribute
-    // request in either graph, so a name left over after a removal/retype is a held error.
+    // The sole source of truth for which attributes exist - checked against every
+    // custom-attribute request in either graph, so a name left over after a
+    // removal/retype is a held error.
     declaredAttributes: readonly EditorAttribute[],
   ): GraphApplyResult {
     // Surface-sink params, invisible to the live gate's IR hash like geometry/renderMode - the

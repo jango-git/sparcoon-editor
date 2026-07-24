@@ -219,14 +219,14 @@ const SPLIT_FAMILY: NodeFamily = {
 };
 
 /**
- * `read-attribute-components`: the fused `read-attribute` + `split` (param-driven, like
- * `combine` - the width comes from the selected attribute's own `type` param, not a wired input).
- * A user attribute is never a matrix, so unlike `combine`/`split` there is no matrix variant to
- * expand to at serialize; the one engine node type handles every width (float/vec2/vec3/vec4)
- * itself, so `serialize` is an identity passthrough.
+ * `custom-attribute-split`: the fused `custom-attribute` + `split` (param-driven,
+ * like `combine` - the width comes from the selected attribute's own `type` param, not a wired
+ * input). A user attribute is never a matrix, so unlike `combine`/`split` there is no matrix
+ * variant to expand to at serialize; the one engine node type handles every width
+ * (float/vec2/vec3/vec4) itself, so `serialize` is an identity passthrough.
  */
-const READ_ATTRIBUTE_COMPONENTS_FAMILY: NodeFamily = {
-  facadeType: "read-attribute-components",
+const CUSTOM_ATTRIBUTE_SPLIT_FAMILY: NodeFamily = {
+  facadeType: "custom-attribute-split",
   typeParamKey: "type",
   options: NUMERIC_VALUE_TYPES,
   resolveVariant(parameters) {
@@ -250,7 +250,7 @@ const READ_ATTRIBUTE_COMPONENTS_FAMILY: NodeFamily = {
 const FAMILIES: readonly NodeFamily[] = [
   COMBINE_FAMILY,
   SPLIT_FAMILY,
-  READ_ATTRIBUTE_COMPONENTS_FAMILY,
+  CUSTOM_ATTRIBUTE_SPLIT_FAMILY,
 ];
 
 /** The family a node type is the facade of, or `undefined` when it is an ordinary node. */

@@ -374,11 +374,11 @@ describe("node family: split dynamic meta (wire-driven)", () => {
   });
 });
 
-// `read-attribute-components` is a param-driven family like `combine` (its width comes from the
+// `custom-attribute-split` is a param-driven family like `combine` (its width comes from the
 // node's own `type` param, not a wired input - it has no inputs at all), but unlike `combine`/
 // `split` a user attribute is never a matrix, so it never expands to a concrete variant type at
 // serialize: the one engine node handles every width itself.
-describe("node family: read-attribute-components dynamic meta (param-driven)", () => {
+describe("node family: custom-attribute-split dynamic meta (param-driven)", () => {
   it("reshapes to N float outputs matching the selected attribute width", () => {
     const widths: readonly (readonly [string, readonly string[]])[] = [
       ["float", ["x"]],
@@ -387,7 +387,7 @@ describe("node family: read-attribute-components dynamic meta (param-driven)", (
       ["vec4", ["x", "y", "z", "w"]],
     ];
     for (const [type, keys] of widths) {
-      const node = makeNode("ra", "read-attribute-components", { name: "tint", type });
+      const node = makeNode("ra", "custom-attribute-split", { name: "tint", type });
       const meta = resolveNodeMeta(GraphKind.Render, node, graphWith(node));
       expect(meta?.inputs).toEqual([]);
       expect(meta?.outputs.map((s) => s.key)).toEqual(keys);
@@ -396,8 +396,11 @@ describe("node family: read-attribute-components dynamic meta (param-driven)", (
   });
 
   it("defaults an unset/garbage type to the widest shape (vec4, all four outputs)", () => {
-    const unset = makeNode("ra", "read-attribute-components", { name: "tint" });
-    const garbage = makeNode("ra2", "read-attribute-components", { name: "tint", type: "banana" });
+    const unset = makeNode("ra", "custom-attribute-split", { name: "tint" });
+    const garbage = makeNode("ra2", "custom-attribute-split", {
+      name: "tint",
+      type: "banana",
+    });
     expect(
       resolveNodeMeta(GraphKind.Render, unset, graphWith(unset))?.outputs.map((s) => s.key),
     ).toEqual(["x", "y", "z", "w"]);
@@ -407,7 +410,7 @@ describe("node family: read-attribute-components dynamic meta (param-driven)", (
   });
 
   it("offers the plain attribute type menu, not the combine/split matrix options", () => {
-    const node = makeNode("ra", "read-attribute-components", { name: "tint", type: "vec3" });
+    const node = makeNode("ra", "custom-attribute-split", { name: "tint", type: "vec3" });
     const meta = resolveNodeMeta(GraphKind.Render, node, graphWith(node));
     const typeParam = meta?.params["type"];
     const options = typeParam !== undefined && "options" in typeParam ? typeParam.options : [];
@@ -415,13 +418,13 @@ describe("node family: read-attribute-components dynamic meta (param-driven)", (
   });
 });
 
-describe("node family: read-attribute-components serialize (identity, no matrix variant)", () => {
+describe("node family: custom-attribute-split serialize (identity, no matrix variant)", () => {
   it("stays on the one engine node type for every width - no concrete variant to expand to", () => {
     for (const type of ["float", "vec2", "vec3", "vec4"]) {
       const snapshot = serializeGraph(
-        graphWith(makeNode("ra", "read-attribute-components", { name: "tint", type })),
+        graphWith(makeNode("ra", "custom-attribute-split", { name: "tint", type })),
       );
-      expect(snapshot.nodes["ra"].type).toBe("read-attribute-components");
+      expect(snapshot.nodes["ra"].type).toBe("custom-attribute-split");
       expect(snapshot.nodes["ra"].params).toEqual({ name: "tint", type });
     }
   });
@@ -430,7 +433,7 @@ describe("node family: read-attribute-components serialize (identity, no matrix 
     const snapshot = serializeGraph(
       graphOf(
         [
-          makeNode("ra", "read-attribute-components", { name: "tint", type: "vec2" }),
+          makeNode("ra", "custom-attribute-split", { name: "tint", type: "vec2" }),
           makeNode("d", "dot"),
         ],
         [conn("ca", "ra", "x", "d", "a"), conn("cb", "ra", "w", "d", "b")],

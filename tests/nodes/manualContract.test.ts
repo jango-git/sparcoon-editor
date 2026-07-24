@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { FXBehaviorNodeReadAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeReadAttribute";
-import { FXBehaviorNodeReadAttributeComponents } from "../../src/engine/behavior/nodes/FXBehaviorNodeReadAttributeComponents";
+import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
+import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
+import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import {
   attributeSlot,
@@ -23,8 +24,9 @@ import { FX_VALUE_TYPES, isGenericType } from "../../src/engine/core/socket/FXVa
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXRenderNodeReadAttribute } from "../../src/engine/render/nodes/FXRenderNodeReadAttribute";
-import { FXRenderNodeReadAttributeComponents } from "../../src/engine/render/nodes/FXRenderNodeReadAttributeComponents";
+import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
+import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
+import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeTimelineValue } from "../../src/engine/render/nodes/FXRenderNodeTimelineValue";
 import { FXRenderNodeTexture } from "../../src/engine/render/nodes/FXRenderNodeTexture";
 import { FXBehaviorNodeTimelineValue } from "../../src/engine/behavior/nodes/FXBehaviorNodeTimelineValue";
@@ -111,21 +113,30 @@ function renderCase(
 }
 
 function manualCases(): ManualCase[] {
-  // read-attribute: reads the (name-dependent) p_fx_tint varying.
+  // custom-attribute: reads the (name-dependent) p_fx_tint varying.
   const readAttr = renderCase(
-    "read-attribute",
-    new FXRenderNodeReadAttribute("tint", VEC4),
+    "custom-attribute",
+    new FXRenderNodeCustomAttribute("tint", VEC4),
     [],
     [],
     [bind("albedo", "n", "value")],
     buildParticleTarget([{ name: "tint", type: VEC4 }]),
   );
+  // builtin-attribute: reads all four PARTICLE_* target inputs unconditionally, regardless
+  // of which output actually feeds a binding.
+  const readBuiltin = renderCase(
+    "builtin-attribute",
+    new FXRenderNodeBuiltinAttribute(),
+    [],
+    [],
+    [bind("albedo", "n", "age")],
+  );
 
-  return [readAttr];
+  return [readAttr, readBuiltin];
 }
 
 const CASES = manualCases();
-// Keyed by domain+type: `read-attribute` exists in both the render (GPU) and behavior
+// Keyed by domain+type: `custom-attribute` exists in both the render (GPU) and behavior
 // (CPU) domains as distinct nodes that share a type string.
 const metaKey = (m: { domain: string; type: string }): string => `${m.domain}:${m.type}`;
 const METAS_BY_KEY = new Map<string, FXNodeMeta>(FX_MANUAL_NODE_METAS.map((m) => [metaKey(m), m]));
@@ -138,10 +149,12 @@ const METAS_BY_KEY = new Map<string, FXNodeMeta>(FX_MANUAL_NODE_METAS.map((m) =>
  * the runtime `sparcoon` entry no longer re-exports the editor node classes.)
  */
 const MANUAL_CLASSES: { describe(): FXNodeMeta }[] = [
-  FXRenderNodeReadAttribute,
-  FXBehaviorNodeReadAttribute,
-  FXRenderNodeReadAttributeComponents,
-  FXBehaviorNodeReadAttributeComponents,
+  FXRenderNodeCustomAttribute,
+  FXBehaviorNodeCustomAttribute,
+  FXRenderNodeCustomAttributeSplit,
+  FXBehaviorNodeCustomAttributeSplit,
+  FXRenderNodeBuiltinAttribute,
+  FXBehaviorNodeBuiltinAttribute,
   FXBehaviorNodeStoreAttribute,
   FXRenderNodeTimelineValue,
   FXBehaviorNodeTimelineValue,
@@ -234,21 +247,29 @@ describe("manual node meta matches the instantiated class's sockets (M9 anti-dri
   // Each manual class instantiated with representative args, paired with its static meta.
   const instances: { meta: FXNodeMeta; node: FXGraphNode }[] = [
     {
-      meta: FXRenderNodeReadAttribute.describe(),
-      node: new FXRenderNodeReadAttribute("tint", VEC4),
+      meta: FXRenderNodeCustomAttribute.describe(),
+      node: new FXRenderNodeCustomAttribute("tint", VEC4),
     },
     {
-      meta: FXBehaviorNodeReadAttribute.describe(),
-      node: new FXBehaviorNodeReadAttribute("tint", VEC4),
+      meta: FXBehaviorNodeCustomAttribute.describe(),
+      node: new FXBehaviorNodeCustomAttribute("tint", VEC4),
     },
     {
       // VEC4 (widest type) so the instance's outputs cover all four declared x/y/z/w keys.
-      meta: FXRenderNodeReadAttributeComponents.describe(),
-      node: new FXRenderNodeReadAttributeComponents("tint", VEC4),
+      meta: FXRenderNodeCustomAttributeSplit.describe(),
+      node: new FXRenderNodeCustomAttributeSplit("tint", VEC4),
     },
     {
-      meta: FXBehaviorNodeReadAttributeComponents.describe(),
-      node: new FXBehaviorNodeReadAttributeComponents("tint", VEC4),
+      meta: FXBehaviorNodeCustomAttributeSplit.describe(),
+      node: new FXBehaviorNodeCustomAttributeSplit("tint", VEC4),
+    },
+    {
+      meta: FXRenderNodeBuiltinAttribute.describe(),
+      node: new FXRenderNodeBuiltinAttribute(),
+    },
+    {
+      meta: FXBehaviorNodeBuiltinAttribute.describe(),
+      node: new FXBehaviorNodeBuiltinAttribute(),
     },
     {
       meta: FXBehaviorNodeStoreAttribute.describe(),

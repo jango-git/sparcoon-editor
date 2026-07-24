@@ -5,7 +5,7 @@ import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BEHAVIOR_READ_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
+import { BEHAVIOR_CUSTOM_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
 import {
   checkAttributeStructuralParams,
   resolveAttributeSource,
@@ -15,39 +15,39 @@ import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 
 /**
  * Behavior node: reads a named per-particle **attribute** buffer as its `value` output - the
- * reader half of the user-attribute channel (the render `read-attribute` reads the same name
- * on the GPU). This is what lets an update node consume a value another node persisted:
- * `read-attribute(velocity)` -> `gravity` -> `store-attribute(velocity)` accumulates velocity
- * across frames.
+ * reader half of the user-attribute channel (the render `custom-attribute` reads the same
+ * name on the GPU). This is what lets an update node consume a value another node persisted:
+ * `custom-attribute(velocity)` -> `gravity` -> `store-attribute(velocity)` accumulates
+ * velocity across frames. A core builtin (position/age/lifetime/id) reads through the separate
+ * `builtin-attribute` node instead, never this one.
  *
  * Phase-flexible: placed by its consumers, since unlike a render varying, spawn and update
  * never bridge - one node cannot feed both phases (a cross-phase error; use two reads).
  */
-export class FXBehaviorNodeReadAttribute extends FXBehaviorNode {
-  public readonly type = "read-attribute";
+export class FXBehaviorNodeCustomAttribute extends FXBehaviorNode {
+  public readonly type = "custom-attribute";
   /** No intrinsic phase: placement is inferred from consumers, symmetric to
    * {@link FXBehaviorNodeTimelineValue}. The declared {@link phase} is only a nominal fallback. */
   public override readonly phaseFlexible = true;
-  /** Absent for a builtin read (host state, no buffer); present for a user attribute. */
-  public override readonly attributeRequest?: FXAttributeRequest | undefined;
+  public override readonly attributeRequest: FXAttributeRequest;
   public readonly phase: FXBehaviorPhase;
   public readonly inputs: readonly FXSocketDescriptor[];
   public readonly outputs: readonly FXSocketDescriptor[];
-  /** The editor `name` (a builtin key like `position`, or a user attribute name). */
+  /** The declared attribute name this node reads. */
   private readonly sourceName: string;
-  /** Target input this node reads: a builtin `PARTICLE_*`, or an attribute's `ATTR_<name>`. */
+  /** Target input this node reads: the attribute's `ATTR_<name>`. */
   private readonly targetInput: string;
   private readonly valueType: FXValueType;
 
   /**
-   * @param name - A readable builtin (`position`/`age`/`lifetime`) or a user attribute name
-   * @param type - Element type of a user attribute (ignored for a builtin, whose type is fixed)
+   * @param name - A user-declared attribute name (checked by {@link resolveAttributeSource})
+   * @param type - Element type of the attribute
    * @param phase - Nominal fallback phase; the effective phase is inferred (see
    *   {@link phaseFlexible}). Defaults to UPDATE (a per-frame read of a persisted value).
    */
   constructor(name: string, type: FXValueType, phase: FXBehaviorPhase = FXBehaviorPhase.UPDATE) {
     super();
-    // A user attribute reserves its buffer and reads the `ATTR_<name>` kernel input.
+    // Reserves the attribute's buffer and reads the `ATTR_<name>` kernel input.
     const source = resolveAttributeSource(name, type, attributeInputName);
     this.sourceName = source.sourceName;
     this.valueType = source.valueType;
@@ -60,7 +60,7 @@ export class FXBehaviorNodeReadAttribute extends FXBehaviorNode {
 
   /** Palette metadata (category `attribute`; reads a named attribute, writes nothing). */
   public static describe(): FXNodeMeta {
-    return BEHAVIOR_READ_ATTRIBUTE_META;
+    return BEHAVIOR_CUSTOM_ATTRIBUTE_META;
   }
 
   /** A buffer read, no arithmetic. */
@@ -83,8 +83,8 @@ export class FXBehaviorNodeReadAttribute extends FXBehaviorNode {
     ) {
       throw new FXCompilerErrorException({
         code: "bad-param-phase",
-        message: `read-attribute: "phase" must be "spawn" | "update"`,
-        params: { context: "read-attribute" },
+        message: `custom-attribute: "phase" must be "spawn" | "update"`,
+        params: { context: "custom-attribute" },
       });
     }
   }

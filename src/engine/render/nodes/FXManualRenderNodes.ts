@@ -5,8 +5,9 @@ import { resolveValueType } from "../../core/socket/FXValueType";
 import type { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
-import { FXRenderNodeReadAttribute } from "./FXRenderNodeReadAttribute";
-import { FXRenderNodeReadAttributeComponents } from "./FXRenderNodeReadAttributeComponents";
+import { FXRenderNodeCustomAttribute } from "./FXRenderNodeCustomAttribute";
+import { FXRenderNodeCustomAttributeSplit } from "./FXRenderNodeCustomAttributeSplit";
+import { FXRenderNodeBuiltinAttribute } from "./FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeTimelineValue } from "./FXRenderNodeTimelineValue";
 import { FXRenderNodeTexture } from "./FXRenderNodeTexture";
 
@@ -20,9 +21,9 @@ function attributeType(
  *  resource directly, so all register unconditionally, needing no resolver. */
 export function registerManualRenderNodes(registry: FXNodeRegistry<FXRenderNode>): void {
   registry.register(
-    "read-attribute",
+    "custom-attribute",
     (params) =>
-      new FXRenderNodeReadAttribute(
+      new FXRenderNodeCustomAttribute(
         params?.["name"] as string,
         attributeType(params),
         coerceStage(params?.["stage"]),
@@ -30,14 +31,16 @@ export function registerManualRenderNodes(registry: FXNodeRegistry<FXRenderNode>
   );
 
   registry.register(
-    "read-attribute-components",
+    "custom-attribute-split",
     (params) =>
-      new FXRenderNodeReadAttributeComponents(
+      new FXRenderNodeCustomAttributeSplit(
         params?.["name"] as string,
         attributeType(params),
         coerceStage(params?.["stage"]),
       ),
   );
+
+  registry.register("builtin-attribute", () => new FXRenderNodeBuiltinAttribute());
 
   registry.register(
     "timeline-value",
@@ -51,8 +54,8 @@ export function registerManualRenderNodes(registry: FXNodeRegistry<FXRenderNode>
   registry.register("texture", (params) => new FXRenderNodeTexture(params?.["name"]));
 }
 
-/** Whitelists the `read-attribute` stage param, rejecting a malformed value loudly rather than
- *  silently coercing anything non-`"vertex"` to fragment. */
+/** Whitelists the `custom-attribute`(-components) stage param, rejecting a malformed value
+ *  loudly rather than silently coercing anything non-`"vertex"` to fragment. */
 function coerceStage(stage: unknown): FXShaderStage {
   if (stage === undefined || stage === "fragment") {
     return FXShaderStage.FRAGMENT;
@@ -62,7 +65,7 @@ function coerceStage(stage: unknown): FXShaderStage {
   }
   throw new FXCompilerErrorException({
     code: "bad-param-stage",
-    message: `read-attribute: "stage" must be "vertex" | "fragment"`,
-    params: { context: "read-attribute" },
+    message: `custom-attribute: "stage" must be "vertex" | "fragment"`,
+    params: { context: "custom-attribute" },
   });
 }

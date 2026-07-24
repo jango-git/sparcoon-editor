@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { deserializeProject } from "../../src/persistence/projectFile";
 import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
+import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
 
 /**
  * `loadPresetSource` fetches its bundled JSON at runtime (`import.meta.url`-relative), which
@@ -38,5 +39,18 @@ describe("bundled project presets", () => {
     expect(source).toBeDefined();
     expect(source?.name).toBe("Empty");
     expect(source?.scene.emitters.length).toBeGreaterThan(0);
+  });
+
+  it("every bundled preset's emitters and meshes actually compile, not just parse", () => {
+    for (const preset of PROJECT_PRESETS) {
+      const source = deserializeProject(readBundledPreset(preset.fileName));
+      expect(source, preset.fileName).toBeDefined();
+      for (const emitter of source!.scene.emitters) {
+        expect(() => compileEmitter(emitter), `${preset.fileName}: ${emitter.name}`).not.toThrow();
+      }
+      for (const mesh of source!.scene.meshes) {
+        expect(() => compileMesh(mesh), `${preset.fileName}: ${mesh.name}`).not.toThrow();
+      }
+    }
   });
 });

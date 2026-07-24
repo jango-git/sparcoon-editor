@@ -13,7 +13,7 @@ import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXPartic
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
 
-// Collision nodes read velocity (through a `read-attribute` node) and position (through
+// Collision nodes read velocity (through a `custom-attribute` node) and position (through
 // their PARTICLE_POSITION default) and write a corrected velocity back to the `velocity`
 // attribute. So a collision test seeds the position + velocity buffers and asserts on the
 // post-update `velocity` attribute (stride 3).
@@ -48,7 +48,7 @@ function registry(): FXNodeRegistry<FXBehaviorNode> {
   return r;
 }
 
-/** read-attribute(velocity) -> <collision node> -> store-attribute(velocity). */
+/** custom-attribute(velocity) -> <collision node> -> store-attribute(velocity). */
 function collisionGraph(
   r: FXNodeRegistry<FXBehaviorNode>,
   type: string,

@@ -61,6 +61,8 @@ export class NodeWidgets {
     /** Forwarded to every color-flagged field's {@link ColorPicker}/{@link ColorRamp} (see
      *  {@link PaletteAccess}); `undefined` where the caller has no store to wire it from. */
     private readonly paletteAccess?: PaletteAccess,
+    /** Live graph zoom, forwarded to every {@link Dropdown} so its popup rows match a zoomed node. */
+    private readonly scale?: () => number,
   ) {
     const allParameters = metadata === undefined ? [] : Object.entries(metadata.params);
     const genericTypeParam = allParameters.find(
@@ -426,6 +428,7 @@ export class NodeWidgets {
       options: options.map((option) => ({ value: option, label: humanizeKey(option) })),
       value,
       onChange: (next): void => emit(next),
+      scale: this.scale,
     });
     this.paramSyncers.set(key, (current) => dropdown.setValue(String(current)));
     this.widgets.push(dropdown);

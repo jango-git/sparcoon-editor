@@ -1,7 +1,7 @@
 import type { GraphNode } from "../../domain/graphModel";
 import { t } from "../../i18n";
 import { createElement } from "../dom";
-import { Dropdown } from "../components/dropdown";
+import { AssetPicker } from "../components/assetPicker";
 import { COL_END, COL_IN_DOT, type NodeRow } from "./nodeGrid";
 import type { NodeWidgets } from "./nodeWidgets";
 
@@ -20,7 +20,7 @@ export interface TextureAssetOption {
 const TEXTURE_PREVIEW_ROW_SPAN = 5;
 
 /**
- * The texture picker for a Texture node: a dropdown of the library's uploaded assets,
+ * The texture picker for a Texture node: an {@link AssetPicker} over the library's uploaded assets,
  * plus a preview thumbnail of the chosen asset in a full-width block below it. Choosing one
  * commits the asset name into the node's `name` parameter (its external sampler slot) and repaints
  * the preview; with no assets yet it shows a hint pointing at the Assets library (no preview).
@@ -33,6 +33,7 @@ export function buildTextureAssetRows(
     readonly widgets: NodeWidgets;
     readonly onParamChange?: ((key: string, value: unknown) => void) | undefined;
     readonly labelledRow: (label: HTMLElement, control: HTMLElement) => NodeRow;
+    readonly scale?: (() => number) | undefined;
   },
 ): NodeRow[] {
   const label = createElement("span", {
@@ -65,29 +66,34 @@ export function buildTextureAssetRows(
     preview.classList.toggle("texture-preview--empty", chosen === undefined);
   };
 
-  const dropdown = new Dropdown({
-    options: options.map((option) => ({ value: option.name, label: option.label })),
+  const picker = new AssetPicker({
+    options: options.map((option) => ({
+      name: option.name,
+      label: option.label,
+      thumbnailUrl: option.dataUrl,
+    })),
     value: current,
     placeholder: "-",
     onChange: (name): void => {
       dependencies.onParamChange?.(key, name);
       paintPreview(name);
     },
+    scale: dependencies.scale,
   });
-  dependencies.widgets.track(dropdown);
+  dependencies.widgets.track(picker);
   paintPreview(current);
-  // One syncer for the `name` parameter keeps both the dropdown and the preview in step on
+  // One syncer for the `name` parameter keeps both the picker and the preview in step on
   // undo/redo (the Map is keyed by parameter, so picker + preview must share this single entry).
   dependencies.widgets.registerSyncer(key, (value) => {
     const name = String(value ?? "");
-    dropdown.setValue(name);
+    picker.setValue(name);
     paintPreview(name);
   });
 
   // Swallow pointerdown on the preview so it never starts a node drag.
   preview.addEventListener("pointerdown", (event) => event.stopPropagation());
   return [
-    dependencies.labelledRow(label, dropdown.element),
+    dependencies.labelledRow(label, picker.element),
     {
       cells: [{ element: preview, col: COL_IN_DOT, colEnd: COL_END }],
       span: TEXTURE_PREVIEW_ROW_SPAN,

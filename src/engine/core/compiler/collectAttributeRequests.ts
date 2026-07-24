@@ -14,7 +14,7 @@ export interface FXAttributeCollection {
 
 /**
  * Merges the {@link FXAttributeRequest}s declared by the **reachable** nodes of a graph into one
- * deduplicated set - an unreachable `store-attribute`/`read-attribute` must not force a buffer.
+ * deduplicated set - an unreachable `store-attribute`/`custom-attribute` must not force a buffer.
  */
 export function collectAttributeRequests(graph: FXGraph<FXGraphNode>): FXAttributeCollection {
   const reachable = collectReachableNodeIds(graph);
@@ -48,7 +48,7 @@ export function collectAttributeRequests(graph: FXGraph<FXGraphNode>): FXAttribu
 
 /**
  * Flags a request naming (or mistyping) an attribute outside `declared` - catches an orphaned
- * `read-attribute` node left over after its attribute was removed or retyped elsewhere, which
+ * `custom-attribute` node left over after its attribute was removed or retyped elsewhere, which
  * neither {@link collectAttributeRequests} nor {@link mergeAttributeCollections} alone would see.
  */
 export function collectUndeclaredAttributeErrors(

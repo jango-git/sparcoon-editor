@@ -117,7 +117,11 @@ describe("FXGraphBuilder - snapshot compiles on both backends", () => {
         { name: "velocity", type: "vec3", phase: "spawn" },
         { value: vel.out("velocity") },
       );
-      const readVel = b.add("read-attribute", { name: "velocity", type: "vec3", phase: "update" });
+      const readVel = b.add("custom-attribute", {
+        name: "velocity",
+        type: "vec3",
+        phase: "update",
+      });
       const grav = b.add(
         "gravity",
         { acceleration: [0, -1, 0] },

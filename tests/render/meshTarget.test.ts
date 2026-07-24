@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXRenderNodeReadAttribute } from "../../src/engine/render/nodes/FXRenderNodeReadAttribute";
+import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_MESH_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import {
@@ -72,7 +72,7 @@ function particleTransformOnMesh(): FXGraph<FXRenderNode> {
 function attributeAlbedo(): FXGraph<FXRenderNode> {
   const graph = new FXGraph<FXRenderNode>();
   graph.ingest({
-    nodes: new Map<string, FXRenderNode>([["tint", new FXRenderNodeReadAttribute("tint", VEC4)]]),
+    nodes: new Map<string, FXRenderNode>([["tint", new FXRenderNodeCustomAttribute("tint", VEC4)]]),
     connections: [],
     outputBindings: [{ slot: "albedo", from: { nodeId: "tint", socketKey: "value" } }],
   });

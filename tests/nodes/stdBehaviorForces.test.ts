@@ -18,7 +18,7 @@ import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
 
 // Velocity, scale, rotation, torque are now ordinary user attributes: a force node
-// reads velocity through a `read-attribute` node and its result is persisted through a
+// reads velocity through a `custom-attribute` node and its result is persisted through a
 // `store-attribute` node bound to `attr:velocity`; motion is an explicit
 // `integrate-motion` node. So a force test asserts on the `velocity` attribute buffer
 // (stride 3) - not a builtin offset - and, where it verified motion, wires the velocity
@@ -56,7 +56,7 @@ function registry(): FXNodeRegistry<FXBehaviorNode> {
 }
 
 /**
- * read-attribute(velocity) -> gravity -> drag -> { store-attribute(velocity),
+ * custom-attribute(velocity) -> gravity -> drag -> { store-attribute(velocity),
  * integrate-motion -> position }. The velocity attribute accumulates the force and the
  * new position is the explicit Euler step over the post-force velocity.
  */

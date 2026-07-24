@@ -19,7 +19,7 @@ export interface AttributeOption {
   readonly type: string;
 }
 
-/** Wiring for an attribute node (`read-attribute`): the declared attributes + a picker. */
+/** Wiring for an attribute node (`custom-attribute`): the declared attributes + a picker. */
 export interface AttributeNodeConfig {
   readonly options: readonly AttributeOption[];
   /** Chooses which attribute the node reads (a structural edit - replaces the node). */
@@ -41,6 +41,38 @@ export function buildAttributeRemove(name: string, onRemove: (name: string) => v
 }
 
 /**
+ * The free-text Name field on a declared attribute's own input row (replaces the plain socket
+ * label there) - renaming retargets the slot and every `custom-attribute` node reading it, so it
+ * commits on blur/Enter rather than per keystroke. An invalid/duplicate name is flagged and left
+ * for the user to fix rather than silently reverted, matching the "add attribute" row below.
+ */
+export function buildAttributeName(
+  name: string,
+  onRename: (oldName: string, newName: string) => boolean,
+): HTMLElement {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "param__input attr__name";
+  input.value = name;
+  // Swallow pointerdown so editing the name never starts a node drag or selection.
+  input.addEventListener("pointerdown", (event) => event.stopPropagation());
+  input.addEventListener("input", () => input.classList.remove("attr__name--invalid"));
+  input.addEventListener("change", () => {
+    if (onRename(name, input.value)) {
+      input.classList.remove("attr__name--invalid");
+    } else {
+      input.classList.add("attr__name--invalid");
+    }
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      input.blur();
+    }
+  });
+  return input;
+}
+
+/**
  * The element-type dropdown on a declared attribute's row. Changing it retypes the attribute
  * in place (a structural edit that recompiles) - the counterpart of the add row's type picker.
  */
@@ -48,11 +80,13 @@ export function buildAttributeType(
   name: string,
   currentType: string,
   onSetType: (name: string, type: AttributeTypeName) => void,
+  scale?: () => number,
 ): HTMLElement {
   const dropdown = new Dropdown({
     options: ATTRIBUTE_TYPES.map((type) => ({ value: type, label: type })),
     value: currentType,
     onChange: (next): void => onSetType(name, next as AttributeTypeName),
+    scale,
   });
   dropdown.element.classList.add("attr__type");
   // Swallow pointerdown so opening the picker never starts a node drag or selection.
@@ -60,12 +94,13 @@ export function buildAttributeType(
   return dropdown.element;
 }
 
-/** The attribute picker for a `read-attribute` node: a dropdown of the declared attributes. */
+/** The attribute picker for a `custom-attribute` node: a dropdown of the declared attributes. */
 export function buildAttributeRow(
   node: GraphNode,
   config: AttributeNodeConfig,
   widgets: NodeWidgets,
   labelledRow: (label: HTMLElement, control: HTMLElement) => NodeRow,
+  scale?: () => number,
 ): NodeRow {
   const label = createElement("span", {
     className: "param__label",
@@ -90,6 +125,7 @@ export function buildAttributeRow(
           config.onSelect(chosen.name, chosen.type);
         }
       },
+      scale,
     });
     widgets.track(dropdown);
     control = dropdown.element;

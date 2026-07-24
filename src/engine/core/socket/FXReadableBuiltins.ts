@@ -2,9 +2,10 @@ import type { FXValueType } from "./FXValueType";
 import { FX_VALUE_TYPES } from "./FXValueType";
 
 /**
- * Host builtins a `read-attribute` node may read as a value source - shared by both backends,
- * mapping a lowercase editor name to its target input and fixed type. Unlike a user attribute,
- * a builtin reads existing host state (no buffer allocated) and its name cannot be shadowed.
+ * The four host builtins `builtin-attribute` exposes at once, one output socket each -
+ * shared by both backends, mapping a lowercase name to its target input and fixed type. Unlike
+ * a user attribute, a builtin reads existing host state directly (no buffer allocated), so its
+ * name is reserved and cannot be declared as a custom attribute (see `isReservedAttributeName`).
  */
 export const FX_READABLE_CORE_BUILTINS: Readonly<
   Record<string, { readonly targetInput: string; readonly type: FXValueType }>

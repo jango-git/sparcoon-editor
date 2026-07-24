@@ -4,7 +4,7 @@ import { DT_INPUT, VELOCITY_INPUT } from "./common";
 
 /**
  * Euler integration nodes (update phase). Motion is not a hidden target epilogue - it is an
- * explicit node the graph wires: `read-attribute(velocity)` -> {@link fxIntegrateMotion} -> `position`.
+ * explicit node the graph wires: `custom-attribute(velocity)` -> {@link fxIntegrateMotion} -> `position`.
  */
 
 /** Advances position by a velocity input over `dt` (`position += velocity * dt`). */

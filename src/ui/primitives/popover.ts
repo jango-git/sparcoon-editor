@@ -17,6 +17,13 @@ export interface PopoverOptions {
   readonly anchor: PopoverAnchor;
   /** Use the anchor rectangle's width as the popover's min-width (dropdowns). */
   readonly matchAnchorWidth?: boolean;
+  /**
+   * Written onto `content` as the `--popup-scale` custom property, so a stylesheet can grow the
+   * popover's own type/padding/row-height in step with a zoomed anchor (a graph node's dropdown)
+   * via `calc()`. Omitted (or 1) outside a zoomable context - the property then reads its `calc()`
+   * fallback of 1 and the popover renders at its authored size, same as before this existed.
+   */
+  readonly scale?: number | undefined;
   /** Nudge the popover to stay fully on screen. Default true. */
   readonly clampToViewport?: boolean;
   /** Also dismiss on wheel / resize - the view moved under the popover. Default true. */
@@ -39,6 +46,9 @@ export function openPopover(content: HTMLElement, options: PopoverOptions): Popo
   content.style.position = "fixed";
   content.style.visibility = "hidden";
   document.body.append(content);
+  if (options.scale !== undefined) {
+    content.style.setProperty("--popup-scale", String(options.scale));
+  }
 
   let left: number;
   let top: number;

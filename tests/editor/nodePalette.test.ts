@@ -22,7 +22,8 @@ describe("nodePalette", () => {
     expect(types.has("ramp")).toBe(true); // standard behavior
     expect(types.has("color-ramp")).toBe(true); // standard shared color node
     expect(types.has("texture")).toBe(true); // manual render
-    expect(types.has("read-attribute")).toBe(true); // manual behavior/render reader
+    expect(types.has("custom-attribute")).toBe(true); // manual behavior/render reader
+    expect(types.has("builtin-attribute")).toBe(true); // manual behavior/render reader
     // store-attribute is authored via the sink attr slots, so it is hidden from the palette.
     expect(types.has("store-attribute")).toBe(false);
     expect(NODE_PALETTE.length).toBeGreaterThan(40);
@@ -38,7 +39,8 @@ describe("nodePalette", () => {
     // Reads per-particle state a mesh (no simulation) can't provide -> hidden from a mesh palette.
     expect(excluded("life-ratio")).toBe(true);
     expect(excluded("camera-distance")).toBe(true);
-    expect(excluded("read-attribute")).toBe(true); // attribute-dynamic reads
+    expect(excluded("custom-attribute")).toBe(true); // attribute-dynamic reads
+    expect(excluded("builtin-attribute")).toBe(true); // reads PARTICLE_AGE/LIFETIME/ID
     expect(excluded("dissolve")).toBe(true); // reads PARTICLE_AGE/LIFETIME - the old hand-list gap
     // Reads only mesh-available inputs -> valid on a mesh, so shown (the old list wrongly dropped it).
     expect(excluded("animated-texture")).toBe(false);

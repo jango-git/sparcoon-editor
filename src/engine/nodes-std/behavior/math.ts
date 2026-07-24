@@ -8,7 +8,7 @@ import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 
 /**
  * Scalar core builtins a `read-state` node can sample. Velocity/scale/rotation/torque and
- * per-particle randoms are ordinary attributes instead, read through `read-attribute`.
+ * per-particle randoms are ordinary attributes instead, read through `custom-attribute`.
  */
 const READ_STATE_BUILTINS: readonly string[] = [
   "PARTICLE_POSITION_X",

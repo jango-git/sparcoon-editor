@@ -215,7 +215,7 @@ function materializeAttributeWrite(
 
 /**
  * Flags a `render`/`behavior` request naming (or mistyping) an attribute outside `declared` -
- * e.g. an orphaned `read-attribute` node after its declaration was removed or retyped elsewhere.
+ * e.g. an orphaned `custom-attribute` node after its declaration was removed or retyped elsewhere.
  * Shared by the live preview and the TypeScript export, so a stale reference is refused in both.
  */
 export function undeclaredAttributeErrors(

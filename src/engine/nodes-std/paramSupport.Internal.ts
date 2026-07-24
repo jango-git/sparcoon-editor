@@ -30,7 +30,8 @@ export const PARAM_COMPONENTS = ["x", "y", "z", "w"] as const;
 
 /**
  * Validates a user-chosen param name against the attribute-name identifier grammar
- * (`^[a-z][A-Za-z0-9]*`), so a param slot is always a valid GLSL/JS identifier fragment.
+ * ({@link FX_ATTRIBUTE_NAME_PATTERN}), so a param slot is always a valid GLSL/JS identifier
+ * fragment once suffixed onto {@link paramUniformName}/{@link paramBindingName}'s fixed prefix.
  */
 export function assertValidParamName(name: unknown): asserts name is string {
   if (typeof name !== "string") {

@@ -5,7 +5,7 @@ import { defineNode } from "../../core/nodes/defineNode";
  * Standard-library render source nodes: scalar/coordinate producers that read a host-provided
  * builtin (UV, clock, camera distance, normalized life). `stage: "param"` on the stage-agnostic
  * ones lets placement infer into a vertex-stage chain as well as fragment. A plain constant comes
- * from the shared `constant` node instead; a per-particle builtin from `read-attribute`.
+ * from the shared `constant` node instead; a per-particle builtin from `builtin-attribute`.
  */
 
 /** The global clock (`u_time`, seconds since start) as a float source. */

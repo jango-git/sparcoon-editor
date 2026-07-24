@@ -35,7 +35,7 @@ function edge(fromNode: string, fromKey: string, toNode: string, toKey: string):
 
 /**
  * A deterministic gravity plume as two `FXGraph`s, in the executor model: velocity is a
- * user attribute (`store-attribute`/`read-attribute`) and motion is an explicit
+ * user attribute (`store-attribute`/`custom-attribute`) and motion is an explicit
  * `integrate-motion` node. Degenerate ranges (`[2,2]`, `[1,1]`) keep spawn deterministic
  * despite the inline `Math.random()` draws, so the equivalence check is byte-exact.
  */

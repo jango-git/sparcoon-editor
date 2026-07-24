@@ -222,7 +222,7 @@ function migrateRenamedTrack(
 
 /**
  * Replaces a node with a fresh-id copy carrying `patch`ed params, remapping its edges - used when
- * a param (e.g. `read-attribute`'s attribute) can't change in place under a stable id. Returns the new id.
+ * a param (e.g. `custom-attribute`'s attribute) can't change in place under a stable id. Returns the new id.
  */
 export function replaceNodeParams(
   store: Store,

@@ -26,7 +26,12 @@ export {
   renameComment,
   resizeComment,
 } from "./commentCommands";
-export { addAttribute, removeAttribute, setAttributeType } from "./attributeCommands";
+export {
+  addAttribute,
+  removeAttribute,
+  renameAttribute,
+  setAttributeType,
+} from "./attributeCommands";
 export { pasteFragment, type GraphFragment } from "./fragmentCommands";
 export {
   type ChannelValue,

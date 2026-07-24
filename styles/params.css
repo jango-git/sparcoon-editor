@@ -88,17 +88,24 @@
   display: flex;
   flex-direction: column;
   background: var(--panel-background);
-  border: 1px solid var(--border-mid);
+  /* --popup-scale (Dropdown's `scale`, via openPopover) is the live graph zoom for a node's
+     dropdown, so a row reads at the same size as the zoomed trigger it hangs from; it falls back
+     to 1 (this popover's authored size) wherever no zoomable ancestor sets it. */
+  border: calc(1px * var(--popup-scale, 1)) solid var(--border-mid);
 }
 
 .dropdown__item {
-  height: 24px;
+  height: calc(24px * var(--popup-scale, 1));
   flex: none;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  /* Left padding matches `.param__input`'s (4px), not the right side's 10px: with the menu's own
+     border also scaled by --popup-scale, this keeps an item's label flush with the closed
+     trigger's own label at every zoom (both are (1px border + 4px padding) * scale from the left
+     edge), instead of drifting apart as scale grows. */
+  padding: 0 calc(10px * var(--popup-scale, 1)) 0 calc(4px * var(--popup-scale, 1));
   font-family: inherit;
-  font-size: var(--font-size-small);
+  font-size: calc(var(--font-size-small) * var(--popup-scale, 1));
   text-align: left;
   white-space: nowrap;
   color: var(--panel-foreground);
@@ -112,8 +119,13 @@
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
+/* The stored value's own row, independent of the hover state above - a left accent bar plus a dim
+   background of its own (stronger once hover's own tint also applies, on top), so the selection
+   stays legible even once the pointer moves off it. Aligned with AssetPicker's own selected-row
+   treatment (.asset-picker__item--selected below) so the two controls' popups read as one family. */
 .dropdown__item--active {
-  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset calc(2px * var(--popup-scale, 1)) 0 var(--accent);
 }
 
 .dropdown__item-label {
@@ -126,9 +138,9 @@
 /* Trailing badge (e.g. the locale code) shown after a single-line option label. */
 .dropdown__item-hint {
   flex: none;
-  margin-left: 10px;
+  margin-left: calc(10px * var(--popup-scale, 1));
   color: var(--muted);
-  font-size: var(--font-size-small);
+  font-size: calc(var(--font-size-small) * var(--popup-scale, 1));
 }
 
 /* Multi-column variant (the language switch), matched to the tesselot dropdown-pop: a padded
@@ -167,6 +179,184 @@
 .dropdown__menu--grid .dropdown__item-hint {
   margin-left: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* Asset picker - a field trigger with the same param__input chrome/20px height and caret as a
+   Dropdown, for choosing among a project asset library (textures, meshes, HDRI environments, ...)
+   by thumbnail. Its floating search + preview list (not a stacked text menu) is what actually
+   differs from Dropdown. Mirrors the graph's add-node search (addNodeMenu.ts / .add-node-menu*) - a
+   pinned search box over a scrollable row list - minus that menu's fixed width and stepped
+   wheel-scroll, which are specific to its right-click placement. */
+.asset-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.asset-picker__swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  background: var(--well);
+  overflow: hidden;
+}
+
+.asset-picker__swatch svg {
+  width: 10px;
+  height: 10px;
+}
+
+.asset-picker__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-picker__label--placeholder {
+  color: var(--dim);
+}
+
+.asset-picker__caret {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.asset-picker:hover,
+.asset-picker--open {
+  border-color: var(--accent);
+}
+
+.asset-picker:hover .asset-picker__caret,
+.asset-picker--open .asset-picker__caret {
+  color: var(--accent);
+}
+
+.asset-picker__menu {
+  position: fixed;
+  z-index: var(--z-popover);
+  /* min-width is set inline (assetPicker.ts's `open()`), not here: it must combine MIN_MENU_WIDTH
+     with the trigger's own (already-zoomed) width, which a single CSS value can't express, and an
+     inline style would silently win over a competing rule here anyway. */
+  /* Without a cap, a long asset name would grow the popup to fit it instead of ever triggering
+     .asset-picker__item-label's own ellipsis (a shrink-to-fit box has no reason to clip a child it
+     is free to grow around). */
+  max-width: calc(280px * var(--popup-scale, 1));
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-background);
+  /* --popup-scale (AssetPicker's `scale`, via openPopover) is the live graph zoom for a node's
+     picker, so a row reads at the same size as the zoomed trigger it hangs from; it falls back
+     to 1 (this popover's authored size) wherever no zoomable ancestor sets it. */
+  border: calc(1px * var(--popup-scale, 1)) solid var(--border-mid);
+}
+
+.asset-picker__search {
+  width: 100%;
+  height: calc(24px * var(--popup-scale, 1));
+  flex: none;
+  padding: 0 calc(8px * var(--popup-scale, 1));
+  font-family: inherit;
+  font-size: calc(var(--font-size-small) * var(--popup-scale, 1));
+  color: var(--panel-foreground);
+  background: var(--surface-deep);
+  border: none;
+  border-bottom: calc(1px * var(--popup-scale, 1)) solid var(--border-mid);
+}
+
+.asset-picker__search:focus {
+  outline: none;
+}
+
+.asset-picker__search::placeholder {
+  color: var(--dim);
+}
+
+.asset-picker__list {
+  overflow-y: auto;
+}
+
+.asset-picker__item {
+  height: calc(24px * var(--popup-scale, 1));
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--popup-scale, 1));
+  padding: 0 calc(8px * var(--popup-scale, 1));
+  font-family: inherit;
+  font-size: calc(var(--font-size-small) * var(--popup-scale, 1));
+  text-align: left;
+  color: var(--panel-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.asset-picker__item:hover,
+.asset-picker__item--highlight {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* The stored value's own row, independent of the hover/keyboard cursor above - a left accent bar
+   plus a dim background of its own (stronger once the highlight tint also applies, on top), so it
+   stays legible even while some other row is highlighted. Aligned with Dropdown's own active-row
+   treatment (.dropdown__item--active above) so the two controls' popups read as one family. */
+.asset-picker__item--selected {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset calc(2px * var(--popup-scale, 1)) 0 var(--accent);
+}
+
+.asset-picker__item-preview {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(18px * var(--popup-scale, 1));
+  height: calc(18px * var(--popup-scale, 1));
+  color: var(--muted);
+  background: var(--well);
+  overflow: hidden;
+}
+
+.asset-picker__item-preview svg {
+  width: calc(12px * var(--popup-scale, 1));
+  height: calc(12px * var(--popup-scale, 1));
+}
+
+.asset-picker__item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-picker__empty {
+  padding: calc(8px * var(--popup-scale, 1)) calc(8px * var(--popup-scale, 1));
+  font-size: calc(var(--font-size-small) * var(--popup-scale, 1));
+  color: var(--dim);
+}
+
+.asset-picker__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* A checker so a transparent PNG's shape stays readable, matching the content library's own
+     asset-row thumbnail (styles/modal.css). */
+  background: repeating-conic-gradient(var(--overlay-subtle) 0% 25%, transparent 0% 50%) 0 0 / 6px
+    6px;
 }
 
 /* Custom checkbox - a flat, sharp box that fills with the accent and draws a tick

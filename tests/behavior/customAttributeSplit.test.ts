@@ -16,7 +16,6 @@ import { behaviorRegistry } from "../helpers/stdRegistry";
 import { attributeSlot, readAttrComponents, storeAttr } from "../helpers/attr";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
-const VEC4 = FX_VALUE_TYPES.vec4;
 const FLOAT = FX_VALUE_TYPES.float;
 
 const reg = behaviorRegistry();
@@ -49,8 +48,8 @@ function buffersFor(compiled: FXCompiledKernel, count: number): Record<string, F
   return buffers;
 }
 
-describe("read-attribute-components behavior node", () => {
-  it("declares its attribute request and cache key like read-attribute", () => {
+describe("custom-attribute-split behavior node", () => {
+  it("declares its attribute request and cache key like custom-attribute", () => {
     const node = readAttrComponents("velocity", VEC3);
     expect(node.attributeRequest).toEqual({ name: "velocity", type: VEC3 });
     expect(node.phaseFlexible).toBe(true);
@@ -129,7 +128,7 @@ describe("read-attribute-components behavior node", () => {
   });
 
   it("reads a user attribute in the spawn phase when its consumer is spawn-only (editor path)", () => {
-    // Mirrors read-attribute's own inference test: no explicit phase on the reader, but a
+    // Mirrors custom-attribute's own inference test: no explicit phase on the reader, but a
     // spawn-only consumer pulls it into spawn instead of erroring cross-phase-dependency.
     const graph = graphOf(
       {
@@ -145,34 +144,5 @@ describe("read-attribute-components behavior node", () => {
     buffers["src"][0] = 42;
     buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
     expect(buffers["dst"][0]).toBe(42);
-  });
-});
-
-describe("read-attribute-components reads core builtins (position/age/lifetime)", () => {
-  it("a builtin read (position) allocates no attribute buffer; x/y/z read PARTICLE_POSITION", () => {
-    const builtin = readAttrComponents("position", VEC4);
-    expect(builtin.attributeRequest).toBeUndefined();
-    expect(builtin.cacheKey()).toBe("position:vec3");
-
-    const graph = graphOf(
-      { rp: builtin },
-      [],
-      [{ slot: "position", from: { nodeId: "rp", socketKey: "x" }, phase: "update" }],
-    );
-    const compiled = compileParticleBehavior(graph);
-    expect(compiled.update.buffers.map((buffer) => buffer.name).sort()).toEqual([
-      "lifecycle",
-      "position",
-    ]);
-  });
-
-  it("a builtin float read (age) reads PARTICLE_AGE through x, no swizzle-on-scalar crash", () => {
-    const graph = graphOf(
-      { ra: readAttrComponents("age", VEC4, FXBehaviorPhase.UPDATE) },
-      [],
-      [{ slot: "positionX", from: { nodeId: "ra", socketKey: "x" }, phase: "update" }],
-    );
-    expect(validateParticleBehavior(graph).ok).toBe(true);
-    expect(() => compileParticleBehavior(graph)).not.toThrow();
   });
 });

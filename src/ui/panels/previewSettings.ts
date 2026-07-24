@@ -9,10 +9,11 @@ import { setActiveEnvironment } from "../../model/commands";
 import type { SignalBus } from "../../model/signals";
 import { selectEnvironmentAssets } from "../../model/selectors";
 import type { Store } from "../../model/store";
+import { environmentThumbnails } from "../../render/assetThumbnails";
 import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../../settings/previewSettings";
+import { AssetPicker, type AssetPickerOption } from "../components/assetPicker";
 import { ColorPicker, type PaletteAccess } from "../components/colorPicker";
-import { Dropdown, type DropdownOption } from "../components/dropdown";
 import { NumberControl } from "../components/numberControl";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { createSegmentedControl } from "../components/segmentedControl";
@@ -20,7 +21,7 @@ import { createSwitchControl } from "../components/switchControl";
 import { createToggleButton } from "../components/toggleButton";
 import type { Rgba } from "../components/color";
 import { createElement } from "../dom";
-import { controlIcons, viewportIcons } from "../icons";
+import { assetIcons, controlIcons, viewportIcons } from "../icons";
 import { field } from "../primitives/field";
 
 /** A view-settings tab: a label, its glyph and the rows of controls that fill its panel. */
@@ -369,47 +370,63 @@ function setRowsHidden(rows: readonly HTMLElement[], hidden: boolean): void {
 }
 
 /**
- * The active-environment picker (ADR-0004), labelled "Preset" inside the Environment section: a
- * dropdown of the content library's HDRI assets plus "None". `options` is mutated in place (not
- * replaced) so {@link Dropdown}, which reads it fresh each time its menu opens, always sees the
- * current library without its own resync API.
+ * The active-environment picker (ADR-0004), labelled "Preset" inside the Environment section: an
+ * {@link AssetPicker} over the content library's HDRI assets (by thumbnail) plus "None". `options`
+ * is mutated in place (not replaced) so AssetPicker, which reads it fresh each time its popup opens,
+ * always sees the current library without its own resync API.
  */
 function presetRow(store: Store, signals: SignalBus): HTMLElement {
   const NONE_VALUE = "";
-  const options: DropdownOption[] = [{ value: NONE_VALUE, label: t("preview.environmentNone") }];
+  const options: AssetPickerOption[] = [{ name: NONE_VALUE, label: t("preview.environmentNone") }];
+  // populateOptions's onReady callback closes over `refresh` before it's declared below - safe,
+  // since an HDRI decode is always async (RGBELoader.load is a network fetch) and so can only ever
+  // invoke that callback well after `refresh` has been assigned. It must re-run populateOptions
+  // itself (like assetRows.ts's own onThumbnailReady does), not just repaint the picker: a still-
+  // decoding asset has no thumbnailUrl in `options` yet, and only populateOptions re-reads the now-
+  // warm cache to put one there - refreshing the picker alone would keep repainting that same gap.
   const populateOptions = (): void => {
     options.length = 1;
-    for (const asset of selectEnvironmentAssets(store)) {
-      options.push({ value: asset.name, label: asset.label });
+    const assets = selectEnvironmentAssets(store);
+    const thumbnails = environmentThumbnails(assets, () => refresh());
+    for (const asset of assets) {
+      const thumbnailUrl = thumbnails.get(asset.name);
+      options.push({
+        name: asset.name,
+        label: asset.label,
+        ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
+        glyph: assetIcons.hdri,
+      });
     }
   };
-  // Populated before construction, not after: Dropdown renders its label from `options` in its own
-  // constructor, so building it against the still-empty placeholder-only array (then patching
+  // Populated before construction, not after: AssetPicker renders its label from `options` in its
+  // own constructor, so building it against the still-empty placeholder-only array (then patching
   // `options` a moment later via `refresh`) left a restored `activeEnvironmentName` displaying as
   // "None" on reload - `setValue`'s no-op-when-unchanged guard never re-ran the label sync once
   // `options` caught up, since `current` had already been set correctly at construction time.
   populateOptions();
-  const dropdown = new Dropdown({
+  const picker = new AssetPicker({
     options,
     value: store.getSource().activeEnvironmentName ?? NONE_VALUE,
     placeholder: t("preview.environmentNone"),
-    onChange: (value): void =>
-      setActiveEnvironment(store, value === NONE_VALUE ? undefined : value),
+    onChange: (name): void => setActiveEnvironment(store, name === NONE_VALUE ? undefined : name),
   });
 
   const refresh = (): void => {
     populateOptions();
     const active = store.getSource().activeEnvironmentName;
-    dropdown.setValue(
-      active !== undefined && options.some((option) => option.value === active)
+    picker.setValue(
+      active !== undefined && options.some((option) => option.name === active)
         ? active
         : NONE_VALUE,
     );
+    // setValue no-ops when the active name hasn't changed, so force a repaint too - a still-pending
+    // HDRI thumbnail can land (onReady above) without the active name itself ever changing.
+    picker.refresh();
   };
   // A plain pick or asset-library edit commits "view"; a whole-project replace (preset/import)
   // commits "structural" - never both (see Store.emitForKind) - so both need a listener here.
   signals.on("sourceViewChanged", refresh);
   signals.on("sourceStructureChanged", refresh);
 
-  return field(t("preview.preset"), dropdown.element, PREVIEW_ROW);
+  return field(t("preview.preset"), picker.element, PREVIEW_ROW);
 }

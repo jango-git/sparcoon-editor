@@ -10,7 +10,7 @@ import {
   attributeSlot,
   buildParticleBehaviorTargets,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { FXRenderNodeReadAttribute } from "../../src/engine/render/nodes/FXRenderNodeReadAttribute";
+import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
@@ -44,9 +44,9 @@ function renderReg(): FXNodeRegistry<FXRenderNode> {
   const r = new FXNodeRegistry<FXRenderNode>();
   registerStandardRenderNodes(r);
   r.register(
-    "read-attribute",
+    "custom-attribute",
     (p) =>
-      new FXRenderNodeReadAttribute(
+      new FXRenderNodeCustomAttribute(
         p?.["name"] as string,
         resolveValueType(p?.["type"] as FXGLSLTypeName),
         p?.["stage"] === "vertex" ? FXShaderStage.VERTEX : FXShaderStage.FRAGMENT,
@@ -92,7 +92,7 @@ const behaviorWithOffset: FXGraphSnapshotData = {
   ],
 };
 
-// The manual read-/store-attribute nodes carry a *structural* param (name/type/stage). An
+// The manual custom-attribute/store-attribute nodes carry a *structural* param (name/type/stage). An
 // editor re-typing one under a stable id must be rejected (as `structural-param-immutable`, or
 // `bad-param-stage` for an illegal stage spelling) - a silent no-op under a green `rebound` would
 // drift editor state from the runtime. This exercises the (editor-owned, still-present) live
@@ -102,7 +102,7 @@ describe("structural params of manual nodes under a stable id (P13.5 / audit-3 R
     version: 2,
     nodes: {
       c: { type: "constant", params: { type: "color", value: [1, 1, 1, 1] } },
-      off: { type: "read-attribute", params: { name: "offset", type, stage } },
+      off: { type: "custom-attribute", params: { name: "offset", type, stage } },
       compose: { type: "compose-transform", params: {} },
     },
     connections: [
@@ -117,7 +117,7 @@ describe("structural params of manual nodes under a stable id (P13.5 / audit-3 R
     ],
   });
 
-  it("rejects an in-place re-type of read-attribute as structural-param-immutable with the node id", () => {
+  it("rejects an in-place re-type of custom-attribute as structural-param-immutable with the node id", () => {
     const live = renderLive();
     expect(live.apply(readSnapshot("vec3")).status).toBe("recompiled");
 

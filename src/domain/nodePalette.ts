@@ -96,15 +96,12 @@ export function timelineValueNames(graphs: readonly EditorGraph[]): ReadonlySet<
 /** Attribute element types a user attribute (and its `read`/`store` nodes) can carry. */
 export const ATTRIBUTE_TYPES: readonly AttributeTypeName[] = ["float", "vec2", "vec3", "vec4"];
 
-/** Host builtins a `read-attribute` node can read, offered alongside declared attributes. Derived
- *  from the engine's read table so the two never drift; names are reserved (can't be shadowed). */
-export const READABLE_BUILTINS: readonly EditorAttribute[] = Object.entries(
-  FX_READABLE_CORE_BUILTINS,
-).map(([name, builtin]) => ({ name, type: builtin.type.glslTypeName as AttributeTypeName }));
-
-/** Whether a name is a reserved builtin read source (so it cannot be declared as an attribute). */
+/**
+ * Whether a name is a reserved builtin read source (so it cannot be declared as an attribute) -
+ * matched case-insensitively so "Position"/"POSITION" are caught too, not just the lowercase spelling.
+ */
 export function isReservedAttributeName(name: string): boolean {
-  return Object.prototype.hasOwnProperty.call(FX_READABLE_CORE_BUILTINS, name);
+  return Object.prototype.hasOwnProperty.call(FX_READABLE_CORE_BUILTINS, name.toLowerCase());
 }
 
 // Re-exported (not re-derived) so serialize/node-view code shares the engine's own inverse of

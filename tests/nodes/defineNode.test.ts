@@ -16,7 +16,7 @@ import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 
-// velocity is a user attribute now: the node reads it via read-attribute, and its
+// velocity is a user attribute now: the node reads it via custom-attribute, and its
 // result is persisted via store-attribute bound to `attr:velocity` (asserted on the
 // stride-3 `velocity` buffer, y at offset 1).
 const OFF_VELOCITY_Y = 1;
@@ -72,7 +72,7 @@ const colorDef = defineNode({
   build: ({ params }) => ({ color: params.tint }),
 });
 
-/** read-attribute(velocity) -> node -> store-attribute(velocity), bound to `attr:velocity`. */
+/** custom-attribute(velocity) -> node -> store-attribute(velocity), bound to `attr:velocity`. */
 function velocityGraph(node: FXBehaviorNode): FXGraph<FXBehaviorNode> {
   const graph = new FXGraph<FXBehaviorNode>();
   graph.ingest({

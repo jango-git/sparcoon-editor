@@ -6,7 +6,7 @@ import type { FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BEHAVIOR_READ_ATTRIBUTE_COMPONENTS_META } from "../../nodes-std/manualNodeMetas";
+import { BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META } from "../../nodes-std/manualNodeMetas";
 import {
   checkAttributeStructuralParams,
   resolveAttributeSource,
@@ -18,30 +18,31 @@ import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 const COMPONENTS = ["x", "y", "z", "w"] as const;
 
 /**
- * Behavior node: reads a named per-particle attribute like {@link FXBehaviorNodeReadAttribute},
- * but fans it straight out to its float components (`x`/`y`/`z`/`w` up to its width) instead of a
- * single combined `value` - the fused equivalent of `read-attribute` piped into `split`, without
- * an extra node or wire for the common case of only needing one or two components.
+ * Behavior node: reads a named per-particle attribute like
+ * {@link FXBehaviorNodeCustomAttribute}, but fans it straight out to its float components
+ * (`x`/`y`/`z`/`w` up to its width) instead of a single combined `value` - the fused equivalent
+ * of `custom-attribute` piped into `split`, without an extra node or wire for the common
+ * case of only needing one or two components.
  *
- * Phase-flexible: placed by its consumers, same as `read-attribute`.
+ * Phase-flexible: placed by its consumers, same as `custom-attribute`.
  */
-export class FXBehaviorNodeReadAttributeComponents extends FXBehaviorNode {
-  public readonly type = "read-attribute-components";
+export class FXBehaviorNodeCustomAttributeSplit extends FXBehaviorNode {
+  public readonly type = "custom-attribute-split";
   public override readonly phaseFlexible = true;
-  public override readonly attributeRequest?: FXAttributeRequest | undefined;
+  public override readonly attributeRequest: FXAttributeRequest;
   public readonly phase: FXBehaviorPhase;
   public readonly inputs: readonly FXSocketDescriptor[];
   /** Always all four `x`/`y`/`z`/`w` float sockets, regardless of the source's width - mirrors
    *  `split`'s own static descriptor; the editor facade trims the unused tail for display (see
-   *  `domain/nodeFamilies.ts`'s `read-attribute-components` family). */
+   *  `domain/nodeFamilies.ts`'s `custom-attribute-split` family). */
   public readonly outputs: readonly FXSocketDescriptor[];
   private readonly sourceName: string;
   private readonly targetInput: string;
   private readonly valueType: FXValueType;
 
   /**
-   * @param name - A readable builtin (`position`/`age`/`lifetime`) or a user attribute name
-   * @param type - Element type of a user attribute (ignored for a builtin, whose type is fixed)
+   * @param name - A user-declared attribute name (checked by {@link resolveAttributeSource})
+   * @param type - Element type of the attribute
    * @param phase - Nominal fallback phase; the effective phase is inferred (see
    *   {@link phaseFlexible}). Defaults to UPDATE (a per-frame read of a persisted value).
    */
@@ -59,10 +60,10 @@ export class FXBehaviorNodeReadAttributeComponents extends FXBehaviorNode {
 
   /** Palette metadata (category `attribute`; reads a named attribute, writes nothing). */
   public static describe(): FXNodeMeta {
-    return BEHAVIOR_READ_ATTRIBUTE_COMPONENTS_META;
+    return BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META;
   }
 
-  /** A buffer read plus a re-index (no arithmetic), like `read-attribute` and `split`. */
+  /** A buffer read plus a re-index (no arithmetic), like `custom-attribute` and `split`. */
   public override estimateCost(): number {
     return 0;
   }
@@ -77,8 +78,8 @@ export class FXBehaviorNodeReadAttributeComponents extends FXBehaviorNode {
     ) {
       throw new FXCompilerErrorException({
         code: "bad-param-phase",
-        message: `read-attribute-components: "phase" must be "spawn" | "update"`,
-        params: { context: "read-attribute-components" },
+        message: `custom-attribute-split: "phase" must be "spawn" | "update"`,
+        params: { context: "custom-attribute-split" },
       });
     }
   }

@@ -65,7 +65,7 @@ export type AttributeTypeName = "float" | "vec2" | "vec3" | "vec4";
 /**
  * A user-declared per-particle attribute (behavior graph). Adds an `attr:<name>` write slot to
  * both phase sinks and, when wired, materializes into a `store-attribute` node at serialize
- * (whose `attributeRequest` allocates the buffer). Read via an ordinary `read-attribute` node.
+ * (whose `attributeRequest` allocates the buffer). Read via an ordinary `custom-attribute` node.
  */
 export interface EditorAttribute {
   readonly name: string;

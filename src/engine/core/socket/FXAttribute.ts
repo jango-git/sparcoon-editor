@@ -3,8 +3,8 @@ import type { FXValueType } from "./FXValueType";
 
 /**
  * A request to reserve a named per-particle attribute buffer alongside the packed `builtin`
- * state - written by a `store-attribute` node, read by a `read-attribute` node, matched by
- * name. One buffer per distinct name; only numeric (float/vecN) types are storable.
+ * state - written by a `store-attribute` node, read by a `custom-attribute` node, matched
+ * by name. One buffer per distinct name; only numeric (float/vecN) types are storable.
  */
 export interface FXAttributeRequest {
   /** Matches {@link FX_ATTRIBUTE_NAME_PATTERN}. */
@@ -12,8 +12,13 @@ export interface FXAttributeRequest {
   readonly type: FXValueType;
 }
 
-/** Legal attribute name: a lowercase letter followed by alphanumerics. */
-export const FX_ATTRIBUTE_NAME_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
+/**
+ * Legal attribute name: letters/digits, with single underscores allowed only between two
+ * letters/digits (never leading, trailing, or doubled) - keeps every `<prefix>_<name>` splice
+ * (see the `in_`/`p_fx_`/`a_fx_` GLSL identifiers this name feeds) free of GLSL's reserved
+ * doubled-underscore identifiers, without banning underscores outright.
+ */
+export const FX_ATTRIBUTE_NAME_PATTERN = /^[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*$/;
 
 /** Whether `name` is a legal attribute name. */
 export function isValidAttributeName(name: string): boolean {

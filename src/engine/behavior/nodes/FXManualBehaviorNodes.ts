@@ -6,15 +6,17 @@ import type { FXBehaviorNode } from "../FXBehaviorNode";
 import { FXBehaviorPhase } from "../FXBehaviorPhase";
 import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
 import { FXBehaviorNodeStoreAttribute } from "./FXBehaviorNodeStoreAttribute";
-import { FXBehaviorNodeReadAttribute } from "./FXBehaviorNodeReadAttribute";
-import { FXBehaviorNodeReadAttributeComponents } from "./FXBehaviorNodeReadAttributeComponents";
+import { FXBehaviorNodeCustomAttribute } from "./FXBehaviorNodeCustomAttribute";
+import { FXBehaviorNodeCustomAttributeSplit } from "./FXBehaviorNodeCustomAttributeSplit";
+import { FXBehaviorNodeBuiltinAttribute } from "./FXBehaviorNodeBuiltinAttribute";
 import { FXBehaviorNodeTimelineValue } from "./FXBehaviorNodeTimelineValue";
 
 /**
- * Registers the hand-written **behavior** manual nodes: `store-attribute`/`read-attribute`/
- * `read-attribute-components` (the user-attribute channel) and `timeline-value`. The attribute
- * nodes carry an `attributeRequest` (so they cannot be `defineNode` descriptors), but need no
- * `three` resource, so the factories rebuild straight from snapshot params - no resolver required.
+ * Registers the hand-written **behavior** manual nodes: `store-attribute`/`custom-attribute`/
+ * `custom-attribute-split`/`builtin-attribute` (the attribute channel) and
+ * `timeline-value`. The attribute nodes carry an `attributeRequest` (so they cannot be
+ * `defineNode` descriptors), but need no `three` resource, so the factories rebuild straight
+ * from snapshot params - no resolver required.
  */
 export function registerManualBehaviorNodes(registry: FXNodeRegistry<FXBehaviorNode>): void {
   registry.register(
@@ -27,23 +29,24 @@ export function registerManualBehaviorNodes(registry: FXNodeRegistry<FXBehaviorN
       ),
   );
   registry.register(
-    "read-attribute",
+    "custom-attribute",
     (parameters) =>
-      new FXBehaviorNodeReadAttribute(
+      new FXBehaviorNodeCustomAttribute(
         parameters?.["name"] as string,
         resolveValueType((parameters?.["type"] as FXGLSLTypeName | undefined) ?? "vec4"),
         coercePhase(parameters?.["phase"], FXBehaviorPhase.UPDATE),
       ),
   );
   registry.register(
-    "read-attribute-components",
+    "custom-attribute-split",
     (parameters) =>
-      new FXBehaviorNodeReadAttributeComponents(
+      new FXBehaviorNodeCustomAttributeSplit(
         parameters?.["name"] as string,
         resolveValueType((parameters?.["type"] as FXGLSLTypeName | undefined) ?? "vec4"),
         coercePhase(parameters?.["phase"], FXBehaviorPhase.UPDATE),
       ),
   );
+  registry.register("builtin-attribute", () => new FXBehaviorNodeBuiltinAttribute());
   // Timeline Value (behavior half): a named live binding - no resource, no resolver.
   registry.register(
     "timeline-value",

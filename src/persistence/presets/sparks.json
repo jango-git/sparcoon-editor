@@ -243,7 +243,7 @@
               },
               "node_970": {
                 "id": "node_970",
-                "type": "read-attribute",
+                "type": "custom-attribute",
                 "parameters": {
                   "type": "vec3",
                   "name": "velocity"
@@ -610,12 +610,12 @@
                 "parameters": {},
                 "position": {
                   "x": -768,
-                  "y": 1512
+                  "y": 1536
                 }
               },
               "node_490": {
                 "id": "node_490",
-                "type": "read-attribute",
+                "type": "custom-attribute",
                 "parameters": {
                   "type": "vec3",
                   "phase": "update",
@@ -623,7 +623,7 @@
                 },
                 "position": {
                   "x": -2400,
-                  "y": 1464
+                  "y": 1488
                 }
               },
               "node_491": {
@@ -638,7 +638,7 @@
                 },
                 "position": {
                   "x": -2136,
-                  "y": 1464
+                  "y": 1488
                 }
               },
               "node_492": {
@@ -647,20 +647,16 @@
                 "parameters": {},
                 "position": {
                   "x": -2352,
-                  "y": 1584
+                  "y": 1608
                 }
               },
               "node_505": {
                 "id": "node_505",
-                "type": "read-attribute",
-                "parameters": {
-                  "type": "vec3",
-                  "phase": "update",
-                  "name": "position"
-                },
+                "type": "builtin-attribute",
+                "parameters": {},
                 "position": {
-                  "x": -1320,
-                  "y": 1368
+                  "x": -1296,
+                  "y": 1344
                 }
               },
               "node_509": {
@@ -673,7 +669,7 @@
                 },
                 "position": {
                   "x": -1752,
-                  "y": 1464
+                  "y": 1488
                 }
               },
               "node_510": {
@@ -691,7 +687,7 @@
                 },
                 "position": {
                   "x": -1464,
-                  "y": 1464
+                  "y": 1488
                 }
               },
               "route_516": {
@@ -700,7 +696,7 @@
                 "parameters": {},
                 "position": {
                   "x": -2136,
-                  "y": 1680
+                  "y": 1704
                 }
               },
               "route_517": {
@@ -709,7 +705,7 @@
                 "parameters": {},
                 "position": {
                   "x": -1872,
-                  "y": 1680
+                  "y": 1704
                 }
               },
               "route_518": {
@@ -718,7 +714,7 @@
                 "parameters": {},
                 "position": {
                   "x": -1032,
-                  "y": 1560
+                  "y": 1584
                 }
               },
               "route_519": {
@@ -727,7 +723,7 @@
                 "parameters": {},
                 "position": {
                   "x": -1176,
-                  "y": 1680
+                  "y": 1704
                 }
               },
               "node_559": {
@@ -790,7 +786,7 @@
                 "parameters": {},
                 "position": {
                   "x": -1032,
-                  "y": 1440
+                  "y": 1464
                 }
               },
               "node_896": {
@@ -946,7 +942,7 @@
                 "id": "conn_890",
                 "from": {
                   "nodeId": "node_505",
-                  "socketKey": "value"
+                  "socketKey": "position"
                 },
                 "to": {
                   "nodeId": "node_889",
@@ -1218,11 +1214,11 @@
                 "text": "Application of gravity, turbulence, and ground plane collisions",
                 "position": {
                   "x": -2424,
-                  "y": 1320
+                  "y": 1296
                 },
                 "size": {
                   "width": 1848,
-                  "height": 408
+                  "height": 456
                 }
               }
             ]
@@ -1270,6 +1266,7 @@
     "assets": [],
     "environments": [],
     "meshAssets": [],
+    "palette": [],
     "timeline": {
       "duration": 4,
       "fps": 30

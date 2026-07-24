@@ -12,8 +12,8 @@ import { STORE_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
 
 /**
  * Behavior node: writes its `value` input into a named per-particle **attribute** buffer -
- * the writer half of the user-attribute channel (a render `read-attribute` reads the same
- * name on the GPU). Usually placed in SPAWN (a tint or seed chosen once at birth), but UPDATE
+ * the writer half of the user-attribute channel (a render `custom-attribute` reads the
+ * same name on the GPU). Usually placed in SPAWN (a tint or seed chosen once at birth), but UPDATE
  * is legal too. `name`/`type` are structural, so they live in {@link cacheKey}.
  */
 export class FXBehaviorNodeStoreAttribute extends FXBehaviorNode {
@@ -24,7 +24,8 @@ export class FXBehaviorNodeStoreAttribute extends FXBehaviorNode {
   public readonly outputs: readonly FXSocketDescriptor[];
 
   /**
-   * @param name - Attribute name (`[a-z][a-zA-Z0-9]*`); the render side reads it by the same name
+   * @param name - Attribute name (checked by {@link assertValidAttributeName}); the render side
+   *   reads it by the same name
    * @param type - Element type (float/vec2/vec3/vec4)
    * @param phase - Phase to write in; defaults to SPAWN
    */

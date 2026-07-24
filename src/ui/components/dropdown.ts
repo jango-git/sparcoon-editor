@@ -40,6 +40,12 @@ export interface DropdownConfig {
   readonly triggerLabel?: (option: DropdownOption | undefined, value: string) => string;
   /** Replaces the default node-field chrome (`param__input`) with middlebar-appropriate classes. */
   readonly className?: string;
+  /**
+   * Live zoom of a graph-node trigger's ancestor canvas, read fresh on every open so the popup's
+   * rows visually match a zoomed node (see {@link PopoverOptions.scale}). Omitted outside the
+   * graph (e.g. the language switch), where the popup always renders at 1x.
+   */
+  readonly scale?: (() => number) | undefined;
 }
 
 export class Dropdown implements ValueComponent<string> {
@@ -158,6 +164,7 @@ export class Dropdown implements ValueComponent<string> {
       // A single-column node menu hugs the trigger's edge (no clamp, as before); a wider grid menu
       // (the language switch, near the right edge) clamps so it never runs off-screen.
       clampToViewport: grid,
+      scale: this.config.scale?.(),
       ignore: this.element,
       onDismiss: () => {
         this.popover = undefined;

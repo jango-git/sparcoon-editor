@@ -93,8 +93,9 @@ export class MeshView {
   ) {
     this.renderLive = new FXLiveGraph(
       new FXGraphReconciler(renderRegistry),
-      // Always the attribute-free mesh target: a `read-attribute` (or any particle-only node) then
-      // fails validation against it - the palette restriction enforced by the compiler itself.
+      // Always the attribute-free mesh target: a `custom-attribute` (or any particle-only
+      // node) then fails validation against it - the palette restriction enforced by the
+      // compiler itself.
       new FXRenderLiveBackend(
         renderBackend,
         () => FX_MESH_TARGET,

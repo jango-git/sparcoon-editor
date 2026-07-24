@@ -1148,12 +1148,34 @@
     },
     "searchTags": ["rand", "jitter", "hash", "noise"]
   },
-  "read-attribute": {
+  "builtin-attribute": {
+    "description": {
+      "behavior": "Reads all four host particle builtins at once - position, age, lifetime, and id - each as its own output (the CPU-side reader).",
+      "render": "Reads all four host particle builtins at once - position, age, lifetime, and id - each as its own output (the GPU-side reader)."
+    },
+    "label": "Builtin Attribute",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      },
+      "age": {
+        "label": "Age"
+      },
+      "lifetime": {
+        "label": "Lifetime"
+      },
+      "id": {
+        "label": "ID"
+      }
+    },
+    "searchTags": ["get", "property", "position", "age", "lifetime", "id", "builtin", "read"]
+  },
+  "custom-attribute": {
     "description": {
       "behavior": "Reads a named per-particle attribute buffer as its value output (the CPU-side reader; e.g. the current velocity fed to a force).",
       "render": "Reads a named per-particle attribute (written by a behavior store-attribute) as its value output."
     },
-    "label": "Read Attribute",
+    "label": "Custom Attribute",
     "outputs": {
       "value": {
         "label": "Value"
@@ -1166,12 +1188,12 @@
     },
     "searchTags": ["get", "property", "velocity", "read"]
   },
-  "read-attribute-components": {
+  "custom-attribute-split": {
     "description": {
       "behavior": "Reads a named per-particle attribute buffer, split straight into its float components (x/y/z/w up to its width) - the CPU-side reader, fused with a split.",
       "render": "Reads a named per-particle attribute (written by a behavior store-attribute), split straight into its float components (x/y/z/w up to its width) - fused with a split."
     },
-    "label": "Read Attribute Components",
+    "label": "Custom Attribute Split",
     "outputs": {
       "w": {
         "label": "W"
@@ -1628,7 +1650,7 @@
     }
   },
   "store-attribute": {
-    "description": "Writes its value input into a named per-particle attribute buffer, read on the GPU by read-attribute.",
+    "description": "Writes its value input into a named per-particle attribute buffer, read on the GPU by custom-attribute.",
     "inputs": {
       "value": {
         "label": "Value"

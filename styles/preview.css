@@ -241,19 +241,19 @@
 }
 
 /* Every control fills its (uniform, content-sized) column, so values still line up on one edge:
-   neutralise the intrinsic widths of the number and dropdown controls so the grid can stretch
+   neutralise the intrinsic widths of the number and asset-picker controls so the grid can stretch
    them; the color swatch and segment group already stretch. The switch is deliberately left out -
    it keeps its own fixed size, which is what sizes the column on a tab with no wider control. */
 .preview-settings .number-control,
-.preview-settings .dropdown {
+.preview-settings .asset-picker {
   width: auto;
 }
 
-/* Without a cap, a long environment name would make the dropdown's own max-content contribution
+/* Without a cap, a long environment name would make the picker's own max-content contribution
    (the intrinsic sizing basis of the control column) balloon past the panel's own max-width - the
    grid doesn't clip its tracks, so the panel would visibly overflow. Bounded, the label's existing
-   ellipsis (params.css `.dropdown__label`) takes over instead. */
-.preview-settings .dropdown {
+   ellipsis (params.css `.asset-picker__label`) takes over instead. */
+.preview-settings .asset-picker {
   max-width: 160px;
 }
 

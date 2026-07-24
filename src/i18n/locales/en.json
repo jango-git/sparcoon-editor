@@ -54,12 +54,14 @@
     "removeSwatch": "Remove color",
     "removeSwatchTip": "Remove this color from the palette."
   },
+  "search": {
+    "placeholder": "Search...",
+    "noMatches": "No matches"
+  },
   "graph": {
     "modeRender": "Render graph",
     "modeBehavior": "Behavior graph",
-    "searchNodes": "Search nodes...",
     "noNodes": "No nodes for this graph",
-    "noMatches": "No matches",
     "noGroupGraph": "The VFX group has no graph - select an emitter or VFX mesh",
     "comment": "Comment",
     "attribute": "Attribute",

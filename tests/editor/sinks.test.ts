@@ -23,8 +23,16 @@ import { serializeGraph } from "../../src/domain/serialize";
 import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
-import { addAttribute, removeAttribute, setAttributeType } from "../../src/model/commands";
-import { selectBehaviorGraph } from "../../src/model/selectors";
+import {
+  addAttribute,
+  addConnection,
+  addNode,
+  addOutputBinding,
+  removeAttribute,
+  renameAttribute,
+  setAttributeType,
+} from "../../src/model/commands";
+import { selectBehaviorGraph, selectRenderGraph } from "../../src/model/selectors";
 import { nodeTextEntry } from "../helpers/nodeTextDictionary";
 
 describe("output sink nodes", () => {
@@ -311,7 +319,8 @@ describe("attribute commands", () => {
     expect(selectBehaviorGraph(store).attributes).toEqual([{ name: "velocity", type: "vec3" }]);
 
     expect(addAttribute(store, "behaviorGraph", "velocity", "float")).toBe(false); // duplicate
-    expect(addAttribute(store, "behaviorGraph", "1bad", "float")).toBe(false); // invalid name
+    expect(addAttribute(store, "behaviorGraph", "bad-name", "float")).toBe(false); // invalid name
+    expect(addAttribute(store, "behaviorGraph", "Position", "float")).toBe(false); // reserved, case-insensitive
     expect(selectBehaviorGraph(store).attributes).toHaveLength(1);
 
     setAttributeType(store, "behaviorGraph", "velocity", "vec4");
@@ -319,5 +328,166 @@ describe("attribute commands", () => {
 
     removeAttribute(store, "behaviorGraph", "velocity");
     expect(selectBehaviorGraph(store).attributes).toEqual([]);
+  });
+});
+
+describe("renameAttribute", () => {
+  const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+
+  it("renames the declaration and remaps the attr:<name> output-binding slot", () => {
+    const store = freshStore();
+    addAttribute(store, "behaviorGraph", "velocity", "vec3");
+    addNode(store, "behaviorGraph", {
+      id: "rand1",
+      type: "random",
+      parameters: {},
+      position: { x: 0, y: 0 },
+    });
+    addOutputBinding(store, "behaviorGraph", {
+      slot: "attr:velocity",
+      from: { nodeId: "rand1", socketKey: "out" },
+      phase: "spawn",
+    });
+
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "speed")).toBe(true);
+
+    expect(selectBehaviorGraph(store).attributes).toEqual([{ name: "speed", type: "vec3" }]);
+    expect(selectBehaviorGraph(store).outputBindings).toEqual([
+      { slot: "attr:speed", from: { nodeId: "rand1", socketKey: "out" }, phase: "spawn" },
+    ]);
+  });
+
+  it("rejects an invalid, reserved, or duplicate new name, and an unknown old name - without mutating state", () => {
+    const store = freshStore();
+    addAttribute(store, "behaviorGraph", "velocity", "vec3");
+    addAttribute(store, "behaviorGraph", "seed", "float");
+
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "bad-name")).toBe(false);
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "Position")).toBe(false);
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "seed")).toBe(false); // duplicate
+    expect(renameAttribute(store, "behaviorGraph", "ghost", "anything")).toBe(false); // unknown name
+
+    expect(selectBehaviorGraph(store).attributes).toEqual([
+      { name: "velocity", type: "vec3" },
+      { name: "seed", type: "float" },
+    ]);
+  });
+
+  it("is a no-op success when the new name equals the old name", () => {
+    const store = freshStore();
+    addAttribute(store, "behaviorGraph", "velocity", "vec3");
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "velocity")).toBe(true);
+    expect(selectBehaviorGraph(store).attributes).toEqual([{ name: "velocity", type: "vec3" }]);
+  });
+
+  it("re-mints every custom-attribute node reading the attribute, in both graphs, preserving wires and leaving other names alone", () => {
+    const store = freshStore();
+    addAttribute(store, "behaviorGraph", "velocity", "vec3");
+    addAttribute(store, "behaviorGraph", "seed", "float");
+
+    addNode(store, "behaviorGraph", {
+      id: "read-b1",
+      type: "custom-attribute",
+      parameters: { name: "velocity", type: "vec3" },
+      position: { x: 0, y: 0 },
+    });
+    addNode(store, "behaviorGraph", {
+      id: "read-b2",
+      type: "custom-attribute",
+      parameters: { name: "seed", type: "float" }, // a different attribute - must survive untouched
+      position: { x: 0, y: 0 },
+    });
+    addNode(store, "renderGraph", {
+      id: "read-r1",
+      type: "custom-attribute",
+      parameters: { name: "velocity", type: "vec3" },
+      position: { x: 0, y: 0 },
+    });
+    // The components-fanout twin must be retargeted too (this is exactly the bug that shipped
+    // before: only "custom-attribute" was swept, orphaning this one under the old name).
+    addNode(store, "behaviorGraph", {
+      id: "read-b3",
+      type: "custom-attribute-split",
+      parameters: { name: "velocity", type: "vec3" },
+      position: { x: 0, y: 0 },
+    });
+    addNode(store, "behaviorGraph", {
+      id: "consumer",
+      type: "add",
+      parameters: {},
+      position: { x: 0, y: 0 },
+    });
+    addNode(store, "behaviorGraph", {
+      id: "tex1",
+      type: "texture",
+      parameters: { name: "velocity" }, // same string, but a texture ref - must never match
+      position: { x: 0, y: 0 },
+    });
+    addConnection(store, "behaviorGraph", {
+      id: "conn1",
+      from: { nodeId: "read-b1", socketKey: "value" },
+      to: { nodeId: "consumer", socketKey: "a" },
+    });
+    addConnection(store, "behaviorGraph", {
+      id: "conn2",
+      from: { nodeId: "read-b3", socketKey: "x" },
+      to: { nodeId: "consumer", socketKey: "b" },
+    });
+    addOutputBinding(store, "renderGraph", {
+      slot: "albedo",
+      from: { nodeId: "read-r1", socketKey: "value" },
+    });
+
+    expect(renameAttribute(store, "behaviorGraph", "velocity", "speed")).toBe(true);
+
+    const behavior = selectBehaviorGraph(store);
+    const render = selectRenderGraph(store);
+
+    expect(behavior.nodes["read-b1"]).toBeUndefined();
+    const newBehaviorNode = Object.values(behavior.nodes).find(
+      (node) => node.type === "custom-attribute" && node.parameters["name"] === "speed",
+    );
+    expect(newBehaviorNode).toBeDefined();
+
+    expect(behavior.nodes["read-b3"]).toBeUndefined();
+    const newComponentsNode = Object.values(behavior.nodes).find(
+      (node) => node.type === "custom-attribute-split" && node.parameters["name"] === "speed",
+    );
+    expect(newComponentsNode).toBeDefined();
+
+    expect(behavior.connections).toEqual([
+      {
+        id: "conn1",
+        from: { nodeId: newBehaviorNode!.id, socketKey: "value" },
+        to: { nodeId: "consumer", socketKey: "a" },
+      },
+      {
+        id: "conn2",
+        from: { nodeId: newComponentsNode!.id, socketKey: "x" },
+        to: { nodeId: "consumer", socketKey: "b" },
+      },
+    ]);
+
+    expect(behavior.nodes["read-b2"]).toEqual({
+      id: "read-b2",
+      type: "custom-attribute",
+      parameters: { name: "seed", type: "float" },
+      position: { x: 0, y: 0 },
+    });
+    expect(behavior.nodes["tex1"]).toEqual({
+      id: "tex1",
+      type: "texture",
+      parameters: { name: "velocity" },
+      position: { x: 0, y: 0 },
+    });
+
+    expect(render.nodes["read-r1"]).toBeUndefined();
+    const newRenderNode = Object.values(render.nodes).find(
+      (node) => node.type === "custom-attribute" && node.parameters["name"] === "speed",
+    );
+    expect(newRenderNode).toBeDefined();
+    expect(render.outputBindings).toEqual([
+      { slot: "albedo", from: { nodeId: newRenderNode!.id, socketKey: "value" } },
+    ]);
   });
 });

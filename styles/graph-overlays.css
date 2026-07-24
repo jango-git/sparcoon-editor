@@ -208,6 +208,10 @@
   outline: 1px solid var(--danger);
 }
 
+.attr__name--invalid {
+  outline: 1px solid var(--danger);
+}
+
 .attr__type {
   width: 52px;
 }
@@ -262,7 +266,8 @@
 .add-node-menu {
   position: fixed;
   z-index: var(--z-add-node-menu);
-  width: 224px;
+  min-width: 224px;
+  width: max-content;
   display: flex;
   flex-direction: column;
   background: var(--panel-background);
@@ -324,6 +329,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .add-node-menu__item:hover,

@@ -142,9 +142,10 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
 
   const renderAttributes = collectAttributeRequests(renderGraph).requests;
   const behaviorAttributes = collectAttributeRequests(behaviorGraph).requests;
-  // A read-attribute/read-attribute-components node left over after its declaration was removed
-  // or retyped elsewhere in the graph compiles fine on its own (each graph's own collect is blind
-  // to the declared list) - refuse to ship it rather than export a silently-stale buffer read.
+  // A custom-attribute/custom-attribute-split node left over after its declaration
+  // was removed or retyped elsewhere in the graph compiles fine on its own (each graph's own
+  // collect is blind to the declared list) - refuse to ship it rather than export a
+  // silently-stale buffer read.
   const staleAttributeErrors = undeclaredAttributeErrors(
     renderAttributes,
     behaviorAttributes,

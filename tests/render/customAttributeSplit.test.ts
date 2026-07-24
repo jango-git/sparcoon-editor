@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FXRenderNodeReadAttributeComponents } from "../../src/engine/render/nodes/FXRenderNodeReadAttributeComponents";
+import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
@@ -27,7 +27,7 @@ function tintGraph(): FXGraph<FXRenderNode> {
   const graph = new FXGraph<FXRenderNode>();
   graph.ingest({
     nodes: new Map<string, FXRenderNode>([
-      ["tint", new FXRenderNodeReadAttributeComponents("tint", VEC4)],
+      ["tint", new FXRenderNodeCustomAttributeSplit("tint", VEC4)],
       ["col", reg.create("constant", { type: "color", value: [1, 1, 1, 1] })],
     ]),
     connections: [],
@@ -39,9 +39,9 @@ function tintGraph(): FXGraph<FXRenderNode> {
   return graph;
 }
 
-describe("read-attribute-components render node", () => {
+describe("custom-attribute-split render node", () => {
   it("declares its attribute request and reads the p_fx_<name> varying", () => {
-    const node = new FXRenderNodeReadAttributeComponents("tint", VEC4);
+    const node = new FXRenderNodeCustomAttributeSplit("tint", VEC4);
     expect(node.attributeRequest).toEqual({ name: "tint", type: VEC4 });
     expect(node.stage).toBe(FXShaderStage.FRAGMENT); // nominal fallback
     expect(node.stageFlexible).toBe(true); // effective stage is inferred
@@ -49,13 +49,13 @@ describe("read-attribute-components render node", () => {
   });
 
   it("always declares all four x/y/z/w float outputs, regardless of the source width", () => {
-    const node = new FXRenderNodeReadAttributeComponents("tint", FLOAT);
+    const node = new FXRenderNodeCustomAttributeSplit("tint", FLOAT);
     expect(node.outputs.map((socket) => socket.key)).toEqual(["x", "y", "z", "w"]);
     expect(node.outputs.every((socket) => socket.type === FLOAT)).toBe(true);
   });
 
   it("keeps name/type structural but treats stage as inferred, not structural", () => {
-    const node = new FXRenderNodeReadAttributeComponents("tint", VEC4);
+    const node = new FXRenderNodeCustomAttributeSplit("tint", VEC4);
 
     expect(() => node.applyParams({ name: "tint", type: "vec4" })).not.toThrow();
     expect(() => node.applyParams({ stage: "vertex" })).not.toThrow();
@@ -81,70 +81,14 @@ describe("read-attribute-components render node", () => {
   });
 });
 
-describe("read-attribute-components reads core builtins (position/age/lifetime)", () => {
-  it("resolves a vec3 builtin (position) to x/y/z with no buffer request", () => {
-    const pos = new FXRenderNodeReadAttributeComponents("position", VEC4);
-    expect(pos.attributeRequest).toBeUndefined();
-    expect(pos.targetReads).toEqual(["PARTICLE_POSITION"]);
-    expect(pos.cacheKey()).toBe("position:vec3");
-  });
-
-  it("resolves a float builtin (age) with only x meaningfully wired at compile time", () => {
-    const reg = renderReg();
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes: new Map<string, FXRenderNode>([
-        ["age", new FXRenderNodeReadAttributeComponents("age", VEC4)],
-        ["col", reg.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      connections: [],
-      outputBindings: [
-        { slot: "albedo", from: { nodeId: "col", socketKey: "out" } },
-        { slot: "alphaThreshold", from: { nodeId: "age", socketKey: "x" } },
-      ],
-    });
-    // The builtin rides PARTICLE_AGE (no p_fx_ varying, no attribute buffer needed).
-    const compiled = new FXCompilerBaseline().compile(graph, buildParticleTarget([]));
-    const json = JSON.stringify(compiled);
-    expect(json).toContain("PARTICLE_AGE");
-    expect(json).not.toContain("p_fx_age");
-  });
-
-  it("compiles a position.x read against the plain target (no buffer)", () => {
-    const rr = renderReg();
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes: new Map<string, FXRenderNode>([
-        ["pos", new FXRenderNodeReadAttributeComponents("position", VEC4, FXShaderStage.VERTEX)],
-        ["compose", rr.create("compose-transform", {})],
-        ["col", rr.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      connections: [
-        {
-          from: { nodeId: "pos", socketKey: "x" },
-          to: { nodeId: "compose", socketKey: "position" },
-        },
-      ],
-      outputBindings: [
-        { slot: "particleTransform", from: { nodeId: "compose", socketKey: "out" } },
-        { slot: "albedo", from: { nodeId: "col", socketKey: "out" } },
-      ],
-    });
-    const compiled = new FXCompilerBaseline().compile(graph, buildParticleTarget([]));
-    const json = JSON.stringify(compiled);
-    expect(json).toContain("PARTICLE_POSITION");
-    expect(json).not.toContain("p_fx_position");
-  });
-});
-
-describe("read-attribute-components: editor path (name + type only, no explicit stage)", () => {
+describe("custom-attribute-split: editor path (name + type only, no explicit stage)", () => {
   it("validates and compiles a float attribute's x component into a vertex slot", () => {
     const reg = renderReg();
     const graph = new FXGraph<FXRenderNode>();
     graph.ingest({
       nodes: new Map<string, FXRenderNode>([
         // Exactly what the editor's attribute picker produces: name + type, no stage.
-        ["spin", reg.create("read-attribute-components", { name: "spin", type: "float" })],
+        ["spin", reg.create("custom-attribute-split", { name: "spin", type: "float" })],
         ["compose", reg.create("compose-transform", {})],
         ["col", reg.create("constant", { type: "color", value: [1, 1, 1, 1] })],
       ]),
@@ -173,7 +117,7 @@ describe("read-attribute-components: editor path (name + type only, no explicit 
     const graph = new FXGraph<FXRenderNode>();
     graph.ingest({
       nodes: new Map<string, FXRenderNode>([
-        ["vel", reg.create("read-attribute-components", { name: "velocity", type: "vec3" })],
+        ["vel", reg.create("custom-attribute-split", { name: "velocity", type: "vec3" })],
         ["combine", reg.create("combine", { type: "vec3" })],
         ["compose", reg.create("compose-transform", {})],
         ["col", reg.create("constant", { type: "color", value: [1, 1, 1, 1] })],

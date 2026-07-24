@@ -20,7 +20,7 @@ import {
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { behaviorRegistry } from "../helpers/stdRegistry";
-import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
+import { attributeSlot, readAttr, readBuiltinAttr, storeAttr } from "../helpers/attr";
 
 const reg = behaviorRegistry();
 const VEC3 = FX_VALUE_TYPES.vec3;
@@ -157,7 +157,7 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
   });
 
   it("reads a user attribute in the spawn phase (editor path - no explicit phase)", () => {
-    // What the editor produces: a `read-attribute` with no `phase` param (nominal update). It
+    // What the editor produces: a `custom-attribute` with no `phase` param (nominal update). It
     // feeds a spawn store, so the compiler now infers it into the spawn phase instead of
     // erroring `cross-phase-dependency` (the pre-fix behavior). `store-attribute` stays fixed
     // (its phase is authored by the sink the user wired into).
@@ -259,12 +259,12 @@ describe("phase-scoped output bindings place flexible nodes", () => {
   });
 });
 
-describe("read-attribute reads builtins as well as user attributes", () => {
+describe("builtin-attribute reads builtins; custom-attribute reads user attributes", () => {
   it("a builtin read (position) allocates no attribute buffer, a user read does", () => {
     const builtin = graphOf(
-      { rp: readAttr("position", VEC3) },
+      { rp: readBuiltinAttr() },
       [],
-      [{ slot: "position", from: { nodeId: "rp", socketKey: "value" }, phase: "update" }],
+      [{ slot: "position", from: { nodeId: "rp", socketKey: "position" }, phase: "update" }],
     );
     // A builtin reads host state, so it carries no attributeRequest and adds no buffer.
     expect(builtin.getNode("rp")?.attributeRequest).toBeUndefined();

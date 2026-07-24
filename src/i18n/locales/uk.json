@@ -54,12 +54,14 @@
     "removeSwatch": "Видалити колір",
     "removeSwatchTip": "Видалити цей колір із палітри."
   },
+  "search": {
+    "placeholder": "Пошук...",
+    "noMatches": "Немає збігів"
+  },
   "graph": {
     "modeRender": "Граф рендера",
     "modeBehavior": "Граф поведінки",
-    "searchNodes": "Пошук вузлів...",
     "noNodes": "Немає вузлів для цього графа",
-    "noMatches": "Немає збігів",
     "noGroupGraph": "Група VFX не має графа - виберіть емітер або VFX-меш",
     "comment": "Коментар",
     "attribute": "Атрибут",

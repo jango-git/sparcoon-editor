@@ -49,7 +49,7 @@ export class AddNodeMenu {
     this.search = document.createElement("input");
     this.search.type = "text";
     this.search.className = "add-node-menu__search";
-    this.search.placeholder = t("graph.searchNodes");
+    this.search.placeholder = t("search.placeholder");
 
     this.list = createElement("div", { className: "add-node-menu__list" });
     this.element.append(this.search, this.list);
@@ -167,7 +167,7 @@ export class AddNodeMenu {
       this.list.append(
         createElement("div", {
           className: "add-node-menu__empty",
-          textContent: this.items.length === 0 ? t("graph.noNodes") : t("graph.noMatches"),
+          textContent: this.items.length === 0 ? t("graph.noNodes") : t("search.noMatches"),
         }),
       );
       return;

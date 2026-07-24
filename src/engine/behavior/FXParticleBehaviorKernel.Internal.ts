@@ -452,8 +452,8 @@ export function compileBehavior(
 
 /**
  * The standard particle phase targets extended with the graph's own declared attributes
- * (`store-attribute`/`read-attribute`) - velocity/scale/rotation/torque/seed are now ordinary
- * attributes, so the plain core-only targets would reject their `attr:<name>` slots.
+ * (`store-attribute`/`custom-attribute`) - velocity/scale/rotation/torque/seed are now
+ * ordinary attributes, so the plain core-only targets would reject their `attr:<name>` slots.
  */
 function particleTargetsFor(graph: FXGraph<FXBehaviorNode>): FXBehaviorTargets {
   return buildParticleBehaviorTargets(collectAttributeRequests(graph).requests);
