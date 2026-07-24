@@ -22,6 +22,7 @@ import {
   type EmitterSettings,
   type EnvironmentAsset,
   type MeshAsset,
+  type PaletteSwatch,
   type SourceState,
   type TextureAsset,
   type TimelineEvent,
@@ -159,6 +160,7 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
     environments: normalizeEnvironments(raw["environments"]),
     activeEnvironmentName: asOptionalString(raw["activeEnvironmentName"]),
     meshAssets: normalizeMeshAssets(raw["meshAssets"]),
+    palette: normalizePalette(raw["palette"]),
     timeline: normalizeTimeline(raw["timeline"]),
   };
 }
@@ -294,6 +296,40 @@ function normalizeMeshAssets(raw: unknown): readonly MeshAsset[] {
     });
   }
   return assets;
+}
+
+/** A finite linear-RGBA tuple from `raw`, defaulting a missing/non-finite channel to opaque black -
+ *  a corrupt swatch degrades instead of poisoning the whole palette with `NaN`. */
+function normalizePaletteColor(raw: unknown): PaletteSwatch["color"] {
+  const channel = (value: unknown): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : 0;
+  const [r, g, b, a] = Array.isArray(raw) ? raw : [];
+  return [
+    channel(r),
+    channel(g),
+    channel(b),
+    Array.isArray(raw) && raw.length > 3 ? channel(a) : 1,
+  ];
+}
+
+/** Keeps only well-formed persisted palette swatches (name + label + a readable color). */
+function normalizePalette(raw: unknown): readonly PaletteSwatch[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const swatches: PaletteSwatch[] = [];
+  for (const value of raw) {
+    if (!isRecord(value) || typeof value["name"] !== "string") {
+      continue;
+    }
+    const label = value["label"];
+    swatches.push({
+      name: value["name"],
+      label: typeof label === "string" && label.trim() !== "" ? label : value["name"],
+      color: normalizePaletteColor(value["color"]),
+    });
+  }
+  return swatches;
 }
 
 function normalizeEmitter(value: unknown): EmitterDoc | undefined {

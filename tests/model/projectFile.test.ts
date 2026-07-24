@@ -37,6 +37,16 @@ describe("projectFile: serialize/deserialize round-trip", () => {
     ).toBeUndefined();
   });
 
+  it("preserves saved palette swatches", () => {
+    const base = createInitialState().source;
+    const source: SourceState = {
+      ...base,
+      palette: [{ name: "swatch_1", label: "Accent", color: [1, 0.4, 0, 1] }],
+    };
+    const restored = deserializeProject(serializeProject(source));
+    expect(restored?.palette).toEqual(source.palette);
+  });
+
   it("tolerates a bare source with no envelope", () => {
     const source = sourceWithAsset();
     expect(deserializeProject(JSON.stringify(source))?.name).toBe("my-effect");

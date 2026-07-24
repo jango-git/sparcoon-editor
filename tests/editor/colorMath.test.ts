@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  hslToRgb,
   hsvToRgb,
   linearToSrgb,
   linearToSrgbRgba,
   parseHex,
   rgbToHex,
+  rgbToHsl,
   rgbToHsv,
   srgbToLinear,
   srgbToLinearRgba,
@@ -68,6 +70,37 @@ describe("HSV <-> RGB", () => {
       expect(s2).toBeCloseTo(s, 6);
       expect(v2).toBeCloseTo(v, 6);
     }
+  });
+});
+
+describe("HSL <-> RGB", () => {
+  it("maps the primary hues", () => {
+    expect(hslToRgb(0, 1, 0.5)).toEqual([1, 0, 0]); // red
+    expect(hslToRgb(120, 1, 0.5)).toEqual([0, 1, 0]); // green
+    expect(hslToRgb(240, 1, 0.5)).toEqual([0, 0, 1]); // blue
+    expect(hslToRgb(0, 0, 1)).toEqual([1, 1, 1]); // white (no saturation)
+    expect(hslToRgb(0, 0, 0)).toEqual([0, 0, 0]); // black
+  });
+
+  it("round-trips saturated and pastel colors", () => {
+    for (const [h, s, l] of [
+      [30, 0.8, 0.6],
+      [200, 0.5, 0.4],
+      [330, 1, 0.25],
+    ] as const) {
+      const [r, g, b] = hslToRgb(h, s, l);
+      const [h2, s2, l2] = rgbToHsl(r, g, b);
+      expect(h2).toBeCloseTo(h, 4);
+      expect(s2).toBeCloseTo(s, 6);
+      expect(l2).toBeCloseTo(l, 6);
+    }
+  });
+
+  it("agrees with HSV on the same greyscale/primary colors", () => {
+    // Grey has no hue/saturation in either model.
+    const [, s, l] = rgbToHsl(0.4, 0.4, 0.4);
+    expect(s).toBe(0);
+    expect(l).toBeCloseTo(0.4, 6);
   });
 });
 

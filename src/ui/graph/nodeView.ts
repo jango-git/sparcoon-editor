@@ -42,6 +42,7 @@ import {
   type AttributeNodeConfig,
 } from "./nodeAttributeRow";
 import { buildTextureAssetRows, type TextureAssetOption } from "./nodeTextureRow";
+import type { PaletteAccess } from "../components/colorPicker";
 import { NodeWidgets } from "./nodeWidgets";
 import { socketTypeColor } from "./socketColors";
 
@@ -124,9 +125,11 @@ export class NodeView {
     // header is where that graph's total now lives (moved off the Stats panel, which sums the
     // whole effect instead). `undefined` for every non-sink node.
     sinkCost?: number,
+    // Forwarded to every color-flagged field's picker/ramp (see NodeWidgets' matching param).
+    paletteAccess?: PaletteAccess,
   ) {
     this.nodeType = node.type;
-    this.widgets = new NodeWidgets(metadata, onParamChange, onLiveParamChange);
+    this.widgets = new NodeWidgets(metadata, onParamChange, onLiveParamChange, paletteAccess);
     const allParameters = metadata === undefined ? [] : Object.entries(metadata.params);
     // A free-text parameter name (a named uniform/binding slot), rendered as a body text field.
     const paramNameKey = metadata?.customParams?.find(

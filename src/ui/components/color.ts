@@ -5,8 +5,8 @@
  * value and a gradient stop carry, and what a linear material expects. Authoring, though, happens
  * in sRGB: a hex string, a hue wheel and a swatch all read in gamma space. So these controls hold
  * their working state in sRGB and convert at the boundary: `linearToSrgb` / `srgbToLinear` per RGB
- * channel (alpha is not gamma-encoded and passes through untouched), plus the usual HSV <-> RGB and
- * hex <-> RGB conversions.
+ * channel (alpha is not gamma-encoded and passes through untouched), plus the usual HSV/HSL <-> RGB
+ * and hex <-> RGB conversions.
  *
  * All tuples are `[r, g, b]` / `[r, g, b, a]` with channels in `0..1` unless noted.
  */
@@ -80,6 +80,61 @@ export function rgbToHsv(r: number, g: number, b: number): [number, number, numb
   }
   const saturation = max === 0 ? 0 : delta / max;
   return [hue, saturation, max];
+}
+
+/** sRGB `[r, g, b]` (0..1) -> HSL `[h (0..360), s (0..1), l (0..1)]`. */
+export function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (delta !== 0) {
+    s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    if (max === r) {
+      h = ((g - b) / delta) % 6;
+    } else if (max === g) {
+      h = (b - r) / delta + 2;
+    } else {
+      h = (r - g) / delta + 4;
+    }
+    h *= 60;
+    if (h < 0) {
+      h += 360;
+    }
+  }
+  return [h, s, l];
+}
+
+/** HSL (`h` in 0..360, `s`/`l` in 0..1) -> sRGB `[r, g, b]` in 0..1. */
+export function hslToRgb(h: number, s: number, l: number): Rgb {
+  if (s === 0) {
+    return [l, l, l];
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hueToChannel = (t: number): number => {
+    // Only the out-of-range ends need folding into [0, 1) - an unconditional modulo round-trip
+    // would reintroduce float error at an already-exact boundary (e.g. t === 2/3).
+    const wrapped = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+    if (wrapped < 1 / 6) {
+      return p + (q - p) * 6 * wrapped;
+    }
+    if (wrapped < 1 / 2) {
+      return q;
+    }
+    if (wrapped < 2 / 3) {
+      return p + (q - p) * (2 / 3 - wrapped) * 6;
+    }
+    return p;
+  };
+  const hueFraction = h / 360;
+  return [
+    hueToChannel(hueFraction + 1 / 3),
+    hueToChannel(hueFraction),
+    hueToChannel(hueFraction - 1 / 3),
+  ];
 }
 
 const hex2 = (channel: number): string =>

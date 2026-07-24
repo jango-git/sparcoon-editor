@@ -11,9 +11,10 @@ import { selectEnvironmentAssets } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../../settings/previewSettings";
-import { ColorPicker } from "../components/colorPicker";
+import { ColorPicker, type PaletteAccess } from "../components/colorPicker";
 import { Dropdown, type DropdownOption } from "../components/dropdown";
 import { NumberControl } from "../components/numberControl";
+import { createPaletteAccess } from "../components/paletteAccess";
 import { createSegmentedControl } from "../components/segmentedControl";
 import { createSwitchControl } from "../components/switchControl";
 import { createToggleButton } from "../components/toggleButton";
@@ -51,6 +52,7 @@ export function createPreviewSettingsGroups(
 ): PreviewSettingsGroup[] {
   const current = settings.get();
   const gizmoCurrent = gizmo.get();
+  const paletteAccess = createPaletteAccess(store);
 
   // Value controls are built inline (not just declared) so they can be resynced via set/setValue
   // when an active environment overwrites sun* with HDRI-derived values, or a whole-store reset
@@ -66,6 +68,7 @@ export function createPreviewSettingsGroups(
     value: current.sunColor,
     alpha: false,
     onChange: (value): void => settings.update({ sunColor: value }),
+    palette: paletteAccess,
   });
   const sunIntensityControl = new NumberControl({
     value: current.sunIntensity,
@@ -106,13 +109,17 @@ export function createPreviewSettingsGroups(
     (on) => settings.update({ hemisphere: on }),
     t("preview.enabledTip"),
   );
-  const hemisphereSkyRow = colorRow(t("preview.skyColor"), current.hemisphereSky, (value) =>
-    settings.update({ hemisphereSky: value }),
+  const hemisphereSkyRow = colorRow(
+    t("preview.skyColor"),
+    current.hemisphereSky,
+    (value) => settings.update({ hemisphereSky: value }),
+    paletteAccess,
   );
   const hemisphereGroundRow = colorRow(
     t("preview.groundColor"),
     current.hemisphereGround,
     (value) => settings.update({ hemisphereGround: value }),
+    paletteAccess,
   );
   const hemisphereIntensityRow = numberRow(
     t("field.intensity"),
@@ -139,8 +146,11 @@ export function createPreviewSettingsGroups(
     (on) => settings.update({ playerFigure: on }),
     t("preview.playerFigureTip"),
   );
-  const backgroundRow = colorRow(t("preview.background"), current.background, (value) =>
-    settings.update({ background: value }),
+  const backgroundRow = colorRow(
+    t("preview.background"),
+    current.background,
+    (value) => settings.update({ background: value }),
+    paletteAccess,
   );
   // An active environment (ADR-0004) fully replaces the manual fallback fields (hidden, not
   // greyed), and keeps resyncing Sun's value controls since main.ts overwrites sun* once the HDRI
@@ -320,8 +330,9 @@ function colorRow(
   label: string,
   initial: Rgba,
   onChange: (value: Rgba) => void,
+  palette: PaletteAccess,
 ): SettingsRow<Rgba> {
-  const picker = new ColorPicker({ value: initial, alpha: false, onChange });
+  const picker = new ColorPicker({ value: initial, alpha: false, onChange, palette });
   return {
     element: field(label, picker.element, PREVIEW_ROW),
     setValue: (value) => picker.setValue(value),

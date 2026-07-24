@@ -235,6 +235,21 @@ export interface EnvironmentAsset {
 }
 
 /**
+ * One user-saved color: a project-wide quick-pick swatch offered by every {@link ColorPicker}'s
+ * palette panel, not read by any node - a pure authoring convenience, like an
+ * {@link EnvironmentAsset}. `name` is a unique key (minted via `nextIdentifier("swatch")`, not
+ * derived from anything user-facing); `label` is a display name (its hex string at save time - not
+ * user-editable, unlike the other content-library kinds' upload-derived label). `color` is linear
+ * RGBA (each channel `0..1`), the same shape as `Rgba` in `ui/components/color.ts` - this layer
+ * stays free of that UI-facing type name.
+ */
+export interface PaletteSwatch {
+  readonly name: string;
+  readonly label: string;
+  readonly color: readonly [number, number, number, number];
+}
+
+/**
  * One mesh's baked geometry (see ADR-0001): flat per-vertex `position`/`normal` (vec3) and `uv`
  * (vec2) arrays plus a triangle `index` array - the same subset {@link buildPrimitiveGeometry}
  * produces for the built-in primitives (no tangents/vertex-colors/extra UV sets/skinning). Plain
@@ -277,6 +292,10 @@ export interface SourceState {
   readonly activeEnvironmentName: string | undefined;
   /** The GLB mesh-asset library; listed in the content sheet, not node-referenced yet. */
   readonly meshAssets: readonly MeshAsset[];
+  /** The saved-color palette, offered as quick picks by every color picker's palette panel (see
+   *  `ui/components/paletteAccess.ts`); never node-referenced, and has no library screen of its
+   *  own - the picker is the only place it is listed or managed. */
+  readonly palette: readonly PaletteSwatch[];
   /** Scene-wide timeline settings (length); the per-emitter tracks live on each emitter. */
   readonly timeline: TimelineState;
 }
@@ -494,6 +513,7 @@ export function createInitialState(): EditorState {
       environments: [],
       activeEnvironmentName: undefined,
       meshAssets: [],
+      palette: [],
       timeline: DEFAULT_TIMELINE,
     },
     derived: {},

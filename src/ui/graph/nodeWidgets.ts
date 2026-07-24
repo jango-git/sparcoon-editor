@@ -18,7 +18,7 @@ import { t } from "../../i18n";
 import type { UiComponent } from "../primitives/component";
 import { NumberControl } from "../components/numberControl";
 import { Dropdown } from "../components/dropdown";
-import { ColorPicker } from "../components/colorPicker";
+import { ColorPicker, type PaletteAccess } from "../components/colorPicker";
 import { ColorRamp, type RampGradient } from "../components/colorRamp";
 import { CurveEditor, type CurveData } from "../components/curveEditor";
 import type { Rgba } from "../components/color";
@@ -58,6 +58,9 @@ export class NodeWidgets {
      *  behavior-graph node (see `graphCanvas.ts`'s wiring), which then reports nothing until the
      *  gesture's final `onParamChange`. */
     private readonly onLiveParamChange?: ParamChangeHandler,
+    /** Forwarded to every color-flagged field's {@link ColorPicker}/{@link ColorRamp} (see
+     *  {@link PaletteAccess}); `undefined` where the caller has no store to wire it from. */
+    private readonly paletteAccess?: PaletteAccess,
   ) {
     const allParameters = metadata === undefined ? [] : Object.entries(metadata.params);
     const genericTypeParam = allParameters.find(
@@ -357,6 +360,7 @@ export class NodeWidgets {
       value,
       onChange: (next): void => emit(next),
       live: live === undefined ? undefined : (next): void => live(next),
+      palette: this.paletteAccess,
     });
     this.widgets.push(ramp);
     this.paramSyncers.set(key, (current) => {
@@ -403,6 +407,7 @@ export class NodeWidgets {
       alpha: withAlpha,
       onChange: (rgba): void => emit(toParamValue(rgba)),
       live: live === undefined ? undefined : (rgba): void => live(toParamValue(rgba)),
+      palette: this.paletteAccess,
     });
     this.paramSyncers.set(key, (current) => {
       picker.setValue(toRgba(toNumberArray(current, withAlpha ? 4 : 3)));

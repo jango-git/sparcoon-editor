@@ -45,6 +45,15 @@
     "z": "Z",
     "w": "W"
   },
+  "colorPicker": {
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "saveSwatch": "Зберегти колір",
+    "saveSwatchTip": "Зберегти цей колір у палітру проєкту.",
+    "removeSwatch": "Видалити колір",
+    "removeSwatchTip": "Видалити цей колір із палітри."
+  },
   "graph": {
     "modeRender": "Граф рендера",
     "modeBehavior": "Граф поведінки",

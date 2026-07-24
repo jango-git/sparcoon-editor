@@ -44,9 +44,11 @@ export { importProject, setProjectName } from "./projectCommands";
 export {
   addEnvironmentAsset,
   addMeshAsset,
+  addPaletteSwatch,
   addTextureAsset,
   removeEnvironmentAsset,
   removeMeshAsset,
+  removePaletteSwatch,
   removeTextureAsset,
   setActiveEnvironment,
 } from "./assetCommands";

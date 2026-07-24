@@ -14,6 +14,7 @@ import type {
   GraphOwnerKind,
   LiveApplyStatus,
   MeshAsset,
+  PaletteSwatch,
   TextureAsset,
   VfxDoc,
   VfxMeshDoc,
@@ -39,6 +40,11 @@ export function selectEnvironmentAssets(store: Store): readonly EnvironmentAsset
 /** The GLB mesh-asset library, in upload order. */
 export function selectMeshAssets(store: Store): readonly MeshAsset[] {
   return store.getSource().meshAssets;
+}
+
+/** The saved-color palette, in save order. */
+export function selectPaletteSwatches(store: Store): readonly PaletteSwatch[] {
+  return store.getSource().palette;
 }
 
 /**

@@ -20,7 +20,7 @@ import { glyphIcons, icon } from "../icons";
 import { fractionAcross } from "../primitives/geometry";
 import { clamp01 } from "../primitives/math";
 import { cssRgba, linearToSrgbRgba, type Rgba } from "./color";
-import { ColorPicker } from "./colorPicker";
+import { ColorPicker, type PaletteAccess } from "./colorPicker";
 import { HandleListEditor } from "./handleListEditor";
 import { NumberControl } from "./numberControl";
 
@@ -41,6 +41,8 @@ export interface ColorRampConfig {
   readonly onChange: (value: RampGradient) => void;
   /** Fires with the in-progress gradient on every intermediate drag step (see the class doc). */
   readonly live?: ((value: RampGradient) => void) | undefined;
+  /** Forwarded to the selected stop's {@link ColorPicker} (see {@link PaletteAccess}). */
+  readonly palette?: PaletteAccess | undefined;
 }
 
 /** The mutable working stop the editor drags and edits in place. */
@@ -105,10 +107,12 @@ export class ColorRamp extends HandleListEditor<Stop, RampGradient> {
   /** The selected stop's live editor parts, so an in-place repaint can update them. */
   private positionControl: NumberControl | undefined;
   private picker: ColorPicker | undefined;
+  private readonly palette: PaletteAccess | undefined;
 
   constructor(config: ColorRampConfig) {
     super(config.onChange, config.live);
     this.items = this.normalize(config.value);
+    this.palette = config.palette;
 
     this.bar = createElement("div", { className: "color-ramp__bar" });
     this.bar.addEventListener("pointerdown", (event) => {
@@ -203,6 +207,7 @@ export class ColorRamp extends HandleListEditor<Stop, RampGradient> {
       alpha: true,
       live: (rgba): void => applyColor(rgba, false),
       onChange: (rgba): void => applyColor(rgba, true),
+      palette: this.palette,
     });
 
     const positionLabel = createElement("span", {

@@ -45,6 +45,15 @@
     "z": "Z",
     "w": "W"
   },
+  "colorPicker": {
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "saveSwatch": "Save color",
+    "saveSwatchTip": "Save this color to the project palette.",
+    "removeSwatch": "Remove color",
+    "removeSwatchTip": "Remove this color from the palette."
+  },
   "graph": {
     "modeRender": "Render graph",
     "modeBehavior": "Behavior graph",

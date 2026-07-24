@@ -89,6 +89,7 @@ import type { Keymap } from "../focus/keymap";
 import { GraphMode, type GraphViewState } from "../graphViewState";
 import { InputMode, type InputModeState } from "../inputMode";
 import type { EditorContext } from "../editorContext";
+import { createPaletteAccess } from "../components/paletteAccess";
 import { AddNodeMenu } from "./addNodeMenu";
 import { snapToGrid } from "./grid";
 import { GraphViewport, type GraphPoint, type GraphRect } from "./graphViewport";
@@ -395,6 +396,9 @@ export class GraphCanvas {
     // node's view is (re)built against its current connected inputs and repainted below.
     const fills = computeSocketFills(graph, (binding) => this.sinkNodeId(binding));
     const noFills: ReadonlySet<string> = new Set();
+    // One palette bridge for every node built this pass - it only closes over `this.store`, so
+    // there is nothing per-node to vary.
+    const paletteAccess = createPaletteAccess(this.store);
     // Live per-node cost for the header badge - computed once for the whole graph (it mints a
     // throwaway set of real engine nodes internally), not per view.
     const costs = computeNodeCosts(this.activeKind(), graph);
@@ -471,6 +475,7 @@ export class GraphCanvas {
             : undefined,
           costs.get(nodeId),
           sinkCosts.get(nodeId),
+          paletteAccess,
         );
         if (isSink(node)) {
           view.element.classList.add("node--output");

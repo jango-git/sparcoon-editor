@@ -29,17 +29,23 @@
   height: 100%;
 }
 
-/* Picker popover */
+/* Picker popover: a row of two columns - the HSV/value controls, and (when a palette is wired)
+   a full-height palette column stretched to match via the default cross-axis stretch. */
 .color-picker {
   position: fixed;
   z-index: var(--z-color-picker);
+  display: flex;
+  align-items: stretch;
+  background: var(--panel-background);
+  border: 1px solid var(--border-mid);
+}
+
+.color-picker__main {
   width: 200px;
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--panel-background);
-  border: 1px solid var(--border-mid);
 }
 
 .color-picker__sv {
@@ -144,6 +150,126 @@
   min-width: 0;
   height: 22px;
   text-transform: lowercase;
+}
+
+/* The Hex/RGB/HSL mode toggle: three equal segments spanning the popover's full width, unlike
+   `segmented.css`'s default content-hugging strip. */
+.color-picker__mode.segment-group {
+  display: flex;
+}
+
+.color-picker__mode .segment {
+  flex: 1;
+  height: 22px;
+  padding: 0;
+  font-size: var(--font-size-small);
+  text-align: center;
+}
+
+/* The value row's host: either the hex field above, or (RGB/HSL mode) this row of unlabeled
+   compact number fields - same "read the mode toggle above for what each column means" convention
+   `.param__vector` uses for a plain vec3/vec4 field. */
+.color-picker__value {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-picker__components {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.color-picker__components .number-control {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The palette column: a full-height list of saved colors (row = swatch + label + remove) over a
+   full-width save button pinned at the bottom, separated from the HSV column by a border. */
+.color-picker__palette {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-mid);
+}
+
+.color-picker__palette-list {
+  flex: 1;
+  /* Lets the list shrink and scroll instead of forcing the popover taller than the HSV column
+     once the palette overflows - the default flex-basis (auto/content) would refuse to shrink. */
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.color-picker__palette-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.color-picker__palette-row:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.color-picker__palette-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border-mid);
+  background-color: transparent;
+  background-image: var(--checker);
+}
+
+.color-picker__palette-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-small);
+  color: var(--panel-foreground);
+}
+
+/* Size only - the guarded danger look (border, hover/counting fill) is the shared
+   `.confirm-danger` (countdownConfirm.ts), same pairing as an asset-row/timeline-row remove. */
+.color-picker__palette-remove {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.color-picker__palette-remove svg {
+  width: 10px;
+  height: 10px;
+}
+
+.color-picker__palette-add {
+  flex: none;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+
+.color-picker__palette-add svg {
+  width: 11px;
+  height: 11px;
+}
+
+.color-picker__palette-add:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* A Texture node's preview: a centred square, its height set by the grid-aligned block

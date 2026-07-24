@@ -1,9 +1,17 @@
 /**
- * Content-library edits (textures/environments/meshes), each its own array + command pair. Texture/
- * mesh edits are `"structural"` (they rebind preview slots); environment edits are `"view"` (ADR-0004: no compiled graph reads them).
+ * Content-library edits (textures/environments/meshes/palette), each its own array + command pair.
+ * Texture/mesh edits are `"structural"` (they rebind preview slots); environment and palette edits
+ * are `"view"` (ADR-0004: no compiled graph reads either).
  */
 
-import type { EnvironmentAsset, MeshAsset, SourceState, TextureAsset } from "../editorState";
+import { nextIdentifier } from "./identifier";
+import type {
+  EnvironmentAsset,
+  MeshAsset,
+  PaletteSwatch,
+  SourceState,
+  TextureAsset,
+} from "../editorState";
 import type { Store } from "../store";
 
 /** Adds a texture asset. `name` is expected already unique (see {@link uniqueAssetName}); a duplicate is a no-op so a double-fire can't shadow an existing asset. */
@@ -74,4 +82,22 @@ export function removeMeshAsset(store: Store, name: string): void {
     return;
   }
   store.commit({ ...source, meshAssets }, "structural");
+}
+
+/** Saves a new palette swatch; unlike the other content-library kinds it has no source file to
+ *  derive a key from, so its `name` is minted here (like a comment/emitter id), not by the caller. */
+export function addPaletteSwatch(store: Store, color: PaletteSwatch["color"], label: string): void {
+  const source = store.getSource();
+  const swatch: PaletteSwatch = { name: nextIdentifier("swatch"), label, color };
+  store.commit({ ...source, palette: [...source.palette, swatch] }, "view");
+}
+
+/** Removes the named palette swatch from the library. */
+export function removePaletteSwatch(store: Store, name: string): void {
+  const source = store.getSource();
+  const palette = source.palette.filter((swatch) => swatch.name !== name);
+  if (palette.length === source.palette.length) {
+    return;
+  }
+  store.commit({ ...source, palette }, "view");
 }
