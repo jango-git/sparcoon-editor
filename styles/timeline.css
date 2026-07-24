@@ -130,6 +130,10 @@
   width: 68px;
 }
 
+.timeline__group-label {
+  white-space: nowrap;
+}
+
 .timeline__unit {
   color: var(--dim);
 }

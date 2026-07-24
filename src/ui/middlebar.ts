@@ -11,13 +11,15 @@ import { createTriSwitchControl, type TriSwitchOption } from "./components/triSw
 import { Dropdown } from "./components/dropdown";
 import { attachTooltip } from "./components/tooltip";
 import type { EditorContext } from "./editorContext";
-import { actionIcons, graphModeIcons, icon, themeIcons } from "./icons";
+import { actionIcons, graphModeIcons, icon, linkIcons, themeIcons } from "./icons";
 import { InputMode, type InputModeState } from "./inputMode";
 import { createTransportControls } from "./transportControls";
 
 export interface MiddlebarActions {
   readonly onOpenAssets: () => void;
 }
+
+const REPOSITORY_URL = "https://github.com/jango-git/sparcoon-editor";
 
 function iconButton(
   svg: string,
@@ -30,6 +32,21 @@ function iconButton(
   attachTooltip(button, title, description);
   button.addEventListener("click", onClick);
   return button;
+}
+
+function iconLinkButton(
+  svg: string,
+  title: string,
+  description: string,
+  href: string,
+): HTMLElement {
+  const link = createElement("a", {
+    className: "middlebar__button",
+    attributes: { href, target: "_blank", rel: "noopener noreferrer" },
+  });
+  link.append(icon(svg));
+  attachTooltip(link, title, description);
+  return link;
 }
 
 /** A three-position switch (light / auto / dark) - one click picks that mode outright. */
@@ -137,6 +154,12 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
   const separator = createElement("div", { className: "middlebar__separator" });
   const themeToggle = createThemeToggle();
   const inputModeToggle = createInputModeToggle(inputMode);
+  const githubButton = iconLinkButton(
+    linkIcons.github,
+    t("middlebar.github"),
+    t("middlebar.githubTip"),
+    REPOSITORY_URL,
+  );
 
   const refreshHistoryButtons = (): void => {
     undoButton.disabled = !store.canUndo;
@@ -145,8 +168,8 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
   refreshHistoryButtons();
   signals.on("historyChanged", refreshHistoryButtons);
 
-  // Left cluster: history + content. Centre: the transport (framed by flexible spacers). Right:
-  // language, input mode, theme.
+  // Left cluster: history + content. Centre: the transport (framed by flexible spacers). Right,
+  // most important nearest the centre: input mode, theme, language, GitHub link.
   return createElement("header", { className: "middlebar" }, [
     undoButton,
     redoButton,
@@ -155,10 +178,12 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
     createElement("div", { className: "middlebar__spacer" }),
     createTransportControls(store, signals, transport),
     createElement("div", { className: "middlebar__spacer" }),
-    createLanguageSelect(),
-    createElement("div", { className: "middlebar__separator" }),
     inputModeToggle,
     createElement("div", { className: "middlebar__separator" }),
     themeToggle,
+    createElement("div", { className: "middlebar__separator" }),
+    createLanguageSelect(),
+    createElement("div", { className: "middlebar__separator" }),
+    githubButton,
   ]);
 }

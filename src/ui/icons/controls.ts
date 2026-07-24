@@ -1,10 +1,17 @@
 /**
- * Transport + toggle-button glyphs. The transport trio uses "dense" filled triangles with a struck
- * vertical bar for the frame-step buttons and a plain triangle / two bars for play / pause.
- * `restartOnRebuild` and `toggleCheck` back the icon toggle buttons. 16x16 line icons, `stroke`/
- * `fill` both `currentColor` so the glyph inherits its button's color.
+ * Transport + toggle-button glyphs. The transport buttons use "dense" filled triangles with a
+ * struck vertical bar for jump-to-start / the frame-step buttons, and a plain triangle / two bars
+ * for play / pause. `restartOnRebuild` and `toggleCheck` back the icon toggle buttons. 16x16 line
+ * icons, `stroke`/`fill` both `currentColor` so the glyph inherits its button's color.
  */
 export const controlIcons = {
+  // Jump to start: a vertical bar on the left, two triangles pointing left into it.
+  jumpToStart: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 4v8"/>
+    <path d="M8.5 4 4.5 8 8.5 12Z" fill="currentColor" stroke="none"/>
+    <path d="M12.5 4 8.5 8 12.5 12Z" fill="currentColor" stroke="none"/>
+  </svg>`,
+
   // Step back a frame: a vertical bar on the left, one triangle pointing left into it.
   stepBack: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M4.5 4v8"/>

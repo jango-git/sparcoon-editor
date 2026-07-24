@@ -22,7 +22,9 @@
     "content": "Content (Ctrl+Space)",
     "undoTip": "Undo the last change.",
     "redoTip": "Redo the last undone change.",
-    "contentTip": "Open the content screen."
+    "contentTip": "Open the content screen.",
+    "github": "GitHub",
+    "githubTip": "View the source on GitHub."
   },
   "field": {
     "position": "Position",
@@ -122,9 +124,12 @@
     "costTip": "This node's approximate ALU cost - higher runs more expensive.",
     "graphCost": "Graph cost",
     "graphCostTip": "This graph's approximate ALU cost - higher runs more expensive.",
-    "effectCost": "Effect cost"
+    "objectCost": "Object cost",
+    "totalCost": "Total cost"
   },
   "transport": {
+    "jumpToStart": "Jump to start",
+    "jumpToStartTip": "Move the playhead to the beginning of the timeline.",
     "stepBack": "Step back",
     "playPause": "Play / pause",
     "stepForward": "Step forward",
@@ -133,7 +138,10 @@
     "stepBackTip": "Move the playhead back one frame.",
     "playPauseTip": "Start or pause playback. (Space)",
     "stepForwardTip": "Move the playhead forward one frame.",
-    "restartOnRebuildTip": "Replay the effect from the start on every graph change."
+    "restartOnRebuildTip": "Replay the effect from the start on every graph change.",
+    "fps": "Timeline FPS",
+    "fpsTip": "Frames per second for this timeline's playback and keyframe snapping - not the effect's own particle simulation rate.",
+    "durationTip": "Total length of the timeline, in seconds."
   },
   "timeline": {
     "selectHint": "Select a keyframe or event",

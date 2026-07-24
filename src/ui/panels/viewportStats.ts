@@ -36,7 +36,7 @@ export function createViewportStats(): ViewportStats {
     createElement("div", { className: "viewport-stats__title", textContent: t("stats.title") }),
     statRow(fpsValue, t("field.fps")),
     statRow(particlesValue, t("stats.particles")),
-    statRow(costValue, t("stats.effectCost")),
+    statRow(costValue, t("stats.totalCost")),
   ]);
 
   return {

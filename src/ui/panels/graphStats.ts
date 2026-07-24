@@ -1,8 +1,8 @@
 /**
- * The graph editor's complexity readout: reachable node count + total cost for the active owner's
- * graphs (see `domain/graphStats.ts`). The whole-scene cost total lives on the viewport's stats
- * panel instead (see `viewportStats.ts`) - it is an effect-wide number, not specific to whichever
- * graph happens to be open here.
+ * The graph editor's complexity readout: reachable node count + the active owner's own cost (see
+ * `domain/graphStats.ts`), labelled "Object cost". The whole-scene total lives on the viewport's
+ * stats panel instead (see `viewportStats.ts`), labelled "Total cost" there - it is an effect-wide
+ * number, not specific to whichever graph happens to be open here.
  * Pure UI - the caller recomputes and pushes the numbers in via {@link GraphStats.report}.
  */
 
@@ -23,7 +23,7 @@ export function createGraphStats(): GraphStats {
   const element = createElement("div", { className: "graph-stats" }, [
     createElement("div", { className: "graph-stats__title", textContent: t("stats.title") }),
     statRow(nodesValue, t("stats.nodes")),
-    statRow(costValue, t("stats.cost")),
+    statRow(costValue, t("stats.objectCost")),
   ]);
 
   return {

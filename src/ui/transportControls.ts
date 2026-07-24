@@ -25,6 +25,11 @@ export function createTransportControls(
   const duration = (): number => store.getSource().timeline.duration;
   const fps = (): number => store.getSource().timeline.fps;
 
+  const jumpToStart = transportButton(
+    controlIcons.jumpToStart,
+    t("transport.jumpToStart"),
+    t("transport.jumpToStartTip"),
+  );
   const back = transportButton(
     controlIcons.stepBack,
     t("transport.stepBack"),
@@ -67,6 +72,7 @@ export function createTransportControls(
     className: "toggle-button--lg",
   });
 
+  jumpToStart.addEventListener("click", () => transport.seek(0));
   back.addEventListener("click", () => stepFrame(store, transport, -1));
   forward.addEventListener("click", () => stepFrame(store, transport, 1));
   play.addEventListener("click", () => {
@@ -78,9 +84,18 @@ export function createTransportControls(
   });
 
   const element = createElement("div", { className: "transport-bar" }, [
-    createElement("div", { className: "timeline__transport" }, [back, play, forward]),
-    group(t("field.duration"), [lengthControl.element, unit(t("transport.unitSeconds"))]),
-    group(t("field.fps"), [fpsControl.element]),
+    createElement("div", { className: "timeline__transport" }, [
+      jumpToStart,
+      back,
+      play,
+      forward,
+    ]),
+    group(
+      t("field.duration"),
+      [lengthControl.element, unit(t("transport.unitSeconds"))],
+      t("transport.durationTip"),
+    ),
+    group(t("transport.fps"), [fpsControl.element], t("transport.fpsTip")),
     restart.element,
   ]);
 
@@ -116,11 +131,13 @@ function stepFrame(store: Store, transport: TransportStore, delta: number): void
   transport.seek(timeOfFrame(Math.max(0, frame + delta), fps));
 }
 
-function group(label: string, controls: HTMLElement[]): HTMLElement {
-  return createElement("div", { className: "timeline__group" }, [
+function group(label: string, controls: HTMLElement[], tooltip: string): HTMLElement {
+  const element = createElement("div", { className: "timeline__group" }, [
     createElement("span", { className: "timeline__group-label", textContent: label }),
     ...controls,
   ]);
+  attachTooltip(element, label, tooltip);
+  return element;
 }
 
 function unit(text: string): HTMLElement {

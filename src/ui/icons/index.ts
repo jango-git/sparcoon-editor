@@ -9,6 +9,7 @@ export { controlIcons } from "./controls";
 export { glyphIcons } from "./glyphs";
 export { themeIcons } from "./theme";
 export { graphModeIcons } from "./graphMode";
+export { linkIcons } from "./link";
 export { renderBackendIcons } from "./renderBackend";
 export { timelineIcons } from "./timeline";
 export { viewportIcons } from "./viewport";
