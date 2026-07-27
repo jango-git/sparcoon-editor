@@ -1,16 +1,17 @@
 /* Wire layer
-   An SVG inside the transformed content layer, so wires pan/zoom with the
-   nodes. Zero-sized with visible overflow: the paths draw in graph
-   coordinates well outside the nominal box. Purely visual (never eats
-   pointer events - edges are edited by dragging their socket endpoints). */
+   A canvas-sized SVG surface; its inner group carries the camera, so the paths are
+   authored in graph coordinates and pan/zoom with the nodes while the surface itself
+   stays in screen space and clips to the canvas. Purely visual (never eats pointer
+   events - edges are edited by dragging their socket endpoints). */
 
+/* The explicit 100% sizes are load-bearing: an outer `svg` is a replaced element, so offsets
+   alone leave it at the 300x150 default box (anchored top-left) that clips away every wire. */
 .graph__wires {
   position: absolute;
   top: 0;
   left: 0;
-  width: 0;
-  height: 0;
-  overflow: visible;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
@@ -46,11 +47,15 @@
 
 /* Knife stroke (Alt-drag wire cut)
    A screen-space overlay above the nodes; purely visual, never eats pointer events. */
+/* Sized like `.graph__wires` above, and for the same replaced-element reason: the stroke is
+   drawn in root-relative coordinates and must reach every corner of the canvas. */
 .graph__knife {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 6;
-  overflow: visible;
   pointer-events: none;
 }
 
@@ -62,13 +67,14 @@
 }
 
 /* Comment boxes
-   The back layer sits inside the transformed content (so comments pan/zoom with the graph)
-   behind the wires and nodes. The body is click-through - only the header and the corner
-   handles capture pointer events - so nodes over a comment and a marquee across it still work. */
+   The back layer carries the camera (so comments pan/zoom with the graph) and stacks behind
+   the wires and nodes. The body is click-through - only the header and the corner handles
+   capture pointer events - so nodes over a comment and a marquee across it still work. */
 .graph__comments {
   position: absolute;
   top: 0;
   left: 0;
+  transform-origin: 0 0;
   pointer-events: none;
 }
 

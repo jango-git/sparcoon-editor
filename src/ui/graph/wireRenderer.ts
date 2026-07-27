@@ -3,8 +3,9 @@
  * pending drag wire. Each edge is stroked by the data type its endpoints carry; a wire joining two
  * different types (a generic `T` meeting a concrete type) splits color at its arc-length midpoint.
  *
- * Owns only the SVG `<path>` output. Socket centres are measured from the live node DOM through the
- * injected {@link SocketCenter}, so the renderer stays decoupled from the node/route views.
+ * Owns only the SVG `<path>` output, drawn in graph coordinates into the wire surface's camera
+ * group. Socket centres are measured from the live node DOM through the injected
+ * {@link SocketCenter}, so the renderer stays decoupled from the node/route views.
  */
 
 import type { EditorGraph } from "../../domain/graphModel";
@@ -39,14 +40,14 @@ export type SinkNodeId = (binding: {
 
 export class WireRenderer {
   constructor(
-    private readonly wires: SVGSVGElement,
+    private readonly wireLayer: SVGGElement,
     private readonly socketCenter: SocketCenter,
     private readonly sinkNodeId: SinkNodeId,
   ) {}
 
   /** Rebuilds the wire layer from the graph's connections, bindings, and the pending drag. */
   public redraw(kind: GraphKind, graph: EditorGraph, pending: PendingWire | undefined): void {
-    this.wires.replaceChildren();
+    this.wireLayer.replaceChildren();
     for (const connection of graph.connections) {
       const from = this.socketCenter(connection.from.nodeId, connection.from.socketKey, "output");
       const to = this.socketCenter(connection.to.nodeId, connection.to.socketKey, "input");
@@ -166,7 +167,7 @@ export class WireRenderer {
     path.setAttribute("d", pathData);
     path.setAttribute("class", className);
     path.style.stroke = color;
-    this.wires.append(path);
+    this.wireLayer.append(path);
   }
 }
 

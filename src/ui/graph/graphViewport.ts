@@ -1,7 +1,9 @@
 /**
- * Screen <-> graph coordinate transform for the node canvas: pan + zoom applied as a single CSS
- * transform on the content layer. Node elements are positioned in graph coordinates; this layer
- * maps them to the screen.
+ * Screen <-> graph coordinate transform for the node canvas. The viewport owns one camera
+ * (pan + zoom) and broadcasts it to every {@link CameraTarget} it was built with - each surface
+ * applies the same camera in its own idiom (a CSS transform, an SVG group transform, a background
+ * offset). Nothing inherits the camera by DOM nesting, so a layer's stacking order and its
+ * coordinate system stay independent choices.
  */
 
 import { clamp } from "../primitives/math";
@@ -27,6 +29,42 @@ export interface GraphRect {
   readonly maxY: number;
 }
 
+/** One surface the camera drives, given the camera in screen pixels (pan) and scale (zoom). */
+export interface CameraTarget {
+  applyCamera(panX: number, panY: number, zoom: number): void;
+}
+
+/** An absolutely-positioned HTML layer whose children are placed in graph coordinates. */
+export function htmlLayerTarget(layer: HTMLElement): CameraTarget {
+  return {
+    applyCamera(panX: number, panY: number, zoom: number): void {
+      layer.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    },
+  };
+}
+
+/** A group inside a screen-space SVG surface whose geometry is authored in graph coordinates. */
+export function svgGroupTarget(group: SVGGElement): CameraTarget {
+  return {
+    applyCamera(panX: number, panY: number, zoom: number): void {
+      group.setAttribute("transform", `translate(${panX} ${panY}) scale(${zoom})`);
+    },
+  };
+}
+
+/** The dotted grid, painted as a repeating background image on the canvas surface itself. */
+export function dottedGridTarget(surface: HTMLElement): CameraTarget {
+  return {
+    applyCamera(panX: number, panY: number, zoom: number): void {
+      const cell = GRID_SIZE * zoom;
+      surface.style.backgroundSize = `${cell}px ${cell}px`;
+      // Offset the dots by half a cell so each sits in the centre of a grid square
+      // (node corners land on the grid lines, the dots on the cells between them).
+      surface.style.backgroundPosition = `${panX + cell / 2}px ${panY + cell / 2}px`;
+    },
+  };
+}
+
 const MINIMUM_ZOOM = 0.2;
 const MAXIMUM_ZOOM = 3;
 
@@ -39,14 +77,10 @@ export class GraphViewport {
   private zoom = 1;
 
   /**
-   * @param content - the transformed node layer
-   * @param surface - the element carrying the dotted grid background, kept in sync
-   *   with pan/zoom so the grid lines up with snapped nodes
+   * @param targets - every surface the camera drives, in no particular order (see
+   *   {@link htmlLayerTarget}, {@link svgGroupTarget}, {@link dottedGridTarget})
    */
-  constructor(
-    private readonly content: HTMLElement,
-    private readonly surface: HTMLElement,
-  ) {
+  constructor(private readonly targets: readonly CameraTarget[]) {
     this.applyTransform();
   }
 
@@ -122,11 +156,8 @@ export class GraphViewport {
   }
 
   private applyTransform(): void {
-    this.content.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
-    const cell = GRID_SIZE * this.zoom;
-    this.surface.style.backgroundSize = `${cell}px ${cell}px`;
-    // Offset the dots by half a cell so each sits in the centre of a grid square
-    // (node corners land on the grid lines, the dots on the cells between them).
-    this.surface.style.backgroundPosition = `${this.panX + cell / 2}px ${this.panY + cell / 2}px`;
+    for (const target of this.targets) {
+      target.applyCamera(this.panX, this.panY, this.zoom);
+    }
   }
 }

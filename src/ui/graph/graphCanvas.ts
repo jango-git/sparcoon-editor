@@ -10,8 +10,9 @@
  *   grabbing a connected input detaches its edge to re-route or delete it
  *
  * Nodes are reconciled by id (not rebuilt) on every source change, so an unrelated edit or an undo
- * never destroys the node you are dragging. Edges are drawn on an in-content SVG layer
- * ({@link redrawWires}) that pans/zooms with the nodes.
+ * never destroys the node you are dragging. Edges are drawn on a canvas-sized SVG surface
+ * ({@link redrawWires}) stacked between the comment and node layers; all three carry the same
+ * camera, handed to them by {@link GraphViewport}.
  */
 
 import type {
@@ -92,7 +93,14 @@ import type { EditorContext } from "../editorContext";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { AddNodeMenu } from "./addNodeMenu";
 import { snapToGrid } from "./grid";
-import { GraphViewport, type GraphPoint, type GraphRect } from "./graphViewport";
+import {
+  GraphViewport,
+  dottedGridTarget,
+  htmlLayerTarget,
+  svgGroupTarget,
+  type GraphPoint,
+  type GraphRect,
+} from "./graphViewport";
 import { GraphCamera } from "./graphCamera";
 import {
   NodeView,
@@ -153,9 +161,10 @@ function connectedInputKeys(fill: ReadonlySet<string> | undefined): ReadonlySet<
 }
 
 export class GraphCanvas {
-  private readonly content: HTMLElement;
-  /** In-content SVG layer (graph coordinates) that draws every edge behind the nodes. */
-  private readonly wires: SVGSVGElement;
+  /** The layer (graph coordinates) holding every node and route card, in front of the wires. */
+  private readonly nodeLayer: HTMLElement;
+  /** The camera group of the wire surface; every edge is drawn into it in graph coordinates. */
+  private readonly wireLayer: SVGGElement;
   /** Screen-space rubber-band rectangle shown while marquee-selecting (left-drag). */
   private readonly marquee: HTMLElement;
   /** Screen-space SVG overlay drawing the knife stroke while Alt-dragging to cut wires. */
@@ -167,7 +176,7 @@ export class GraphCanvas {
   private readonly routeViews = new Map<string, RouteView>();
   /** Comment-box views, keyed by comment id; rendered on {@link commentLayer} behind the nodes. */
   private readonly commentViews = new Map<string, CommentView>();
-  /** The back layer (behind wires and nodes) that holds the comment boxes. */
+  /** The back layer (graph coordinates, behind wires and nodes) that holds the comment boxes. */
   private readonly commentLayer: HTMLElement;
   /** Per-view socket-shape signature; a change (render sink material) forces a rebuild. */
   private readonly shapeKeys = new Map<string, string>();
@@ -212,23 +221,30 @@ export class GraphCanvas {
     this.transport = context.transport;
     this.inputMode = context.inputMode;
     const { signals, router } = context;
-    this.content = createElement("div", { className: "graph__content" });
-    // The comment layer sits at the bottom of the content stack - behind the wires and the
-    // nodes - so comment boxes read as a background annotation the graph is drawn over.
+    // Three sibling layers, back to front: comment boxes (a background annotation the graph is
+    // drawn over), the wire surface, then the node cards. Stacking is DOM order alone.
     this.commentLayer = createElement("div", { className: "graph__comments" });
-    this.content.append(this.commentLayer);
-    this.wires = document.createElementNS(SVG_NS, "svg");
-    this.wires.setAttribute("class", "graph__wires");
-    this.content.append(this.wires);
+    // Canvas-sized surface with the camera on an inner group: Blink skips painting an SVG root
+    // whose viewport is empty, so a zero-sized surface drawing through overflow paints nothing.
+    const wireSurface = document.createElementNS(SVG_NS, "svg");
+    wireSurface.setAttribute("class", "graph__wires");
+    this.wireLayer = document.createElementNS(SVG_NS, "g");
+    wireSurface.append(this.wireLayer);
+    this.nodeLayer = createElement("div", { className: "graph__nodes" });
     this.marquee = createElement("div", { className: "graph__marquee" });
     this.marquee.style.display = "none";
     this.knife = document.createElementNS(SVG_NS, "svg");
     this.knife.setAttribute("class", "graph__knife");
     this.knife.style.display = "none";
-    this.root.append(this.content, this.marquee, this.knife);
-    this.viewport = new GraphViewport(this.content, this.root);
+    this.root.append(this.commentLayer, wireSurface, this.nodeLayer, this.marquee, this.knife);
+    this.viewport = new GraphViewport([
+      htmlLayerTarget(this.commentLayer),
+      svgGroupTarget(this.wireLayer),
+      htmlLayerTarget(this.nodeLayer),
+      dottedGridTarget(this.root),
+    ]);
     this.wireRenderer = new WireRenderer(
-      this.wires,
+      this.wireLayer,
       (nodeId, socketKey, side) => this.socketCenter(nodeId, socketKey, side),
       (binding) => this.sinkNodeId(binding),
     );
@@ -492,7 +508,7 @@ export class GraphCanvas {
         view.element.addEventListener("pointerdown", (event) =>
           this.onNodePointerDown(event, node.id),
         );
-        this.content.append(view.element);
+        this.nodeLayer.append(view.element);
         // Now that the card is in the DOM, size its width to content and snap to the grid.
         view.finalizeSize();
         this.nodeViews.set(node.id, view);
@@ -545,7 +561,7 @@ export class GraphCanvas {
         view.element.addEventListener("pointerdown", (event) =>
           this.onNodePointerDown(event, node.id),
         );
-        this.content.append(view.element);
+        this.nodeLayer.append(view.element);
         this.routeViews.set(node.id, view);
       }
       view.setPosition(node.position.x, node.position.y);

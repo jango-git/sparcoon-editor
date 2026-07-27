@@ -8,7 +8,7 @@
   background-size: 24px 24px;
 }
 
-.graph__content {
+.graph__nodes {
   position: absolute;
   top: 0;
   left: 0;
@@ -33,8 +33,9 @@
 
 /* No graph owner selected (the outliner's root VFX group - see graphPanel.ts): the canvas, the
    Behavior/Render switch, the stats readout and the error strip all give way to `.graph__hint`. */
-.graph--no-owner .graph__content,
+.graph--no-owner .graph__comments,
 .graph--no-owner .graph__wires,
+.graph--no-owner .graph__nodes,
 .graph--no-owner .graph__marquee,
 .graph--no-owner .graph__knife,
 .graph--no-owner .graph-switch,
