@@ -8,6 +8,7 @@ export type TransportListener = () => void;
 export class TransportStore {
   private time = 0;
   private playing = false;
+  private laps = 0;
   private frameHandle: number | undefined = undefined;
   private lastTimestamp: number | undefined = undefined;
   private restartOnRebuildFlag = true;
@@ -50,6 +51,14 @@ export class TransportStore {
 
   public isPlaying(): boolean {
     return this.playing;
+  }
+
+  /**
+   * How many times playback has looped back to the start. The playhead moves back both on a loop
+   * and on a seek; only this tells a listener which one it was.
+   */
+  public getLap(): number {
+    return this.laps;
   }
 
   /** Starts (or resumes) playback from the current playhead. No-op while already playing. */
@@ -140,9 +149,15 @@ export class TransportStore {
       const deltaTime = (timestamp - this.lastTimestamp) / 1000;
       // An infinite timeline parks the caret at the last frame while the sim (gated on isPlaying,
       // not the caret) keeps running past it; otherwise loop back to the start.
-      this.time = this.infinite()
-        ? Math.min(this.time + deltaTime, duration)
-        : (this.time + deltaTime) % duration;
+      const next = this.time + deltaTime;
+      if (this.infinite()) {
+        this.time = Math.min(next, duration);
+      } else {
+        if (next >= duration) {
+          this.laps += 1;
+        }
+        this.time = next % duration;
+      }
     }
     this.lastTimestamp = timestamp;
     this.notify();

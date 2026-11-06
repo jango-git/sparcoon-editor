@@ -80,11 +80,14 @@ export function requireSocket(
 
 /**
  * The parameter keys a node of `metadata`'s type stores: its schema params, its custom params
- * (texture, gradient, names) and the inline values of its editable input sockets.
+ * (texture, gradient, names), the inline values of its editable input sockets, and the
+ * synthesized `stage`/`phase` of a node that leaves either to a param (`"param"` in its metadata).
  */
 function parameterKeysOf(metadata: FXNodeMeta): ReadonlySet<string> {
   return new Set([
     ...Object.keys(metadata.params),
+    ...(metadata.stage === "param" ? ["stage"] : []),
+    ...(metadata.phase === "param" ? ["phase"] : []),
     ...(metadata.customParams ?? []).map((parameter) => parameter.key),
     ...socketsOf(metadata, "input")
       .filter((socket) => socket.control !== undefined)

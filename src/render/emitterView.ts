@@ -417,6 +417,11 @@ export class EmitterView implements GraphApplier {
     this.emitter?.play(rate, duration > 0 ? { duration } : {});
   }
 
+  /** Playback looped: cancels active emission, keeping live particles - a seamless loop. */
+  public loopTimeline(): void {
+    this.emitter?.loopTimeline();
+  }
+
   /** Clears live particles and cancels any active emission - the emitter returns to idle. */
   public reset(): void {
     this.emitter?.stop();

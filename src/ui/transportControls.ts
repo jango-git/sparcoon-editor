@@ -84,12 +84,7 @@ export function createTransportControls(
   });
 
   const element = createElement("div", { className: "transport-bar" }, [
-    createElement("div", { className: "timeline__transport" }, [
-      jumpToStart,
-      back,
-      play,
-      forward,
-    ]),
+    createElement("div", { className: "timeline__transport" }, [jumpToStart, back, play, forward]),
     group(
       t("field.duration"),
       [lengthControl.element, unit(t("transport.unitSeconds"))],

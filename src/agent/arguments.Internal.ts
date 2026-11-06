@@ -12,15 +12,24 @@ export function requireFiniteNumber(name: string, value: unknown): number {
   return value;
 }
 
-export function requireVector3(name: string, value: unknown): readonly [number, number, number] {
+/** A private copy of an array of exactly `length` finite numbers. */
+export function requireVector(name: string, value: unknown, length: number): readonly number[] {
   if (
     !Array.isArray(value) ||
-    value.length !== 3 ||
+    value.length !== length ||
     !value.every((entry) => typeof entry === "number" && Number.isFinite(entry))
   ) {
-    throw new AgentError("invalid_argument", `${name} must be an array of 3 finite numbers.`);
+    throw new AgentError(
+      "invalid_argument",
+      `${name} must be an array of ${String(length)} finite numbers.`,
+    );
   }
-  return [value[0] as number, value[1] as number, value[2] as number];
+  return [...(value as number[])];
+}
+
+export function requireVector3(name: string, value: unknown): readonly [number, number, number] {
+  // Length already checked; the tuple type only records it.
+  return requireVector(name, value, 3) as readonly [number, number, number];
 }
 
 /** An integer in `[minimum, maximum]` (image sizes, grid columns). */

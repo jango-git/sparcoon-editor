@@ -69,7 +69,9 @@ describe("agent project", () => {
 
     const target = replaceTarget(original);
     const project = createProjectApi(target);
-    await project.load(json);
+    const loaded = await project.load(json);
+    expect(loaded.name).toBe("Imported");
+    expect(loaded.emitters.map((emitter) => emitter.id)).toEqual(["emitter_9"]);
     expect(original.getSource().name).toBe("Imported");
     expect(JSON.parse(project.get()).source.scene.emitters[0].id).toBe("emitter_9");
     expect(target.resets).toBe(2);
@@ -84,6 +86,20 @@ describe("agent project", () => {
     await expect(project.load("{ nope")).rejects.toThrow(/invalid_argument/);
     await expect(project.loadPreset("missing")).rejects.toThrow(/not_found/);
     expect(project.presets()).toEqual(expect.arrayContaining(["empty", "sparks"]));
+  });
+
+  it("names the project, which names the exported class", () => {
+    const state = createInitialState();
+    state.source = {
+      ...state.source,
+      scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_1", "Emitter")] },
+    };
+    const store = new Store(state, new SignalBus());
+    const project = createProjectApi(replaceTarget(store));
+    project.setName("bolt sparks");
+    expect(store.getSource().name).toBe("bolt sparks");
+    expect(project.exportTypeScript()).toMatch(/class BoltSparks\b/);
+    expect(() => project.setName(3 as never)).toThrow(/invalid_argument/);
   });
 
   it("exports the TypeScript module", () => {

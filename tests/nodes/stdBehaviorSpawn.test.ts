@@ -176,16 +176,16 @@ describe("standard behavior spawn - registration & numerics", () => {
   });
 
   it("spawn-cylinder keeps points within radius and half-length about the Y axis", () => {
-    for (const [x, y, z] of positionsOf("spawn-cylinder", { radius: 2, length: 4, axis: "y" })) {
+    for (const [x, y, z] of positionsOf("spawn-cylinder", { radius: 2, height: 4, axis: "y" })) {
       expect(Math.hypot(x, z)).toBeLessThanOrEqual(2 + 1e-6);
-      expect(Math.abs(y)).toBeLessThanOrEqual(2 + 1e-6); // half of length 4
+      expect(Math.abs(y)).toBeLessThanOrEqual(2 + 1e-6); // half of height 4
     }
   });
 
   it("spawn-cylinder surface only pins points to the wall radius", () => {
     for (const [x, , z] of positionsOf("spawn-cylinder", {
       radius: 2,
-      length: 4,
+      height: 4,
       surfaceOnly: true,
     })) {
       expect(Math.hypot(x, z)).toBeCloseTo(2, 5);
@@ -223,10 +223,10 @@ describe("standard behavior spawn - registration & numerics", () => {
     }
   });
 
-  it("shape axis param reorients the sweep (cylinder about X keeps X as the length axis)", () => {
-    for (const [x, y, z] of positionsOf("spawn-cylinder", { radius: 1, length: 4, axis: "x" })) {
+  it("shape axis param reorients the sweep (cylinder about X keeps X as the height axis)", () => {
+    for (const [x, y, z] of positionsOf("spawn-cylinder", { radius: 1, height: 4, axis: "x" })) {
       expect(Math.hypot(y, z)).toBeLessThanOrEqual(1 + 1e-6); // radial plane is YZ
-      expect(Math.abs(x)).toBeLessThanOrEqual(2 + 1e-6); // length along X
+      expect(Math.abs(x)).toBeLessThanOrEqual(2 + 1e-6); // height along X
     }
   });
 

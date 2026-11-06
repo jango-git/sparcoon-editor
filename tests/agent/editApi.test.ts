@@ -231,6 +231,28 @@ describe("agent graph edits", () => {
     expect(feeds[0].from.nodeId).toBe(lookAt);
   });
 
+  it("reports a render graph lit exactly when a lighting node feeds it", () => {
+    const store = twoEmitterStore();
+    const graph = apis(store).api.graph("emitter_a", "render");
+    expect(graph.get().lit).toBe(false);
+    const shade = graph.addNode("lambert-shading");
+    graph.connect({ node: "n_albedo", socket: "out" }, { node: shade, socket: "color" });
+    graph.connect({ node: shade, socket: "color" }, { node: RENDER_SINK_ID, socket: "albedo" });
+    expect(graph.get().lit).toBe(true);
+    expect(apis(store).api.graph("emitter_a", "behavior").get().lit).toBeUndefined();
+  });
+
+  it("takes the synthesized stage of a node that leaves it to a param", () => {
+    const store = twoEmitterStore();
+    const graph = apis(store).api.graph("emitter_a", "render");
+    graph.setParams("n_albedo", { stage: "vertex" });
+    expect(graph.get().nodes.find((node) => node.id === "n_albedo")?.params.stage).toBe("vertex");
+    // `lifetime` has a fixed phase, so it has no phase to set.
+    expect(() =>
+      apis(store).api.graph("emitter_a", "behavior").setParams("n_life", { phase: "update" }),
+    ).toThrow(/no parameter "phase"/);
+  });
+
   it("rejects a socket the node does not have", () => {
     const graph = apis(twoEmitterStore()).api.graph("emitter_a", "render");
     expect(() =>
@@ -295,14 +317,13 @@ describe("agent scene and timeline edits", () => {
     expect(api.scene.get().emitters.map((emitter) => emitter.id)).toEqual(["emitter_1"]);
   });
 
-  it("renames the project through the VFX group's id", () => {
+  it("renames emitters, and points the VFX group's id at project.setName", () => {
     const store = twoEmitterStore();
     const { api } = apis(store);
-    api.scene.rename(api.scene.get().vfx.id, "Fireworks");
     api.scene.rename("emitter_b", "Sparks");
-    expect(api.scene.get().name).toBe("Fireworks");
     expect(api.scene.get().emitters[1].name).toBe("Sparks");
     expect(() => api.scene.rename("emitter_b", "  ")).toThrow(/invalid_argument/);
+    expect(() => api.scene.rename(api.scene.get().vfx.id, "Fireworks")).toThrow(/project\.setName/);
   });
 
   it("takes rotations in degrees and reports them back the same way", () => {
@@ -337,5 +358,151 @@ describe("agent scene and timeline edits", () => {
     expect(() => api.timeline.removeEvent("emitter_a", burst)).toThrow(/not_found/);
     const mesh = api.scene.addMesh();
     expect(() => api.timeline.addBurst(mesh, 0, 1)).toThrow(/only emitters/);
+  });
+});
+
+describe("agent keyframe edits", () => {
+  /** `emitter_a` with a float Timeline Value "glow" (inline 0.25) and a vec3 one "tint". */
+  function withValues(store: Store): ReturnType<typeof apis>["api"] {
+    const { api } = apis(store);
+    const graph = api.graph("emitter_a", "render");
+    graph.addNode("timeline-value", { params: { name: "glow", type: "float", value: 0.25 } });
+    graph.addNode("timeline-value", { params: { name: "tint", type: "vec3", value: [1, 1, 1] } });
+    return api;
+  }
+
+  function emitterA(api: ReturnType<typeof apis>["api"]) {
+    return api.scene.get().emitters[0];
+  }
+
+  it("keys transform channels on the frame grid, rotation in degrees", () => {
+    const { api } = apis(twoEmitterStore());
+    const position = api.timeline.setTransformKey("emitter_a", "position", 0.51, [1, 2, 3]);
+    api.timeline.setTransformKey("emitter_a", "rotation", 1, [0, 90, 0]);
+
+    const tracks = emitterA(api).transformTracks;
+    const positionTrack = tracks.find((track) => track.channel === "position");
+    expect(positionTrack?.keys).toEqual([{ id: position, time: 0.5, value: [1, 2, 3] }]);
+    const rotationKey = tracks.find((track) => track.channel === "rotation")?.keys[0];
+    expect(rotationKey?.value[1]).toBeCloseTo(90);
+
+    expect(() => api.timeline.setTransformKey("emitter_a", "skew" as never, 0, [0, 0, 0])).toThrow(
+      /invalid_argument/,
+    );
+    expect(() => api.timeline.setTransformKey("emitter_a", "scale", 0, [1, 1])).toThrow(
+      /invalid_argument/,
+    );
+  });
+
+  it("keys the VFX group's transform too", () => {
+    const { api } = apis(twoEmitterStore());
+    const vfx = api.scene.get().vfx.id;
+    api.timeline.setTransformKey(vfx, "scale", 0, [2, 2, 2]);
+    expect(api.scene.get().vfx.transformTracks[0]?.keys[0]?.value).toEqual([2, 2, 2]);
+  });
+
+  it("replaces a key set on an occupied frame", () => {
+    const { api } = apis(twoEmitterStore());
+    const first = api.timeline.setTransformKey("emitter_a", "position", 1, [1, 0, 0]);
+    const second = api.timeline.setTransformKey("emitter_a", "position", 1, [2, 0, 0]);
+    expect(second).not.toBe(first);
+    expect(emitterA(api).transformTracks[0]?.keys).toEqual([
+      { id: second, time: 1, value: [2, 0, 0] },
+    ]);
+  });
+
+  it("lists the Timeline Values an owner declares and keys them by their own shape", () => {
+    const store = twoEmitterStore();
+    const api = withValues(store);
+    expect(api.timeline.values("emitter_a")).toEqual([
+      { name: "glow", type: "float", value: 0.25 },
+      { name: "tint", type: "vec3", value: [1, 1, 1] },
+    ]);
+
+    const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0.8);
+    api.timeline.setValueKey("emitter_a", "tint", 0, [1, 0, 0]);
+    expect(emitterA(api).tracks).toEqual([
+      { name: "glow", keys: [{ id: glow, time: 0, value: 0.8 }] },
+      { name: "tint", keys: [expect.objectContaining({ value: [1, 0, 0] })] },
+    ]);
+
+    expect(() => api.timeline.setValueKey("emitter_a", "glow", 0, [1, 2])).toThrow(
+      /invalid_argument/,
+    );
+    expect(() => api.timeline.setValueKey("emitter_a", "tint", 0, 1)).toThrow(/invalid_argument/);
+    expect(() => api.timeline.setValueKey("emitter_a", "missing", 0, 1)).toThrow(/not_found/);
+    expect(() => api.timeline.values(api.scene.get().vfx.id)).toThrow(/no Timeline Values/);
+  });
+
+  it("changes a key's value in the shape it already holds", () => {
+    const api = withValues(twoEmitterStore());
+    const rotation = api.timeline.setTransformKey("emitter_a", "rotation", 0, [0, 0, 0]);
+    const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0.8);
+
+    api.timeline.setKeyValue("emitter_a", rotation, [0, 45, 0]);
+    api.timeline.setKeyValue("emitter_a", glow, 0.1);
+
+    expect(emitterA(api).transformTracks[0]?.keys[0]?.value[1]).toBeCloseTo(45);
+    expect(emitterA(api).tracks[0]?.keys[0]?.value).toBe(0.1);
+    expect(() => api.timeline.setKeyValue("emitter_a", glow, [1, 2, 3])).toThrow(
+      /invalid_argument/,
+    );
+    expect(() => api.timeline.setKeyValue("emitter_b", glow, 0.5)).toThrow(/not_found/);
+  });
+
+  it("retimes transform and value keys together, as one undo step", () => {
+    const store = twoEmitterStore();
+    const api = withValues(store);
+    const position = api.timeline.setTransformKey("emitter_a", "position", 0, [1, 0, 0]);
+    const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0.8);
+    const before = store.getSource();
+
+    api.timeline.moveKeys("emitter_a", [
+      { id: position, time: 2.01 },
+      { id: glow, time: 3 },
+    ]);
+    expect(emitterA(api).transformTracks[0]?.keys[0]?.time).toBe(2);
+    expect(emitterA(api).tracks[0]?.keys[0]?.time).toBe(3);
+
+    store.undo();
+    expect(store.getSource()).toBe(before);
+
+    // An unknown id refuses the whole batch.
+    expect(() =>
+      api.timeline.moveKeys("emitter_a", [
+        { id: position, time: 1 },
+        { id: "key_nope", time: 1 },
+      ]),
+    ).toThrow(/not_found/);
+    expect(store.getSource()).toBe(before);
+  });
+
+  it("removes a key, and the track it leaves empty", () => {
+    const api = withValues(twoEmitterStore());
+    const position = api.timeline.setTransformKey("emitter_a", "position", 0, [1, 0, 0]);
+    const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0.8);
+    api.timeline.removeKey("emitter_a", position);
+    api.timeline.removeKey("emitter_a", glow);
+    expect(emitterA(api).transformTracks).toEqual([]);
+    expect(emitterA(api).tracks).toEqual([]);
+    expect(() => api.timeline.removeKey("emitter_a", glow)).toThrow(/not_found/);
+  });
+
+  it("leaves channels and values to the host code, never the VFX group's", () => {
+    const api = withValues(twoEmitterStore());
+    api.timeline.setChannelExcluded("emitter_a", "position", true);
+    api.timeline.setValueExcluded("emitter_a", "glow", true);
+    expect(emitterA(api).excludedChannels).toEqual(["position"]);
+    expect(emitterA(api).excludedValues).toEqual(["glow"]);
+
+    api.timeline.setChannelExcluded("emitter_a", "position", false);
+    expect(emitterA(api).excludedChannels).toEqual([]);
+
+    const vfx = api.scene.get().vfx.id;
+    expect(() => api.timeline.setChannelExcluded(vfx, "position", true)).toThrow(/host code/);
+    expect(() => api.timeline.setValueExcluded("emitter_a", "missing", true)).toThrow(/not_found/);
+    expect(() => api.timeline.setValueExcluded("emitter_a", "glow", 1 as never)).toThrow(
+      /invalid_argument/,
+    );
   });
 });

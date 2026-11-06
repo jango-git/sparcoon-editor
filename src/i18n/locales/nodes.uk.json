@@ -241,6 +241,47 @@
       }
     }
   },
+  "cone-collision": {
+    "description": "Відбиває частинки від суцільного конуса або зрізаного конуса навколо осі з урахуванням радіуса, пружності та тертя.",
+    "inputs": {
+      "axis": {
+        "label": "Вісь"
+      },
+      "bottomRadius": {
+        "label": "Нижній радіус"
+      },
+      "center": {
+        "label": "Центр основи"
+      },
+      "friction": {
+        "label": "Тертя"
+      },
+      "height": {
+        "label": "Висота"
+      },
+      "position": {
+        "label": "Позиція"
+      },
+      "radius": {
+        "label": "Радіус"
+      },
+      "restitution": {
+        "label": "Пружність"
+      },
+      "topRadius": {
+        "label": "Верхній радіус"
+      },
+      "velocity": {
+        "label": "Швидкість"
+      }
+    },
+    "label": "Зіткнення з конусом",
+    "outputs": {
+      "velocity": {
+        "label": "Швидкість"
+      }
+    }
+  },
   "blend": {
     "description": "Композиціонує два кольори за обраним режимом накладання.",
     "inputs": {
@@ -1324,8 +1365,8 @@
       "center": {
         "label": "Центр"
       },
-      "length": {
-        "label": "Довжина"
+      "height": {
+        "label": "Висота"
       },
       "radius": {
         "label": "Радіус"

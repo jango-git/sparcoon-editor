@@ -1,0 +1,66 @@
+/**
+ * Node inputs renamed since projects started being saved. A saved project names an input in two
+ * places - the inline value in the node's `parameters` and the `to.socketKey` of a wire feeding
+ * it - so a rename that only touched the node definition would silently drop both on load: the
+ * value back to its default, the wire as dangling. Loading maps every old key to its new one
+ * before anything else reads the graph.
+ */
+
+import type { EditorGraph, GraphConnection, GraphNode } from "../domain/graphModel";
+import { isRecord } from "../util/guards";
+
+/** Node type -> old input key -> current input key. */
+const RENAMED_INPUTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Named like spawn-cone's, which measures the same axis-long dimension.
+  "spawn-cylinder": { length: "height" },
+};
+
+/** A stored node's type, or `undefined` for one too damaged to have one (left as it is). */
+function typeOf(node: unknown): string | undefined {
+  return isRecord(node) && typeof node["type"] === "string" ? node["type"] : undefined;
+}
+
+function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>): GraphNode {
+  if (!isRecord(node.parameters)) {
+    return node;
+  }
+  const parameters: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(node.parameters)) {
+    const current = renames[key] ?? key;
+    // A file that somehow holds both keys keeps the current one.
+    if (current !== key && current in node.parameters) {
+      continue;
+    }
+    parameters[current] = value;
+  }
+  return { ...node, parameters };
+}
+
+/** `graph` with every renamed input's stored value and incoming wire under its current key. */
+export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
+  const renamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
+    const type = typeOf(node);
+    return type !== undefined ? RENAMED_INPUTS[type] : undefined;
+  };
+  if (!Object.values(graph.nodes).some((node) => renamesOf(node) !== undefined)) {
+    return graph;
+  }
+
+  const nodes: Record<string, GraphNode> = {};
+  for (const [id, node] of Object.entries(graph.nodes)) {
+    const renames = renamesOf(node);
+    nodes[id] = renames !== undefined ? migrateNode(node, renames) : node;
+  }
+  const connections = graph.connections.map((connection): GraphConnection => {
+    if (!isRecord(connection) || !isRecord(connection.to)) {
+      return connection;
+    }
+    const socketKey =
+      renamesOf(graph.nodes[connection.to.nodeId])?.[connection.to.socketKey] ??
+      connection.to.socketKey;
+    return socketKey === connection.to.socketKey
+      ? connection
+      : { ...connection, to: { ...connection.to, socketKey } };
+  });
+  return { ...graph, nodes, connections };
+}

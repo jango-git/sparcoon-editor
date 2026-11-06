@@ -7,32 +7,67 @@
  * composition and timing but not pixel for pixel.
  */
 
+import { Color, Vector3, type Object3D } from "three";
+import type { SourceState } from "../model/editorState";
 import type { SceneEntity } from "../model/entity";
 import { VFX_ENTITY } from "../model/entity";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
-import type { SceneCoordinator } from "../render/sceneCoordinator";
-import { requireFiniteNumber, requireInteger, requireKnownKeys } from "./arguments.Internal";
+import type {
+  CaptureView,
+  FrameCaptureOptions,
+  SceneCoordinator,
+} from "../render/sceneCoordinator";
+import {
+  requireFiniteNumber,
+  requireInteger,
+  requireKnownKeys,
+  requireVector3,
+} from "./arguments.Internal";
 import { resolveEntity } from "./address.Internal";
 import { AgentError } from "./errors";
 import { settle } from "./settle.Internal";
 
-export interface CaptureOptions {
-  /** Timeline time (seconds) to replay to before capturing; omitted, captures the current frame. */
-  readonly time?: number;
-  /** Image size in pixels; omitted, the viewport's own size. Both or neither. */
+/** How each captured frame is drawn - shared by single captures and sequences. */
+export interface FrameOptions {
+  /** Image (or cell) size in pixels; omitted, the viewport's own size. Both or neither. */
   readonly width?: number;
   readonly height?: number;
+  /** Draws the effect alone: no ground, grid, player figure or gizmos. */
+  readonly clean?: boolean;
+  /**
+   * `"#rrggbb"` (sRGB, as a game would state it) or `"transparent"`; omitted, the viewport's own
+   * background. Transparent loses purely additive light (see `SceneCoordinator.capture`), so a
+   * solid color is the one to compare against a game frame with.
+   */
+  readonly background?: string;
+  /**
+   * A capture-only camera, in world units: placed at `position`, looking at `target`, with an
+   * optional vertical `fov` in degrees. The viewport camera is left where it is.
+   */
+  readonly camera?: {
+    readonly position: readonly number[];
+    readonly target: readonly number[];
+    readonly fov?: number;
+  };
+  /**
+   * Fits a sphere of `radius` around an entity (default: the VFX group) into the frame, seen from
+   * the viewport camera's current side, at any distance - small objects included. In a sequence
+   * it follows the entity at each captured time. Not combinable with `camera`.
+   */
+  readonly frame?: { readonly entity?: string; readonly radius: number };
 }
 
-export interface SequenceOptions {
+export interface CaptureOptions extends FrameOptions {
+  /** Timeline time (seconds) to replay to before capturing; omitted, captures the current frame. */
+  readonly time?: number;
+}
+
+export interface SequenceOptions extends FrameOptions {
   /** Timeline times (seconds) to capture, one cell each, laid out in ascending order. */
   readonly times: readonly number[];
   /** Grid columns; defaults to a near-square grid. */
   readonly columns?: number;
-  /** Size of each cell in pixels; omitted, the viewport's own size. Both or neither. */
-  readonly width?: number;
-  readonly height?: number;
 }
 
 export interface PreviewApi {
@@ -53,6 +88,8 @@ export interface PreviewDependencies {
   readonly transport: TransportStore;
   readonly coordinator: Pick<SceneCoordinator, "advance" | "capture">;
   readonly focusEntity: (entity: SceneEntity) => void;
+  /** The live viewport object of an entity, for framing a capture on it. */
+  readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
 }
 
 /** The fixed simulation step a timed capture replays with (the live loop's nominal rate). */
@@ -63,15 +100,76 @@ const MAX_CAPTURE_SIZE = 4096;
 /** Below this, a remaining interval is float noise rather than time left to simulate. */
 const TIME_EPSILON = 1e-9;
 
-type CaptureSize = { readonly width: number; readonly height: number } | undefined;
+const FRAME_OPTION_KEYS = ["width", "height", "clean", "background", "camera", "frame"] as const;
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-function requireSize(width: unknown, height: unknown): CaptureSize {
-  if (width === undefined && height === undefined) {
-    return undefined;
+/** The capture-only point of view `options` asks for, checked; `undefined` for the viewport's. */
+function requireView(
+  options: FrameOptions,
+  source: SourceState,
+  entityObject: (entity: SceneEntity) => Object3D | undefined,
+): CaptureView | undefined {
+  const { camera, frame } = options;
+  if (camera !== undefined && frame !== undefined) {
+    throw new AgentError("invalid_argument", "Pass camera or frame, not both.");
+  }
+  if (camera !== undefined) {
+    requireKnownKeys("camera", camera, ["position", "target", "fov"]);
+    return {
+      kind: "look",
+      position: new Vector3(...requireVector3("camera.position", camera.position)),
+      target: new Vector3(...requireVector3("camera.target", camera.target)),
+      ...(camera.fov !== undefined ? { fov: requireFov(camera.fov) } : {}),
+    };
+  }
+  if (frame !== undefined) {
+    requireKnownKeys("frame", frame, ["entity", "radius"]);
+    const radius = requireFiniteNumber("frame.radius", frame.radius);
+    if (radius <= 0) {
+      throw new AgentError("invalid_argument", "frame.radius must be positive.");
+    }
+    const entity = frame.entity === undefined ? VFX_ENTITY : resolveEntity(source, frame.entity);
+    const object = entityObject(entity);
+    if (object === undefined) {
+      throw new AgentError("rejected", "That entity has nothing in the viewport to frame.");
+    }
+    return { kind: "frame", object, radius };
+  }
+  return undefined;
+}
+
+function requireFov(value: unknown): number {
+  const fov = requireFiniteNumber("camera.fov", value);
+  if (fov <= 0 || fov >= 180) {
+    throw new AgentError("invalid_argument", "camera.fov must be within (0, 180) degrees.");
+  }
+  return fov;
+}
+
+/** The coordinator's view of a frame's options, checked; `view` already resolved. */
+function requireFrame(options: FrameOptions, view: CaptureView | undefined): FrameCaptureOptions {
+  const { width, height, clean, background } = options;
+  if (clean !== undefined && typeof clean !== "boolean") {
+    throw new AgentError("invalid_argument", "clean must be a boolean.");
+  }
+  if (background !== undefined && background !== "transparent" && !HEX_COLOR.test(background)) {
+    throw new AgentError("invalid_argument", 'background must be "#rrggbb" or "transparent".');
   }
   return {
-    width: requireInteger("width", width, 1, MAX_CAPTURE_SIZE),
-    height: requireInteger("height", height, 1, MAX_CAPTURE_SIZE),
+    ...(width !== undefined || height !== undefined
+      ? {
+          size: {
+            width: requireInteger("width", width, 1, MAX_CAPTURE_SIZE),
+            height: requireInteger("height", height, 1, MAX_CAPTURE_SIZE),
+          },
+        }
+      : {}),
+    ...(clean === true ? { overlays: false } : {}),
+    // three reads a hex string as sRGB and converts it to its linear working space.
+    ...(background === undefined
+      ? {}
+      : { background: background === "transparent" ? "transparent" : new Color(background) }),
+    ...(view !== undefined ? { view } : {}),
   };
 }
 
@@ -107,7 +205,7 @@ function composeSheet(
 }
 
 export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi {
-  const { store, transport, coordinator, focusEntity } = dependencies;
+  const { store, transport, coordinator, focusEntity, entityObject } = dependencies;
 
   const requireTime = (name: string, value: unknown): number => {
     const time = requireFiniteNumber(name, value);
@@ -121,7 +219,7 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
   /** Replays the timeline from 0, capturing once at each of `times` (ascending). */
   const replay = async (
     times: readonly number[],
-    size: CaptureSize,
+    frame: FrameCaptureOptions,
   ): Promise<{ readonly time: number; readonly image: HTMLCanvasElement }[]> => {
     // Let a pending recompute land first, so its restart-on-rebuild can't rewind mid-replay.
     await settle();
@@ -138,7 +236,7 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
           coordinator.advance(next - now);
           now = next;
         }
-        frames.push({ time, image: coordinator.capture(size) });
+        frames.push({ time, image: coordinator.capture(frame) });
       }
     } finally {
       // Never leave the live loop running a replay that failed part-way.
@@ -156,21 +254,21 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
       focusEntity(entityId === undefined ? VFX_ENTITY : resolveEntity(store.getSource(), entityId)),
 
     capture: async (options = {}): Promise<string> => {
-      requireKnownKeys("options", options, ["time", "width", "height"]);
-      const size = requireSize(options.width, options.height);
+      requireKnownKeys("options", options, ["time", ...FRAME_OPTION_KEYS]);
+      const frame = requireFrame(options, requireView(options, store.getSource(), entityObject));
       if (options.time === undefined) {
         await settle();
-        return coordinator.capture(size).toDataURL("image/png");
+        return coordinator.capture(frame).toDataURL("image/png");
       }
-      const [frame] = await replay([requireTime("time", options.time)], size);
-      if (frame === undefined) {
+      const [captured] = await replay([requireTime("time", options.time)], frame);
+      if (captured === undefined) {
         throw new AgentError("rejected", "Capture produced no frame.");
       }
-      return frame.image.toDataURL("image/png");
+      return captured.image.toDataURL("image/png");
     },
 
     captureSequence: async (options): Promise<string> => {
-      requireKnownKeys("options", options, ["times", "columns", "width", "height"]);
+      requireKnownKeys("options", options, ["times", "columns", ...FRAME_OPTION_KEYS]);
       if (!Array.isArray(options.times) || options.times.length === 0) {
         throw new AgentError("invalid_argument", "times must be a non-empty array.");
       }
@@ -181,8 +279,8 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
         options.columns === undefined
           ? Math.ceil(Math.sqrt(times.length))
           : requireInteger("columns", options.columns, 1, times.length);
-      const size = requireSize(options.width, options.height);
-      return composeSheet(await replay(times, size), columns).toDataURL("image/png");
+      const frame = requireFrame(options, requireView(options, store.getSource(), entityObject));
+      return composeSheet(await replay(times, frame), columns).toDataURL("image/png");
     },
   };
 }

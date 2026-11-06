@@ -181,14 +181,17 @@ export function insertTransformKeyframes(
   });
 }
 
-/** Explicitly bakes a keyframe on `entity`'s `channel` at time `time` (the timeline's add-key action). */
+/**
+ * Explicitly bakes a keyframe on `entity`'s `channel` at time `time` (the timeline's add-key
+ * action), replacing any key already on that frame. Returns the new key's id.
+ */
 export function setTransformKeyframe(
   store: Store,
   entity: SceneEntity,
   channel: TransformChannel,
   time: number,
   value: ChannelValue,
-): void {
+): string {
   const source = store.getSource();
   const key: Keyframe = {
     id: nextIdentifier("key"),
@@ -199,6 +202,7 @@ export function setTransformKeyframe(
     ...current,
     transformTracks: withTrackKey(current.transformTracks, channel, key),
   }));
+  return key.id;
 }
 
 /** Removes transform keyframe `keyId` from `entity` (dropping a channel track left with no keys). */

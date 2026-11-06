@@ -15,7 +15,7 @@ import {
   FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import { ROUTE_TYPE, routeMeta } from "./fakeNodes";
-import type { AttributeTypeName, EditorAttribute, EditorGraph } from "./graphModel";
+import type { AttributeTypeName, EditorAttribute, EditorGraph, GraphNode } from "./graphModel";
 import {
   coerceRenderMode,
   DEFAULT_RENDER_HOST,
@@ -78,19 +78,34 @@ export function isTimelineValueType(type: string): boolean {
 }
 
 /**
+ * The `timeline-value` node declaring each parameter name across `graphs` - the first one, in
+ * graph order, where several share a name.
+ */
+export function timelineValueDeclarations(
+  graphs: readonly EditorGraph[],
+): ReadonlyMap<string, GraphNode> {
+  const declarations = new Map<string, GraphNode>();
+  for (const graph of graphs) {
+    for (const node of Object.values(graph.nodes)) {
+      const name = node.parameters["name"];
+      if (
+        node.type === TIMELINE_VALUE_TYPE &&
+        typeof name === "string" &&
+        !declarations.has(name)
+      ) {
+        declarations.set(name, node);
+      }
+    }
+  }
+  return declarations;
+}
+
+/**
  * The parameter names some `timeline-value` node declares across `graphs`, independent of whether
  * keyframed - shared by the model (pruning an orphaned track) and the UI (which rows to show).
  */
 export function timelineValueNames(graphs: readonly EditorGraph[]): ReadonlySet<string> {
-  const names = new Set<string>();
-  for (const graph of graphs) {
-    for (const node of Object.values(graph.nodes)) {
-      if (node.type === TIMELINE_VALUE_TYPE && typeof node.parameters["name"] === "string") {
-        names.add(node.parameters["name"]);
-      }
-    }
-  }
-  return names;
+  return new Set(timelineValueDeclarations(graphs).keys());
 }
 
 /** Attribute element types a user attribute (and its `read`/`store` nodes) can carry. */

@@ -14,6 +14,7 @@ import {
   type Scene,
 } from "three";
 import { AXIS_COLORS } from "./axisColors";
+import { markEditorOverlay } from "./editorOverlay";
 
 /** Half-length of a guide line (long enough to read as "infinite" across the viewport). */
 const GUIDE_HALF = 1000;
@@ -39,6 +40,7 @@ export class TransformGuides {
         geometry,
         new LineBasicMaterial({ color: new Color(AXIS_COLORS[axis]) }),
       );
+      markEditorOverlay(line);
       this.scene.add(line);
       this.lines.push({ line, axis });
     }

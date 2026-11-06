@@ -11,9 +11,12 @@
  * - Top-level edits (`scene`, `graph(...)`, `timeline`) are one undo step each;
  *   `edit((transaction) => ...)` makes a whole body one step, all or nothing.
  * - A graph edit makes that graph's owner the active one, like a click on it in the editor.
- * - `status()` and `preview.capture*()` wait for the recompute an edit schedules.
+ * - Reads are synchronous, except `status()`, `preview.capture*()`, `assets.add()` and the
+ *   `project` loads: those wait for the editor (a recompute, a decode, a fetch) and return a
+ *   Promise to await.
  */
 
+import type { Object3D } from "three";
 import type { SceneEntity } from "../model/entity";
 import type { SceneCoordinator } from "../render/sceneCoordinator";
 import type { Store } from "../model/store";
@@ -46,7 +49,12 @@ export interface SparcoonAgentApi extends EditApi {
   undo(): boolean;
   /** Returns whether there was anything to redo. */
   redo(): boolean;
-  /** Compile status of the active owner, or of `ownerId` after focusing it. */
+  /**
+   * Compile status of the active owner, or of `ownerId` after focusing it. Asynchronous on
+   * purpose, unlike the other reads: it waits for the recompute the last edit scheduled, or it
+   * would report the graph as it was before that edit. Await it - a pending Promise placed inside
+   * a returned object serializes to `{}`.
+   */
   status(ownerId?: string): Promise<StatusView>;
 }
 
@@ -58,6 +66,8 @@ export interface AgentApiDependencies {
   readonly coordinator: Pick<SceneCoordinator, "advance" | "capture">;
   /** Frames an entity in the viewport (the preview's `F`). */
   readonly focusEntity: (entity: SceneEntity) => void;
+  /** The live viewport object of an entity, for framing a capture on it. */
+  readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
 }
 
 declare global {
@@ -67,14 +77,14 @@ declare global {
 }
 
 export function createAgentApi(dependencies: AgentApiDependencies): SparcoonAgentApi {
-  const { store, transport, coordinator, focusEntity } = dependencies;
+  const { store, transport, coordinator, focusEntity, entityObject } = dependencies;
   return {
     version: AGENT_API_VERSION,
     ...createEditApi(liveSession(store)),
     catalog: createCatalogApi(),
     assets: createAssetsApi(store),
     project: createProjectApi(dependencies),
-    preview: createPreviewApi({ store, transport, coordinator, focusEntity }),
+    preview: createPreviewApi({ store, transport, coordinator, focusEntity, entityObject }),
     edit: (body) => runTransaction(store, (staging) => body(createEditApi(stagedSession(staging)))),
     undo: (): boolean => {
       const available = store.canUndo;

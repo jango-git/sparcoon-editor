@@ -8,13 +8,16 @@
  */
 
 import {
+  Color,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
+  SRGBColorSpace,
   Vector2,
   Vector3,
   WebGL1Renderer,
   WebGLRenderer,
+  WebGLRenderTarget,
   type Object3D,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -23,6 +26,7 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import type { PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
+import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
 import type { DecodedEnvironment } from "./environmentTexture";
 
@@ -52,6 +56,34 @@ function createSceneRenderer(
     return new WebGLRenderer({ canvas, antialias: true });
   }
 }
+
+/** What one {@link SceneCoordinator.capture} renders. */
+export interface FrameCaptureOptions {
+  /** Pixel size to render at; omitted, the viewport's own drawing-buffer size. */
+  readonly size?: { readonly width: number; readonly height: number };
+  /** Whether the editor's furniture (ground, grid, player figure, gizmos) is drawn. Default true. */
+  readonly overlays?: boolean;
+  /** Replaces the background for this frame (an active HDRI's included); lighting is untouched. */
+  readonly background?: Color | "transparent";
+  /** Where the frame is shot from; omitted, the viewport camera's own view. */
+  readonly view?: CaptureView;
+}
+
+/**
+ * A capture-only point of view - the viewport camera and its orbit limits are left alone. `look`
+ * places the camera outright; `frame` fits a sphere of `radius` around `object`, seen from the
+ * viewport camera's current side of it, at any distance (no orbit clamp, so a 0.1-unit object
+ * can fill the frame).
+ */
+export type CaptureView =
+  | {
+      readonly kind: "look";
+      readonly position: Vector3;
+      readonly target: Vector3;
+      /** Vertical field of view in degrees; omitted, the viewport's. */
+      readonly fov?: number;
+    }
+  | { readonly kind: "frame"; readonly object: Object3D; readonly radius: number };
 
 export class SceneCoordinator {
   public readonly scene = new Scene();
@@ -96,6 +128,8 @@ export class SceneCoordinator {
 
     this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
     this.camera.position.set(0, 2, 7);
+    // The viewport shows the editor's furniture too; a clean capture switches this layer off.
+    this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
 
     // Damping off so the camera stops exactly when the pointer does; polar clamp keeps it from
     // diving below the floor. Bound to the container (not the canvas) so a drag starting over a
@@ -182,21 +216,13 @@ export class SceneCoordinator {
    * distance that fits a sphere of `radius`, clamped to the orbit distance limits.
    */
   public focusOn(object: Object3D, radius: number): void {
-    object.updateWorldMatrix(true, false);
-    const center = object.getWorldPosition(new Vector3());
+    const center = worldCenter(object);
     this.controls.target.copy(center);
-    const direction = this.camera.position.clone().sub(center);
-    if (direction.lengthSq() < 1e-6) {
-      direction.set(0, 2, 7);
-    }
-    direction.normalize();
-    const fov = (this.camera.fov * Math.PI) / 180;
-    const fit = radius / Math.tan(fov / 2);
     const distance = Math.min(
-      Math.max(fit * 1.3, this.controls.minDistance),
+      Math.max(fitDistance(this.camera, radius), this.controls.minDistance),
       this.controls.maxDistance,
     );
-    this.camera.position.copy(center).addScaledVector(direction, distance);
+    this.camera.position.copy(center).addScaledVector(viewDirection(this.camera, center), distance);
     this.controls.update();
   }
 
@@ -210,33 +236,49 @@ export class SceneCoordinator {
   }
 
   /**
-   * Renders the scene once and returns a 2D-canvas copy of the frame. The copy is taken in the
-   * same task as the render because the WebGL drawing buffer is not preserved past it. With a
-   * `size`, renders at that many pixels (pixel ratio 1, camera aspect matched) and then restores
-   * the viewport's own size, ratio and aspect. The copy is always the drawing buffer's real size,
-   * which a GPU limit can clamp below `size`; the frame is never stretched to hide that.
+   * Renders the scene once and returns a 2D-canvas copy of the frame, taken in the same task as
+   * the render because the WebGL drawing buffer is not preserved past it. See
+   * {@link FrameCaptureOptions} for size, overlays and background; whatever they change is
+   * restored afterwards and the live view repainted. The copy is always the drawing buffer's real
+   * size, which a GPU limit can clamp below the requested one; the frame is never stretched.
    */
-  public capture(size?: { readonly width: number; readonly height: number }): HTMLCanvasElement {
-    const canvas = this.renderer.domElement;
-    if (size === undefined) {
-      this.renderer.render(this.scene, this.camera);
-      return copyCanvas(canvas, canvas.width, canvas.height);
-    }
+  public capture(options: FrameCaptureOptions = {}): HTMLCanvasElement {
+    const { size, overlays = true, background, view } = options;
     const pixelRatio = this.renderer.getPixelRatio();
-    const previous = this.renderer.getSize(new Vector2());
-    const previousAspect = this.camera.aspect;
-    this.renderer.setPixelRatio(1);
-    this.renderer.setSize(size.width, size.height, false);
-    this.camera.aspect = size.width / size.height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.render(this.scene, this.camera);
-    const copy = copyCanvas(canvas, canvas.width, canvas.height);
-    this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setSize(previous.x, previous.y, false);
-    this.camera.aspect = previousAspect;
-    this.camera.updateProjectionMatrix();
-    this.renderer.render(this.scene, this.camera);
-    return copy;
+    const viewportSize = this.renderer.getSize(new Vector2());
+    const viewportBackground = this.scene.background;
+    // Shot through a copy, so size, overlays and point of view never touch the viewport camera.
+    const camera = this.camera.clone();
+    try {
+      if (size !== undefined) {
+        this.renderer.setPixelRatio(1);
+        this.renderer.setSize(size.width, size.height, false);
+        camera.aspect = size.width / size.height;
+      }
+      if (view !== undefined) {
+        aimCaptureCamera(camera, view);
+      }
+      camera.updateProjectionMatrix();
+      if (!overlays) {
+        camera.layers.disable(EDITOR_OVERLAY_LAYER);
+      }
+      if (background === "transparent") {
+        return this.renderTransparent(camera);
+      }
+      if (background !== undefined) {
+        this.scene.background = background;
+      }
+      this.renderer.render(this.scene, camera);
+      const canvas = this.renderer.domElement;
+      return copyCanvas(canvas, canvas.width, canvas.height);
+    } finally {
+      this.scene.background = viewportBackground;
+      if (size !== undefined) {
+        this.renderer.setPixelRatio(pixelRatio);
+        this.renderer.setSize(viewportSize.x, viewportSize.y, false);
+      }
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   public start(): void {
@@ -368,6 +410,38 @@ export class SceneCoordinator {
     }
   }
 
+  /**
+   * Renders into an offscreen target cleared to transparent (the canvas itself has no alpha) and
+   * reads it back as a straight-alpha image. The runtime blends premultiplied and makes additive
+   * light by lowering alpha, so a fully additive pixel carries color at alpha 0: a straight-alpha
+   * image cannot hold it, and it comes out empty. A solid background keeps it.
+   */
+  private renderTransparent(camera: PerspectiveCamera): HTMLCanvasElement {
+    const { x: width, y: height } = this.renderer.getDrawingBufferSize(new Vector2());
+    const target = new WebGLRenderTarget(width, height, { samples: 4 });
+    // Encode like the canvas does, so the two capture paths agree on color.
+    target.texture.colorSpace = SRGBColorSpace;
+    const previousTarget = this.renderer.getRenderTarget();
+    const clearColor = this.renderer.getClearColor(new Color());
+    const clearAlpha = this.renderer.getClearAlpha();
+    // three's "no background" is `null`; its type admits nothing else, so the project's
+    // no-null rule cannot apply to this third-party field.
+    // eslint-disable-next-line no-restricted-syntax
+    this.scene.background = null;
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setRenderTarget(target);
+    try {
+      this.renderer.render(this.scene, camera);
+      const pixels = new Uint8Array(width * height * 4);
+      this.renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
+      return straightAlphaCanvas(pixels, width, height);
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+      this.renderer.setClearColor(clearColor, clearAlpha);
+      target.dispose();
+    }
+  }
+
   private resize(): void {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
@@ -383,6 +457,56 @@ export class SceneCoordinator {
   }
 }
 
+/** Margin around a framed sphere, so it does not touch the frame's edges. */
+const FRAMING_MARGIN = 1.3;
+/** The closest a capture camera's near plane comes in - keeps the depth range finite. */
+const MIN_CAPTURE_NEAR = 1e-4;
+
+/** `object`'s world-space origin, with its world matrix brought up to date first. */
+function worldCenter(object: Object3D): Vector3 {
+  object.updateWorldMatrix(true, false);
+  return object.getWorldPosition(new Vector3());
+}
+
+/** The unit direction from `center` toward `camera` (a fixed side when they coincide). */
+function viewDirection(camera: PerspectiveCamera, center: Vector3): Vector3 {
+  const direction = camera.position.clone().sub(center);
+  if (direction.lengthSq() < 1e-6) {
+    direction.set(0, 2, 7);
+  }
+  return direction.normalize();
+}
+
+/** The camera distance at which a sphere of `radius` fills `camera`'s view, with a margin. */
+function fitDistance(camera: PerspectiveCamera, radius: number): number {
+  return (radius / Math.tan((camera.fov * Math.PI) / 360)) * FRAMING_MARGIN;
+}
+
+/**
+ * Points a capture camera along `view`, pulling its near plane in for a close shot - the
+ * viewport's fixed near plane would otherwise clip an object smaller than it.
+ */
+function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): void {
+  let target: Vector3;
+  if (view.kind === "look") {
+    if (view.fov !== undefined) {
+      camera.fov = view.fov;
+    }
+    camera.position.copy(view.position);
+    target = view.target;
+  } else {
+    target = worldCenter(view.object);
+    camera.position
+      .copy(target)
+      .addScaledVector(viewDirection(camera, target), fitDistance(camera, view.radius));
+  }
+  camera.lookAt(target);
+  camera.near = Math.min(
+    camera.near,
+    Math.max(MIN_CAPTURE_NEAR, camera.position.distanceTo(target) / 100),
+  );
+}
+
 /** A 2D-canvas copy of `source`'s current pixels at `width` x `height`. */
 function copyCanvas(source: HTMLCanvasElement, width: number, height: number): HTMLCanvasElement {
   const copy = document.createElement("canvas");
@@ -390,4 +514,31 @@ function copyCanvas(source: HTMLCanvasElement, width: number, height: number): H
   copy.height = height;
   copy.getContext("2d")?.drawImage(source, 0, 0, width, height);
   return copy;
+}
+
+/** A canvas from premultiplied, bottom-up GL pixels: rows flipped, color divided by alpha. */
+function straightAlphaCanvas(pixels: Uint8Array, width: number, height: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d") ?? undefined;
+  if (context === undefined) {
+    return canvas;
+  }
+  const image = context.createImageData(width, height);
+  for (let row = 0; row < height; row += 1) {
+    const sourceRow = (height - 1 - row) * width * 4;
+    const targetRow = row * width * 4;
+    for (let offset = 0; offset < width * 4; offset += 4) {
+      const alpha = pixels[sourceRow + offset + 3] ?? 0;
+      const scale = alpha > 0 ? 255 / alpha : 0;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const value = pixels[sourceRow + offset + channel] ?? 0;
+        image.data[targetRow + offset + channel] = Math.min(255, Math.round(value * scale));
+      }
+      image.data[targetRow + offset + 3] = alpha;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  return canvas;
 }

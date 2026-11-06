@@ -7,22 +7,9 @@
       "vfx": {
         "id": "vfx_1",
         "transform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
         },
         "transformTracks": []
       },
@@ -36,7 +23,6 @@
                 "id": "out",
                 "type": "$out",
                 "parameters": {
-                  "material": "unlit",
                   "renderMode": "blending",
                   "geometry": "plane",
                   "castShadow": true
@@ -50,16 +36,8 @@
                 "id": "node_636",
                 "type": "compose-transform",
                 "parameters": {
-                  "scale": [
-                    1,
-                    1,
-                    1
-                  ],
-                  "position": [
-                    0,
-                    0,
-                    0
-                  ]
+                  "scale": [1, 1, 1],
+                  "position": [0, 0, 0]
                 },
                 "position": {
                   "x": 744,
@@ -119,57 +97,29 @@
                     "stops": [
                       {
                         "position": 0.32,
-                        "color": [
-                          1,
-                          0.1946178304415756,
-                          0.009134058702220787,
-                          1
-                        ]
+                        "color": [1, 0.1946178304415756, 0.009134058702220787, 1]
                       },
                       {
                         "position": 0.55,
                         "color": [
-                          0.7454042095403874,
-                          0.019382360956935744,
-                          0.0030352698354883727,
-                          1
+                          0.7454042095403874, 0.019382360956935744, 0.0030352698354883727, 1
                         ]
                       },
                       {
                         "position": 0,
-                        "color": [
-                          1,
-                          0.9215818562772946,
-                          0.7454042095403874,
-                          1
-                        ]
+                        "color": [1, 0.9215818562772946, 0.7454042095403874, 1]
                       },
                       {
                         "position": 1,
-                        "color": [
-                          0,
-                          0,
-                          0,
-                          1
-                        ]
+                        "color": [0, 0, 0, 1]
                       },
                       {
                         "position": 0.12,
-                        "color": [
-                          1,
-                          0.5840784178911643,
-                          0.07421356838014966,
-                          1
-                        ]
+                        "color": [1, 0.5840784178911643, 0.07421356838014966, 1]
                       },
                       {
                         "position": 0.8,
-                        "color": [
-                          0.06847816984440017,
-                          0.001517634917744192,
-                          0,
-                          1
-                        ]
+                        "color": [0.06847816984440017, 0.001517634917744192, 0, 1]
                       }
                     ]
                   }
@@ -226,14 +176,8 @@
                 "type": "align-to-velocity",
                 "parameters": {
                   "axis": "y",
-                  "up": [
-                    0,
-                    1,
-                    0
-                  ],
                   "cameraAxis": "z",
                   "flip": false,
-                  "perParticleCamera": true,
                   "cameraModel": "point"
                 },
                 "position": {
@@ -618,7 +562,6 @@
                 "type": "custom-attribute",
                 "parameters": {
                   "type": "vec3",
-                  "phase": "update",
                   "name": "velocity"
                 },
                 "position": {
@@ -630,11 +573,7 @@
                 "id": "node_491",
                 "type": "gravity",
                 "parameters": {
-                  "acceleration": [
-                    0,
-                    -9.81,
-                    0
-                  ]
+                  "acceleration": [0, -9.81, 0]
                 },
                 "position": {
                   "x": -2136,
@@ -678,11 +617,7 @@
                 "parameters": {
                   "friction": 0.25,
                   "restitution": 0.25,
-                  "normal": [
-                    0,
-                    1,
-                    0
-                  ],
+                  "normal": [0, 1, 0],
                   "radius": 0.05
                 },
                 "position": {
@@ -730,10 +665,6 @@
                 "id": "node_559",
                 "type": "lifetime",
                 "parameters": {
-                  "lifetime": [
-                    2,
-                    2
-                  ],
                   "min": 4,
                   "max": 5
                 },
@@ -748,11 +679,7 @@
                 "parameters": {
                   "strength": 6,
                   "angle": 0.05,
-                  "axis": [
-                    0,
-                    1,
-                    0
-                  ]
+                  "axis": [0, 1, 0]
                 },
                 "position": {
                   "x": -1800,
@@ -1237,22 +1164,9 @@
             }
           ],
           "transform": {
-            "position": [
-              0,
-              0,
-              0
-            ],
-            "rotation": [
-              -7.171623819695707e-18,
-              0,
-              0,
-              1
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
+            "position": [0, 0, 0],
+            "rotation": [-7.171623819695707e-18, 0, 0, 1],
+            "scale": [1, 1, 1]
           },
           "transformTracks": [],
           "liveChannels": [],

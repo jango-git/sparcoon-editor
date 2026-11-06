@@ -107,7 +107,7 @@ export function withNamedTrackKey(
 /**
  * Bakes Timeline Value `name` = `value` at time `time` on `entity`'s track (creating it on first
  * key, overwriting any key already at `time`). The `I`-key action; `value` is the node's
- * snapshotted default.
+ * snapshotted default. Returns the new key's id.
  */
 export function setKeyframe(
   store: Store,
@@ -115,13 +115,14 @@ export function setKeyframe(
   name: string,
   time: number,
   value: number | readonly number[],
-): void {
+): string {
   const key: Keyframe = {
     id: nextIdentifier("key"),
     time: snapTime(store.getSource(), time),
     value: cloneValue(value),
   };
   updateTracks(store, entity, (tracks) => withNamedTrackKey(tracks, name, key));
+  return key.id;
 }
 
 /**

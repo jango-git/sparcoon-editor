@@ -33,6 +33,7 @@ import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js"
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
 import { AXIS_COLORS } from "./axisColors";
+import { markEditorOverlay } from "./editorOverlay";
 import type { DecodedEnvironment } from "./environmentTexture";
 
 /** Y of the ground plane - shares the emitters' origin so particles rest on it, not above it. */
@@ -106,6 +107,7 @@ export class SceneEnvironment {
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.y = GROUND_Y - 0.025;
     this.ground.receiveShadow = true;
+    markEditorOverlay(this.ground);
     scene.add(this.ground);
 
     // Sun - the key light. Its orthographic shadow camera is the shadow box; its
@@ -133,6 +135,7 @@ export class SceneEnvironment {
     this.gridMaterial = new LineBasicMaterial({ vertexColors: true, toneMapped: false });
     this.grid = new LineSegments(this.gridGeometry, this.gridMaterial);
     this.grid.position.y = GROUND_Y + 0.01;
+    markEditorOverlay(this.grid);
     scene.add(this.grid);
 
     // Player figure - a wireframe box resting on the ground as a scale reference.
@@ -141,6 +144,7 @@ export class SceneEnvironment {
     this.player = new LineSegments(this.playerGeometry, this.playerMaterial);
     // Offset +1 on x so the figure stands clear of the emitter origin.
     this.player.position.set(1, GROUND_Y + PLAYER_SIZE[1] / 2, 0);
+    markEditorOverlay(this.player);
     scene.add(this.player);
 
     this.apply(settings, activeEnvironment);

@@ -7,22 +7,9 @@
       "vfx": {
         "id": "vfx_1",
         "transform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
         },
         "transformTracks": []
       },
@@ -49,12 +36,7 @@
                 "type": "constant",
                 "parameters": {
                   "type": "color",
-                  "value": [
-                    1,
-                    1,
-                    1,
-                    1
-                  ]
+                  "value": [1, 1, 1, 1]
                 },
                 "position": {
                   "x": 264,
@@ -138,22 +120,9 @@
             }
           ],
           "transform": {
-            "position": [
-              0,
-              0,
-              0
-            ],
-            "rotation": [
-              0,
-              0,
-              0,
-              1
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
           },
           "transformTracks": [],
           "liveChannels": [],

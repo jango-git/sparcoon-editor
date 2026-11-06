@@ -265,6 +265,48 @@
     },
     "searchTags": ["cube", "crate", "wall", "bounce", "collide", "collision", "aabb"]
   },
+  "cone-collision": {
+    "description": "Bounces particles off a solid cone or truncated cone about an axis, with radius, restitution and friction.",
+    "inputs": {
+      "axis": {
+        "label": "Axis"
+      },
+      "bottomRadius": {
+        "label": "Bottom Radius"
+      },
+      "center": {
+        "label": "Base Center"
+      },
+      "friction": {
+        "label": "Friction"
+      },
+      "height": {
+        "label": "Height"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "radius": {
+        "label": "Radius"
+      },
+      "restitution": {
+        "label": "Restitution"
+      },
+      "topRadius": {
+        "label": "Top Radius"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Cone Collision",
+    "outputs": {
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["frustum", "truncated", "cylinder", "funnel", "bounce", "collide", "collision"]
+  },
   "blend": {
     "description": "Composites two colors with a chosen blend mode.",
     "inputs": {
@@ -1385,8 +1427,8 @@
       "center": {
         "label": "Center"
       },
-      "length": {
-        "label": "Length"
+      "height": {
+        "label": "Height"
       },
       "radius": {
         "label": "Radius"

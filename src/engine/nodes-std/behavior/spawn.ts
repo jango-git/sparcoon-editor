@@ -197,7 +197,10 @@ export const fxSpawnSphere = defineNode({
   },
 });
 
-/** Scatters particles inside (or on the lateral surface of) a cylinder about an axis. */
+/**
+ * Scatters particles inside (or on the lateral surface of) a cylinder about an axis, centered on
+ * `center`: it spans `height / 2` to either side of it along the axis.
+ */
 export const fxSpawnCylinder = defineNode({
   type: "spawn-cylinder",
   domain: "behavior",
@@ -207,7 +210,7 @@ export const fxSpawnCylinder = defineNode({
   category: "spawn",
   inputs: {
     radius: { type: "float", value: 1, min: 0, step: 0.1 },
-    length: { type: "float", value: 1, min: 0, step: 0.1 },
+    height: { type: "float", value: 1, min: 0, step: 0.1 },
     center: { type: "vec3", value: [0, 0, 0] },
   },
   outputs: { position: { type: "vec3" } },
@@ -226,7 +229,7 @@ export const fxSpawnCylinder = defineNode({
     );
     const inPlaneA = fn.mul(sampledRadius, fn.call("cos", theta));
     const inPlaneB = fn.mul(sampledRadius, fn.call("sin", theta));
-    const axisOffset = fn.mul(fn.sub(rand(fn), fn.lit(0.5)), inputs["length"]);
+    const axisOffset = fn.mul(fn.sub(rand(fn), fn.lit(0.5)), inputs["height"]);
     return {
       position: fn.add(inputs["center"], orient(params.axis, inPlaneA, inPlaneB, axisOffset, fn)),
     };

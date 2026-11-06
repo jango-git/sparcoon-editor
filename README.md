@@ -6,7 +6,7 @@ build.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
 [Runtime](https://github.com/jango-git/sparcoon/tree/experimental) -
-[npm](https://www.npmjs.com/package/sparcoon/v/0.9.2)
+[npm](https://www.npmjs.com/package/sparcoon/v/0.9.3)
 
 ![Editor demo](assets/demo.gif)
 
@@ -134,7 +134,7 @@ rotation and scale.
 ## What is inside
 
 **The node library** is split by graph. Behavior: spawn shapes (box, sphere, cone, cylinder, disc,
-torus), forces (gravity, drag, point force, turbulence, curl noise), collisions (plane, box, sphere),
+torus), forces (gravity, drag, point force, turbulence, curl noise), collisions (plane, box, sphere, cone),
 integration, particle attributes and the usual math. Render: textures with frame animation and UV
 tiling/rotation, gradients and color ramps, HSL adjustment, fresnel, dissolve, normal maps, Lambert
 and ambient shading, full matrix math, camera facing and velocity alignment.
@@ -203,7 +203,7 @@ Known and deliberate, so you do not discover them mid-project:
 
 |             |                                                                 |
 | ----------- | --------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.9.2 (dist-tag `experimental`)                      |
+| Runtime     | `sparcoon` 0.9.3 (dist-tag `experimental`)                      |
 | three.js    | `>=0.157 <0.180` (peer dependency of the runtime)               |
 | Editor      | Any browser with WebGL2; WebGL1 is enough for the Baseline tier |
 | Your build  | A bundler (Vite, webpack, Rollup, esbuild). ES2020 output       |

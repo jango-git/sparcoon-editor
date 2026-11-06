@@ -43,11 +43,7 @@ export function matchesBinding(binding: KeyBinding, event: KeyboardEvent): boole
  * unless it opted out, `event.preventDefault()` was called), so the caller can stop dispatching.
  * `editableTarget` skips bindings that did not opt into {@link KeyBinding.allowInEditable}.
  */
-export function runKeymap(
-  keymap: Keymap,
-  event: KeyboardEvent,
-  editableTarget = false,
-): boolean {
+export function runKeymap(keymap: Keymap, event: KeyboardEvent, editableTarget = false): boolean {
   for (const binding of keymap) {
     if (editableTarget && binding.allowInEditable !== true) {
       continue;

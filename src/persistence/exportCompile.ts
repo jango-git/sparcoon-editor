@@ -204,6 +204,19 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   };
 }
 
+/**
+ * The lighting intrinsics a render graph's reachable nodes need - empty means the surface is
+ * unlit, as it is unless a lighting node feeds it. `undefined` when the graph does not reconcile
+ * (it would not compile either). The same reading the export makes, without compiling shaders.
+ */
+export function renderGraphLighting(editorGraph: EditorGraph): readonly string[] | undefined {
+  try {
+    return collectLightingRequirements(buildRenderGraph(editorGraph));
+  } catch {
+    return undefined;
+  }
+}
+
 function buildRenderGraph(editorGraph: EditorGraph): FXGraph<FXRenderNode> {
   return reconcile(
     new FXGraphReconciler(renderRegistry),

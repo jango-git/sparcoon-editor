@@ -1,6 +1,6 @@
 /**
- * Scene-level agent edits: emitters and VFX meshes as objects (add, remove, rename, hide), base
- * transforms of any entity, and the project name, which the editor shows as the VFX root's name.
+ * Scene-level agent edits: emitters and VFX meshes as objects (add, remove, rename, hide) and the
+ * base transform of any entity, the VFX group's included.
  */
 
 import {
@@ -11,7 +11,6 @@ import {
   renameEmitter,
   renameVfxMesh,
   setEntityBaseChannel,
-  setProjectName,
   toggleEmitterHidden,
   toggleVfxMeshHidden,
 } from "../model/commands";
@@ -37,8 +36,8 @@ export interface SceneEdits {
   addMesh(): string;
   /** Removes an emitter or mesh. The last emitter cannot be removed. */
   remove(ownerId: string): void;
-  /** Renames an emitter or mesh; the VFX group's id renames the project. */
-  rename(entityId: string, name: string): void;
+  /** Renames an emitter or mesh. The project (the VFX group's name) is `project.setName`. */
+  rename(ownerId: string, name: string): void;
   setHidden(ownerId: string, hidden: boolean): void;
   /** Sets the base (un-keyframed) transform channels given; the others stay as they are. */
   setTransform(entityId: string, patch: TransformPatch): void;
@@ -66,20 +65,23 @@ export function createSceneEdits(session: EditSession): SceneEdits {
         removeEmitter(store, owner.id);
       }),
 
-    rename: (entityId, name) =>
+    rename: (ownerId, name) =>
       session.mutate((store) => {
-        const entity = resolveEntity(store.getSource(), entityId);
-        if (entity.kind === "vfx") {
-          setProjectName(store, name);
-          return;
+        const source = store.getSource();
+        if (ownerId === source.scene.vfx.id) {
+          throw new AgentError(
+            "invalid_argument",
+            "The VFX group carries the project's name; set it with project.setName.",
+          );
         }
+        const owner = resolveOwner(source, ownerId);
         if (name.trim() === "") {
           throw new AgentError("invalid_argument", "A name cannot be blank.");
         }
-        if (entity.kind === "emitter") {
-          renameEmitter(store, entity.id, name);
+        if (owner.kind === "emitter") {
+          renameEmitter(store, owner.id, name);
         } else {
-          renameVfxMesh(store, entity.id, name);
+          renameVfxMesh(store, owner.id, name);
         }
       }),
 

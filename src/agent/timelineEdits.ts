@@ -1,7 +1,8 @@
 /**
- * Timeline agent edits: the scene-wide length and frame rate, and each emitter's spawn events.
- * An emitter spawns nothing until an event fires, so these are what make a capture show particles.
- * Times and durations snap to the frame grid, as they do in the editor.
+ * Timeline agent edits: the scene-wide length and frame rate, each emitter's spawn events, and
+ * (from {@link KeyframeEdits}) keyframes. An emitter spawns nothing until an event fires, so these
+ * are what make a capture show particles. Times and durations snap to the frame grid, as they do
+ * in the editor.
  */
 
 import {
@@ -16,6 +17,7 @@ import type { SourceState, TimelineEvent } from "../model/editorState";
 import { requireFiniteNumber } from "./arguments.Internal";
 import { resolveOwner } from "./address.Internal";
 import { AgentError } from "./errors";
+import { createKeyframeEdits, type KeyframeEdits } from "./keyframeEdits";
 import type { EditSession } from "./transaction.Internal";
 
 export interface EventPatch {
@@ -28,7 +30,7 @@ export interface EventPatch {
   readonly duration?: number;
 }
 
-export interface TimelineEdits {
+export interface TimelineEdits extends KeyframeEdits {
   setDuration(seconds: number): void;
   setFps(fps: number): void;
   /** Spawns `count` particles at once at `time`. Returns the event id. */
@@ -79,6 +81,8 @@ function requirePatch(event: TimelineEvent, patch: EventPatch): EventPatch {
 
 export function createTimelineEdits(session: EditSession): TimelineEdits {
   return {
+    ...createKeyframeEdits(session),
+
     setDuration: (seconds) =>
       session.mutate((store) =>
         setTimelineDuration(store, requireFiniteNumber("seconds", seconds)),

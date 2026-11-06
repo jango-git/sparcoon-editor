@@ -1,7 +1,9 @@
 /**
  * Fires each authored `burst`/`play` event on its owning emitter's view as the transport playhead
- * crosses it. Notified every tick with no delta, so it remembers the last playhead and fires the
- * half-open interval `[lastTime, now)`; a backward jump (loop wrap) resets every emitter first.
+ * crosses it, and drives the timeline's poses and values into the views. Notified every tick with
+ * no delta, so it remembers the last playhead and fires the half-open interval `[lastTime, now)`.
+ * Playback looping back to the start runs on seamlessly, live particles kept; a seek backwards
+ * while playing replays from the top, cleared. Same order and loop as the runtime's `FXEffect`.
  */
 
 import type { AnimationTrack, SourceState } from "../model/editorState";
@@ -13,6 +15,7 @@ import type { SceneEmitters } from "./sceneEmitters";
 
 export class TimelineDispatcher {
   private lastTime = 0;
+  private lastLap = 0;
   // The frame the value/transform drive last ran for; `undefined` forces the first tick. The
   // drive is frame-stepped - re-runs only when the caret crosses into a new frame (scrub or play).
   private lastAppliedFrame: number | undefined = undefined;
@@ -33,13 +36,30 @@ export class TimelineDispatcher {
 
   private onTransport(): void {
     const now = this.transport.getTime();
-    // Spawns fire across the continuous interval the caret swept (see dispatchSpawns) - they are
-    // not frame-stepped.
+    const lap = this.transport.getLap();
+    if (lap !== this.lastLap) {
+      this.lastLap = lap;
+      // Looped: finish this lap's tail from the lap's last pose, then run on into the next lap
+      // without clearing what is alive.
+      this.driveFrame(this.duration());
+      this.fire(this.lastTime, this.duration());
+      this.emitters.loopAll();
+      this.lastTime = 0;
+    }
+    // Pose and values first, spawns second: a burst spawns from the emitter's pose and values at
+    // the moment it fires, so this frame's bursts must see this frame's pose.
+    this.driveFrame(now);
     this.dispatchSpawns(now);
-    // Value + transform drive are frame-stepped: re-run only on entering a new frame, sampled at
-    // that frame's canonical time - moving within a frame updates nothing.
+  }
+
+  /**
+   * Drives values and transforms for the frame `time` falls in, sampled at that frame's canonical
+   * time - frame-stepped, so moving within a frame updates nothing. Spawns, by contrast, fire
+   * across the continuous interval the caret swept (see dispatchSpawns).
+   */
+  private driveFrame(time: number): void {
     const fps = this.store.getSource().timeline.fps;
-    const frame = frameOf(now, fps);
+    const frame = frameOf(time, fps);
     if (frame === this.lastAppliedFrame) {
       return;
     }
@@ -65,9 +85,7 @@ export class TimelineDispatcher {
     }
 
     if (now < this.lastTime) {
-      // The loop wrapped: finish the events between the old playhead and the end, then
-      // reset and fall through to fire the new lap from 0.
-      this.fire(this.lastTime, this.duration());
+      // Seeked backwards while playing (a loop is handled before this): replay from the top.
       this.rewind();
     }
     this.fire(this.lastTime, now);

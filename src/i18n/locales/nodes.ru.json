@@ -241,6 +241,47 @@
       }
     }
   },
+  "cone-collision": {
+    "description": "Отражает частицы от сплошного конуса или усечённого конуса вокруг оси, с учётом радиуса, упругости и трения.",
+    "inputs": {
+      "axis": {
+        "label": "Ось"
+      },
+      "bottomRadius": {
+        "label": "Нижний радиус"
+      },
+      "center": {
+        "label": "Центр основания"
+      },
+      "friction": {
+        "label": "Трение"
+      },
+      "height": {
+        "label": "Высота"
+      },
+      "position": {
+        "label": "Позиция"
+      },
+      "radius": {
+        "label": "Радиус"
+      },
+      "restitution": {
+        "label": "Упругость"
+      },
+      "topRadius": {
+        "label": "Верхний радиус"
+      },
+      "velocity": {
+        "label": "Скорость"
+      }
+    },
+    "label": "Столкновение с конусом",
+    "outputs": {
+      "velocity": {
+        "label": "Скорость"
+      }
+    }
+  },
   "blend": {
     "description": "Композитит два цвета выбранным режимом смешивания.",
     "inputs": {
@@ -1324,8 +1365,8 @@
       "center": {
         "label": "Центр"
       },
-      "length": {
-        "label": "Длина"
+      "height": {
+        "label": "Высота"
       },
       "radius": {
         "label": "Радиус"

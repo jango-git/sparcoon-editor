@@ -42,6 +42,7 @@ import {
 import { asFiniteNumber, asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { getEnvironmentBlob, putEnvironmentBlob } from "./environmentBlobStore";
 import { loadSource } from "./localStore";
+import { migrateRenamedInputs } from "./renamedInputs";
 
 /** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
  *  returning user with an existing document never pays for it. */
@@ -115,7 +116,7 @@ function normalizeGraph(raw: unknown, kind: GraphKind): EditorGraph {
       ? (record["comments"] as EditorGraph["comments"])
       : empty.comments,
   };
-  return ensureSinks(graph, kind);
+  return ensureSinks(migrateRenamedInputs(graph), kind);
 }
 
 /** Normalizes a persisted document to the current source shape; anything unrecognized (not a

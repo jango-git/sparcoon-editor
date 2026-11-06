@@ -84,3 +84,59 @@ describe("projectFile: serialize/deserialize round-trip", () => {
     expect(new Set(ids).size).toBe(2); // the backfilled id didn't collide with "key_1"
   });
 });
+
+describe("projectFile: renamed node inputs", () => {
+  it("loads a spawn-cylinder saved with `length` under its current `height`, value and wire alike", () => {
+    const base = createInitialState().source;
+    const [emitter] = base.scene.emitters;
+    const graph = emitter.behaviorGraph;
+    const saved: SourceState = {
+      ...base,
+      scene: {
+        ...base.scene,
+        emitters: [
+          {
+            ...emitter,
+            behaviorGraph: {
+              ...graph,
+              nodes: {
+                ...graph.nodes,
+                cyl: {
+                  id: "cyl",
+                  type: "spawn-cylinder",
+                  parameters: { radius: 2, length: 3 },
+                  position: { x: 0, y: 0 },
+                },
+                len: {
+                  id: "len",
+                  type: "float",
+                  parameters: { value: 5 },
+                  position: { x: 0, y: 0 },
+                },
+              },
+              connections: [
+                ...graph.connections,
+                {
+                  id: "wire",
+                  from: { nodeId: "len", socketKey: "value" },
+                  to: { nodeId: "cyl", socketKey: "length" },
+                },
+              ],
+            },
+          },
+          ...base.scene.emitters.slice(1),
+        ],
+      },
+    };
+
+    const loaded = deserializeProject(serializeProject(saved))?.scene.emitters[0].behaviorGraph;
+
+    expect(loaded?.nodes["cyl"]?.parameters).toEqual({ radius: 2, height: 3 });
+    expect(loaded?.connections.find((connection) => connection.id === "wire")?.to).toEqual({
+      nodeId: "cyl",
+      socketKey: "height",
+    });
+    // Nothing else is touched.
+    expect(loaded?.nodes["len"]?.parameters).toEqual({ value: 5 });
+  });
+});

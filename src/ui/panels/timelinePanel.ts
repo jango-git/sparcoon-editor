@@ -494,7 +494,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     const track = tracks.find((candidate) => candidate.channel === channel);
     const keys = track?.keys ?? [];
     const live = liveChannels.includes(channel);
-    const insertKey = (time: number): void =>
+    const insertKey = (time: number): void => {
       setTransformKeyframe(
         store,
         entity,
@@ -502,6 +502,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
         time,
         channelValueAt(base, tracks, channel, time),
       );
+    };
     // The label's add-key button inserts at the caret; the lane's context menu at the click.
     const label = buildChannelLabel(
       entity,

@@ -8,9 +8,22 @@
 import { bindingSinkId } from "../domain/graphEdges";
 import type { AttributeTypeName, GraphComment, GraphPosition } from "../domain/graphModel";
 import { isSinkType } from "../domain/nodePalette";
-import type { LiveApplyStatus, SourceState, TimelineEvent } from "../model/editorState";
+import type {
+  AnimationTrack,
+  LiveApplyStatus,
+  SourceState,
+  TimelineEvent,
+} from "../model/editorState";
 import { resolveGraphOwner } from "../model/editorState";
-import { quatToEuler, type Transform, type Vec3 } from "../model/transform";
+import {
+  quatToEuler,
+  type Quat,
+  type Transform,
+  type TransformChannel,
+  type TransformTrack,
+  type Vec3,
+} from "../model/transform";
+import { renderGraphLighting } from "../persistence/exportCompile";
 import { targetGraph, type GraphTarget } from "./address.Internal";
 
 /** Which of an owner's two graphs: the material (render) or the simulation (behavior). */
@@ -29,7 +42,24 @@ export interface TransformView {
   readonly scale: Vec3;
 }
 
-export interface EmitterView {
+/** One transform channel's keys; a rotation key's value is in Euler degrees, as elsewhere here. */
+export interface TransformTrackView {
+  readonly channel: TransformChannel;
+  readonly keys: readonly { readonly id: string; readonly time: number; readonly value: Vec3 }[];
+}
+
+/** What an emitter and a mesh share on the timeline. */
+export interface AnimatedView {
+  readonly transformTracks: readonly TransformTrackView[];
+  /** Timeline Value keys by name; a declared value with no keys has no track. */
+  readonly tracks: readonly AnimationTrack[];
+  /** Transform channels the export leaves to the host code (`timeline.setChannelExcluded`). */
+  readonly excludedChannels: readonly TransformChannel[];
+  /** Timeline Values the export leaves to the host code (`timeline.setValueExcluded`). */
+  readonly excludedValues: readonly string[];
+}
+
+export interface EmitterView extends AnimatedView {
   readonly id: string;
   readonly name: string;
   readonly hidden: boolean;
@@ -37,7 +67,7 @@ export interface EmitterView {
   readonly events: readonly TimelineEvent[];
 }
 
-export interface MeshView {
+export interface MeshView extends AnimatedView {
   readonly id: string;
   readonly name: string;
   readonly hidden: boolean;
@@ -45,10 +75,14 @@ export interface MeshView {
 }
 
 export interface SceneView {
-  /** The project name; renamed through `scene.rename(vfx.id, ...)` like the editor's root row. */
+  /** The project name (the exported class's name); set with `project.setName`. */
   readonly name: string;
   readonly timeline: { readonly duration: number; readonly fps: number };
-  readonly vfx: { readonly id: string; readonly transform: TransformView };
+  readonly vfx: {
+    readonly id: string;
+    readonly transform: TransformView;
+    readonly transformTracks: readonly TransformTrackView[];
+  };
   readonly emitters: readonly EmitterView[];
   readonly meshes: readonly MeshView[];
   /** The emitter or mesh the editor's graph panel (and the compile status) currently shows. */
@@ -73,6 +107,12 @@ export interface EdgeView {
 export interface GraphView {
   readonly ownerId: string;
   readonly graph: GraphName;
+  /**
+   * Render graph only: whether the surface is lit, which it is exactly when a lighting node feeds
+   * it (there is no lit/unlit switch). `undefined` on a behavior graph, or on a render graph too
+   * broken to read.
+   */
+  readonly lit: boolean | undefined;
   readonly nodes: readonly NodeView[];
   readonly edges: readonly EdgeView[];
   readonly attributes: readonly { readonly name: string; readonly type: AttributeTypeName }[];
@@ -125,24 +165,55 @@ export function transformView(transform: Transform): TransformView {
   };
 }
 
+function transformTracksView(tracks: readonly TransformTrack[]): readonly TransformTrackView[] {
+  return tracks.map((track) => ({
+    channel: track.channel,
+    keys: track.keys.map((key) => ({
+      id: key.id,
+      time: key.time,
+      value: track.channel === "rotation" ? quatToEuler(key.value as Quat) : (key.value as Vec3),
+    })),
+  }));
+}
+
+function animatedView(owner: {
+  readonly transformTracks: readonly TransformTrack[];
+  readonly tracks: readonly AnimationTrack[];
+  readonly liveChannels: readonly TransformChannel[];
+  readonly liveParams: readonly string[];
+}): AnimatedView {
+  return {
+    transformTracks: transformTracksView(owner.transformTracks),
+    tracks: owner.tracks,
+    excludedChannels: owner.liveChannels,
+    excludedValues: owner.liveParams,
+  };
+}
+
 export function sceneView(source: SourceState): SceneView {
   const scene = source.scene;
   return structuredClone({
     name: source.name,
     timeline: { duration: source.timeline.duration, fps: source.timeline.fps },
-    vfx: { id: scene.vfx.id, transform: transformView(scene.vfx.transform) },
+    vfx: {
+      id: scene.vfx.id,
+      transform: transformView(scene.vfx.transform),
+      transformTracks: transformTracksView(scene.vfx.transformTracks),
+    },
     emitters: scene.emitters.map((emitter) => ({
       id: emitter.id,
       name: emitter.name,
       hidden: emitter.hidden === true,
       transform: transformView(emitter.transform),
       events: emitter.events,
+      ...animatedView(emitter),
     })),
     meshes: scene.meshes.map((mesh) => ({
       id: mesh.id,
       name: mesh.name,
       hidden: mesh.hidden === true,
       transform: transformView(mesh.transform),
+      ...animatedView(mesh),
     })),
     activeOwnerId: resolveGraphOwner(scene)?.id,
   });
@@ -158,9 +229,11 @@ export function graphView(source: SourceState, target: GraphTarget): GraphView {
     from: { node: binding.from.nodeId, socket: binding.from.socketKey },
     to: { node: bindingSinkId(target.kind, binding), socket: binding.slot },
   }));
+  const lighting = target.name === "render" ? renderGraphLighting(authored) : undefined;
   return structuredClone({
     ownerId: target.owner.id,
     graph: target.name,
+    lit: lighting === undefined ? undefined : lighting.length > 0,
     nodes: Object.values(authored.nodes).map((node) => ({
       id: node.id,
       type: node.type,

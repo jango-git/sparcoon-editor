@@ -18,6 +18,7 @@ import {
   type BufferGeometry,
   type Object3D,
 } from "three";
+import { markEditorOverlay } from "./editorOverlay";
 import {
   ENTITY_ACCENT_HUE,
   ENTITY_ACCENT_LIGHTNESS,
@@ -105,6 +106,7 @@ export function createGizmoMarker(kind: MarkerKind): GizmoMarker {
   const pickMesh = new Mesh(pickGeometry, pickMaterial);
   pickMesh.name = "GizmoPick";
   lines.add(pickMesh);
+  markEditorOverlay(lines);
 
   const colorSelected = selectedColor(kind);
   return {

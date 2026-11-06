@@ -38,6 +38,7 @@ import {
 import { entityKey, VFX_ENTITY, type SceneEntity } from "../model/entity";
 import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
+import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
@@ -70,7 +71,7 @@ export class SceneEmitters implements SceneApplier {
   // The VFX group's own preview gizmo, a permanent child of the group.
   private readonly vfxMarker: GizmoMarker = createGizmoMarker("vfx");
   // Reused for viewport click-picking, so a pick allocates nothing.
-  private readonly raycaster = new Raycaster();
+  private readonly raycaster = createPickRaycaster();
   // The entity currently selected for the gizmo - its marker is highlighted. Re-applied after
   // every sync so a freshly (re)built emitter view adopts the current highlight.
   private selected: SceneEntity = VFX_ENTITY;
@@ -302,10 +303,17 @@ export class SceneEmitters implements SceneApplier {
     return total;
   }
 
-  /** Clears live particles and cancels emission on every emitter - used on stop / loop rewind. */
+  /** Clears live particles and cancels emission on every emitter - used on stop / rewind. */
   public resetAll(): void {
     for (const view of this.views.values()) {
       view.reset();
+    }
+  }
+
+  /** Playback looped: cancels emission on every emitter, keeping its live particles. */
+  public loopAll(): void {
+    for (const view of this.views.values()) {
+      view.loopTimeline();
     }
   }
 
@@ -471,4 +479,11 @@ function emptyResult(): SceneApplyResult {
     renderStatus: IDLE,
     behaviorStatus: IDLE,
   };
+}
+
+/** A raycaster that sees the gizmo pick targets, which live on the editor overlay layer. */
+function createPickRaycaster(): Raycaster {
+  const raycaster = new Raycaster();
+  raycaster.layers.enable(EDITOR_OVERLAY_LAYER);
+  return raycaster;
 }
