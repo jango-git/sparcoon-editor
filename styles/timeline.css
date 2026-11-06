@@ -442,6 +442,10 @@
   color: var(--accent);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
+  /* Lit, it stays shown at rest (unlike the hover-only add buttons beside it on an emitter header,
+     where it marks the spawn events editor-only), so what the game must drive reads at a glance. */
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .timeline-row__action.is-locked {
@@ -644,6 +648,22 @@
    timeline end to the right, reading as unbounded because nothing marks its far edge. */
 .timeline-event--infinite {
   background: color-mix(in srgb, var(--timeline-infinite) 40%, transparent);
+}
+
+/* Editor-only spawn events (the emitter's live-events toggle) are drawn hollow: they play here
+   only - the exported effect leaves spawning to the game. */
+.timeline-event--live.timeline-event--burst {
+  background: var(--panel-background);
+  border-color: var(--timeline-event);
+}
+
+.timeline-event--live.timeline-event--play {
+  outline: 1px dashed var(--timeline-event);
+  outline-offset: -1px;
+}
+
+.timeline-event--live.timeline-event--infinite {
+  outline-color: var(--timeline-infinite);
 }
 
 /* A selected keyframe rings on the outside; a selected event rings on the INSIDE so the

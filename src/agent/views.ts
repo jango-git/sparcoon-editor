@@ -71,6 +71,8 @@ export interface EmitterView extends AnimatedView {
   readonly hidden: boolean;
   readonly transform: TransformView;
   readonly events: readonly TimelineEvent[];
+  /** The events play in the editor only; the export ships none (`timeline.setEventsExcluded`). */
+  readonly eventsExcluded: boolean;
 }
 
 export interface MeshView extends AnimatedView {
@@ -222,6 +224,7 @@ export function sceneView(source: SourceState): SceneView {
       hidden: emitter.hidden === true,
       transform: transformView(emitter.transform),
       events: emitter.events,
+      eventsExcluded: emitter.liveEvents === true,
       ...animatedView(emitter),
     })),
     meshes: scene.meshes.map((mesh) => ({

@@ -29,6 +29,18 @@ describe("projectFile: serialize/deserialize round-trip", () => {
     expect(deserializeProject(serializeProject(source))).toEqual(source);
   });
 
+  it("keeps an emitter's editor-only events flag, and leaves it off when absent", () => {
+    const base = createInitialState().source;
+    const [emitter, ...rest] = base.scene.emitters;
+    const live: SourceState = {
+      ...base,
+      scene: { ...base.scene, emitters: [{ ...emitter, liveEvents: true }, ...rest] },
+    };
+    expect(deserializeProject(serializeProject(live))?.scene.emitters[0]?.liveEvents).toBe(true);
+    const restored = deserializeProject(serializeProject(base))?.scene.emitters[0];
+    expect(restored !== undefined && "liveEvents" in restored).toBe(false);
+  });
+
   it("rejects unreadable or non-project text", () => {
     expect(deserializeProject("not json {{")).toBeUndefined();
     expect(deserializeProject(JSON.stringify({ hello: "world" }))).toBeUndefined();

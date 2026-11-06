@@ -192,6 +192,33 @@ export function setLiveParam(store: Store, entity: SceneEntity, name: string, li
   store.commit({ ...source, scene: { ...scene, meshes } }, "view");
 }
 
+/**
+ * Marks emitter `id`'s spawn events "live" (played in the editor only, see `EmitterDoc.liveEvents`)
+ * or not - the events themselves stay. No-op for an unknown id or an unchanged flag.
+ */
+export function setLiveEvents(store: Store, id: string, live: boolean): void {
+  const { emitters } = store.getSource().scene;
+  const emitter = emitters.find((candidate) => candidate.id === id);
+  if (emitter === undefined || (emitter.liveEvents === true) === live) {
+    return;
+  }
+  commitEmitters(
+    store,
+    emitters.map((candidate) =>
+      candidate.id === id ? withLiveEvents(candidate, live) : candidate,
+    ),
+  );
+}
+
+/** `emitter` with its events live or not; `liveEvents` is omitted rather than `false` when off. */
+function withLiveEvents(emitter: EmitterDoc, live: boolean): EmitterDoc {
+  return live ? { ...emitter, liveEvents: true } : withoutLiveEvents(emitter);
+}
+
+function withoutLiveEvents({ liveEvents: _liveEvents, ...rest }: EmitterDoc): EmitterDoc {
+  return rest;
+}
+
 /** Replaces emitter `id`'s events via `update`, committing the result. No-op for an unknown id. */
 function updateEvents(
   store: Store,

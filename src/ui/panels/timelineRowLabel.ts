@@ -9,6 +9,7 @@ import {
   removeVfxMesh,
   renameEmitter,
   renameVfxMesh,
+  setLiveEvents,
   toggleEmitterHidden,
   toggleVfxMeshHidden,
 } from "../../model/commands";
@@ -36,6 +37,12 @@ export function timelineIcon(svg: string): HTMLElement {
   return wrap;
 }
 
+/** {@link RowEventActions} plus the emitter's live-events toggle, which the label drives itself. */
+interface RowEventControls extends RowEventActions {
+  readonly live: boolean;
+  readonly toggleLive: () => void;
+}
+
 /** What a removable/renamable row label needs to render and drive its rename/remove actions. */
 interface RowLabelConfig {
   readonly glyph: string;
@@ -46,8 +53,9 @@ interface RowLabelConfig {
   readonly onSelect: () => void;
   readonly onRename: (name: string) => void;
   readonly onRemove: () => void;
-  /** Emitter rows only: the add-burst / add-play buttons shown before Remove (a mesh has no events). */
-  readonly eventActions?: RowEventActions;
+  /** Emitter rows only: the add-burst / add-play buttons and the live-events toggle shown before
+   *  Remove (a mesh has no events). */
+  readonly eventActions?: RowEventControls;
   /** Whether the object is hidden from the outline/preview (the mute eye), and its toggle. */
   readonly hidden: boolean;
   readonly onToggleHidden: () => void;
@@ -66,6 +74,22 @@ function buildVisibilityButton(hidden: boolean, onToggle: () => void): HTMLEleme
     stopPropagation: true,
     onChange: onToggle,
   }).element;
+}
+
+/**
+ * The live-events toggle: the spawn events play in the editor only and the exported effect leaves
+ * spawning to the host code. Lit like a track's live toggle, and shown at rest while on (see
+ * timeline.css), so an emitter that will not spawn in the game reads at a glance.
+ */
+function buildLiveEventsToggle(live: boolean, onToggle: () => void): HTMLElement {
+  const button = rowActionButton(
+    timelineIcons.live,
+    t(live ? "timeline.unmarkFake" : "timeline.markFake"),
+    t(live ? "timeline.unmarkEventsFakeTip" : "timeline.markEventsFakeTip"),
+    onToggle,
+  );
+  button.classList.toggle("is-live", live);
+  return button;
 }
 
 /** A small square-bordered row-action button (add burst / play / key) with a title+description tip. */
@@ -112,6 +136,7 @@ function buildRowLabel(config: RowLabelConfig): HTMLElement {
         t("timeline.addPlayTip"),
         config.eventActions.addPlay,
       ),
+      buildLiveEventsToggle(config.eventActions.live, config.eventActions.toggleLive),
     );
   }
   // The mute eye sits right before Remove, always visible (unlike the hover-only row actions), so
@@ -149,7 +174,11 @@ export function buildLabel(
     onSelect,
     onRename: (name) => renameEmitter(store, emitter.id, name),
     onRemove: () => removeEmitter(store, emitter.id),
-    eventActions,
+    eventActions: {
+      ...eventActions,
+      live: emitter.liveEvents === true,
+      toggleLive: () => setLiveEvents(store, emitter.id, emitter.liveEvents !== true),
+    },
     hidden: emitter.hidden === true,
     onToggleHidden: () => toggleEmitterHidden(store, emitter.id),
   });

@@ -105,6 +105,8 @@ export function eventMarkers(
           : "timeline-event timeline-event--play",
     });
     marker.style.left = `${timeFraction * 100}%`;
+    // Editor-only events (see EmitterDoc.liveEvents) are drawn hollow: they play here, not in the game.
+    marker.classList.toggle("timeline-event--live", emitter.liveEvents === true);
     if (event.kind === "play") {
       if (event.duration <= 0) {
         // An infinite play runs PAST the timeline end to the lane's right edge.

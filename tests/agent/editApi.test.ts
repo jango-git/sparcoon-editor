@@ -601,4 +601,30 @@ describe("agent keyframe edits", () => {
       /invalid_argument/,
     );
   });
+
+  it("plays an emitter's events in the editor only, keeping the events", () => {
+    const store = twoEmitterStore();
+    const api = withValues(store);
+    const burst = api.timeline.addBurst("emitter_a", 0, 10);
+    expect(emitterA(api).eventsExcluded).toBe(false);
+
+    const before = store.getSource();
+    api.timeline.setEventsExcluded("emitter_a", true);
+    expect(emitterA(api).eventsExcluded).toBe(true);
+    expect(emitterA(api).events.map((event) => event.id)).toContain(burst);
+    store.undo();
+    expect(store.getSource()).toBe(before);
+
+    // Switched back off, the flag is dropped rather than stored as false (a byte-for-byte save).
+    api.timeline.setEventsExcluded("emitter_a", true);
+    api.timeline.setEventsExcluded("emitter_a", false);
+    const doc = store.getSource().scene.emitters.find((emitter) => emitter.id === "emitter_a");
+    expect(doc !== undefined && "liveEvents" in doc).toBe(false);
+
+    const mesh = api.scene.addMesh();
+    expect(() => api.timeline.setEventsExcluded(mesh, true)).toThrow(/only emitters/);
+    expect(() => api.timeline.setEventsExcluded("emitter_a", "yes" as never)).toThrow(
+      /invalid_argument.*excluded must be a boolean/,
+    );
+  });
 });

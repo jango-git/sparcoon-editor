@@ -515,6 +515,38 @@ describe("emitProjectModule - fake tracks / live update", () => {
     );
   });
 
+  it("ships no live events and leaves spawning to the host through getEmitter", () => {
+    const base = createTestState().source;
+    const emitter = base.scene.emitters[0];
+    expect(emitter.events.length).toBeGreaterThan(0);
+    const source: SourceState = {
+      ...base,
+      scene: { ...base.scene, emitters: [{ ...emitter, liveEvents: true }] },
+    };
+    const text = emitProjectModule(source);
+    expect(text).toMatch(/^\s*events: \[\],$/m);
+    expect(text).toContain("  type FXEmitter,");
+    expect(text).toContain('public override getEmitter(name: "Emitter"): FXEmitter | undefined;');
+
+    const module = loadModule(text);
+    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
+      getEmitter(name: "Emitter"): { burst(count: number): number } | undefined;
+      play(): void;
+      dispose(): void;
+    };
+    const effect = new Effect({});
+    try {
+      effect.play();
+      sparcoon.FXWorld.update(0.1); // the editor's t=0 burst must not fire in the game
+      expect(totalParticles(effect)).toBe(0);
+      effect.getEmitter("Emitter")!.burst(5);
+      sparcoon.FXWorld.update(0.1);
+      expect(totalParticles(effect)).toBe(5);
+    } finally {
+      effect.dispose();
+    }
+  });
+
   it("getEmitter/setEmitterParam no-op after dispose instead of throwing", () => {
     const positionModule = loadModule(emitProjectModule(fakePositionEmitterSource()));
     const PositionEffect = positionModule["Effect"] as new (

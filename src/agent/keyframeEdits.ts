@@ -37,6 +37,7 @@ import {
   type TransformTrack,
 } from "../model/transform";
 import {
+  requireBoolean,
   requireFiniteNumber,
   requireKnownKeys,
   requireVector,
@@ -457,21 +458,19 @@ export function createKeyframeEdits(session: EditSession): KeyframeEdits {
             "The VFX group's channels are always left to the host code.",
           );
         }
-        setLiveChannel(store, entity, requireChannel(channel), requireBoolean(excluded));
+        setLiveChannel(
+          store,
+          entity,
+          requireChannel(channel),
+          requireBoolean("excluded", excluded),
+        );
       }),
 
     setValueExcluded: (ownerId, name, excluded) =>
       session.mutate((store) => {
         const keys = ownerKeys(store.getSource(), ownerId);
         requireDeclared(keys, name);
-        setLiveParam(store, keys.entity, name, requireBoolean(excluded));
+        setLiveParam(store, keys.entity, name, requireBoolean("excluded", excluded));
       }),
   };
-}
-
-function requireBoolean(value: unknown): boolean {
-  if (typeof value !== "boolean") {
-    throw new AgentError("invalid_argument", "excluded must be a boolean.");
-  }
-  return value;
 }

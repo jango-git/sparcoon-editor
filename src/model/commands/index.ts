@@ -85,6 +85,7 @@ export {
   setKeyframe,
   setKeyframeEase,
   setKeyframeValue,
+  setLiveEvents,
   setLiveParam,
   setTimelineDuration,
   setTimelineFps,

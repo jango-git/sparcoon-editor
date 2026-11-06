@@ -12,6 +12,13 @@ export function requireFiniteNumber(name: string, value: unknown): number {
   return value;
 }
 
+export function requireBoolean(name: string, value: unknown): boolean {
+  if (typeof value !== "boolean") {
+    throw new AgentError("invalid_argument", `${name} must be a boolean.`);
+  }
+  return value;
+}
+
 /** A private copy of an array of exactly `length` finite numbers. */
 export function requireVector(name: string, value: unknown, length: number): readonly number[] {
   if (

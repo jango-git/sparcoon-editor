@@ -110,6 +110,12 @@ export interface EmitterDoc {
   /** Timeline Value names excluded from the export and driven only through `setEmitterParam`/
    * `setMeshParam` instead. See {@link liveChannels} - independent of `tracks`. */
   readonly liveParams: readonly string[];
+  /**
+   * The spawn events play in the editor only: the export ships none, and the host code spawns
+   * through the exported effect's `getEmitter(name).burst`/`play` instead. Omitted (not `false`)
+   * when off, like {@link hidden}, so a document saved before it existed round-trips unchanged.
+   */
+  readonly liveEvents?: true;
   /** Hidden in the preview + outline. Editor-only - never affects the TS export. */
   readonly hidden?: boolean;
 }

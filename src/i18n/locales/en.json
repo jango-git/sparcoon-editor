@@ -199,6 +199,8 @@
     "markFakeTip": "Keep this track's keyframes in the editor only; the exported effect drives it through its live-update API instead.",
     "unmarkFake": "Include in export",
     "unmarkFakeTip": "Bake this track's keyframes into the exported effect.",
+    "markEventsFakeTip": "Play the spawn events in the editor only: the exported effect ships none, and the game spawns through getEmitter(name).burst / play.",
+    "unmarkEventsFakeTip": "Bake the spawn events into the exported effect.",
     "fakeLocked": "Always live",
     "fakeLockedTip": "The VFX group's own transform is always excluded from the export - the consumer poses the exported effect directly.",
     "burstTooltip": "Burst · {t}s · {count}",

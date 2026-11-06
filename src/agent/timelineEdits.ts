@@ -11,12 +11,13 @@ import {
   removeEvent,
   setTimelineDuration,
   setTimelineFps,
+  setLiveEvents,
   setTimelineLoop,
   updateEvent,
 } from "../model/commands";
 import type { SourceState, TimelineEvent } from "../model/editorState";
 import { isRecord } from "../util/guards";
-import { requireFiniteNumber } from "./arguments.Internal";
+import { requireBoolean, requireFiniteNumber } from "./arguments.Internal";
 import { resolveOwner } from "./address.Internal";
 import { AgentError } from "./errors";
 import { createKeyframeEdits, type KeyframeEdits } from "./keyframeEdits";
@@ -46,6 +47,12 @@ export interface TimelineEdits extends KeyframeEdits {
   addPlay(emitterId: string, time: number, rate: number, duration: number): string;
   updateEvent(emitterId: string, eventId: string, patch: EventPatch): void;
   removeEvent(emitterId: string, eventId: string): void;
+  /**
+   * Plays the emitter's events in the editor only (`excluded: true`): previews and captures still
+   * spawn from them, but the exported effect ships none, and the host code spawns through
+   * `getEmitter(name).burst`/`play`. The events themselves stay either way.
+   */
+  setEventsExcluded(emitterId: string, excluded: boolean): void;
 }
 
 function requireEmitter(source: SourceState, emitterId: string): string {
@@ -113,12 +120,7 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
       session.mutate((store) => setTimelineFps(store, requireFiniteNumber("fps", fps))),
 
     setLoop: (loop) =>
-      session.mutate((store) => {
-        if (typeof loop !== "boolean") {
-          throw new AgentError("invalid_argument", "loop must be a boolean.");
-        }
-        setTimelineLoop(store, loop);
-      }),
+      session.mutate((store) => setTimelineLoop(store, requireBoolean("loop", loop))),
 
     addBurst: (emitterId, time, count) =>
       session.mutate((store) =>
@@ -156,5 +158,14 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
         requireEvent(store.getSource(), requireEmitter(store.getSource(), emitterId), eventId);
         removeEvent(store, emitterId, eventId);
       }),
+
+    setEventsExcluded: (emitterId, excluded) =>
+      session.mutate((store) =>
+        setLiveEvents(
+          store,
+          requireEmitter(store.getSource(), emitterId),
+          requireBoolean("excluded", excluded),
+        ),
+      ),
   };
 }

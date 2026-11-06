@@ -354,6 +354,7 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     transformTracks: normalizeTransformTracks(value["transformTracks"]),
     liveChannels: normalizeLiveChannels(value["liveChannels"]),
     liveParams: normalizeLiveParams(value["liveParams"]),
+    ...(value["liveEvents"] === true ? { liveEvents: true } : {}),
     // See normalizeVfxMesh: omitted (not `false`) when not hidden, for a byte-for-byte round-trip.
     ...(value["hidden"] === true ? { hidden: true } : {}),
   };

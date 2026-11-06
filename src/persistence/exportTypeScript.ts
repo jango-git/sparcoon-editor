@@ -31,6 +31,7 @@ import {
   emitterSpecLiteral,
   importLine,
   meshSpecLiteral,
+  needsLiveGetter,
   projectSpecLiteral,
 } from "./exportLiterals";
 
@@ -152,8 +153,8 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     [...externalTextureNames],
     [...externalGeometryNames],
   );
-  const needsEmitterType = source.scene.emitters.some((entity) => entity.liveChannels.length > 0);
-  const needsMeshType = source.scene.meshes.some((entity) => entity.liveChannels.length > 0);
+  const needsEmitterType = source.scene.emitters.some(needsLiveGetter);
+  const needsMeshType = source.scene.meshes.some(needsLiveGetter);
 
   const lines: string[] = [];
   // Machine-emitted kernel bodies use untyped plain-JS math helpers; @ts-nocheck/eslint-disable

@@ -74,6 +74,16 @@ interface LiveEntity {
   readonly name: string;
   readonly liveChannels: readonly TransformChannel[];
   readonly liveParams: readonly string[];
+  /** Emitters only - see `EmitterDoc.liveEvents`. */
+  readonly liveEvents?: true;
+}
+
+/**
+ * Whether the host code reaches `entity` by name through `getEmitter`/`getMesh`: to pose a live
+ * channel, or to spawn the particles its live events leave to it.
+ */
+export function needsLiveGetter(entity: LiveEntity): boolean {
+  return entity.liveChannels.length > 0 || entity.liveEvents === true;
 }
 
 /**
@@ -84,21 +94,25 @@ interface LiveEntity {
 export function assertUniqueLiveNames(entities: readonly LiveEntity[], kind: string): void {
   const seen = new Set<string>();
   for (const entity of entities) {
-    if (entity.liveChannels.length === 0 && entity.liveParams.length === 0) {
+    if (!needsLiveGetter(entity) && entity.liveParams.length === 0) {
       continue;
     }
     if (seen.has(entity.name)) {
       throw new Error(
         `exportTypeScript: two ${kind}s are both named ${JSON.stringify(entity.name)} and at ` +
-          "least one has a fake (live) track - rename one so getEmitter/getMesh/setEmitterParam/" +
-          "setMeshParam can address them unambiguously.",
+          "least one has a fake (live) track or live events - rename one so getEmitter/getMesh/" +
+          "setEmitterParam/setMeshParam can address them unambiguously.",
       );
     }
     seen.add(entity.name);
   }
 }
 
-export function eventsLiteral(events: readonly TimelineEvent[]): string {
+/** The spawn events as the runtime reads them; none when `liveEvents` leaves spawning to the host. */
+export function eventsLiteral(events: readonly TimelineEvent[], liveEvents?: true): string {
+  if (liveEvents === true) {
+    return "[]";
+  }
   return JSON.stringify(
     events.map((event) =>
       event.kind === "burst"
@@ -141,7 +155,7 @@ export function emitterSpecLiteral(
     `      transform: ${transformLiteral(emitter.transform)},`,
     `      transformTracks: ${transformTracksLiteral(emitter.transformTracks, emitter.liveChannels)},`,
     `      tracks: ${tracksLiteral(emitter.tracks, emitter.liveParams)},`,
-    `      events: ${eventsLiteral(emitter.events)},`,
+    `      events: ${eventsLiteral(emitter.events, emitter.liveEvents)},`,
     `      liveChannels: ${JSON.stringify(emitter.liveChannels)},`,
     `      liveParams: ${JSON.stringify(emitter.liveParams)},`,
     "    }",
@@ -243,16 +257,15 @@ function nameUnion(names: readonly string[]): string {
   return names.map((name) => JSON.stringify(name)).join(" | ");
 }
 
-/** Overrides `methodName` with one overload narrowing `name` to entities that declare a live
- *  channel - no wide-string fallback, so an unknown name is a compile error, not a silent no-op. */
+/** Overrides `methodName` with one overload narrowing `name` to the entities the host reaches
+ *  ({@link needsLiveGetter}) - no wide-string fallback, so an unknown name is a compile error, not a
+ *  silent no-op. */
 function liveGetterOverride(
   methodName: string,
   returnType: string,
   entities: readonly LiveEntity[],
 ): readonly string[] {
-  const names = entities
-    .filter((entity) => entity.liveChannels.length > 0)
-    .map((entity) => entity.name);
+  const names = entities.filter(needsLiveGetter).map((entity) => entity.name);
   if (names.length === 0) {
     return [];
   }
@@ -308,7 +321,7 @@ export function classDeclaration(
 }
 
 // Identifiers a PascalCased project name could collide with in module scope: "FXEmitter"/"Mesh" are
-// imported only conditionally (a live channel), "Texture" unconditionally - reserving all three
+// imported only conditionally (see needsLiveGetter), "Texture" unconditionally - reserving all three
 // regardless is cheap and keeps this list independent of which project triggers which import.
 const RESERVED_NAMES = new Set([
   "FXEffect",
