@@ -17,6 +17,7 @@
 
 import type {
   AttributeTypeName,
+  EditorAttribute,
   EditorGraph,
   GraphNode,
   GraphPosition,
@@ -374,6 +375,11 @@ export class GraphCanvas {
       return palette.filter((metadata) => !isMeshExcludedRenderNode(metadata));
     }
     return palette;
+  }
+
+  /** The particle attributes the active owner declares - none for a VFX mesh. */
+  private ownerAttributes(): readonly EditorAttribute[] {
+    return selectActiveGraphOwner(this.store).behaviorGraph?.attributes ?? [];
   }
 
   private activeGraph(): EditorGraph {
@@ -1355,7 +1361,7 @@ export class GraphCanvas {
       (parameter) => parameter.kind === "attribute-name",
     );
     if (isAttributeNode === true) {
-      return `${base}|attrs:${JSON.stringify(selectBehaviorGraph(this.store).attributes)}`;
+      return `${base}|attrs:${JSON.stringify(this.ownerAttributes())}`;
     }
     // A Texture's picker lists the library's assets and its body previews the chosen
     // one; rebuild when that set changes so a freshly-uploaded (or deleted) texture shows up in
@@ -1385,7 +1391,7 @@ export class GraphCanvas {
       return undefined;
     }
     return {
-      options: selectBehaviorGraph(this.store).attributes.map((attribute) => ({
+      options: this.ownerAttributes().map((attribute) => ({
         name: attribute.name,
         type: attribute.type,
       })),

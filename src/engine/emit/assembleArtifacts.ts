@@ -30,7 +30,7 @@ import { uniformTypes } from "./artifactLiterals";
  */
 
 /** `{name, components}` decls the runtime merges to size the shared attribute buffers. */
-function attributeDecls(attributes: readonly FXAttributeRequest[]): FXAttributeDecl[] {
+export function attributeDecls(attributes: readonly FXAttributeRequest[]): FXAttributeDecl[] {
   return attributes.map((attribute) => ({
     name: attribute.name,
     components: attribute.type.components as 1 | 2 | 3 | 4,

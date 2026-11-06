@@ -140,3 +140,34 @@ describe("projectFile: renamed node inputs", () => {
     expect(loaded?.nodes["len"]?.parameters).toEqual({ value: 5 });
   });
 });
+
+describe("projectFile: key curves", () => {
+  it("keeps a key's curve, and drops one it does not know (the key then reads linear)", () => {
+    const base = createInitialState().source;
+    const [emitter] = base.scene.emitters;
+    const source: SourceState = {
+      ...base,
+      scene: {
+        ...base.scene,
+        emitters: [
+          {
+            ...emitter,
+            tracks: [
+              {
+                name: "glow",
+                keys: [
+                  { id: "k1", time: 0, value: 0, ease: "inOut" },
+                  { id: "k2", time: 1, value: 1, ease: "bounce" as never },
+                ],
+              },
+            ],
+          },
+          ...base.scene.emitters.slice(1),
+        ],
+      },
+    };
+    const keys = deserializeProject(serializeProject(source))?.scene.emitters[0].tracks[0]?.keys;
+    expect(keys?.[0]).toEqual({ id: "k1", time: 0, value: 0, ease: "inOut" });
+    expect(keys?.[1]).toEqual({ id: "k2", time: 1, value: 1 });
+  });
+});

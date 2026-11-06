@@ -45,6 +45,9 @@ import {
 } from "../engine/core/ir/FXFunctions.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import type { FXGeometrySource } from "sparcoon";
+import { fxEmitterRenderBudget, fxMeshRenderBudget, type FXRenderBudget } from "sparcoon/editor";
+import { assembleRenderArtifact, attributeDecls } from "../engine/emit/assembleArtifacts";
+import { renderBudgetFindings } from "../domain/renderBudget";
 import type { EditorGraph } from "../domain/graphModel";
 import {
   GraphKind,
@@ -158,6 +161,20 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
 
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
   const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  requireWithinRenderBudget(
+    emitter.name,
+    fxEmitterRenderBudget(
+      assembleRenderArtifact(
+        shaders.standard,
+        lightingIntrinsics,
+        toArtifactGeometrySource(config.geometry),
+        renderAttributes,
+        config.renderMode,
+      ),
+      attributeDecls(behaviorAttributes),
+      { castShadow: config.castShadow },
+    ),
+  );
 
   const bundle = compileBehaviorBundle(
     behaviorGraph,
@@ -194,6 +211,19 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   const config = readRenderSinkConfig(mesh.renderGraph);
   const shaders = compileForEveryGLSLTier(renderGraph, FX_MESH_TARGET);
   const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  requireWithinRenderBudget(
+    mesh.name,
+    fxMeshRenderBudget(
+      assembleRenderArtifact(
+        shaders.standard,
+        lightingIntrinsics,
+        toArtifactGeometrySource(config.geometry),
+        [],
+        config.renderMode,
+      ),
+      { castShadow: config.castShadow },
+    ),
+  );
   return {
     shaders,
     lightingIntrinsics,
@@ -202,6 +232,17 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
     castShadow: config.castShadow,
     receiveShadow: config.receiveShadow,
   };
+}
+
+/**
+ * Refuses an emitter or mesh whose Standard-tier materials some WebGL2 GPU could not link (see
+ * domain/renderBudget.ts) - the live preview holds the same graph as invalid.
+ */
+function requireWithinRenderBudget(name: string, budget: FXRenderBudget): void {
+  const [error] = renderBudgetFindings(budget).errors;
+  if (error !== undefined) {
+    throw new Error(`exportTypeScript: ${name}: ${error.message}`);
+  }
 }
 
 /**

@@ -5,14 +5,12 @@
  */
 
 import type { BufferGeometry, Object3D, Texture } from "three";
-import { FXMesh } from "sparcoon/editor";
+import { FXMesh, fxMeshRenderBudget } from "sparcoon/editor";
 import type { FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
-import { compilerErrorMessage } from "../i18n/compilerErrors";
 import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
@@ -27,32 +25,31 @@ import {
   type GeometrySource,
   type RenderMode,
 } from "../domain/nodePalette";
+import { meshTransformWarnings } from "../domain/meshDiagnostics";
+import {
+  RenderBudgetMemo,
+  renderBudgetFindings,
+  type RenderBudgetFindings,
+} from "../domain/renderBudget";
 import type { LiveApplyStatus } from "../model/editorState";
 import type { Transform } from "../model/transform";
+import {
+  invalid,
+  invalidFromErrors,
+  REBOUND,
+  RECOMPILED,
+  withWarnings,
+} from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, type TextureResolver } from "./emitterView";
 import { externalSlots } from "./externalSlots";
-
-const RECOMPILED: LiveApplyStatus = { status: "recompiled", messages: [] };
-const REBOUND: LiveApplyStatus = { status: "rebound", messages: [] };
-
-function invalid(messages: readonly string[]): LiveApplyStatus {
-  return { status: "invalid", messages };
-}
-
-function invalidFromErrors(errors: readonly FXCompilerError[]): LiveApplyStatus {
-  return {
-    status: "invalid",
-    messages: errors.map((error) => compilerErrorMessage(error)),
-    errors,
-  };
-}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 export class MeshView {
+  private readonly budget = new RenderBudgetMemo();
   private readonly renderLive: FXLiveGraph<FXRenderNode, FXCompiledShader>;
   private shader: FXCompiledShader | undefined = undefined;
   // The last assembled artifact, kept so a timeline value-drive can find each param's uniform slot
@@ -145,7 +142,21 @@ export class MeshView {
     } catch (error) {
       return invalid([describeError(error)]);
     }
+
+    // Held before it replaces anything, like the emitter's (see EmitterView.apply).
+    let budget: RenderBudgetFindings;
+    try {
+      budget = this.budget.get([this.shader, renderMode, castShadow], () =>
+        renderBudgetFindings(fxMeshRenderBudget(artifact, { castShadow })),
+      );
+    } catch (error) {
+      return invalid([describeError(error)]);
+    }
+    if (budget.errors.length > 0) {
+      return invalidFromErrors(budget.errors);
+    }
     this.artifact = artifact;
+    const warnings = [...budget.warnings, ...meshTransformWarnings(this.renderLive.graphView)];
 
     const geometryKey = encodeGeometrySource(geometry);
     const currentCustomGeometryReference =
@@ -174,12 +185,12 @@ export class MeshView {
       this.builtRenderMode = renderMode;
       this.builtCastShadow = castShadow;
       this.builtReceiveShadow = receiveShadow;
-      return RECOMPILED;
+      return withWarnings(RECOMPILED, warnings);
     }
 
     // Value-only edit: scrub the fresh uniform values into the running material's slots by name.
     this.mesh?.applyValues(this.uniformValues(artifact));
-    return REBOUND;
+    return withWarnings(REBOUND, warnings);
   }
 
   /**

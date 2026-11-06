@@ -77,6 +77,29 @@ describe("standard render nodes - registration & compilation", () => {
     expect(anim.cacheKey?.()).toBe(twin.cacheKey?.());
   });
 
+  it("animated-texture plays once through by default, looping only when asked", () => {
+    const r = registry();
+    const helpers = (params: Record<string, unknown>): string => {
+      const graph = graphOf(
+        new Map([
+          ["a", r.create("animated-texture", params)],
+          ["c", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
+        ]),
+        [bind("albedo", "c", "out"), bind("alphaThreshold", "a", "factor")],
+      );
+      return compiler.compile(graph, FX_PARTICLE_TARGET).fragment.helperFunctions.join("\n");
+    };
+    // Once through: the ratio is clamped and both frames stop at the last cell, so a particle at
+    // the end of its life shows the last frame - never a fade back into the first.
+    const once = helpers({ columns: 4, rows: 4 });
+    expect(once).toContain("clamp(ratio, 0.0, 1.0)");
+    expect(once).toContain("min(previous + 1.0, last)");
+    expect(once).not.toContain("fract(");
+    const looping = helpers({ columns: 4, rows: 4, loop: true });
+    expect(looping).toContain("fract(ratio)");
+    expect(looping).toContain("mod(previous + 1.0, totalFrames)");
+  });
+
   it("a stage-param source's stage is inferred (not in the cacheKey)", () => {
     const r = registry();
     // `time`/`color` carry no `stage` param - placement is inferred from the graph, so

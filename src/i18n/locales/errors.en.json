@@ -280,5 +280,20 @@
   },
   "glsl-int-not-finite": {
     "message": "sparcoon IR: {value} cannot be printed as a GLSL int literal (not a finite integer)"
+  },
+  "render-attribute-budget": {
+    "message": "the material needs {used} vertex attributes; every WebGL2 GPU guarantees {limit} - drop particle attributes the render does not need"
+  },
+  "render-varying-budget": {
+    "message": "the material needs {used} varying vectors; every WebGL2 GPU guarantees {limit} - read fewer particle attributes in the fragment stage, or pass fewer values from the vertex stage"
+  },
+  "render-attribute-budget-baseline": {
+    "message": "the material needs {used} vertex attributes; the Baseline tier on a WebGL1 GPU guarantees only {limit}, so it may not draw there"
+  },
+  "render-varying-budget-baseline": {
+    "message": "the material needs {used} varying vectors; the Baseline tier on a WebGL1 GPU guarantees only {limit}, so it may not draw there"
+  },
+  "mesh-ignores-transform": {
+    "message": "this mesh never reads its world matrix, so its transform, its keyframes and the effect's placement do not move it - wire a World Matrix node into Vertex Transform"
   }
 }

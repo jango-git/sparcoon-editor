@@ -14,6 +14,7 @@ import {
   toggleEmitterHidden,
   toggleVfxMeshHidden,
 } from "../model/commands";
+import { canRemoveObject } from "../model/editorState";
 import { eulerToQuat } from "../model/transform";
 import { requireKnownKeys, requireVector3 } from "./arguments.Internal";
 import { resolveEntity, resolveOwner } from "./address.Internal";
@@ -34,7 +35,10 @@ export interface SceneEdits {
   addEmitter(): string;
   /** Adds a VFX mesh (a plane with a flat material); it becomes active. */
   addMesh(): string;
-  /** Removes an emitter or mesh. The last emitter cannot be removed. */
+  /**
+   * Removes an emitter or mesh. An effect of meshes only (or emitters only) is fine; the scene's
+   * last object cannot be removed.
+   */
   remove(ownerId: string): void;
   /** Renames an emitter or mesh. The project (the VFX group's name) is `project.setName`. */
   rename(ownerId: string, name: string): void;
@@ -55,14 +59,14 @@ export function createSceneEdits(session: EditSession): SceneEdits {
       session.mutate((store) => {
         const source = store.getSource();
         const owner = resolveOwner(source, ownerId);
+        if (!canRemoveObject(source.scene)) {
+          throw new AgentError("rejected", "The scene's last object cannot be removed.");
+        }
         if (owner.kind === "vfxMesh") {
           removeVfxMesh(store, owner.id);
-          return;
+        } else {
+          removeEmitter(store, owner.id);
         }
-        if (source.scene.emitters.length <= 1) {
-          throw new AgentError("rejected", "The last emitter cannot be removed.");
-        }
-        removeEmitter(store, owner.id);
       }),
 
     rename: (ownerId, name) =>

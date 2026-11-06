@@ -5,7 +5,12 @@
 
 import type { EditorGraph, GraphNode } from "../../domain/graphModel";
 import { isSink } from "../../domain/sinks";
-import { createDefaultEmitter, type EmitterDoc, type SceneModel } from "../editorState";
+import {
+  canRemoveObject,
+  createDefaultEmitter,
+  type EmitterDoc,
+  type SceneModel,
+} from "../editorState";
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
 
@@ -73,12 +78,13 @@ export function addEmitter(store: Store): string {
 }
 
 /**
- * Removes emitter `id` (no-op if it's the last one, or unknown). If it was active, selection
- * falls to its neighbour (the previous emitter, or the new head if it was first).
+ * Removes emitter `id` (no-op if it is the scene's last object, or unknown) - an effect of meshes
+ * only is fine. If it was active, selection falls to its neighbour (the previous emitter, or the new
+ * head if it was first); with no emitter left, the graph editor moves to a mesh.
  */
 export function removeEmitter(store: Store, id: string): void {
   const scene = store.getSource().scene;
-  if (scene.emitters.length <= 1) {
+  if (!canRemoveObject(scene)) {
     return;
   }
   const index = scene.emitters.findIndex((emitter) => emitter.id === id);
@@ -86,14 +92,20 @@ export function removeEmitter(store: Store, id: string): void {
     return;
   }
   const emitters = scene.emitters.filter((emitter) => emitter.id !== id);
-  const [firstEmitter] = emitters;
-  if (firstEmitter === undefined) {
-    // scene.emitters.length > 1 was checked above and exactly one was removed.
-    throw new Error("removeEmitter: no emitters remain after removal");
-  }
   const activeEmitterId =
-    scene.activeEmitterId === id ? (emitters[index - 1] ?? firstEmitter).id : scene.activeEmitterId;
-  commitScene(store, { ...scene, emitters, activeEmitterId }, "structural");
+    scene.activeEmitterId === id ? (emitters[index - 1] ?? emitters[0])?.id : scene.activeEmitterId;
+  const next = { ...scene, emitters, activeEmitterId };
+  commitScene(
+    store,
+    activeEmitterId === undefined
+      ? {
+          ...next,
+          activeMeshId: scene.activeMeshId ?? scene.meshes[0]?.id,
+          activeGraphKind: "vfxMesh",
+        }
+      : next,
+    "structural",
+  );
 }
 
 /**

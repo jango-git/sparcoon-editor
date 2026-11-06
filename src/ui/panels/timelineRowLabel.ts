@@ -155,12 +155,16 @@ export function buildLabel(
   });
 }
 
-export function buildMeshLabel(store: Store, mesh: VfxMeshDoc, onSelect: () => void): HTMLElement {
+export function buildMeshLabel(
+  store: Store,
+  mesh: VfxMeshDoc,
+  removable: boolean,
+  onSelect: () => void,
+): HTMLElement {
   return buildRowLabel({
     glyph: viewportIcons.mesh,
     name: mesh.name,
-    // A scene may hold zero meshes, so a mesh is always removable (no "keep at least one" rule).
-    removable: true,
+    removable,
     removeLabel: t("timeline.removeMesh"),
     removeTip: t("timeline.removeMeshTip"),
     onSelect,

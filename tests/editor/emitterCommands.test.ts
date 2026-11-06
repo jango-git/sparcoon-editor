@@ -6,15 +6,20 @@ import { isSink } from "../../src/domain/sinks";
 import {
   addCatalogNode,
   addEmitter,
+  addVfxMesh,
   removeEmitter,
+  removeVfxMesh,
   renameEmitter,
   selectEmitter,
 } from "../../src/model/commands";
 import { withFreshIds } from "../../src/model/commands/emitterCommands";
 import { createEmptyGraph } from "../../src/domain/graphModel";
+import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
 import {
   selectActiveEmitter,
   selectActiveEmitterId,
+  selectActiveGraphOwner,
   selectBehaviorGraph,
   selectEmitters,
 } from "../../src/model/selectors";
@@ -48,7 +53,7 @@ describe("emitter commands", () => {
 
   it("gives a new emitter its own freshly-minted authored node ids (no collision)", () => {
     const store = freshStore();
-    const firstId = selectActiveEmitterId(store);
+    const firstId = selectActiveEmitterId(store)!;
     const secondId = addEmitter(store);
 
     const firstAuthored = authoredNodeIds(store, firstId);
@@ -64,7 +69,7 @@ describe("emitter commands", () => {
 
   it("edits the active emitter's graph in isolation from the others", () => {
     const store = freshStore();
-    const firstId = selectActiveEmitterId(store);
+    const firstId = selectActiveEmitterId(store)!;
     addEmitter(store); // now active
 
     addCatalogNode(store, "behaviorGraph", "constant", { x: 0, y: 0 });
@@ -80,7 +85,7 @@ describe("emitter commands", () => {
 
   it("selectEmitter changes the active target; unknown/current ids are no-ops", () => {
     const store = freshStore();
-    const firstId = selectActiveEmitterId(store);
+    const firstId = selectActiveEmitterId(store)!;
     const secondId = addEmitter(store);
 
     selectEmitter(store, firstId);
@@ -97,7 +102,7 @@ describe("emitter commands", () => {
 
   it("removeEmitter drops an emitter and refuses to remove the last one", () => {
     const store = freshStore();
-    const firstId = selectActiveEmitterId(store);
+    const firstId = selectActiveEmitterId(store)!;
     const secondId = addEmitter(store);
 
     removeEmitter(store, secondId);
@@ -111,7 +116,7 @@ describe("emitter commands", () => {
 
   it("removeEmitter keeps the active selection when a different emitter is removed", () => {
     const store = freshStore();
-    const firstId = selectActiveEmitterId(store);
+    const firstId = selectActiveEmitterId(store)!;
     const secondId = addEmitter(store); // active
 
     removeEmitter(store, firstId);
@@ -153,5 +158,36 @@ describe("emitter commands", () => {
 
     store.redo();
     expect(selectEmitters(store)).toHaveLength(2);
+  });
+});
+
+describe("an effect of meshes only", () => {
+  it("lets the last emitter go once a mesh holds the scene, and moves the graph editor to it", () => {
+    const store = freshStore();
+    const emitterId = selectActiveEmitterId(store)!;
+    const meshId = addVfxMesh(store);
+    selectEmitter(store, emitterId);
+
+    removeEmitter(store, emitterId);
+    expect(selectEmitters(store)).toEqual([]);
+    expect(selectActiveEmitterId(store)).toBeUndefined();
+    expect(selectActiveGraphOwner(store)).toMatchObject({ kind: "vfxMesh", id: meshId });
+
+    // ...but the scene's last object stays, mesh or emitter.
+    removeVfxMesh(store, meshId);
+    expect(store.getSource().scene.meshes).toHaveLength(1);
+  });
+
+  it("loads and exports a project of meshes only, rather than resetting it", () => {
+    const store = freshStore();
+    const emitterId = selectActiveEmitterId(store)!;
+    addVfxMesh(store);
+    removeEmitter(store, emitterId);
+
+    const loaded = deserializeProject(serializeProject(store.getSource()));
+    expect(loaded?.scene.emitters).toEqual([]);
+    expect(loaded?.scene.meshes).toHaveLength(1);
+    expect(loaded?.scene.activeGraphKind).toBe("vfxMesh");
+    expect(() => emitProjectModule(store.getSource())).not.toThrow();
   });
 });

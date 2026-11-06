@@ -3,9 +3,12 @@
  * scrubbable number / vector editors. Pure DOM factories over {@link NumberControl}.
  */
 
-import { t } from "../../i18n";
+import { asKeyEase, FX_KEY_EASES } from "sparcoon/editor";
+import type { FXKeyEase } from "sparcoon";
+import { t, type TKey } from "../../i18n";
 import type { ChannelValue } from "../../model/commands";
 import type { TransformChannel } from "../../model/transform";
+import { Dropdown } from "../components/dropdown";
 import { NumberControl } from "../components/numberControl";
 import { attachTooltip } from "../components/tooltip";
 import { createToggleButton } from "../components/toggleButton";
@@ -41,6 +44,38 @@ export interface FieldOptions {
   readonly max?: number;
   readonly step?: number;
   readonly precision?: number;
+}
+
+const EASE_LABEL: Readonly<Record<FXKeyEase, TKey>> = {
+  linear: "timeline.easeLinear",
+  in: "timeline.easeIn",
+  out: "timeline.easeOut",
+  inOut: "timeline.easeInOut",
+};
+
+/** A keyframe's curve to the next key, as a labelled dropdown row (linear when unset). */
+export function easeField(
+  ease: FXKeyEase | undefined,
+  commit: (ease: FXKeyEase) => void,
+): HTMLElement {
+  const dropdown = new Dropdown({
+    options: FX_KEY_EASES.map((value) => ({ value, label: t(EASE_LABEL[value]) })),
+    value: ease ?? "linear",
+    onChange: (value): void => {
+      const chosen = asKeyEase(value);
+      if (chosen !== undefined) {
+        commit(chosen);
+      }
+    },
+  });
+  const label = t("timeline.ease");
+  const row = field(label, dropdown.element, {
+    tag: "label",
+    rowClassName: "timeline-inspector__row",
+    labelClassName: "timeline-inspector__label",
+  });
+  attachTooltip(row, label, t("timeline.easeTip"));
+  return row;
 }
 
 /** A labelled scrubbable {@link NumberControl} row for the inspector. `live`, if given, previews

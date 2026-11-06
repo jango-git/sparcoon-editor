@@ -18,10 +18,13 @@ export class TransportStore {
    * @param duration Accessor for the authored timeline length (seconds); read every tick.
    * @param infinite Accessor for whether the timeline is infinite (an infinite play event exists):
    *   playback then parks the caret at the last frame instead of looping.
+   * @param loops Accessor for whether the timeline loops; one that plays once parks the caret at
+   *   the last frame too.
    */
   constructor(
     private readonly duration: () => number,
     private readonly infinite: () => boolean = () => false,
+    private readonly loops: () => boolean = () => true,
   ) {
     // A backgrounded tab still fires (throttled) rAF callbacks, so without this the tick after
     // the tab regains visibility sees a huge raw timestamp gap and jumps/wraps the playhead in
@@ -147,10 +150,10 @@ export class TransportStore {
     const duration = this.duration();
     if (this.lastTimestamp !== undefined && duration > 0) {
       const deltaTime = (timestamp - this.lastTimestamp) / 1000;
-      // An infinite timeline parks the caret at the last frame while the sim (gated on isPlaying,
-      // not the caret) keeps running past it; otherwise loop back to the start.
+      // An infinite or once-through timeline parks the caret at the last frame while the sim
+      // (gated on isPlaying, not the caret) keeps running past it; otherwise loop back to the start.
       const next = this.time + deltaTime;
-      if (this.infinite()) {
+      if (this.infinite() || !this.loops()) {
         this.time = Math.min(next, duration);
       } else {
         if (next >= duration) {

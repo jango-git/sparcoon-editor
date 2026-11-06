@@ -11,7 +11,24 @@ import { settle } from "./settle.Internal";
 import { runUnrecorded } from "./transaction.Internal";
 import { graphStatusView, type StatusView } from "./views";
 
-export async function readStatus(store: Store, ownerId?: string): Promise<StatusView> {
+/** Per store, the last status read queued: each read waits for the one before it. */
+const lastRead = new WeakMap<Store, Promise<unknown>>();
+
+/**
+ * Reads one owner's status, in turn. A read focuses its owner and then waits for the recompute,
+ * so two reads in flight at once would each end up reading whichever owner was focused last -
+ * queued, each one focuses and reads before the next begins. A failed read does not hold up the
+ * ones after it.
+ */
+export function readStatus(store: Store, ownerId?: string): Promise<StatusView> {
+  const read = (lastRead.get(store) ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(() => readStatusNow(store, ownerId));
+  lastRead.set(store, read);
+  return read;
+}
+
+async function readStatusNow(store: Store, ownerId: string | undefined): Promise<StatusView> {
   if (ownerId !== undefined) {
     runUnrecorded(store, (staging) =>
       focusOwner(staging, resolveOwner(staging.getSource(), ownerId)),

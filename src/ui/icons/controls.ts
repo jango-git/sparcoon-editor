@@ -41,6 +41,14 @@ export const controlIcons = {
     <circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none"/>
   </svg>`,
 
+  // Loop: two arrows chasing each other round a rounded loop.
+  loop: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 9V7.5A2.5 2.5 0 0 1 5.5 5H12"/>
+    <path d="M10.2 3.2 12 5l-1.8 1.8"/>
+    <path d="M13 7v1.5A2.5 2.5 0 0 1 10.5 11H4"/>
+    <path d="M5.8 12.8 4 11l1.8-1.8"/>
+  </svg>`,
+
   // Generic on/off toggle: a checkmark (lit when the button is active).
   toggleCheck: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3.5 8.5 6.5 11.5 12.5 4.5"/>

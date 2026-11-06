@@ -5,6 +5,7 @@
  * copy - the caller may change it freely without reaching the immutable document behind it.
  */
 
+import type { FXKeyEase } from "sparcoon";
 import { bindingSinkId } from "../domain/graphEdges";
 import type { AttributeTypeName, GraphComment, GraphPosition } from "../domain/graphModel";
 import { isSinkType } from "../domain/nodePalette";
@@ -45,7 +46,12 @@ export interface TransformView {
 /** One transform channel's keys; a rotation key's value is in Euler degrees, as elsewhere here. */
 export interface TransformTrackView {
   readonly channel: TransformChannel;
-  readonly keys: readonly { readonly id: string; readonly time: number; readonly value: Vec3 }[];
+  readonly keys: readonly {
+    readonly id: string;
+    readonly time: number;
+    readonly value: Vec3;
+    readonly ease?: FXKeyEase;
+  }[];
 }
 
 /** What an emitter and a mesh share on the timeline. */
@@ -77,7 +83,7 @@ export interface MeshView extends AnimatedView {
 export interface SceneView {
   /** The project name (the exported class's name); set with `project.setName`. */
   readonly name: string;
-  readonly timeline: { readonly duration: number; readonly fps: number };
+  readonly timeline: { readonly duration: number; readonly fps: number; readonly loop: boolean };
   readonly vfx: {
     readonly id: string;
     readonly transform: TransformView;
@@ -142,6 +148,11 @@ export interface AssetsView {
 export interface GraphStatusView {
   readonly status: LiveApplyStatus["status"];
   readonly messages: readonly string[];
+  /**
+   * Problems that do not stop the graph from running here: past the Baseline tier's GPU limits,
+   * or a VFX mesh its transform does not move. Present on a valid graph too.
+   */
+  readonly warnings: readonly string[];
   readonly errors: readonly {
     readonly code: string;
     readonly message: string;
@@ -172,6 +183,7 @@ function transformTracksView(tracks: readonly TransformTrack[]): readonly Transf
       id: key.id,
       time: key.time,
       value: track.channel === "rotation" ? quatToEuler(key.value as Quat) : (key.value as Vec3),
+      ...(key.ease !== undefined ? { ease: key.ease } : {}),
     })),
   }));
 }
@@ -194,7 +206,11 @@ export function sceneView(source: SourceState): SceneView {
   const scene = source.scene;
   return structuredClone({
     name: source.name,
-    timeline: { duration: source.timeline.duration, fps: source.timeline.fps },
+    timeline: {
+      duration: source.timeline.duration,
+      fps: source.timeline.fps,
+      loop: source.timeline.loop,
+    },
     vfx: {
       id: scene.vfx.id,
       transform: transformView(scene.vfx.transform),
@@ -276,6 +292,7 @@ export function graphStatusView(status: LiveApplyStatus | undefined): GraphStatu
   return structuredClone({
     status: status.status,
     messages: status.messages,
+    warnings: status.warnings ?? [],
     errors: (status.errors ?? []).map((error) => ({
       code: error.code,
       message: error.message,

@@ -9,6 +9,7 @@ import {
   removeEvent,
   removeKeyframe,
   setKeyframe,
+  setKeyframeEase,
   setKeyframeValue,
   setTimelineDuration,
   setTimelineFps,
@@ -45,6 +46,17 @@ describe("setKeyframe", () => {
     const keys = tracks(store)[0].keys;
     expect(keys.map((k) => k.time)).toEqual([1, 2]);
     expect(keys[1].value).toBe(99);
+  });
+
+  it("keeps the curve of a key it replaces, so re-keying a frame changes only the value", () => {
+    const store = freshStore();
+    const entity = ent(emitterId(store));
+    const first = setKeyframe(store, entity, "size", 1, 4);
+    setKeyframeEase(store, entity, first, "inOut");
+    setKeyframe(store, entity, "size", 1, 6);
+    expect(tracks(store)[0].keys).toEqual([
+      expect.objectContaining({ time: 1, value: 6, ease: "inOut" }),
+    ]);
   });
 
   it("snaps the time to the frame grid and clamps into [0, duration]", () => {

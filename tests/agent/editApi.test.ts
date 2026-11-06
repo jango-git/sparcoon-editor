@@ -308,13 +308,17 @@ describe("agent graph edits", () => {
 });
 
 describe("agent scene and timeline edits", () => {
-  it("keeps the last emitter", () => {
+  it("keeps the scene's last object, but lets an effect be meshes only", () => {
     const store = new Store(createInitialState(), new SignalBus());
     const { api } = apis(store);
-    expect(() => api.scene.remove("emitter_1")).toThrow(/rejected/);
-    const added = api.scene.addEmitter();
-    api.scene.remove(added);
-    expect(api.scene.get().emitters.map((emitter) => emitter.id)).toEqual(["emitter_1"]);
+    expect(() => api.scene.remove("emitter_1")).toThrow(/rejected.*last object/);
+    const mesh = api.scene.addMesh();
+    api.scene.remove("emitter_1");
+    expect(api.scene.get().emitters).toEqual([]);
+    // The graph editor moves to the mesh, so graph edits and status still have an owner.
+    expect(api.scene.get().activeOwnerId).toBe(mesh);
+    expect(() => api.scene.remove(mesh)).toThrow(/rejected.*last object/);
+    expect(api.graph(mesh, "render").get().ownerId).toBe(mesh);
   });
 
   it("renames emitters, and points the VFX group's id at project.setName", () => {
@@ -339,6 +343,15 @@ describe("agent scene and timeline edits", () => {
     );
   });
 
+  it("switches the timeline between looping and playing once", () => {
+    const store = twoEmitterStore();
+    const { api } = apis(store);
+    expect(api.scene.get().timeline.loop).toBe(true);
+    api.timeline.setLoop(false);
+    expect(api.scene.get().timeline.loop).toBe(false);
+    expect(() => api.timeline.setLoop("no" as never)).toThrow(/invalid_argument/);
+  });
+
   it("adds, edits and removes spawn events, emitters only", () => {
     const store = twoEmitterStore();
     const { api } = apis(store);
@@ -358,6 +371,13 @@ describe("agent scene and timeline edits", () => {
     expect(() => api.timeline.removeEvent("emitter_a", burst)).toThrow(/not_found/);
     const mesh = api.scene.addMesh();
     expect(() => api.timeline.addBurst(mesh, 0, 1)).toThrow(/only emitters/);
+    // The whole event as one object names the positional signature.
+    expect(() => api.timeline.addBurst("emitter_a", { time: 1, count: 5 } as never, 0)).toThrow(
+      /invalid_argument.*addBurst\(emitterId, time, count\) takes positional arguments/,
+    );
+    expect(() => api.timeline.addPlay("emitter_a", { time: 1 } as never, 0, 0)).toThrow(
+      /addPlay\(emitterId, time, rate, duration\)/,
+    );
   });
 });
 
@@ -401,14 +421,89 @@ describe("agent keyframe edits", () => {
     expect(api.scene.get().vfx.transformTracks[0]?.keys[0]?.value).toEqual([2, 2, 2]);
   });
 
-  it("replaces a key set on an occupied frame", () => {
+  it("refuses a key on an occupied frame unless asked to replace it", () => {
     const { api } = apis(twoEmitterStore());
     const first = api.timeline.setTransformKey("emitter_a", "position", 1, [1, 0, 0]);
-    const second = api.timeline.setTransformKey("emitter_a", "position", 1, [2, 0, 0]);
+    // 1.01 s snaps to the same 30 fps frame.
+    expect(() => api.timeline.setTransformKey("emitter_a", "position", 1.01, [2, 0, 0])).toThrow(
+      new RegExp(`rejected.*"${first}".*replace: true`),
+    );
+    const second = api.timeline.setTransformKey("emitter_a", "position", 1, [2, 0, 0], {
+      replace: true,
+    });
     expect(second).not.toBe(first);
     expect(emitterA(api).transformTracks[0]?.keys).toEqual([
       { id: second, time: 1, value: [2, 0, 0] },
     ]);
+    // Another channel's frame is its own.
+    expect(() => api.timeline.setTransformKey("emitter_a", "scale", 1, [2, 2, 2])).not.toThrow();
+    expect(() =>
+      api.timeline.setTransformKey("emitter_a", "scale", 2, [1, 1, 1], { force: true } as never),
+    ).toThrow(/invalid_argument/);
+    expect(() =>
+      api.timeline.setTransformKey("emitter_a", "scale", 2, [1, 1, 1], undefined as never),
+    ).not.toThrow();
+    expect(() =>
+      api.timeline.setTransformKey("emitter_a", "scale", 3, [1, 1, 1], "replace" as never),
+    ).toThrow(/invalid_argument.*options must be an object/);
+    expect(() =>
+      api.timeline.setTransformKey("emitter_a", "scale", 3, [1, 1, 1], { replace: 1 } as never),
+    ).toThrow(/invalid_argument.*replace must be a boolean/);
+  });
+
+  it("keeps a replaced key's curve unless given another", () => {
+    const api = withValues(twoEmitterStore());
+    api.timeline.setValueKey("emitter_a", "glow", 1, 0, { ease: "out" });
+    api.timeline.setValueKey("emitter_a", "glow", 1, 2, { replace: true });
+    expect(emitterA(api).tracks[0]?.keys[0]).toMatchObject({ value: 2, ease: "out" });
+    api.timeline.setValueKey("emitter_a", "glow", 1, 3, { replace: true, ease: "in" });
+    expect(emitterA(api).tracks[0]?.keys[0]).toMatchObject({ value: 3, ease: "in" });
+  });
+
+  it("sets a key's curve, at creation or after, and reports it", () => {
+    const api = withValues(twoEmitterStore());
+    const position = api.timeline.setTransformKey("emitter_a", "position", 0, [0, 0, 0], {
+      ease: "inOut",
+    });
+    const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0, { ease: "in" });
+    expect(emitterA(api).transformTracks[0]?.keys[0]).toMatchObject({
+      id: position,
+      ease: "inOut",
+    });
+    expect(emitterA(api).tracks[0]?.keys[0]).toMatchObject({ id: glow, ease: "in" });
+
+    api.timeline.setKeyEase("emitter_a", glow, "out");
+    expect(emitterA(api).tracks[0]?.keys[0]?.ease).toBe("out");
+    // Linear is stored as no curve at all.
+    api.timeline.setKeyEase("emitter_a", position, "linear");
+    expect(emitterA(api).transformTracks[0]?.keys[0]).not.toHaveProperty("ease");
+
+    expect(() => api.timeline.setKeyEase("emitter_a", glow, "bounce" as never)).toThrow(
+      /invalid_argument/,
+    );
+    expect(() =>
+      api.timeline.setValueKey("emitter_a", "glow", 1, 1, { ease: "bounce" as never }),
+    ).toThrow(/invalid_argument/);
+  });
+
+  it("refuses a move that would put two keys of one track on the same frame", () => {
+    const store = twoEmitterStore();
+    const api = withValues(store);
+    const early = api.timeline.setTransformKey("emitter_a", "position", 0, [0, 0, 0]);
+    const late = api.timeline.setTransformKey("emitter_a", "position", 1, [1, 0, 0]);
+    api.timeline.setValueKey("emitter_a", "glow", 1, 0.5);
+    const before = store.getSource();
+
+    expect(() => api.timeline.moveKeys("emitter_a", [{ id: early, time: 1 }])).toThrow(
+      /rejected.*would share/,
+    );
+    expect(store.getSource()).toBe(before);
+    // A swap is fine, and so is landing on another track's frame.
+    api.timeline.moveKeys("emitter_a", [
+      { id: early, time: 1 },
+      { id: late, time: 0 },
+    ]);
+    expect(emitterA(api).transformTracks[0]?.keys.map((key) => key.id)).toEqual([late, early]);
   });
 
   it("lists the Timeline Values an owner declares and keys them by their own shape", () => {
@@ -421,6 +516,7 @@ describe("agent keyframe edits", () => {
 
     const glow = api.timeline.setValueKey("emitter_a", "glow", 0, 0.8);
     api.timeline.setValueKey("emitter_a", "tint", 0, [1, 0, 0]);
+    expect(() => api.timeline.setValueKey("emitter_a", "glow", 0, 0.1)).toThrow(/rejected/);
     expect(emitterA(api).tracks).toEqual([
       { name: "glow", keys: [{ id: glow, time: 0, value: 0.8 }] },
       { name: "tint", keys: [expect.objectContaining({ value: [1, 0, 0] })] },

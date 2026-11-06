@@ -7,6 +7,7 @@
  *   recomputed by the pipeline on every structural edit.
  */
 
+import type { FXKeyEase } from "sparcoon";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type {
@@ -38,6 +39,8 @@ export interface Keyframe {
   readonly id: string;
   readonly time: number;
   readonly value: number | readonly number[];
+  /** The curve from this key to the next (the runtime's own); linear when absent. */
+  readonly ease?: FXKeyEase;
 }
 
 /**
@@ -168,7 +171,7 @@ export type GraphOwnerKind = "emitter" | "vfxMesh";
 export interface SceneModel {
   readonly vfx: VfxDoc;
   readonly emitters: readonly EmitterDoc[];
-  readonly activeEmitterId: string;
+  readonly activeEmitterId?: string | undefined;
   readonly meshes: readonly VfxMeshDoc[];
   readonly activeMeshId?: string | undefined;
   readonly activeGraphKind: GraphOwnerKind;
@@ -183,7 +186,8 @@ export interface GraphOwnerRef {
 /**
  * Resolves which owner the shared graph canvas edits: the `activeMeshId` mesh when `activeGraphKind`
  * names one that still exists, else the active emitter (falling back to the first when the id is
- * stale). `undefined` only when the scene has no emitters. The single resolver every read (selectors)
+ * stale), else - in a scene of meshes only - the active or first mesh. `undefined` only for a scene
+ * with no object at all, which the commands never leave. The single resolver every read (selectors)
  * and write (graph commands) path shares, so none can target a different owner than another.
  */
 export function resolveGraphOwner(scene: SceneModel): GraphOwnerRef | undefined {
@@ -196,15 +200,34 @@ export function resolveGraphOwner(scene: SceneModel): GraphOwnerRef | undefined 
   const emitterId = scene.emitters.some((emitter) => emitter.id === scene.activeEmitterId)
     ? scene.activeEmitterId
     : scene.emitters[0]?.id;
-  return emitterId !== undefined ? { kind: "emitter", id: emitterId } : undefined;
+  if (emitterId !== undefined) {
+    return { kind: "emitter", id: emitterId };
+  }
+  const meshId =
+    scene.meshes.find((candidate) => candidate.id === scene.activeMeshId)?.id ??
+    scene.meshes[0]?.id;
+  return meshId !== undefined ? { kind: "vfxMesh", id: meshId } : undefined;
+}
+
+/**
+ * Whether one of the scene's objects (an emitter or a VFX mesh) may be removed: any may, as long
+ * as one is left - an effect of meshes only, or emitters only, is fine; an empty one is not.
+ */
+export function canRemoveObject(scene: SceneModel): boolean {
+  return scene.emitters.length + scene.meshes.length > 1;
 }
 
 /** Scene-wide timeline settings (authored). One shared playhead runs over `[0, duration)`. */
 export interface TimelineState {
-  /** Total timeline length in seconds; playback loops back to 0 at the end. */
+  /** Total timeline length in seconds; playback loops back to 0 at the end, unless `loop` is off. */
   readonly duration: number;
   /** Frame rate: the caret, keyframes and events snap to this frame grid (frames/second). */
   readonly fps: number;
+  /**
+   * Whether the effect loops (seamlessly, in the preview and the export alike) or plays once and
+   * holds its last frame - the exported effect then dispatches `"finished"` at the end.
+   */
+  readonly loop: boolean;
 }
 
 /**
@@ -322,6 +345,12 @@ export interface LiveApplyStatus {
    * the *other* graph, or a codegen fault with no `nodeId`).
    */
   readonly errors?: readonly FXCompilerError[];
+  /**
+   * Problems that do not stop the graph from running here but may elsewhere or surprise its
+   * author (a GPU tier's tighter limits, a mesh blind to its own transform) - shown apart from
+   * `messages`, on a valid graph too.
+   */
+  readonly warnings?: readonly string[];
 }
 
 /** Everything computed from `source`; discarded and rebuilt, never persisted. */
@@ -342,7 +371,7 @@ export interface EditorState {
 export const DEFAULT_EMITTER_SETTINGS: EmitterSettings = { spawnRate: 20 };
 
 /** A fresh document's timeline settings: length in seconds and frame rate. */
-export const DEFAULT_TIMELINE: TimelineState = { duration: 5, fps: 30 };
+export const DEFAULT_TIMELINE: TimelineState = { duration: 5, fps: 30, loop: true };
 
 /** Assembles an authored graph from its authored nodes and bindings, then adds sinks. */
 function buildGraph(
@@ -472,6 +501,9 @@ export function createEmptyEmitter(id: string, name: string): EmitterDoc {
  * by its transform.
  */
 export function createDefaultVfxMesh(id: string, name: string): VfxMeshDoc {
+  // A mesh material projects from the graph's transform outputs, never from the object's own
+  // matrix, so the world matrix is wired in from the start: the mesh then follows its transform,
+  // its keyframes and the effect's placement in the host scene.
   const renderGraph = buildGraph(
     GraphKind.Render,
     [
@@ -481,8 +513,17 @@ export function createDefaultVfxMesh(id: string, name: string): VfxMeshDoc {
         parameters: { type: "vec4", value: [0.82, 0.82, 0.86, 1] },
         position: { x: 168, y: 120 },
       },
+      {
+        id: "n_world",
+        type: "world-matrix",
+        parameters: {},
+        position: { x: 168, y: 312 },
+      },
     ],
-    [{ slot: "albedo", from: { nodeId: "n_albedo", socketKey: "out" } }],
+    [
+      { slot: "albedo", from: { nodeId: "n_albedo", socketKey: "out" } },
+      { slot: "vertexTransform", from: { nodeId: "n_world", socketKey: "out" } },
+    ],
   );
   return {
     id,

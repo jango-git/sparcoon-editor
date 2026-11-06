@@ -3,6 +3,7 @@
  * recompiled). {@link setEntityBaseChannel} (gizmo/panel) never keyframes - only explicit actions do.
  */
 
+import type { FXKeyEase } from "sparcoon";
 import type {
   EmitterDoc,
   Keyframe,
@@ -16,6 +17,7 @@ import {
   cloneValue,
   removeKeyById,
   retimeKeys,
+  setKeyEaseById,
   setKeyValueById,
   snapTime,
   withKey,
@@ -230,6 +232,19 @@ export function setTransformKeyframeValue(
     }),
     live,
   );
+}
+
+/** Sets transform keyframe `keyId`'s curve to the next key. */
+export function setTransformKeyframeEase(
+  store: Store,
+  entity: SceneEntity,
+  keyId: string,
+  ease: FXKeyEase,
+): void {
+  updateEntity(store, entity, (current) => ({
+    ...current,
+    transformTracks: setKeyEaseById(current.transformTracks, keyId, ease),
+  }));
 }
 
 /** A retime of one transform keyframe. */

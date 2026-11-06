@@ -1,15 +1,18 @@
 import type { FXGraph } from "../FXGraph";
 
 /**
- * Node ids reachable upstream from the graph's output bindings via input connections. Includes
- * dangling ids referenced by a connection with no node instance, so validation can flag them.
+ * Node ids reachable upstream from the graph's output bindings - only those bound to `slots`, when
+ * given - via input connections. Includes dangling ids referenced by a connection with no node
+ * instance, so validation can flag them.
  */
-export function collectReachableNodeIds(graph: FXGraph): Set<string> {
+export function collectReachableNodeIds(graph: FXGraph, slots?: readonly string[]): Set<string> {
   const reachable = new Set<string>();
   const stack: string[] = [];
 
   for (const binding of graph.outputBindings) {
-    stack.push(binding.from.nodeId);
+    if (slots === undefined || slots.includes(binding.slot)) {
+      stack.push(binding.from.nodeId);
+    }
   }
 
   while (stack.length > 0) {

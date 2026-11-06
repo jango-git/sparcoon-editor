@@ -90,6 +90,7 @@ async function bootstrap(): Promise<void> {
   const transport = new TransportStore(
     () => store.getSource().timeline.duration,
     () => hasInfinitePlay(store),
+    () => store.getSource().timeline.loop,
   );
   // The caret time snapped to its frame - the timeline is frame-stepped, so every transform
   // re-pose (rebuild, view edit, transport drive) samples at the same frame the caret sits on.

@@ -81,6 +81,16 @@
   display: none;
 }
 
+/* A valid graph's warnings: the same strip in the timeline's amber rather than danger red. */
+.graph__errors--warning {
+  background: color-mix(in srgb, var(--timeline-event) 18%, var(--surface-deep));
+  border-top-color: var(--timeline-event);
+}
+
+.graph__errors--warning .graph__errors-title {
+  color: var(--timeline-event);
+}
+
 .graph__errors-title {
   margin-bottom: 2px;
   font-size: 10px;

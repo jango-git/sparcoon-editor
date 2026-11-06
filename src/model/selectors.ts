@@ -111,8 +111,8 @@ export function hasInfinitePlay(store: Store): boolean {
     );
 }
 
-/** The id of the emitter the editor currently targets. */
-export function selectActiveEmitterId(store: Store): string {
+/** The id of the emitter the editor currently targets; none in a scene of meshes only. */
+export function selectActiveEmitterId(store: Store): string | undefined {
   return store.getSource().scene.activeEmitterId;
 }
 
@@ -150,8 +150,8 @@ export interface ActiveGraphOwner {
 }
 
 /**
- * Resolves the active graph owner: the `activeMeshId` mesh when `activeGraphKind` names one that
- * exists, else the active emitter. What the canvas reads; always defined (>=1 emitter always exists).
+ * Resolves the active graph owner (see {@link resolveGraphOwner}): what the canvas reads. Always
+ * defined - a scene always keeps at least one emitter or mesh.
  */
 export function selectActiveGraphOwner(store: Store): ActiveGraphOwner {
   const scene = store.getSource().scene;
@@ -162,7 +162,10 @@ export function selectActiveGraphOwner(store: Store): ActiveGraphOwner {
       return { kind: "vfxMesh", id: mesh.id, renderGraph: mesh.renderGraph, tracks: mesh.tracks };
     }
   }
-  const emitter = selectActiveEmitter(store);
+  const emitter = scene.emitters.find((candidate) => candidate.id === owner?.id);
+  if (emitter === undefined) {
+    throw new Error("Scene has neither an emitter nor a mesh");
+  }
   return {
     kind: "emitter",
     id: emitter.id,

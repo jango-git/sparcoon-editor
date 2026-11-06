@@ -10,7 +10,9 @@ import {
   removeEvent,
   removeKeyframe,
   removeTransformKeyframe,
+  setKeyframeEase,
   setKeyframeValue,
+  setTransformKeyframeEase,
   setTransformKeyframeValue,
   updateEvent,
 } from "../../model/commands";
@@ -21,6 +23,7 @@ import { clearChildren } from "../dom";
 import {
   channelValueEditor,
   durationField,
+  easeField,
   inspectorField,
   inspectorHint,
   inspectorRemove,
@@ -173,6 +176,9 @@ function renderKeyframeInspector(ref: ItemRef, ctx: InspectorContext): void {
     ),
   );
   inspector.append(
+    easeField(found.key.ease, (ease) => setKeyframeEase(store, ref.entity, ref.id, ease)),
+  );
+  inspector.append(
     inspectorRemove(() => removeKeyframe(store, ref.entity, ref.id), t("timeline.removeItemTip")),
   );
 }
@@ -214,6 +220,9 @@ function renderTransformKeyframeInspector(ref: ItemRef, ctx: InspectorContext): 
       t("timeline.valueTip"),
       (value) => setTransformKeyframeValue(store, ref.entity, ref.id, value, true),
     ),
+  );
+  inspector.append(
+    easeField(found.key.ease, (ease) => setTransformKeyframeEase(store, ref.entity, ref.id, ease)),
   );
   inspector.append(
     inspectorRemove(

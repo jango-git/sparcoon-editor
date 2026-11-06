@@ -6,7 +6,7 @@ build.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
 [Runtime](https://github.com/jango-git/sparcoon/tree/experimental) -
-[npm](https://www.npmjs.com/package/sparcoon/v/0.9.3)
+[npm](https://www.npmjs.com/package/sparcoon/v/0.9.5)
 
 ![Editor demo](assets/demo.gif)
 
@@ -203,7 +203,7 @@ Known and deliberate, so you do not discover them mid-project:
 
 |             |                                                                 |
 | ----------- | --------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.9.3 (dist-tag `experimental`)                      |
+| Runtime     | `sparcoon` 0.9.5 (dist-tag `experimental`)                      |
 | three.js    | `>=0.157 <0.180` (peer dependency of the runtime)               |
 | Editor      | Any browser with WebGL2; WebGL1 is enough for the Baseline tier |
 | Your build  | A bundler (Vite, webpack, Rollup, esbuild). ES2020 output       |

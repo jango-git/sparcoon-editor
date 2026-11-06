@@ -193,6 +193,33 @@ describe("emitProjectModule - executes", () => {
     }
   });
 
+  it("carries the timeline's loop setting: a once-through effect finishes and holds", () => {
+    const source = createTestState().source;
+    const once = { ...source, timeline: { ...source.timeline, loop: false } };
+    const text = emitProjectModule(once);
+    expect(text).toMatch(/^\s*loop: false,$/m);
+    const Effect = loadModule(text)["Effect"] as new (
+      assets: Record<string, never>,
+    ) => three.Group & {
+      play(): void;
+      dispose(): void;
+    };
+    const effect = new Effect({});
+    let finished = 0;
+    effect.addEventListener("finished" as never, () => {
+      finished += 1;
+    });
+    try {
+      effect.play();
+      for (let step = 0; step < 60; step += 1) {
+        sparcoon.FXWorld.update(0.1); // well past the end
+      }
+      expect(finished).toBe(1);
+    } finally {
+      effect.dispose();
+    }
+  });
+
   it("stop() clears live particles", () => {
     const module = loadModule(emitProjectModule(createTestState().source));
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {

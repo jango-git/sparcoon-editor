@@ -42,6 +42,7 @@ export {
   setEntityBaseChannel,
   setLiveChannel,
   setTransformKeyframe,
+  setTransformKeyframeEase,
   setTransformKeyframeValue,
   type TransformKeyMove,
 } from "./transformCommands";
@@ -82,10 +83,12 @@ export {
   removeEvent,
   removeKeyframe,
   setKeyframe,
+  setKeyframeEase,
   setKeyframeValue,
   setLiveParam,
   setTimelineDuration,
   setTimelineFps,
+  setTimelineLoop,
   updateEvent,
 } from "./timelineCommands";
 export {

@@ -3,7 +3,12 @@
  * no behavior graph/spawn events). Unlike emitters, the scene may hold zero meshes.
  */
 
-import { createDefaultVfxMesh, type SceneModel, type VfxMeshDoc } from "../editorState";
+import {
+  canRemoveObject,
+  createDefaultVfxMesh,
+  type SceneModel,
+  type VfxMeshDoc,
+} from "../editorState";
 import type { Store } from "../store";
 import { withFreshIds } from "./emitterCommands";
 import { nextIdentifier } from "./identifier";
@@ -36,6 +41,9 @@ export function addVfxMesh(store: Store): string {
  */
 export function removeVfxMesh(store: Store, id: string): void {
   const scene = store.getSource().scene;
+  if (!canRemoveObject(scene)) {
+    return;
+  }
   const index = scene.meshes.findIndex((mesh) => mesh.id === id);
   if (index === -1) {
     return;

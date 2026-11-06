@@ -35,7 +35,8 @@ import type { StatusView } from "./views";
 export { AgentError, type AgentErrorCode } from "./errors";
 
 /** Bumped on a breaking change to this surface. */
-const AGENT_API_VERSION = 1;
+// 2: setting a key on a frame that already holds one is refused unless asked to replace it.
+const AGENT_API_VERSION = 2;
 
 export interface SparcoonAgentApi extends EditApi {
   readonly version: number;

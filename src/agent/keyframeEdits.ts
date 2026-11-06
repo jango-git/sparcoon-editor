@@ -8,6 +8,8 @@
  * keys needs a key in between.
  */
 
+import type { FXKeyEase } from "sparcoon";
+import { asKeyEase, FX_KEY_EASES } from "sparcoon/editor";
 import { isKeyframeValue, type EditorGraph } from "../domain/graphModel";
 import { timelineValueDeclarations } from "../domain/nodePalette";
 import {
@@ -17,13 +19,16 @@ import {
   removeKeyframe,
   removeTransformKeyframe,
   setKeyframe,
+  setKeyframeEase,
   setKeyframeValue,
   setLiveChannel,
   setLiveParam,
   setTransformKeyframe,
+  setTransformKeyframeEase,
   setTransformKeyframeValue,
 } from "../model/commands";
-import type { AnimationTrack, SourceState } from "../model/editorState";
+import type { AnimationTrack, Keyframe, SourceState } from "../model/editorState";
+import { KEY_EPSILON, snapTime } from "../model/keyframeTrackOps";
 import type { SceneEntity } from "../model/entity";
 import {
   eulerToQuat,
@@ -31,7 +36,13 @@ import {
   type TransformChannel,
   type TransformTrack,
 } from "../model/transform";
-import { requireFiniteNumber, requireVector, requireVector3 } from "./arguments.Internal";
+import {
+  requireFiniteNumber,
+  requireKnownKeys,
+  requireVector,
+  requireVector3,
+} from "./arguments.Internal";
+import { isRecord } from "../util/guards";
 import { resolveEntity } from "./address.Internal";
 import { AgentError } from "./errors";
 import type { EditSession } from "./transaction.Internal";
@@ -45,6 +56,20 @@ export interface TimelineValueView {
   readonly value: number | readonly number[];
 }
 
+/** How a key is set. */
+export interface SetKeyOptions {
+  /**
+   * Replace a key already on that frame. Without it an occupied frame is refused: keys snap to
+   * the frame grid, so two keys closer together than a frame would otherwise silently become one.
+   */
+  readonly replace?: boolean;
+  /**
+   * The curve from this key to the next. When omitted, a replaced key's curve is kept; a new key
+   * is linear.
+   */
+  readonly ease?: FXKeyEase;
+}
+
 /** A retime of one key, transform or Timeline Value alike. */
 export interface KeyMove {
   readonly id: string;
@@ -56,13 +81,14 @@ export interface KeyframeEdits {
   values(ownerId: string): readonly TimelineValueView[];
   /**
    * Keys `channel` of an entity (the VFX group included) at `time` to `value` - a vec3, Euler
-   * degrees for `"rotation"`. Returns the key id.
+   * degrees for `"rotation"`. Returns the key id. See {@link SetKeyOptions} for a taken frame.
    */
   setTransformKey(
     entityId: string,
     channel: TransformChannel,
     time: number,
     value: readonly number[],
+    options?: SetKeyOptions,
   ): string;
   /** Keys Timeline Value `name` of an emitter or mesh at `time`. Returns the key id. */
   setValueKey(
@@ -70,10 +96,16 @@ export interface KeyframeEdits {
     name: string,
     time: number,
     value: number | readonly number[],
+    options?: SetKeyOptions,
   ): string;
+  /** Changes the curve from a key to the next one. */
+  setKeyEase(entityId: string, keyId: string, ease: FXKeyEase): void;
   /** Changes a key's value, keeping its time; the value has the shape the key already holds. */
   setKeyValue(entityId: string, keyId: string, value: number | readonly number[]): void;
-  /** Retimes keys of one entity, transform and value keys alike, in one step. */
+  /**
+   * Retimes keys of one entity, transform and value keys alike, in one step. Refused, all of it,
+   * when two keys of one track would end up on the same frame.
+   */
   moveKeys(entityId: string, moves: readonly KeyMove[]): void;
   /** Removes a key; a track left with no keys goes with it. */
   removeKey(entityId: string, keyId: string): void;
@@ -177,6 +209,32 @@ function requireValue(
     : requireVector(name, value, components);
 }
 
+function requireEase(ease: unknown): FXKeyEase {
+  const known = asKeyEase(ease);
+  if (known === undefined) {
+    throw new AgentError("invalid_argument", `ease must be one of ${FX_KEY_EASES.join(", ")}.`);
+  }
+  return known;
+}
+
+/** {@link SetKeyOptions} checked: a plain object of known keys, each of its type. */
+function requireSetKeyOptions(options: unknown): {
+  readonly replace: boolean;
+  readonly ease: FXKeyEase | undefined;
+} {
+  if (!isRecord(options)) {
+    throw new AgentError("invalid_argument", "options must be an object.");
+  }
+  requireKnownKeys("options", options, ["replace", "ease"]);
+  if (options["replace"] !== undefined && typeof options["replace"] !== "boolean") {
+    throw new AgentError("invalid_argument", "options.replace must be a boolean.");
+  }
+  return {
+    replace: options["replace"] === true,
+    ease: options["ease"] === undefined ? undefined : requireEase(options["ease"]),
+  };
+}
+
 function requireChannel(channel: unknown): TransformChannel {
   if (!TRANSFORM_CHANNELS.includes(channel as TransformChannel)) {
     throw new AgentError(
@@ -200,6 +258,53 @@ function requireDeclared(keys: EntityKeys, name: string): TimelineValueView {
     throw new AgentError("not_found", `No Timeline Value "${name}" in this owner's graphs.`);
   }
   return declared;
+}
+
+/** The frame `time` snaps to, as a sentence's worth of text. */
+function frameText(source: SourceState, time: number): string {
+  return `the frame at ${String(snapTime(source, time))}s (keys snap to the ${String(source.timeline.fps)} fps grid)`;
+}
+
+/** Refuses a key on a frame `keys` already holds, unless asked to `replace` it. */
+function requireFreeFrame(
+  source: SourceState,
+  keys: readonly Keyframe[],
+  time: number,
+  track: string,
+  replace: boolean,
+): void {
+  const frameTime = snapTime(source, time);
+  const taken = keys.find((key) => Math.abs(key.time - frameTime) <= KEY_EPSILON);
+  if (taken !== undefined && !replace) {
+    throw new AgentError(
+      "rejected",
+      `${track} already has key "${taken.id}" on ${frameText(source, time)}; pass ` +
+        "{ replace: true } to replace it, or raise the frame rate with timeline.setFps.",
+    );
+  }
+}
+
+/** Refuses `moves` when they would leave two keys of one of `tracks` on the same frame. */
+function requireDistinctFrames(
+  source: SourceState,
+  tracks: readonly { readonly label: string; readonly keys: readonly Keyframe[] }[],
+  moves: readonly KeyMove[],
+): void {
+  const times = new Map(moves.map((move) => [move.id, snapTime(source, move.time)]));
+  for (const track of tracks) {
+    const placed: Keyframe[] = [];
+    for (const key of track.keys) {
+      const time = times.get(key.id) ?? key.time;
+      const clash = placed.find((other) => Math.abs(other.time - time) <= KEY_EPSILON);
+      if (clash !== undefined) {
+        throw new AgentError(
+          "rejected",
+          `Keys "${clash.id}" and "${key.id}" of ${track.label} would share ${frameText(source, time)}.`,
+        );
+      }
+      placed.push({ ...key, time });
+    }
+  }
 }
 
 /** Where key `keyId` lives on an entity: a transform channel, or a Timeline Value track. */
@@ -226,30 +331,59 @@ export function createKeyframeEdits(session: EditSession): KeyframeEdits {
   return {
     values: (ownerId) => timelineValues(ownerKeys(session.source(), ownerId).graphs),
 
-    setTransformKey: (entityId, channel, time, value) =>
+    setTransformKey: (entityId, channel, time, value, options = {}) =>
       session.mutate((store) => {
-        const { entity } = entityKeys(store.getSource(), entityId);
+        const source = store.getSource();
+        const { entity, transformTracks } = entityKeys(source, entityId);
         const checked = requireChannel(channel);
-        return setTransformKeyframe(
-          store,
-          entity,
-          checked,
-          requireFiniteNumber("time", time),
-          channelValue(checked, value),
+        const keyTime = requireFiniteNumber("time", time);
+        const keyValue = channelValue(checked, value);
+        const { replace, ease } = requireSetKeyOptions(options);
+        requireFreeFrame(
+          source,
+          transformTracks.find((track) => track.channel === checked)?.keys ?? [],
+          keyTime,
+          `The ${checked} channel`,
+          replace,
         );
+        const id = setTransformKeyframe(store, entity, checked, keyTime, keyValue);
+        if (ease !== undefined) {
+          setTransformKeyframeEase(store, entity, id, ease);
+        }
+        return id;
       }),
 
-    setValueKey: (ownerId, name, time, value) =>
+    setValueKey: (ownerId, name, time, value, options = {}) =>
       session.mutate((store) => {
-        const keys = ownerKeys(store.getSource(), ownerId);
+        const source = store.getSource();
+        const keys = ownerKeys(source, ownerId);
         const declared = requireDeclared(keys, name);
-        return setKeyframe(
-          store,
-          keys.entity,
-          name,
-          requireFiniteNumber("time", time),
-          requireValue("value", value, componentsOf(declared.type)),
+        const keyTime = requireFiniteNumber("time", time);
+        const keyValue = requireValue("value", value, componentsOf(declared.type));
+        const { replace, ease } = requireSetKeyOptions(options);
+        requireFreeFrame(
+          source,
+          keys.tracks.find((track) => track.name === name)?.keys ?? [],
+          keyTime,
+          `Timeline Value "${name}"`,
+          replace,
         );
+        const id = setKeyframe(store, keys.entity, name, keyTime, keyValue);
+        if (ease !== undefined) {
+          setKeyframeEase(store, keys.entity, id, ease);
+        }
+        return id;
+      }),
+
+    setKeyEase: (entityId, keyId, ease) =>
+      session.mutate((store) => {
+        const keys = entityKeys(store.getSource(), entityId);
+        const checked = requireEase(ease);
+        if (locateKey(keys, keyId).kind === "transform") {
+          setTransformKeyframeEase(store, keys.entity, keyId, checked);
+        } else {
+          setKeyframeEase(store, keys.entity, keyId, checked);
+        }
       }),
 
     setKeyValue: (entityId, keyId, value) =>
@@ -286,6 +420,20 @@ export function createKeyframeEdits(session: EditSession): KeyframeEdits {
             checked,
           );
         });
+        requireDistinctFrames(
+          store.getSource(),
+          [
+            ...keys.transformTracks.map((track) => ({
+              label: `the ${track.channel} channel`,
+              keys: track.keys,
+            })),
+            ...(keys.tracks ?? []).map((track) => ({
+              label: `Timeline Value "${track.name}"`,
+              keys: track.keys,
+            })),
+          ],
+          [...transformMoves, ...valueMoves],
+        );
         moveTransformKeyframes(store, keys.entity, transformMoves);
         moveTrackKeyframes(store, keys.entity, valueMoves);
       }),

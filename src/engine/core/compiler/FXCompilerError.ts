@@ -121,7 +121,14 @@ export type FXCompilerErrorCode =
   | "validate-failed"
   | "hash-failed"
   | "rebind-failed"
-  | "disposed";
+  | "disposed"
+  // Raised by the editor around a compile, not by the compiler: what the materials built from a
+  // valid graph take of a GPU (domain/renderBudget.ts), and a VFX mesh blind to its own transform.
+  | "render-attribute-budget"
+  | "render-varying-budget"
+  | "render-attribute-budget-baseline"
+  | "render-varying-budget-baseline"
+  | "mesh-ignores-transform";
 
 /** A single, editor-presentable problem found in a graph. */
 export interface FXCompilerError {

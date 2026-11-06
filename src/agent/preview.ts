@@ -173,10 +173,15 @@ function requireFrame(options: FrameOptions, view: CaptureView | undefined): Fra
   };
 }
 
-/** Lays `frames` out in a grid, each cell labelled with its time. */
+/**
+ * Lays `frames` out in a grid, each cell labelled with its time. A solid `background` fills the
+ * sheet first, so the cells a short last row leaves empty match the frames instead of staying
+ * transparent.
+ */
 function composeSheet(
   frames: readonly { readonly time: number; readonly image: HTMLCanvasElement }[],
   columns: number,
+  background: string | undefined,
 ): HTMLCanvasElement {
   const cellWidth = Math.max(...frames.map((frame) => frame.image.width));
   const cellHeight = Math.max(...frames.map((frame) => frame.image.height));
@@ -186,6 +191,10 @@ function composeSheet(
   const context = sheet.getContext("2d") ?? undefined;
   if (context === undefined) {
     throw new AgentError("rejected", "No 2D canvas context to compose the sheet.");
+  }
+  if (background !== undefined && background !== "transparent") {
+    context.fillStyle = background;
+    context.fillRect(0, 0, sheet.width, sheet.height);
   }
   const fontSize = Math.max(12, Math.round(cellHeight / 24));
   context.font = `${String(fontSize)}px monospace`;
@@ -280,7 +289,9 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
           ? Math.ceil(Math.sqrt(times.length))
           : requireInteger("columns", options.columns, 1, times.length);
       const frame = requireFrame(options, requireView(options, store.getSource(), entityObject));
-      return composeSheet(await replay(times, frame), columns).toDataURL("image/png");
+      return composeSheet(await replay(times, frame), columns, options.background).toDataURL(
+        "image/png",
+      );
     },
   };
 }

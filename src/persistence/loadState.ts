@@ -21,6 +21,7 @@ import {
   type EmitterDoc,
   type EmitterSettings,
   type EnvironmentAsset,
+  type Keyframe,
   type MeshAsset,
   type PaletteSwatch,
   type SourceState,
@@ -39,6 +40,7 @@ import {
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
+import { asKeyEase } from "sparcoon/editor";
 import { asFiniteNumber, asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { getEnvironmentBlob, putEnvironmentBlob } from "./environmentBlobStore";
 import { loadSource } from "./localStore";
@@ -133,24 +135,26 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
   const emitters = rawEmitters
     .map(normalizeEmitter)
     .filter((emitter): emitter is EmitterDoc => emitter !== undefined);
-  const first = emitters[0];
-  if (first === undefined) {
+  const meshes = normalizeMeshes(scene["meshes"]);
+  // An effect may be meshes only, but not nothing at all.
+  if (emitters.length === 0 && meshes.length === 0) {
     return undefined;
   }
   const active = emitters.find((emitter) => emitter.id === scene["activeEmitterId"]);
-  const meshes = normalizeMeshes(scene["meshes"]);
   const activeMesh = meshes.find((mesh) => mesh.id === scene["activeMeshId"]);
   const activeMeshId = activeMesh?.id ?? meshes[0]?.id;
-  // The graph editor targets a mesh only when it was persisted as such AND a mesh survives; a
-  // dangling "vfxMesh" (all meshes dropped) falls back to the active emitter.
+  // The graph editor targets a mesh when it was persisted as such AND a mesh survives, or when no
+  // emitter does; a dangling "vfxMesh" (all meshes dropped) falls back to the active emitter.
   const activeGraphKind =
-    scene["activeGraphKind"] === "vfxMesh" && activeMeshId !== undefined ? "vfxMesh" : "emitter";
+    activeMeshId !== undefined && (scene["activeGraphKind"] === "vfxMesh" || emitters.length === 0)
+      ? "vfxMesh"
+      : "emitter";
   return {
     name: typeof raw["name"] === "string" ? raw["name"] : "",
     scene: {
       vfx: normalizeVfx(scene["vfx"]),
       emitters,
-      activeEmitterId: active?.id ?? first.id,
+      activeEmitterId: active?.id ?? emitters[0]?.id,
       meshes,
       // A scene may hold zero meshes, so `activeMeshId` stays undefined when none survive; otherwise
       // it falls to the first surviving mesh if the persisted active id has gone stale.
@@ -422,11 +426,7 @@ function normalizeTransformTracks(raw: unknown): readonly TransformTrack[] {
     if (!Array.isArray(value["keys"])) {
       continue;
     }
-    const keys = value["keys"].filter(isKeyframe).map((key) => ({
-      id: typeof key["id"] === "string" ? key["id"] : nextIdentifier("key"),
-      time: key["time"],
-      value: key["value"],
-    }));
+    const keys = value["keys"].filter(isKeyframe).map(normalizeKeyframe);
     tracks.push({ channel: value["channel"] as TransformChannel, keys });
   }
   return tracks;
@@ -457,6 +457,8 @@ function normalizeTimeline(raw: unknown): TimelineState {
     return {
       duration: raw["duration"],
       fps: isFiniteNumber(raw["fps"]) && raw["fps"] > 0 ? raw["fps"] : DEFAULT_TIMELINE.fps,
+      // A project saved before the setting existed looped, as every timeline then did.
+      loop: raw["loop"] !== false,
     };
   }
   return DEFAULT_TIMELINE;
@@ -470,11 +472,7 @@ function normalizeTracks(raw: unknown): readonly AnimationTrack[] {
   const tracks: AnimationTrack[] = [];
   for (const value of raw) {
     if (isRecord(value) && typeof value["name"] === "string" && Array.isArray(value["keys"])) {
-      const keys = value["keys"].filter(isKeyframe).map((key) => ({
-        id: typeof key["id"] === "string" ? key["id"] : nextIdentifier("key"),
-        time: key["time"],
-        value: key["value"],
-      }));
+      const keys = value["keys"].filter(isKeyframe).map(normalizeKeyframe);
       tracks.push({ name: value["name"], keys });
     }
   }
@@ -512,6 +510,25 @@ function normalizeEvents(raw: unknown): readonly TimelineEvent[] {
     }
   }
   return events.sort((a, b) => a.time - b.time);
+}
+
+/**
+ * A well-formed persisted keyframe as the model holds it: a missing id backfilled, an unknown
+ * curve dropped (so the key reads as linear).
+ */
+function normalizeKeyframe(key: {
+  id?: unknown;
+  ease?: unknown;
+  time: number;
+  value: number | number[];
+}): Keyframe {
+  const ease = asKeyEase(key.ease);
+  return {
+    id: typeof key.id === "string" ? key.id : nextIdentifier("key"),
+    time: key.time,
+    value: key.value,
+    ...(ease !== undefined && ease !== "linear" ? { ease } : {}),
+  };
 }
 
 /** A persisted keyframe is a finite `time` and a value that is a finite number or number array. */

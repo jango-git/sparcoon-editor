@@ -138,8 +138,39 @@ describe("agent status", () => {
     const status = await readStatus(store, "emitter_b");
     expect(store.getSource().scene.activeEmitterId).toBe("emitter_b");
     expect(status.ownerId).toBe("emitter_b");
-    expect(status.render).toEqual({ status: "recompiled", messages: [], errors: [] });
+    expect(status.render).toEqual({
+      status: "recompiled",
+      messages: [],
+      warnings: [],
+      errors: [],
+    });
     await expect(readStatus(store, "emitter_x")).rejects.toThrow(/not_found/);
+  });
+
+  it("answers reads in flight at once each for its own owner", async () => {
+    const state = createInitialState();
+    state.source = {
+      ...state.source,
+      scene: {
+        ...state.source.scene,
+        emitters: [createDefaultEmitter("emitter_a", "A"), createDefaultEmitter("emitter_b", "B")],
+        activeEmitterId: "emitter_a",
+      },
+    };
+    const store = new Store(state, new SignalBus());
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
+      setTimeout(() => callback(0), 0);
+      return 0;
+    });
+
+    const [first, missing, second] = await Promise.allSettled([
+      readStatus(store, "emitter_a"),
+      readStatus(store, "emitter_x"),
+      readStatus(store, "emitter_b"),
+    ]);
+    expect(first.status === "fulfilled" && first.value.ownerId).toBe("emitter_a");
+    expect(missing.status).toBe("rejected");
+    expect(second.status === "fulfilled" && second.value.ownerId).toBe("emitter_b");
   });
 
   it("focuses without an undo step, so undo still reaches the last real edit", async () => {

@@ -11,9 +11,11 @@ import {
   removeEvent,
   setTimelineDuration,
   setTimelineFps,
+  setTimelineLoop,
   updateEvent,
 } from "../model/commands";
 import type { SourceState, TimelineEvent } from "../model/editorState";
+import { isRecord } from "../util/guards";
 import { requireFiniteNumber } from "./arguments.Internal";
 import { resolveOwner } from "./address.Internal";
 import { AgentError } from "./errors";
@@ -33,6 +35,11 @@ export interface EventPatch {
 export interface TimelineEdits extends KeyframeEdits {
   setDuration(seconds: number): void;
   setFps(fps: number): void;
+  /**
+   * Loops the timeline (seamlessly), or plays it once and holds the last frame; the exported
+   * effect then dispatches `"finished"` at the end.
+   */
+  setLoop(loop: boolean): void;
   /** Spawns `count` particles at once at `time`. Returns the event id. */
   addBurst(emitterId: string, time: number, count: number): string;
   /** Emits `rate` particles per second from `time` for `duration` seconds (0 = forever). */
@@ -49,6 +56,20 @@ function requireEmitter(source: SourceState, emitterId: string): string {
     );
   }
   return emitterId;
+}
+
+/**
+ * An event's `time` argument. An object there is the whole event passed as one argument - refused
+ * with the positional `signature` spelled out, rather than as a puzzling "time must be a number".
+ */
+function requireEventTime(signature: string, time: unknown): number {
+  if (isRecord(time)) {
+    throw new AgentError(
+      "invalid_argument",
+      `${signature} takes positional arguments, not an object.`,
+    );
+  }
+  return requireFiniteNumber("time", time);
 }
 
 function requireEvent(source: SourceState, emitterId: string, eventId: string): TimelineEvent {
@@ -91,12 +112,20 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
     setFps: (fps) =>
       session.mutate((store) => setTimelineFps(store, requireFiniteNumber("fps", fps))),
 
+    setLoop: (loop) =>
+      session.mutate((store) => {
+        if (typeof loop !== "boolean") {
+          throw new AgentError("invalid_argument", "loop must be a boolean.");
+        }
+        setTimelineLoop(store, loop);
+      }),
+
     addBurst: (emitterId, time, count) =>
       session.mutate((store) =>
         addBurstEvent(
           store,
           requireEmitter(store.getSource(), emitterId),
-          requireFiniteNumber("time", time),
+          requireEventTime("addBurst(emitterId, time, count)", time),
           requireFiniteNumber("count", count),
         ),
       ),
@@ -106,7 +135,7 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
         addPlayEvent(
           store,
           requireEmitter(store.getSource(), emitterId),
-          requireFiniteNumber("time", time),
+          requireEventTime("addPlay(emitterId, time, rate, duration)", time),
           requireFiniteNumber("rate", rate),
           requireFiniteNumber("duration", duration),
         ),

@@ -1,5 +1,6 @@
 import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
+import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
@@ -60,10 +61,35 @@ export const fxTileUV = defineNode({
 });
 
 /**
+ * How {@link fxAnimatedTexture} reads its ratio: once through by default - [0, 1] plays the sheet
+ * first cell to last and holds the last (what a lifetime ratio means: a particle ends on its last
+ * frame, never fading back into the first). `loop` instead `fract`-wraps any float to cycle the
+ * sheet, with `current` wrapping past the last cell to the first so the fade stays continuous
+ * across the seam.
+ */
+const FLIPBOOK_LOOP_PARAM = {
+  kind: "structural",
+  type: "flag",
+  default: false,
+} as const satisfies FXParamSpec;
+
+// previous = the cell the playhead sits on; current = the next cell; factor = how far between.
+const FLIPBOOK_FRAME_ONCE = `vec3 fxAnimatedFrameOnce(float ratio, float totalFrames) {
+  float framePos = clamp(ratio, 0.0, 1.0) * totalFrames;
+  float last = totalFrames - 1.0;
+  float previous = min(floor(framePos), last);
+  return vec3(previous, min(previous + 1.0, last), framePos - previous);
+}`;
+const FLIPBOOK_FRAME_LOOP = `vec3 fxAnimatedFrameLoop(float ratio, float totalFrames) {
+  float framePos = fract(ratio) * totalFrames;
+  float previous = floor(framePos);
+  return vec3(previous, mod(previous + 1.0, totalFrames), framePos - previous);
+}`;
+
+/**
  * Sprite-sheet flipbook sampler with inter-frame blending: maps `lifetimeRatio` to the `previous`/
- * `current` frame UVs straddling the playhead plus a cross-fade `factor`. Any float is accepted -
- * `fract`-wrapped to loop the sheet, with `current` wrapping past the last cell to the first so the
- * fade stays continuous across the seam.
+ * `current` frame UVs straddling the playhead plus a cross-fade `factor` - once through or looping
+ * (see {@link FLIPBOOK_LOOP_PARAM}).
  */
 export const fxAnimatedTexture = defineNode({
   type: "animated-texture",
@@ -81,22 +107,17 @@ export const fxAnimatedTexture = defineNode({
     uvCurrent: { type: "vec2" },
     factor: { type: "float" },
   },
-  params: {},
-  // fxAnimatedFrameInfo (fract+mul(2) + floor(1) + mod-based wrap(add+mod=6) + subtract(1) = 10)
-  // + the columns*rows multiply (1) + two fxFlipbookFrameUV calls (mod(5) + div+floor(3) + two
-  // div-heavy components (3+5) = 16 each, so 32) = 43.
-  cost: 43,
-  build: ({ inputs, emitHelper, local, fn }) => {
+  params: { loop: FLIPBOOK_LOOP_PARAM },
+  // Frame info (once: clamp+mul(2) + floor(1) + sub(1) + two min(2) + add(1) + sub(1) = 8; loop:
+  // fract+mul(2) + floor(1) + mod-based wrap(add+mod=6) + subtract(1) = 10) + the columns*rows
+  // multiply (1) + two fxFlipbookFrameUV calls (mod(5) + div+floor(3) + two div-heavy components
+  // (3+5) = 16 each, so 32).
+  cost: ({ params }) => (params.loop === true ? 10 : 8) + 1 + 32,
+  build: ({ inputs, params, emitHelper, local, fn }) => {
+    const frameFunction = params.loop ? "fxAnimatedFrameLoop" : "fxAnimatedFrameOnce";
     emitHelper(
-      "animated-texture-frame",
-      // previous = the cell the playhead sits on; current = next cell, wrapped mod totalFrames;
-      // factor = distance between the two (see the node's doc comment for the loop-seam rationale).
-      `vec3 fxAnimatedFrameInfo(float ratio, float totalFrames) {
-        float framePos = fract(ratio) * totalFrames;
-        float previous = floor(framePos);
-        float current = mod(previous + 1.0, totalFrames);
-        return vec3(previous, current, framePos - previous);
-      }`,
+      `animated-texture-${frameFunction}`,
+      params.loop ? FLIPBOOK_FRAME_LOOP : FLIPBOOK_FRAME_ONCE,
     );
     emitHelper(
       "animated-texture-uv",
@@ -111,7 +132,7 @@ export const fxAnimatedTexture = defineNode({
       fn.raw(
         VEC3,
         "glsl",
-        "fxAnimatedFrameInfo($0, $1)",
+        `${frameFunction}($0, $1)`,
         inputs["lifetimeRatio"],
         fn.mul(inputs["columns"], inputs["rows"]),
       ),

@@ -20,6 +20,7 @@ import {
   type ClipboardTimelineItem,
 } from "../../model/commands";
 import {
+  canRemoveObject,
   projectDisplayName,
   type EmitterDoc,
   type VfxDoc,
@@ -221,7 +222,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
       rows.append(row);
     }
     const emitters = selectEmitters(store);
-    const removable = emitters.length > 1;
+    const removable = canRemoveObject(store.getSource().scene);
     for (const emitter of emitters) {
       const expanded = sameEntity(active, emitterEntity(emitter.id));
       for (const row of buildEmitterRows(emitter, expanded, removable, total)) {
@@ -230,7 +231,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     }
     for (const mesh of selectMeshes(store)) {
       const expanded = sameEntity(active, vfxMeshEntity(mesh.id));
-      for (const row of buildMeshRows(mesh, expanded, total)) {
+      for (const row of buildMeshRows(mesh, expanded, removable, total)) {
         rows.append(row);
       }
     }
@@ -383,9 +384,14 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   }
 
   /** One VFX mesh's rows: header (empty lane - a mesh has no spawn events) plus, while active, transform and Timeline Value sub-rows. */
-  function buildMeshRows(mesh: VfxMeshDoc, active: boolean, total: number): HTMLElement[] {
+  function buildMeshRows(
+    mesh: VfxMeshDoc,
+    active: boolean,
+    removable: boolean,
+    total: number,
+  ): HTMLElement[] {
     const entity = vfxMeshEntity(mesh.id);
-    const label = buildMeshLabel(store, mesh, () => selectEntity(entity));
+    const label = buildMeshLabel(store, mesh, removable, () => selectEntity(entity));
     const headerLane = buildLane(total, []);
     appendSummaryKeys(headerLane, [...mesh.transformTracks, ...mesh.tracks], total);
     const header = createElement("div", { className: headerClass(entity, active) }, [

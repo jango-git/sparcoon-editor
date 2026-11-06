@@ -1,12 +1,13 @@
 /**
  * The transport + timeline-settings controls, hoisted onto the middlebar: transport buttons, length /
- * FPS fields (the editor's scrubbable {@link NumberControl}) and the "restart on rebuild" toggle.
+ * FPS fields (the editor's scrubbable {@link NumberControl}), the loop toggle (authored, saved with the
+ * project) and the "restart on rebuild" toggle (an editor preference).
  * Only drives {@link TransportStore} and the timeline-setting commands, and reflects transport ticks
  * + authored-length changes back into its fields; holds no document state.
  */
 
 import { t } from "../i18n";
-import { setTimelineDuration, setTimelineFps } from "../model/commands";
+import { setTimelineDuration, setTimelineFps, setTimelineLoop } from "../model/commands";
 import { frameOf, timeOfFrame } from "../model/frames";
 import type { SignalBus } from "../model/signals";
 import type { Store } from "../model/store";
@@ -62,6 +63,15 @@ export function createTransportControls(
     live: (value): void => setTimelineFps(store, value, true),
   });
 
+  const loop = createToggleButton({
+    glyph: controlIcons.loop,
+    title: t("transport.loop"),
+    description: t("transport.loopTip"),
+    value: store.getSource().timeline.loop,
+    onChange: (on) => setTimelineLoop(store, on),
+    className: "toggle-button--lg",
+  });
+
   const restart = createToggleButton({
     glyph: controlIcons.restartOnRebuild,
     title: t("transport.restartOnRebuild"),
@@ -91,12 +101,14 @@ export function createTransportControls(
       t("transport.durationTip"),
     ),
     group(t("transport.fps"), [fpsControl.element], t("transport.fpsTip")),
+    loop.element,
     restart.element,
   ]);
 
   const syncSettings = (): void => {
     lengthControl.setValue(duration());
     fpsControl.setValue(fps());
+    loop.set(store.getSource().timeline.loop);
   };
   // Only swap the play glyph when the *state* changes, not every tick - swapping it mid-click would
   // tear out the SVG under the pointer, so a second press never lands as a `click`.

@@ -4,7 +4,7 @@
  */
 
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
-import { FXEmitter } from "sparcoon/editor";
+import { FXEmitter, fxEmitterRenderBudget } from "sparcoon/editor";
 import type { FXApplyValues } from "sparcoon/editor";
 import type { FXBehaviorArtifact, FXParticleKernelArtifact, FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
@@ -14,13 +14,11 @@ import {
   collectAttributeRequests,
   mergeAttributeCollections,
 } from "../engine/core/compiler/collectAttributeRequests";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import {
   PARAM_COMPONENTS,
   paramBindingName,
   paramUniformName,
 } from "../engine/nodes-std/paramSupport.Internal";
-import { compilerErrorMessage } from "../i18n/compilerErrors";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
@@ -48,11 +46,23 @@ import {
   type RenderSinkConfig,
   type SpawnSinkConfig,
 } from "../domain/nodePalette";
+import {
+  RenderBudgetMemo,
+  renderBudgetFindings,
+  type RenderBudgetFindings,
+} from "../domain/renderBudget";
 import { undeclaredAttributeErrors } from "../domain/serialize";
 import type { LiveApplyStatus } from "../model/editorState";
 import type { Transform } from "../model/transform";
 import { normalizeQuat } from "../model/transform";
 import type { GraphApplier, GraphApplyResult } from "../model/pipeline";
+import {
+  invalid,
+  invalidFromErrors,
+  REBOUND,
+  RECOMPILED,
+  withWarnings,
+} from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { externalSlots } from "./externalSlots";
 
@@ -66,25 +76,10 @@ interface PreviewArtifacts {
   readonly gpuBehavior?: FXParticleKernelArtifact;
 }
 
-const RECOMPILED: LiveApplyStatus = { status: "recompiled", messages: [] };
-const REBOUND: LiveApplyStatus = { status: "rebound", messages: [] };
 const BLOCKED: LiveApplyStatus = {
   status: "invalid",
   messages: ["blocked by an error in the other graph"],
 };
-
-function invalid(messages: readonly string[]): LiveApplyStatus {
-  return { status: "invalid", messages };
-}
-
-/** An invalid status that carries the node-attributed problems, so the canvas can highlight them. */
-function invalidFromErrors(errors: readonly FXCompilerError[]): LiveApplyStatus {
-  return {
-    status: "invalid",
-    messages: errors.map((error) => compilerErrorMessage(error)),
-    errors,
-  };
-}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -104,6 +99,8 @@ export class EmitterView implements GraphApplier {
   private standardProgram: FXFusedProgramStandard | undefined = undefined;
   private renderAttributes: readonly FXAttributeRequest[] = [];
   private behaviorAttributes: readonly FXAttributeRequest[] = [];
+
+  private readonly budget = new RenderBudgetMemo();
 
   // Kept so the timeline value-drive can find each param's slot names and baked baseline (to
   // revert a param that stops being driven); reassembled every apply, no re-compile.
@@ -218,9 +215,7 @@ export class EmitterView implements GraphApplier {
     // removal/retype is a held error.
     declaredAttributes: readonly EditorAttribute[],
   ): GraphApplyResult {
-    // Surface-sink params, invisible to the live gate's IR hash like geometry/renderMode - the
-    // structural chain below tracks them to force a rebuild (the depth material is attached on build).
-    const { geometry, renderMode, sortInterval, castShadow, receiveShadow } = config;
+    const { geometry, renderMode, castShadow } = config;
     // Read by the behaviorLive target-builder closure (constructor) - must be set before
     // behaviorLive.apply runs below, since validate/previewHash/compile all read it synchronously.
     this.currentTryGpuSimulation = spawnConfig.tryGpuSimulation;
@@ -292,77 +287,25 @@ export class EmitterView implements GraphApplier {
       const held = invalid([describeError(error)]);
       return { render: held, behavior: held, emitterRebuilt: false };
     }
+
+    // An effect some GPUs could not link is held like any other graph error, before it replaces
+    // anything; one past only the Baseline tier's limits runs, with a warning.
+    let budget: RenderBudgetFindings;
+    try {
+      budget = this.budgetFindings(artifacts, renderMode, castShadow);
+    } catch (error) {
+      return { render: invalid([describeError(error)]), behavior: BLOCKED, emitterRebuilt: false };
+    }
+    if (budget.errors.length > 0) {
+      return { render: invalidFromErrors(budget.errors), behavior: BLOCKED, emitterRebuilt: false };
+    }
     this.artifacts = artifacts;
 
-    const currentCustomGeometryRef =
-      geometry.kind === "custom" ? this.resolveMeshGeometries()[geometry.meshAssetName] : undefined;
-    // Everything that reshapes the render half specifically (new GLSL, geometry primitive/mesh,
-    // composite mode, shadow flags) - independent of whether the behavior half changed at all, so
-    // a render-only edit below can hot-swap in place instead of a full rebuild.
-    const renderStructural =
-      renderResult.status === "recompiled" ||
-      // geometry/renderMode reshape the runtime mesh+material, not the IR - force a rebuild here.
-      // Compared by encoded key, not identity: `geometry` is a fresh object every apply.
-      encodeGeometrySource(geometry) !== this.builtGeometryKey ||
-      // A "custom" reference whose bound mesh asset was deleted or re-uploaded (a new baked object,
-      // same name) - the authored param string above is unchanged, so only this catches it.
-      currentCustomGeometryRef !== this.builtCustomGeometryRef ||
-      renderMode !== this.builtRenderMode ||
-      // Shadow flags reshape the runtime mesh (attach/detach the depth material), not the IR.
-      castShadow !== this.builtCastShadow ||
-      receiveShadow !== this.builtReceiveShadow ||
-      // The emitter fell behind during an invalid interlude on the other graph - resync.
-      this.shader !== this.builtShader;
-    // Everything that reshapes the behavior half specifically (simulation, capacity, CPU/GPU
-    // backend choice) - only this half genuinely needs a full FXEmitter.fromArtifacts rebuild,
-    // since only a fresh driver can resize particle buffers or swap backend.
-    const behaviorStructural =
-      behaviorResult.status === "recompiled" ||
-      spawnConfig.tryGpuSimulation !== this.builtTryGpuSimulation ||
-      spawnConfig.expectedCapacity !== this.builtExpectedCapacity ||
-      this.kernel !== this.builtKernel;
-
-    if (this.emitter === undefined || behaviorStructural) {
-      return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
-    }
-
-    if (renderStructural) {
-      try {
-        this.emitter.applyRenderArtifact(artifacts.render, {
-          textures: this.resolveExternalTextures(artifacts.render),
-          geometries: this.resolveMeshGeometries(),
-          castShadow,
-          receiveShadow,
-        });
-      } catch (error) {
-        // The active driver refused (a genuine attribute-layout change only a fresh driver can
-        // safely resize buffers for) - fall back to a full rebuild rather than surfacing this as
-        // an error; the editor never asked the user to know which path preserved the particles.
-        console.warn(
-          "EmitterView: a render-only artifact swap was rejected (attribute layout changed) - " +
-            "falling back to a full rebuild.",
-          error,
-        );
-        return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
-      }
-      this.builtShader = this.shader;
-      this.builtGeometryKey = encodeGeometrySource(geometry);
-      this.builtCustomGeometryRef = currentCustomGeometryRef;
-      this.builtRenderMode = renderMode;
-      this.builtCastShadow = castShadow;
-      this.builtReceiveShadow = receiveShadow;
-      this.applySorting(sortInterval);
-      // Particle buffers/instance count/simulation were never touched - no rebuild happened, so
-      // playback must not restart over this (see emitterRebuilt on GraphApplyResult).
-      return { render: RECOMPILED, behavior: REBOUND, emitterRebuilt: false };
-    }
-
-    // Neither half is structural: only values changed. Scrub them into the running emitter so
-    // live particles never reset (external textures ride the value path too, so a texture swap
-    // rebinds).
-    this.emitter.applyValues(this.valuesFromArtifacts(this.artifacts));
-    this.applySorting(sortInterval);
-    return { render: REBOUND, behavior: REBOUND, emitterRebuilt: false };
+    const result = this.applyArtifacts(artifacts, config, spawnConfig, {
+      render: renderResult.status === "recompiled",
+      behavior: behaviorResult.status === "recompiled",
+    });
+    return { ...result, render: withWarnings(result.render, budget.warnings) };
   }
 
   public destroy(): void {
@@ -442,6 +385,108 @@ export class EmitterView implements GraphApplier {
     if (this.emitter !== undefined) {
       applyTransform(this.emitter, transform);
     }
+  }
+
+  /**
+   * Puts valid `artifacts` into effect the cheapest way their changes allow: a full rebuild when
+   * the behavior half reshaped, an in-place render swap when only the render half did, else a
+   * value scrub. `recompiled` says which half's graph just recompiled.
+   */
+  private applyArtifacts(
+    artifacts: PreviewArtifacts,
+    config: RenderSinkConfig,
+    spawnConfig: SpawnSinkConfig,
+    recompiled: { readonly render: boolean; readonly behavior: boolean },
+  ): GraphApplyResult {
+    // Surface-sink params, invisible to the live gate's IR hash like geometry/renderMode - the
+    // structural chain below tracks them to force a rebuild (the depth material is attached on build).
+    const { geometry, renderMode, sortInterval, castShadow, receiveShadow } = config;
+    const currentCustomGeometryRef =
+      geometry.kind === "custom" ? this.resolveMeshGeometries()[geometry.meshAssetName] : undefined;
+    // Everything that reshapes the render half specifically (new GLSL, geometry primitive/mesh,
+    // composite mode, shadow flags) - independent of whether the behavior half changed at all, so
+    // a render-only edit below can hot-swap in place instead of a full rebuild.
+    const renderStructural =
+      recompiled.render ||
+      // geometry/renderMode reshape the runtime mesh+material, not the IR - force a rebuild here.
+      // Compared by encoded key, not identity: `geometry` is a fresh object every apply.
+      encodeGeometrySource(geometry) !== this.builtGeometryKey ||
+      // A "custom" reference whose bound mesh asset was deleted or re-uploaded (a new baked object,
+      // same name) - the authored param string above is unchanged, so only this catches it.
+      currentCustomGeometryRef !== this.builtCustomGeometryRef ||
+      renderMode !== this.builtRenderMode ||
+      // Shadow flags reshape the runtime mesh (attach/detach the depth material), not the IR.
+      castShadow !== this.builtCastShadow ||
+      receiveShadow !== this.builtReceiveShadow ||
+      // The emitter fell behind during an invalid interlude on the other graph - resync.
+      this.shader !== this.builtShader;
+    // Everything that reshapes the behavior half specifically (simulation, capacity, CPU/GPU
+    // backend choice) - only this half genuinely needs a full FXEmitter.fromArtifacts rebuild,
+    // since only a fresh driver can resize particle buffers or swap backend.
+    const behaviorStructural =
+      recompiled.behavior ||
+      spawnConfig.tryGpuSimulation !== this.builtTryGpuSimulation ||
+      spawnConfig.expectedCapacity !== this.builtExpectedCapacity ||
+      this.kernel !== this.builtKernel;
+
+    if (this.emitter === undefined || behaviorStructural) {
+      return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
+    }
+
+    if (renderStructural) {
+      try {
+        this.emitter.applyRenderArtifact(artifacts.render, {
+          textures: this.resolveExternalTextures(artifacts.render),
+          geometries: this.resolveMeshGeometries(),
+          castShadow,
+          receiveShadow,
+        });
+      } catch (error) {
+        // The active driver refused (a genuine attribute-layout change only a fresh driver can
+        // safely resize buffers for) - fall back to a full rebuild rather than surfacing this as
+        // an error; the editor never asked the user to know which path preserved the particles.
+        console.warn(
+          "EmitterView: a render-only artifact swap was rejected (attribute layout changed) - " +
+            "falling back to a full rebuild.",
+          error,
+        );
+        return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
+      }
+      this.builtShader = this.shader;
+      this.builtGeometryKey = encodeGeometrySource(geometry);
+      this.builtCustomGeometryRef = currentCustomGeometryRef;
+      this.builtRenderMode = renderMode;
+      this.builtCastShadow = castShadow;
+      this.builtReceiveShadow = receiveShadow;
+      this.applySorting(sortInterval);
+      // Particle buffers/instance count/simulation were never touched - no rebuild happened, so
+      // playback must not restart over this (see emitterRebuilt on GraphApplyResult).
+      return { render: RECOMPILED, behavior: REBOUND, emitterRebuilt: false };
+    }
+
+    // Neither half is structural: only values changed. Scrub them into the running emitter so
+    // live particles never reset (external textures ride the value path too, so a texture swap
+    // rebinds).
+    this.emitter.applyValues(this.valuesFromArtifacts(artifacts));
+    this.applySorting(sortInterval);
+    return { render: REBOUND, behavior: REBOUND, emitterRebuilt: false };
+  }
+
+  /** What `artifacts`' materials take of a GPU, against each tier's minimums - memoized. */
+  private budgetFindings(
+    artifacts: PreviewArtifacts,
+    renderMode: string,
+    castShadow: boolean,
+  ): RenderBudgetFindings {
+    return this.budget.get(
+      [this.shader, this.behaviorAttributes, this.renderAttributes, renderMode, castShadow],
+      () =>
+        renderBudgetFindings(
+          fxEmitterRenderBudget(artifacts.render, artifacts.behavior.attributeWrites, {
+            castShadow,
+          }),
+        ),
+    );
   }
 
   /** Full rebuild path: a fresh `FXEmitter.fromArtifacts` replacing the previous one - resets

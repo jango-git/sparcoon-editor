@@ -135,7 +135,8 @@ function createGraphSwitch(
  * traceable to one node (`status.errors[index].nodeId` - see `render/emitterView.ts`'s
  * `invalidFromErrors`) renders as a button that calls `onFocusNode`, jumping the canvas to it; a
  * message with no such node (a cross-graph conflict, a blocked-by-the-other-graph notice, a caught
- * exception - none of which carry `errors` at all) stays plain, unclickable text.
+ * exception - none of which carry `errors` at all) stays plain, unclickable text. A valid graph's
+ * `warnings` take the same frame in the warning color instead, without the region's red outline.
  */
 function renderErrors(
   graph: HTMLElement,
@@ -144,10 +145,25 @@ function renderErrors(
   onFocusNode: (nodeId: string) => void,
 ): void {
   const invalid = status?.status === "invalid" && status.messages.length > 0;
+  const warnings = invalid ? [] : (status?.warnings ?? []);
   graph.classList.toggle("graph--invalid", invalid);
-  errors.hidden = !invalid;
-  if (!invalid) {
+  errors.classList.toggle("graph__errors--warning", warnings.length > 0);
+  errors.hidden = !invalid && warnings.length === 0;
+  if (errors.hidden) {
     errors.replaceChildren();
+    return;
+  }
+  if (!invalid) {
+    const title =
+      warnings.length === 1
+        ? t("graph.compileWarning")
+        : t("graph.compileWarnings", { count: warnings.length });
+    errors.replaceChildren(
+      createElement("div", { className: "graph__errors-title", textContent: title }),
+      ...warnings.map((warning) =>
+        createElement("div", { className: "graph__error", textContent: warning }),
+      ),
+    );
     return;
   }
   const label =

@@ -3,6 +3,7 @@
  * authoring data that never reaches the compiler, so it's saved/undoable but never recompiles.
  */
 
+import type { FXKeyEase } from "sparcoon";
 import type {
   AnimationTrack,
   EmitterDoc,
@@ -16,6 +17,7 @@ import {
   cloneValue,
   removeKeyById,
   retimeKeys,
+  setKeyEaseById,
   setKeyValueById,
   snapTime,
   withKey,
@@ -142,6 +144,16 @@ export function setKeyframeValue(
   live = false,
 ): void {
   updateTracks(store, entity, (tracks) => setKeyValueById(tracks, keyId, cloneValue(value)), live);
+}
+
+/** Sets Timeline Value keyframe `keyId`'s curve to the next key. No-op if unknown. */
+export function setKeyframeEase(
+  store: Store,
+  entity: SceneEntity,
+  keyId: string,
+  ease: FXKeyEase,
+): void {
+  updateTracks(store, entity, (tracks) => setKeyEaseById(tracks, keyId, ease));
 }
 
 /** Adds/removes `name` from a live-params list, keeping it deduped. */
@@ -368,6 +380,15 @@ export function setTimelineDuration(store: Store, duration: number, live = false
     return;
   }
   commitSource(store, { ...source, timeline: { ...source.timeline, duration: next } }, live);
+}
+
+/** Makes the timeline loop, or play once and hold its last frame. */
+export function setTimelineLoop(store: Store, loop: boolean): void {
+  const source: SourceState = store.getSource();
+  if (source.timeline.loop === loop) {
+    return;
+  }
+  commitSource(store, { ...source, timeline: { ...source.timeline, loop } }, false);
 }
 
 /** Sets the timeline frame rate (whole frames/second), floored at {@link MIN_FPS}. */

@@ -7,6 +7,7 @@
 import type {
   AnimationTrack,
   EmitterDoc,
+  Keyframe,
   SourceState,
   TimelineEvent,
   VfxMeshDoc,
@@ -27,6 +28,15 @@ export function transformLiteral(transform: Transform): string {
   });
 }
 
+/** One key as the runtime reads it: no editor id; a curve only when it has one (linear has none). */
+function keyLiteral(key: Keyframe): Pick<Keyframe, "time" | "value" | "ease"> {
+  return {
+    time: key.time,
+    value: key.value,
+    ...(key.ease !== undefined ? { ease: key.ease } : {}),
+  };
+}
+
 /** A track's keys as an exportable literal, dropped for any channel in `liveChannels` - that
  *  channel is left for the exported effect's live-update API (`getEmitter`/`getMesh`) instead. */
 export function transformTracksLiteral(
@@ -38,7 +48,7 @@ export function transformTracksLiteral(
       .filter((track) => !liveChannels.includes(track.channel))
       .map((track) => ({
         channel: track.channel,
-        keys: track.keys.map((key) => ({ time: key.time, value: key.value })),
+        keys: track.keys.map(keyLiteral),
       })),
   );
 }
@@ -53,7 +63,7 @@ export function tracksLiteral(
       .filter((track) => !liveParams.includes(track.name))
       .map((track) => ({
         name: track.name,
-        keys: track.keys.map((key) => ({ time: key.time, value: key.value })),
+        keys: track.keys.map(keyLiteral),
       })),
   );
 }
@@ -172,6 +182,7 @@ export function projectSpecLiteral(
     "const SPEC: FXEffectSpec = {",
     `  duration: ${String(source.timeline.duration)},`,
     `  fps: ${String(source.timeline.fps)},`,
+    `  loop: ${String(source.timeline.loop)},`,
     `  transform: ${transformLiteral(source.scene.vfx.transform)},`,
     // The VFX group's transform is unconditionally live (see VfxDoc's doc) - every channel, always,
     // enforced right here rather than by anything upstream having remembered to mark it so.

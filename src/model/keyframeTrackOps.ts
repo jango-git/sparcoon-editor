@@ -3,6 +3,7 @@
  * commands (channel tracks, keyed by `channel`) - the pure key ops (snap/insert/retime/remove/set) live here once.
  */
 
+import type { FXKeyEase } from "sparcoon";
 import type { Keyframe, SourceState } from "./editorState";
 import { snapTimeToFrame } from "./frames";
 
@@ -20,10 +21,19 @@ export function cloneValue(value: number | readonly number[]): number | readonly
   return typeof value === "number" ? value : value.slice();
 }
 
-/** Inserts `key` into `keys` sorted by time, replacing any existing key at the same time. */
+/**
+ * Inserts `key` into `keys` sorted by time, replacing any existing key at the same time. A key
+ * with no curve of its own takes the replaced key's: re-keying a frame (a new value at the caret)
+ * changes the value, not how it moves on to the next key.
+ */
 export function withKey(keys: readonly Keyframe[], key: Keyframe): readonly Keyframe[] {
-  const kept = keys.filter((existing) => Math.abs(existing.time - key.time) > KEY_EPSILON);
-  return [...kept, key].sort((a, b) => a.time - b.time);
+  const sameFrame = (existing: Keyframe): boolean =>
+    Math.abs(existing.time - key.time) <= KEY_EPSILON;
+  const ease = key.ease ?? keys.find(sameFrame)?.ease;
+  const placed = ease === undefined ? key : { ...key, ease };
+  return [...keys.filter((existing) => !sameFrame(existing)), placed].sort(
+    (a, b) => a.time - b.time,
+  );
 }
 
 /** A track of keyframes tagged by some discriminator (a param name or a transform channel). */
@@ -62,6 +72,26 @@ export function setKeyValueById<T extends KeyedTrack>(
     withKeys(
       track,
       track.keys.map((key) => (key.id === keyId ? { ...key, value } : key)),
+    ),
+  );
+}
+
+/** Sets key `keyId`'s curve to the next key across all tracks; linear is stored as no curve. */
+export function setKeyEaseById<T extends KeyedTrack>(
+  tracks: readonly T[],
+  keyId: string,
+  ease: FXKeyEase,
+): readonly T[] {
+  return tracks.map((track) =>
+    withKeys(
+      track,
+      track.keys.map((key) => {
+        if (key.id !== keyId) {
+          return key;
+        }
+        const rest: Keyframe = { id: key.id, time: key.time, value: key.value };
+        return ease === "linear" ? rest : { ...rest, ease };
+      }),
     ),
   );
 }

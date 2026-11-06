@@ -169,7 +169,7 @@
     }
   },
   "animated-texture": {
-    "description": "Cross-fades a sprite sheet: previous/current frame UVs and a blend factor from a (wrapped) ratio.",
+    "description": "Cross-fades a sprite sheet: previous/current frame UVs and a blend factor from a ratio - once through [0, 1], holding the last frame, or looping.",
     "inputs": {
       "columns": {
         "label": "Columns"
@@ -194,6 +194,11 @@
       },
       "uvPrevious": {
         "label": "UV Previous"
+      }
+    },
+    "params": {
+      "loop": {
+        "label": "Loop"
       }
     },
     "searchTags": ["sprite", "flipbook", "sheet", "atlas", "sequence"]
