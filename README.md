@@ -5,8 +5,8 @@ nodes and get back one self-contained TypeScript module: no graph, no compiler a
 build.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
-[Runtime](https://github.com/jango-git/sparcoon/tree/experimental) -
-[npm](https://www.npmjs.com/package/sparcoon/v/0.9.5)
+[Runtime](https://github.com/jango-git/sparcoon) -
+[npm](https://www.npmjs.com/package/sparcoon/v/0.10.0)
 
 ![Editor demo](assets/demo.gif)
 
@@ -65,11 +65,8 @@ This section will grow as the project develops.
 ## Using an exported effect
 
 ```sh
-npm install sparcoon@experimental three
+npm install sparcoon three
 ```
-
-The runtime is published under the `experimental` tag for now: npm's `latest` holds an older release
-this editor does not work with, so the tag is required.
 
 The editor emits one module per project: a named `FXEffect` subclass plus a typed interface for the
 assets the project references. `FXEffect` is a `THREE.Group`, so it behaves like any other scene
@@ -203,7 +200,7 @@ Known and deliberate, so you do not discover them mid-project:
 
 |             |                                                                 |
 | ----------- | --------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.9.5 (dist-tag `experimental`)                      |
+| Runtime     | `sparcoon` 0.10.0                                               |
 | three.js    | `>=0.157 <0.180` (peer dependency of the runtime)               |
 | Editor      | Any browser with WebGL2; WebGL1 is enough for the Baseline tier |
 | Your build  | A bundler (Vite, webpack, Rollup, esbuild). ES2020 output       |
