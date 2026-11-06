@@ -5,7 +5,7 @@ import { Pipeline } from "./model/pipeline";
 import { insertTransformKeyframes } from "./model/commands";
 import { snapTimeToFrame } from "./model/frames";
 import { TRANSFORM_CHANNELS } from "./model/transform";
-import { VFX_ENTITY } from "./model/entity";
+import { VFX_ENTITY, type SceneEntity } from "./model/entity";
 import { hasInfinitePlay, selectActiveGraphOwner } from "./model/selectors";
 import { SelectionStore } from "./model/selectionStore";
 import { commitEntitySelection } from "./ui/selection";
@@ -38,6 +38,7 @@ import { InputMode, InputModeState } from "./ui/inputMode";
 import { installPreviewContextMenu } from "./ui/tools/previewContextMenu";
 import { TransformTool } from "./ui/tools/transformTool";
 import { TransformGuides } from "./render/transformGuides";
+import { installAgentApi } from "./agent";
 
 async function bootstrap(): Promise<void> {
   const root = document.getElementById("application") ?? undefined;
@@ -264,9 +265,8 @@ async function bootstrap(): Promise<void> {
     sceneEmitters,
     context,
   );
-  // Frames the selected object (or the whole VFX scene) in the viewport.
-  const focusSelected = (): void => {
-    const entity = timelineSelection.get();
+  // Frames an entity (or, when it has no live object, the whole VFX scene) in the viewport.
+  const focusEntity = (entity: SceneEntity): void => {
     const object = sceneEmitters.entityObject(entity) ?? sceneEmitters.entityObject(VFX_ENTITY);
     if (object !== undefined) {
       coordinator.focusOn(object, entity.kind === "vfx" ? 6 : 2);
@@ -279,7 +279,7 @@ async function bootstrap(): Promise<void> {
     { code: "KeyG", shift: false, run: (): void => transformTool.begin("grab") },
     { code: "KeyR", shift: false, run: (): void => transformTool.begin("rotate") },
     { code: "KeyS", shift: false, run: (): void => transformTool.begin("scale") },
-    { code: "KeyF", shift: false, run: focusSelected },
+    { code: "KeyF", shift: false, run: (): void => focusEntity(timelineSelection.get()) },
     // I bakes a keyframe for every transform channel of the selected object at the playhead.
     {
       code: "KeyI",
@@ -334,6 +334,16 @@ async function bootstrap(): Promise<void> {
   );
 
   coordinator.start();
+
+  // The programmatic API for agents driving this page (window.sparcoon, see src/agent/index.ts).
+  installAgentApi({
+    store,
+    transport,
+    previewSettings,
+    gizmoSettings,
+    coordinator,
+    focusEntity,
+  });
 
   // Initial derive: seed the texture caches, then run the source through the library once.
   textures.sync(store.getSource().assets);

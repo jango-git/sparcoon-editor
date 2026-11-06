@@ -5,9 +5,8 @@
  */
 
 import { t } from "../i18n";
-import { importProject, setProjectName } from "../model/commands";
+import { setProjectName } from "../model/commands";
 import type { Store } from "../model/store";
-import { hydrateEnvironmentBlobs } from "../persistence/environmentBlobStore";
 import { emitProjectModule } from "../persistence/exportTypeScript";
 import {
   EMPTY_PRESET,
@@ -17,6 +16,7 @@ import {
   type ProjectPreset,
 } from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
+import { replaceDocument } from "../persistence/replaceDocument";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
@@ -167,10 +167,8 @@ function downloadText(text: string, name: string, extension: string, mime: strin
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-/** Reads a picked JSON file and replaces the document, warning (without touching it) on a bad file.
- *  Also resets the viewport's own persisted settings (Lighting/Scene/Gizmo) to factory defaults -
- *  they live outside the document, so a document replace alone would otherwise leave the previous
- *  project's studio setup and gizmo preferences in place. */
+/** Reads a picked JSON file and replaces the document (viewport settings reset included - see
+ *  {@link replaceDocument}), warning (without touching it) on a bad file. */
 async function importFromFile(file: File | undefined, context: EditorContext): Promise<void> {
   if (file === undefined) {
     return;
@@ -180,10 +178,7 @@ async function importFromFile(file: File | undefined, context: EditorContext): P
     console.warn(`"${file.name}" is not a readable project file`);
     return;
   }
-  await hydrateEnvironmentBlobs(source.environments);
-  importProject(context.store, source);
-  context.previewSettings.reset();
-  context.gizmoSettings.reset();
+  await replaceDocument(context, source);
 }
 
 /**
@@ -220,10 +215,7 @@ function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
  *  file goes through, viewport settings reset included. */
 async function applyPreset(context: EditorContext, preset: ProjectPreset): Promise<void> {
   const source = await loadPresetSource(preset);
-  await hydrateEnvironmentBlobs(source.environments);
-  importProject(context.store, source);
-  context.previewSettings.reset();
-  context.gizmoSettings.reset();
+  await replaceDocument(context, source);
 }
 
 /** A safe download stem from the project name: keep word characters, fall back when nothing remains. */

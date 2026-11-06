@@ -11,6 +11,7 @@ import {
   PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
+  Vector2,
   Vector3,
   WebGL1Renderer,
   WebGLRenderer,
@@ -199,6 +200,45 @@ export class SceneCoordinator {
     this.controls.update();
   }
 
+  /**
+   * Advances every emitter and VFX mesh by `deltaSeconds` of simulation time - the one place the
+   * simulation clock is stepped, whether by the live frame loop or an offline capture driving
+   * time itself (the agent API's deterministic snapshots).
+   */
+  public advance(deltaSeconds: number): void {
+    FXWorld.update(deltaSeconds);
+  }
+
+  /**
+   * Renders the scene once and returns a 2D-canvas copy of the frame. The copy is taken in the
+   * same task as the render because the WebGL drawing buffer is not preserved past it. With a
+   * `size`, renders at that many pixels (pixel ratio 1, camera aspect matched) and then restores
+   * the viewport's own size, ratio and aspect. The copy is always the drawing buffer's real size,
+   * which a GPU limit can clamp below `size`; the frame is never stretched to hide that.
+   */
+  public capture(size?: { readonly width: number; readonly height: number }): HTMLCanvasElement {
+    const canvas = this.renderer.domElement;
+    if (size === undefined) {
+      this.renderer.render(this.scene, this.camera);
+      return copyCanvas(canvas, canvas.width, canvas.height);
+    }
+    const pixelRatio = this.renderer.getPixelRatio();
+    const previous = this.renderer.getSize(new Vector2());
+    const previousAspect = this.camera.aspect;
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(size.width, size.height, false);
+    this.camera.aspect = size.width / size.height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.render(this.scene, this.camera);
+    const copy = copyCanvas(canvas, canvas.width, canvas.height);
+    this.renderer.setPixelRatio(pixelRatio);
+    this.renderer.setSize(previous.x, previous.y, false);
+    this.camera.aspect = previousAspect;
+    this.camera.updateProjectionMatrix();
+    this.renderer.render(this.scene, this.camera);
+    return copy;
+  }
+
   public start(): void {
     if (this.running) {
       return;
@@ -304,8 +344,7 @@ export class SceneCoordinator {
 
     // The transport gates the simulation clock: a stopped/paused timeline advances no
     // emitter time (no spawn, no integration) while the camera and render stay live.
-    const simulationDelta = this.isSimulating() ? deltaSeconds : 0;
-    FXWorld.update(simulationDelta);
+    this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.frameHandle = requestAnimationFrame((next) => this.frame(next));
@@ -342,4 +381,13 @@ export class SceneCoordinator {
     // tab, or before start()), which would otherwise leave the canvas stretched until the next tick.
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/** A 2D-canvas copy of `source`'s current pixels at `width` x `height`. */
+function copyCanvas(source: HTMLCanvasElement, width: number, height: number): HTMLCanvasElement {
+  const copy = document.createElement("canvas");
+  copy.width = width;
+  copy.height = height;
+  copy.getContext("2d")?.drawImage(source, 0, 0, width, height);
+  return copy;
 }

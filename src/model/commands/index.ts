@@ -12,6 +12,7 @@ export {
   replaceNodeParams,
   updateNodeParam,
 } from "./graphCommands";
+export { connectSockets, disconnectInput } from "./edgeCommands";
 export {
   addOutputBinding,
   dissolveRoute,

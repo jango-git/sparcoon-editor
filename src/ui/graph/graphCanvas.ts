@@ -20,9 +20,9 @@ import type {
   EditorGraph,
   GraphNode,
   GraphPosition,
-  GraphSocketReference,
 } from "../../domain/graphModel";
-import { incomingConnection, isKeyframeValue } from "../../domain/graphModel";
+import { isKeyframeValue } from "../../domain/graphModel";
+import { bindingSinkId, findIncomingEdge } from "../../domain/graphEdges";
 import {
   GraphKind,
   RENDER_SINK_ID,
@@ -35,11 +35,9 @@ import {
   isMeshExcludedRenderNode,
   isTimelineValueType,
   isFakeNodeType,
-  isSinkType,
   metaForNode,
   paletteForKind,
   searchTagsFor,
-  sinkPhase,
 } from "../../domain/nodePalette";
 import type { FXNodeMeta, FXSocketMeta, RenderHost } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
@@ -47,20 +45,17 @@ import { computeNodeCosts, computeSinkCost } from "../../domain/graphStats";
 import {
   addAttribute,
   addCatalogNode,
-  addConnection,
-  addOutputBinding,
+  connectSockets,
+  disconnectInput,
   dissolveRoute,
   moveCommentGroup,
   moveNodes,
-  nextIdentifier,
   pasteFragment,
   type GraphFragment,
   removeAttribute,
   removeComment,
-  removeConnection,
   removeEdgesFromOutput,
   removeNode,
-  removeOutputBinding,
   renameAttribute,
   renameComment,
   replaceNodeParams,
@@ -246,7 +241,7 @@ export class GraphCanvas {
     this.wireRenderer = new WireRenderer(
       this.wireLayer,
       (nodeId, socketKey, side) => this.socketCenter(nodeId, socketKey, side),
-      (binding) => this.sinkNodeId(binding),
+      (binding) => bindingSinkId(this.activeKind(), binding),
     );
     this.camera = new GraphCamera(this.root, () => this.frameGraph());
     const knifeContext: KnifeContext = {
@@ -410,7 +405,7 @@ export class GraphCanvas {
     const graph = this.activeGraph();
     // Connectivity up front: it decides which editable-input value editors collapse, so a
     // node's view is (re)built against its current connected inputs and repainted below.
-    const fills = computeSocketFills(graph, (binding) => this.sinkNodeId(binding));
+    const fills = computeSocketFills(graph, (binding) => bindingSinkId(this.activeKind(), binding));
     const noFills: ReadonlySet<string> = new Set();
     // One palette bridge for every node built this pass - it only closes over `this.store`, so
     // there is nothing per-node to vary.
@@ -775,7 +770,7 @@ export class GraphCanvas {
     return collectEdges(
       this.activeGraph(),
       (nodeId, socketKey, side) => this.socketCenter(nodeId, socketKey, side),
-      (binding) => this.sinkNodeId(binding),
+      (binding) => bindingSinkId(this.activeKind(), binding),
     );
   }
 
@@ -1102,13 +1097,9 @@ export class GraphCanvas {
 
     let anchor = socket;
     if (socket.side === "input") {
-      const incoming = this.findIncoming(this.activeGraph(), socket);
+      const incoming = findIncomingEdge(this.activeGraph(), socket);
       if (incoming !== undefined) {
-        if (incoming.kind === "connection") {
-          removeConnection(this.store, this.activeSlot(), incoming.id);
-        } else {
-          removeOutputBinding(this.store, this.activeSlot(), incoming.slot, incoming.phase);
-        }
+        disconnectInput(this.store, this.activeSlot(), socket);
         const type =
           resolveSocketCarriedType(
             this.activeKind(),
@@ -1179,70 +1170,12 @@ export class GraphCanvas {
       removeEdgesFromOutput(this.store, this.activeSlot(), socket.nodeId, socket.socketKey);
       return;
     }
-    const incoming = this.findIncoming(this.activeGraph(), socket);
-    if (incoming === undefined) {
-      return;
-    }
-    if (incoming.kind === "connection") {
-      removeConnection(this.store, this.activeSlot(), incoming.id);
-    } else {
-      removeOutputBinding(this.store, this.activeSlot(), incoming.slot, incoming.phase);
-    }
+    disconnectInput(this.store, this.activeSlot(), socket);
   }
 
   /** Authors the edge for an output->input drop: an output binding onto a sink, else a connection. */
   private authorEdge(output: SocketRef, input: SocketRef): void {
-    const inputNode = this.activeGraph().nodes[input.nodeId];
-    if (inputNode === undefined) {
-      return;
-    }
-    const from: GraphSocketReference = { nodeId: output.nodeId, socketKey: output.socketKey };
-    if (isSinkType(inputNode.type)) {
-      const phase = sinkPhase(inputNode.type);
-      addOutputBinding(this.store, this.activeSlot(), {
-        slot: input.socketKey,
-        from,
-        ...(phase !== undefined ? { phase } : {}),
-      });
-      return;
-    }
-    addConnection(this.store, this.activeSlot(), {
-      id: nextIdentifier("conn"),
-      from,
-      to: { nodeId: input.nodeId, socketKey: input.socketKey },
-    });
-  }
-
-  /** The edge feeding an input socket (a sink binding or a node connection), if any. */
-  private findIncoming(
-    graph: EditorGraph,
-    input: SocketRef,
-  ):
-    | { readonly kind: "connection"; readonly id: string; readonly from: GraphSocketReference }
-    | {
-        readonly kind: "binding";
-        readonly slot: string;
-        readonly phase: "spawn" | "update" | undefined;
-        readonly from: GraphSocketReference;
-      }
-    | undefined {
-    const node = graph.nodes[input.nodeId];
-    if (node === undefined) {
-      return undefined;
-    }
-    if (isSinkType(node.type)) {
-      const phase = sinkPhase(node.type);
-      const binding = graph.outputBindings.find(
-        (candidate) => candidate.slot === input.socketKey && candidate.phase === phase,
-      );
-      return binding === undefined
-        ? undefined
-        : { kind: "binding", slot: binding.slot, phase, from: binding.from };
-    }
-    const connection = incomingConnection(graph, input.nodeId, input.socketKey);
-    return connection === undefined
-      ? undefined
-      : { kind: "connection", id: connection.id, from: connection.from };
+    connectSockets(this.store, this.activeSlot(), output, input);
   }
 
   /** The socket at a screen point, or `undefined`. The dot's enlarged `::before` pseudo makes
@@ -1261,17 +1194,6 @@ export class GraphCanvas {
       return undefined;
     }
     return { nodeId: node, socketKey: socket, side, type };
-  }
-
-  /** The reserved sink node id an output binding targets (by slot + phase) in the active graph. */
-  private sinkNodeId(binding: {
-    readonly slot: string;
-    readonly phase?: "spawn" | "update" | undefined;
-  }): string {
-    if (this.activeKind() === GraphKind.Render) {
-      return RENDER_SINK_ID;
-    }
-    return binding.phase === "spawn" ? SPAWN_SINK_ID : UPDATE_SINK_ID;
   }
 
   /** A socket dot's center in graph coordinates, measured from its live DOM box. */
