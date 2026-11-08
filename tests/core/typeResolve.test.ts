@@ -104,9 +104,9 @@ describe("resolveGenerics", () => {
     expect(types.get("op")?.glslTypeName).toBe("vec3");
   });
 
-  it("resolves to the first input's type when generic numeric inputs differ in width", () => {
-    // Differing numeric widths are no longer a conflict: `T` takes the first
-    // connected generic input's type, and the rest are coerced to it at readInput.
+  it("resolves to the vector when a scalar comes first, so the scalar splats across it", () => {
+    // Differing numeric widths are not a conflict: a scalar before a vector yields to the
+    // vector (`float * vec3` is a vec3, not the vector cut to its `.x`), coerced at readInput.
     const nodes = new Map<string, FXGraphNode>([
       ["a", new GenericNode("constant", { hint: "float" })],
       ["b", new GenericNode("constant", { hint: "vec3" })],
@@ -128,7 +128,32 @@ describe("resolveGenerics", () => {
 
     const { types, errors } = resolveGenerics(graph, orderOf(graph));
     expect(errors).toHaveLength(0);
-    expect(types.get("op")?.glslTypeName).toBe("float");
+    expect(types.get("op")?.glslTypeName).toBe("vec3");
+  });
+
+  it("resolves to the first input's type when generic vector inputs differ in width", () => {
+    const nodes = new Map<string, FXGraphNode>([
+      ["a", new GenericNode("constant", { hint: "vec2" })],
+      ["b", new GenericNode("constant", { hint: "vec3" })],
+      [
+        "op",
+        new GenericNode("binary-op", {
+          inputs: [genericSocket("a", true), genericSocket("b", true)],
+        }),
+      ],
+    ]);
+    const graph = graphOf(
+      nodes,
+      [
+        { from: { nodeId: "a", socketKey: "out" }, to: { nodeId: "op", socketKey: "a" } },
+        { from: { nodeId: "b", socketKey: "out" }, to: { nodeId: "op", socketKey: "b" } },
+      ],
+      "op",
+    );
+
+    const { types, errors } = resolveGenerics(graph, orderOf(graph));
+    expect(errors).toHaveLength(0);
+    expect(types.get("op")?.glslTypeName).toBe("vec2");
   });
 
   it("reports a conflict when a generic input mixes a numeric and an opaque type", () => {

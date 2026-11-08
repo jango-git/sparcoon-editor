@@ -6,7 +6,7 @@ import * as fxExprBuilders from "../ir/FXExprBuilder";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
 import type { FXSocketDescriptor } from "../socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
-import { FX_VALUE_TYPES, resolveValueType } from "../socket/FXValueType";
+import { FX_VALUE_TYPES, literalGenericType, resolveValueType } from "../socket/FXValueType";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
 import { finiteScalar, finiteScalarOrVector, finiteVector } from "./paramValidators.Internal";
 import type { FXBehaviorPhaseName, FXNodeCost, FXRenderStageName } from "./defineNode";
@@ -213,7 +213,16 @@ export class FXDescriptorNode extends FXGraphNode {
 
   public override resolveGenericHint(): FXGLSLTypeName | undefined {
     if (this.genericHintKey === undefined) {
-      return undefined;
+      // No type annotation: let the inline values typed into the generic inputs decide (when the
+      // constraint allows that type - a vector-only node's scalar seed stays unresolved).
+      const implied = literalGenericType(
+        this.editableInputs
+          .filter(([, specification]) => specification.type === "T")
+          .map(([key]) => this.values.get(key)),
+      );
+      return implied !== undefined && this.core.constraint?.includes(implied) === true
+        ? implied
+        : undefined;
     }
     // A `valueType` param may store the UI-only `"color"` alias; the engine resolves it to
     // `vec4` (color == vec4). Every other value is already a concrete GLSL type.
@@ -375,7 +384,8 @@ export class FXDescriptorNode extends FXGraphNode {
 
   /** Component width the node's generic value param currently carries (from its annotation). */
   private currentGenericWidth(): number {
-    const hint = this.resolveGenericHint();
+    // Only an annotation sizes values; a literal-inferred `T` follows the values, not the reverse.
+    const hint = this.genericHintKey === undefined ? undefined : this.resolveGenericHint();
     return hint === undefined ? 1 : resolveValueType(hint).components;
   }
 
@@ -434,7 +444,11 @@ export class FXDescriptorNode extends FXGraphNode {
       : finiteVector(where, raw, width);
   }
 
-  /** Bakes an unconnected editable input's live override as an inline IR literal (no slot). */
+  /**
+   * Bakes an unconnected editable input's live override as an inline IR literal (no slot). A
+   * single number on a vector input splats across it, as a wired scalar does (`b: 4` on a `vec4`
+   * multiply scales all four, alpha included); a shorter vector pads its tail with zeros.
+   */
   private editableInputLiteral(
     key: string,
     specification: FXSocketSpec,
@@ -447,8 +461,9 @@ export class FXDescriptorNode extends FXGraphNode {
         typeof value === "number" ? value : ((value as readonly number[])[0] ?? 0),
       );
     }
-    const source = Array.isArray(value) ? value : [value as number];
-    const components = Array.from({ length: type.components }, (_, index) => source[index] ?? 0);
+    const components = Array.isArray(value)
+      ? Array.from({ length: type.components }, (_, index) => (value as number[])[index] ?? 0)
+      : Array.from({ length: type.components }, () => value as number);
     return fxExprBuilders.litVec(...components);
   }
 

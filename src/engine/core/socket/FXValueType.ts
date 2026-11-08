@@ -140,3 +140,21 @@ export function areTypesCompatible(from: FXValueType, to: FXValueType): boolean 
   }
   return isNumericType(from) && isNumericType(to);
 }
+
+/**
+ * The `T` a generic node's inline literals imply when nothing is wired into its generic inputs:
+ * the widest vector among them (`[1, 0, 0, 1]` -> `vec4`), else `float` when they are all numbers
+ * - so a `mix` of two typed-in colors resolves without a typed `constant` per side. `undefined`
+ * for no literal at all.
+ */
+export function literalGenericType(values: readonly unknown[]): FXGLSLTypeName | undefined {
+  let widest = 0;
+  for (const value of values) {
+    if (typeof value === "number") {
+      widest = Math.max(widest, 1);
+    } else if (Array.isArray(value) && value.length >= 1 && value.length <= 4) {
+      widest = Math.max(widest, value.length);
+    }
+  }
+  return widest === 0 ? undefined : widest === 1 ? "float" : (`vec${widest}` as FXGLSLTypeName);
+}

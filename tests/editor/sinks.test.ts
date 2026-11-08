@@ -237,6 +237,17 @@ describe("output sink nodes", () => {
     expect(opaque).not.toContain("additivity");
   });
 
+  it("the surface sink shows intensity in every render mode", () => {
+    for (const renderMode of ["blending", "alphaHash", "alphaTest", "opaque"]) {
+      const keys =
+        metaForNode(GraphKind.Render, {
+          type: RENDER_SINK_TYPE,
+          parameters: { renderMode },
+        })?.inputs.map((socket) => socket.key) ?? [];
+      expect(keys).toContain("intensity");
+    }
+  });
+
   it("the particle surface sink carries particleTransform + vertexTransform and the sort param", () => {
     const surface = sinkMeta(RENDER_SINK_TYPE, { renderHost: "particle" });
     const keys = surface.inputs.map((socket) => socket.key);

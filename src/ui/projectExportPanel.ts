@@ -11,6 +11,7 @@ import { emitProjectModule } from "../persistence/exportTypeScript";
 import {
   EMPTY_PRESET,
   loadPresetSource,
+  EFFECT_PRESETS,
   PROJECT_PRESETS,
   SPARKS_PRESET,
   type ProjectPreset,
@@ -31,6 +32,7 @@ const PRESET_APPLY_CLICKS = 5;
 const PRESET_GLYPHS: Readonly<Record<string, string>> = {
   [EMPTY_PRESET.id]: assetIcons.blank,
   [SPARKS_PRESET.id]: timelineIcons.burst,
+  ...Object.fromEntries(EFFECT_PRESETS.map((preset) => [preset.id, timelineIcons.burst])),
 };
 
 /**

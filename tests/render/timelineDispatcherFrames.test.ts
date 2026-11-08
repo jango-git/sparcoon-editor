@@ -58,3 +58,40 @@ describe("TimelineDispatcher: frame-stepped drive", () => {
     expect(applySceneTransforms.mock.calls[1][1]).toBeCloseTo(timeOfFrame(2, 30), 6);
   });
 });
+
+describe("TimelineDispatcher: playing drive", () => {
+  // Playback ticks off requestAnimationFrame; a stub keeps the tests in charge of the playhead.
+  function playing(): ReturnType<typeof harness> {
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    vi.stubGlobal("cancelAnimationFrame", () => undefined);
+    const parts = harness();
+    parts.transport.play();
+    parts.applySceneTransforms.mockClear();
+    parts.driveParamValues.mockClear();
+    return parts;
+  }
+
+  it("poses on every tick at the caret time itself, within a frame too", () => {
+    const { transport, applySceneTransforms } = playing();
+
+    transport.seek(0.01); // frame 0
+    transport.seek(0.012); // still frame 0: a pose that held here would read as no motion
+    transport.seek(0.02); // frame 1
+
+    expect(applySceneTransforms.mock.calls.map((call) => call[1] as number)).toEqual([
+      0.01, 0.012, 0.02,
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the value drive frame-stepped", () => {
+    const { transport, driveParamValues } = playing();
+
+    transport.seek(0.01); // frame 0 (already driven when play started: no re-drive)
+    transport.seek(0.012);
+    transport.seek(0.02); // frame 1: one value drive
+
+    expect(driveParamValues).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+});

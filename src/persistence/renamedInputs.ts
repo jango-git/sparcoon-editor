@@ -1,9 +1,10 @@
 /**
- * Node inputs renamed since projects started being saved. A saved project names an input in two
- * places - the inline value in the node's `parameters` and the `to.socketKey` of a wire feeding
- * it - so a rename that only touched the node definition would silently drop both on load: the
- * value back to its default, the wire as dangling. Loading maps every old key to its new one
- * before anything else reads the graph.
+ * Node inputs (and outputs) renamed since projects started being saved. A saved project names an
+ * input in two places - the inline value in the node's `parameters` and the `to.socketKey` of a
+ * wire feeding it - and an output in the `from.socketKey` of every wire or sink binding reading it,
+ * so a rename that only touched the node definition would silently drop them on load: the value
+ * back to its default, the wire as dangling. Loading maps every old key to its new one before
+ * anything else reads the graph.
  */
 
 import type { EditorGraph, GraphConnection, GraphNode } from "../domain/graphModel";
@@ -13,6 +14,16 @@ import { isRecord } from "../util/guards";
 const RENAMED_INPUTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   // Named like spawn-cone's, which measures the same axis-long dimension.
   "spawn-cylinder": { length: "height" },
+};
+
+/**
+ * Node type -> old output key -> current output key: a wire (or a sink binding) reading a renamed
+ * output names it in its `from.socketKey`. A new name never reuses an old one, so a file saved
+ * after the rename is never migrated again.
+ */
+const RENAMED_OUTPUTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // "previous" was the frame the playhead is on and "current" the one after it.
+  "animated-texture": { uvPrevious: "uvFrame", uvCurrent: "uvNext" },
 };
 
 /** A stored node's type, or `undefined` for one too damaged to have one (left as it is). */
@@ -36,15 +47,31 @@ function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>)
   return { ...node, parameters };
 }
 
-/** `graph` with every renamed input's stored value and incoming wire under its current key. */
+/** `graph` with every renamed input's stored value and incoming wire, and every wire or sink binding
+ *  reading a renamed output, under its current key. */
 export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
   const renamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
     const type = typeOf(node);
     return type !== undefined ? RENAMED_INPUTS[type] : undefined;
   };
-  if (!Object.values(graph.nodes).some((node) => renamesOf(node) !== undefined)) {
+  const outputRenamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
+    const type = typeOf(node);
+    return type !== undefined ? RENAMED_OUTPUTS[type] : undefined;
+  };
+  if (
+    !Object.values(graph.nodes).some(
+      (node) => renamesOf(node) !== undefined || outputRenamesOf(node) !== undefined,
+    )
+  ) {
     return graph;
   }
+  /** `from` under its output's current key (unchanged when not renamed). */
+  const renamedFrom = <T extends { readonly nodeId: string; readonly socketKey: string }>(
+    from: T,
+  ): T => {
+    const socketKey = outputRenamesOf(graph.nodes[from.nodeId])?.[from.socketKey];
+    return socketKey === undefined ? from : { ...from, socketKey };
+  };
 
   const nodes: Record<string, GraphNode> = {};
   for (const [id, node] of Object.entries(graph.nodes)) {
@@ -58,9 +85,19 @@ export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
     const socketKey =
       renamesOf(graph.nodes[connection.to.nodeId])?.[connection.to.socketKey] ??
       connection.to.socketKey;
-    return socketKey === connection.to.socketKey
+    const to =
+      socketKey === connection.to.socketKey ? connection.to : { ...connection.to, socketKey };
+    const from = isRecord(connection.from) ? renamedFrom(connection.from) : connection.from;
+    return to === connection.to && from === connection.from
       ? connection
-      : { ...connection, to: { ...connection.to, socketKey } };
+      : { ...connection, from, to };
   });
-  return { ...graph, nodes, connections };
+  const outputBindings = graph.outputBindings.map((binding) => {
+    if (!isRecord(binding) || !isRecord(binding.from)) {
+      return binding;
+    }
+    const from = renamedFrom(binding.from);
+    return from === binding.from ? binding : { ...binding, from };
+  });
+  return { ...graph, nodes, connections, outputBindings };
 }

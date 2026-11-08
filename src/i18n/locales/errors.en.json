@@ -299,6 +299,9 @@
   "trail-with-sort": {
     "message": "a trail cannot be combined with depth sorting - set the render graph's Sort Every to 0"
   },
+  "sort-on-gpu-emitter": {
+    "message": "depth sorting has no effect on a GPU-simulated emitter - turn off the spawn sink's Try GPU Simulation, or set Sort Every to 0"
+  },
   "param-value-conflict": {
     "message": "Timeline Value \"{name}\" has a different default here than another declaration of it in this emitter"
   },

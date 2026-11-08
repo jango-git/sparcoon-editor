@@ -51,6 +51,7 @@ const EASE_LABEL: Readonly<Record<FXKeyEase, TKey>> = {
   in: "timeline.easeIn",
   out: "timeline.easeOut",
   inOut: "timeline.easeInOut",
+  step: "timeline.easeStep",
 };
 
 /** A keyframe's curve to the next key, as a labelled dropdown row (linear when unset). */

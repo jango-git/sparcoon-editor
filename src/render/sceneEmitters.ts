@@ -100,7 +100,8 @@ export class SceneEmitters implements SceneApplier {
     // Which GLSL tier every emitter/mesh view's live render graph compiles with
     // (settings/renderBackend.ts) - shared across every view the same way the registries are.
     private readonly renderBackend: FXGLSLRenderTier,
-    // The frame-quantized playhead time, so a rebuild re-poses at the same frame the caret sits on.
+    // The playhead time a rebuild re-poses at: the caret's frame when parked, the caret itself while
+    // playing (see TimelineDispatcher.driveFrame).
     private readonly currentTime: () => number = () => 0,
     // The content library's live mesh geometries, by name - threaded into every emitter/mesh view
     // so a "custom" geometry source resolves the same way an external texture does.
@@ -166,7 +167,7 @@ export class SceneEmitters implements SceneApplier {
   }
 
   /** Poses the VFX group and every emitter/mesh Object3D at `time` and syncs mute visibility.
-   * Callers pass **frame-quantized** caret time, so the pose only ever changes on a frame entry. */
+   * Callers pass the caret's frame time while it is parked, and the caret time itself while playing. */
   public applySceneTransforms(scene: SceneModel, time: number): void {
     if (this.transformsLocked) {
       return;

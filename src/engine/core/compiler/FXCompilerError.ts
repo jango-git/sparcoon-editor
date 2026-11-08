@@ -131,6 +131,9 @@ export type FXCompilerErrorCode =
   | "mesh-ignores-transform"
   // An emitter's trail graph on a depth-sorted emitter (domain/trailChecks.ts).
   | "trail-with-sort"
+  // A warning: depth sorting asked of an emitter simulated on the GPU, where it does nothing
+  // (domain/sortChecks.ts).
+  | "sort-on-gpu-emitter"
   // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
   | "param-value-conflict"
   // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).

@@ -153,6 +153,67 @@ describe("projectFile: renamed node inputs", () => {
   });
 });
 
+describe("projectFile: renamed node outputs", () => {
+  it("loads an animated-texture's old uvPrevious / uvCurrent wires as uvFrame / uvNext", () => {
+    const base = createInitialState().source;
+    const [emitter] = base.scene.emitters;
+    const graph = emitter.renderGraph;
+    const saved: SourceState = {
+      ...base,
+      scene: {
+        ...base.scene,
+        emitters: [
+          {
+            ...emitter,
+            renderGraph: {
+              ...graph,
+              nodes: {
+                ...graph.nodes,
+                flip: {
+                  id: "flip",
+                  type: "animated-texture",
+                  parameters: { columns: 4, rows: 4 },
+                  position: { x: 0, y: 0 },
+                },
+                len: { id: "len", type: "length", parameters: {}, position: { x: 0, y: 0 } },
+                len2: { id: "len2", type: "length", parameters: {}, position: { x: 0, y: 0 } },
+              },
+              connections: [
+                ...graph.connections,
+                // Wires as an old file holds them, under the outputs' old names
+                {
+                  id: "wire",
+                  from: { nodeId: "flip", socketKey: "uvCurrent" },
+                  to: { nodeId: "len", socketKey: "v" },
+                },
+                {
+                  id: "wire2",
+                  from: { nodeId: "flip", socketKey: "uvPrevious" },
+                  to: { nodeId: "len2", socketKey: "v" },
+                },
+              ],
+              outputBindings: [
+                ...graph.outputBindings.filter((binding) => binding.slot !== "alphaThreshold"),
+                { slot: "alphaThreshold", from: { nodeId: "flip", socketKey: "factor" } },
+              ],
+            },
+          },
+          ...base.scene.emitters.slice(1),
+        ],
+      },
+    };
+    const loaded = deserializeProject(serializeProject(saved))?.scene.emitters[0].renderGraph;
+
+    const fromOf = (id: string) => loaded?.connections.find((c) => c.id === id)?.from;
+    expect(fromOf("wire")).toEqual({ nodeId: "flip", socketKey: "uvNext" });
+    expect(fromOf("wire2")).toEqual({ nodeId: "flip", socketKey: "uvFrame" });
+    // An output that kept its name is left as it was
+    expect(
+      loaded?.outputBindings.find((binding) => binding.slot === "alphaThreshold")?.from,
+    ).toEqual({ nodeId: "flip", socketKey: "factor" });
+  });
+});
+
 describe("projectFile: key curves", () => {
   it("keeps a key's curve, and drops one it does not know (the key then reads linear)", () => {
     const base = createInitialState().source;

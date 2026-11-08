@@ -13,13 +13,17 @@ import { authoredGraphs, GRAPH_SLOTS } from "../../model/graphSlots";
 import { selectActiveGraphOwner, selectGraphStatus } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import type { SignalBus } from "../../model/signals";
+import { attachCountdownConfirm } from "../components/countdownConfirm";
 import { attachTooltip, clearTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import type { EditorContext } from "../editorContext";
 import { GraphCanvas } from "../graph/graphCanvas";
 import { GraphMode, graphModeLabel, type GraphViewState } from "../graphViewState";
-import { graphModeIcons, icon } from "../icons";
+import { actionIcons, graphModeIcons, icon } from "../icons";
 import { createGraphStats } from "./graphStats";
+
+/** Presses to confirm removing an emitter's trail (see {@link attachCountdownConfirm}). */
+const REMOVE_TRAIL_CLICKS = 3;
 
 export function createGraphPanel(context: EditorContext, graphView: GraphViewState): HTMLElement {
   const { store, signals, selection } = context;
@@ -115,13 +119,14 @@ function createGraphSwitch(
   });
   buttons.set(GraphMode.Trail, trailButton);
 
+  // A trash button guarded like every other delete (countdownConfirm.ts): a whole graph goes with it.
   const removeTrail = createElement("button", {
-    className: "graph-switch__button graph-switch__remove",
-    textContent: "\u00d7",
+    className: "graph-switch__remove confirm-danger",
     type: "button",
   });
+  removeTrail.innerHTML = actionIcons.trash;
   attachTooltip(removeTrail, t("graph.removeTrail"), t("graph.removeTrailTip"));
-  removeTrail.addEventListener("click", () => {
+  attachCountdownConfirm(removeTrail, actionIcons.trash, REMOVE_TRAIL_CLICKS, () => {
     const owner = selectActiveGraphOwner(store);
     if (owner.kind === "emitter") {
       setEmitterTrail(store, owner.id, false);

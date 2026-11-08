@@ -223,7 +223,8 @@ export const fxConstant = defineNode({
 });
 
 /**
- * Two-input, same-type operation, `out = op(a, b)`. `a`/`b` carry an editable inline default,
+ * Two-input operation, `out = op(a, b)`, on one type - a scalar wired beside a vector splats across
+ * it, whichever side it is on (see `genericWinner`). `a`/`b` carry an editable inline default,
  * sized to whatever `T` the other (connected) input resolves - no `type` param pins it up front.
  */
 export const fxBinaryOp = defineNode({

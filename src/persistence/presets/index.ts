@@ -29,8 +29,27 @@ export const SPARKS_PRESET: ProjectPreset = {
   fileName: "sparks.json",
 };
 
+/** The showcase effects, built with the editor's agent API (see each one's builder script). */
+export const EFFECT_PRESETS: readonly ProjectPreset[] = [
+  { id: "campfire", labelKey: "content.presetCampfire", fileName: "campfire.json" },
+  {
+    id: "lightning-crack",
+    labelKey: "content.presetLightningCrack",
+    fileName: "lightning-crack.json",
+  },
+  { id: "portal", labelKey: "content.presetPortal", fileName: "portal.json" },
+  { id: "shield", labelKey: "content.presetShield", fileName: "shield.json" },
+  { id: "fireworks", labelKey: "content.presetFireworks", fileName: "fireworks.json" },
+  { id: "fireflies", labelKey: "content.presetFireflies", fileName: "fireflies.json" },
+  { id: "destruction", labelKey: "content.presetDestruction", fileName: "destruction.json" },
+];
+
 /** Empty first, so it reads as the "start over" option. */
-export const PROJECT_PRESETS: readonly ProjectPreset[] = [EMPTY_PRESET, SPARKS_PRESET];
+export const PROJECT_PRESETS: readonly ProjectPreset[] = [
+  EMPTY_PRESET,
+  SPARKS_PRESET,
+  ...EFFECT_PRESETS,
+];
 
 export const DEFAULT_PROJECT_PRESET = EMPTY_PRESET;
 

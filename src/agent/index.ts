@@ -54,7 +54,7 @@ export interface SparcoonAgentApi extends EditApi {
    * Compile status of the active owner, or of `ownerId` after focusing it. Asynchronous on
    * purpose, unlike the other reads: it waits for the recompute the last edit scheduled, or it
    * would report the graph as it was before that edit. Await it - a pending Promise placed inside
-   * a returned object serializes to `{}`.
+   * a returned object serializes to `{}`. A VFX mesh reports no `behavior` (it has no such graph).
    */
   status(ownerId?: string): Promise<StatusView>;
 }

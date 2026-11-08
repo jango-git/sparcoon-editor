@@ -151,9 +151,11 @@ export const fxLookAtCamera = defineNode({
 });
 
 /**
- * Assembles a position/rotation/scale `mat4` (`T * R * S`, column-major) for a transform slot -
- * the ergonomic driver: wire `look-at-camera` (or any `mat3`) into `rotation`, set position/scale
- * inline, or leave them at identity.
+ * Assembles a position/rotation/scale `mat4` (`T * R * S * T(-pivot)`, column-major) for a
+ * transform slot - the ergonomic driver: wire `look-at-camera` (or any `mat3`) into `rotation`, set
+ * position/scale inline, or leave them at identity. `pivot` is the point of the mesh, in its own
+ * units before scaling, that lands on `position` and that it rotates and scales about: a unit
+ * quad's bottom edge is `[0, -0.5, 0]`, so a flame sprite stands on its particle.
  */
 export const fxComposeTransform = defineNode({
   type: "compose-transform",
@@ -164,12 +166,14 @@ export const fxComposeTransform = defineNode({
     position: { type: "vec3", value: [0, 0, 0], step: 0.05 },
     rotation: { type: "mat3", default: IDENTITY_MAT3 },
     scale: { type: "vec3", value: [1, 1, 1], step: 0.05 },
+    pivot: { type: "vec3", value: [0, 0, 0], step: 0.05 },
   },
   outputs: { out: { type: "mat4" } },
   params: {},
   // scaleM/rotM/translateM assembly is a data reshuffle (0); T*R*S is 2 mat4*mat4
-  // multiplies (64 multiplies + 48 adds each).
-  cost: 224,
+  // multiplies (64 multiplies + 48 adds each); the pivot shift is a vec3 scale (3) + a
+  // mat3*vec3 (15) + a subtract (3).
+  cost: 245,
   build: ({ inputs, local, fn }) => {
     const zero = fn.lit(0);
     const one = fn.lit(1);
@@ -188,6 +192,12 @@ export const fxComposeTransform = defineNode({
     );
     // mat4(mat3) extends the rotation with an identity 4th row/column (no translation/skew).
     const rotationMatrix = local("ct_r", fn.construct(MAT4, inputs["rotation"]));
+    // The pivot lands on `position`: shift the translation by the rotated, scaled pivot (the same
+    // as a trailing T(-pivot), without a third mat4 multiply).
+    const origin = fn.sub(
+      inputs["position"],
+      fn.mul(inputs["rotation"], fn.mul(inputs["scale"], inputs["pivot"])),
+    );
     const translationMatrix = local(
       "ct_t",
       fn.construct(
@@ -195,7 +205,7 @@ export const fxComposeTransform = defineNode({
         fn.litVec(1, 0, 0, 0),
         fn.litVec(0, 1, 0, 0),
         fn.litVec(0, 0, 1, 0),
-        fn.construct(VEC4, inputs["position"], one),
+        fn.construct(VEC4, origin, one),
       ),
     );
     return { out: fn.mul(fn.mul(translationMatrix, rotationMatrix), scaleMatrix) };

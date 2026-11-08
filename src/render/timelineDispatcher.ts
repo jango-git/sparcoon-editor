@@ -16,8 +16,8 @@ import type { SceneEmitters } from "./sceneEmitters";
 export class TimelineDispatcher {
   private lastTime = 0;
   private lastLap = 0;
-  // The frame the value/transform drive last ran for; `undefined` forces the first tick. The
-  // drive is frame-stepped - re-runs only when the caret crosses into a new frame (scrub or play).
+  // The frame the value drive (and a parked caret's pose) last ran for; `undefined` forces the
+  // first tick. Values are frame-stepped - re-driven only when the caret crosses into a new frame.
   private lastAppliedFrame: number | undefined = undefined;
   private readonly unsubscribe: () => void;
 
@@ -53,22 +53,29 @@ export class TimelineDispatcher {
   }
 
   /**
-   * Drives values and transforms for the frame `time` falls in, sampled at that frame's canonical
-   * time - frame-stepped, so moving within a frame updates nothing. Spawns, by contrast, fire
-   * across the continuous interval the caret swept (see dispatchSpawns).
+   * Drives values for the frame `time` falls in, sampled at that frame's canonical time -
+   * frame-stepped, so moving within a frame updates nothing. Poses follow the same grid while the
+   * caret is parked or scrubbed, but while playing they are sampled at `time` itself on every tick:
+   * a pose held still between two frames would read as no motion on each tick between them (and as
+   * a jump on the next) to anything reading an emitter's velocity. Spawns fire across the continuous
+   * interval the caret swept (see dispatchSpawns). Same drive as the runtime's `FXEffect`.
    */
   private driveFrame(time: number): void {
     const fps = this.store.getSource().timeline.fps;
     const frame = frameOf(time, fps);
-    if (frame === this.lastAppliedFrame) {
-      return;
+    const playing = this.transport.isPlaying();
+    const entered = frame !== this.lastAppliedFrame;
+    if (entered) {
+      this.lastAppliedFrame = frame;
+      this.driveValues(timeOfFrame(frame, fps));
+      // A frame entry reasserts the timeline over any parked manual pose (gizmo drag).
+      this.emitters.clearManualPoses();
     }
-    this.lastAppliedFrame = frame;
-    const frameTime = timeOfFrame(frame, fps);
-    this.driveValues(frameTime);
-    // A frame entry reasserts the timeline over any parked manual pose (gizmo drag).
-    this.emitters.clearManualPoses();
-    this.emitters.applySceneTransforms(this.store.getSource().scene, frameTime);
+    if (playing) {
+      this.emitters.applySceneTransforms(this.store.getSource().scene, time);
+    } else if (entered) {
+      this.emitters.applySceneTransforms(this.store.getSource().scene, timeOfFrame(frame, fps));
+    }
   }
 
   /** Fires burst/play events the playhead crossed since the last tick (only while playing). */

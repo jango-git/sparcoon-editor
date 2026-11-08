@@ -56,6 +56,7 @@ import {
   trailRenderBudgetFindings,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
+import { gpuSortWarnings } from "../domain/sortChecks";
 import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import {
@@ -293,11 +294,15 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
     castShadow: config.castShadow,
     receiveShadow: config.receiveShadow,
     expectedCapacity: spawnConfig.expectedCapacity,
-    warnings: unwrittenAttributeWarnings(
-      renderGraph,
-      kernelWrittenBuffers(bundle.kernel),
-      emitter.behaviorGraph.attributes,
-    ),
+    warnings: [
+      ...unwrittenAttributeWarnings(
+        renderGraph,
+        kernelWrittenBuffers(bundle.kernel),
+        emitter.behaviorGraph.attributes,
+      ),
+      // A WebGL2 host runs the shipped GPU kernel, and ignores the sort there.
+      ...gpuSortWarnings(config.sortInterval, bundle.standardProgram !== undefined),
+    ],
     ...(emitter.trailGraph === undefined
       ? {}
       : {

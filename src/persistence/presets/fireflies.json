@@ -1,0 +1,1565 @@
+{
+  "format": "sparcoon-project",
+  "version": 1,
+  "source": {
+    "name": "Fireflies",
+    "scene": {
+      "vfx": {
+        "id": "vfx_1",
+        "transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "transformTracks": []
+      },
+      "emitters": [
+        {
+          "id": "emitter_6",
+          "name": "Swarm",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_50": {
+                "id": "node_50",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "float",
+                  "name": "seed"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_51": {
+                "id": "node_51",
+                "type": "life-ratio",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_52": {
+                "id": "node_52",
+                "type": "remap",
+                "parameters": {
+                  "inMin": 0,
+                  "inMax": 1,
+                  "outMin": 0.035,
+                  "outMax": 0.075
+                },
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_54": {
+                "id": "node_54",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec3",
+                  "z": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_57": {
+                "id": "node_57",
+                "type": "compose-transform",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_58": {
+                "id": "node_58",
+                "type": "look-at-camera",
+                "parameters": {
+                  "axis": "all",
+                  "cameraModel": "parallel"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_61": {
+                "id": "node_61",
+                "type": "time",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_62": {
+                "id": "node_62",
+                "type": "remap",
+                "parameters": {
+                  "inMin": 0,
+                  "inMax": 1,
+                  "outMin": 1.4,
+                  "outMax": 3.2
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_64": {
+                "id": "node_64",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 47
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_66": {
+                "id": "node_66",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_69": {
+                "id": "node_69",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_72": {
+                "id": "node_72",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "sin"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_74": {
+                "id": "node_74",
+                "type": "smoothstep",
+                "parameters": {
+                  "edge0": 0.55,
+                  "edge1": 0.98
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              },
+              "node_76": {
+                "id": "node_76",
+                "type": "remap",
+                "parameters": {
+                  "inMin": 0,
+                  "inMax": 1,
+                  "outMin": 0.07,
+                  "outMax": 6.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2568
+                }
+              },
+              "node_78": {
+                "id": "node_78",
+                "type": "ramp",
+                "parameters": {
+                  "curve": {
+                    "points": [
+                      {
+                        "position": 0,
+                        "value": 0,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.08,
+                        "value": 1,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.85,
+                        "value": 1,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 1,
+                        "value": 0,
+                        "interpolation": "smooth"
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2760
+                }
+              },
+              "node_80": {
+                "id": "node_80",
+                "type": "texture",
+                "parameters": {
+                  "name": "tGlow"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2952
+                }
+              },
+              "node_81": {
+                "id": "node_81",
+                "type": "mix",
+                "parameters": {
+                  "a": [0.65, 1, 0.3, 1],
+                  "b": [1, 0.85, 0.35, 1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3144
+                }
+              },
+              "node_83": {
+                "id": "node_83",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3336
+                }
+              },
+              "node_86": {
+                "id": "node_86",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3528
+                }
+              },
+              "node_89": {
+                "id": "node_89",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3720
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_53",
+                "from": {
+                  "nodeId": "node_50",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_52",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_55",
+                "from": {
+                  "nodeId": "node_52",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_54",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_56",
+                "from": {
+                  "nodeId": "node_52",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_54",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_59",
+                "from": {
+                  "nodeId": "node_58",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_57",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_60",
+                "from": {
+                  "nodeId": "node_54",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_57",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_63",
+                "from": {
+                  "nodeId": "node_50",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_62",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_65",
+                "from": {
+                  "nodeId": "node_50",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_64",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_67",
+                "from": {
+                  "nodeId": "node_61",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_66",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_68",
+                "from": {
+                  "nodeId": "node_62",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_66",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_70",
+                "from": {
+                  "nodeId": "node_66",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_69",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_71",
+                "from": {
+                  "nodeId": "node_64",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_69",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_73",
+                "from": {
+                  "nodeId": "node_69",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_72",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_75",
+                "from": {
+                  "nodeId": "node_72",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_74",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_77",
+                "from": {
+                  "nodeId": "node_74",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_76",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_79",
+                "from": {
+                  "nodeId": "node_51",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_78",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_82",
+                "from": {
+                  "nodeId": "node_50",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_81",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_84",
+                "from": {
+                  "nodeId": "node_80",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_83",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_85",
+                "from": {
+                  "nodeId": "node_81",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_83",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_87",
+                "from": {
+                  "nodeId": "node_83",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_86",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_88",
+                "from": {
+                  "nodeId": "node_78",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_86",
+                  "socketKey": "b"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "particleTransform",
+                "from": {
+                  "nodeId": "node_57",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_86",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "intensity",
+                "from": {
+                  "nodeId": "node_76",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_89",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {
+                  "expectedCapacity": 20000,
+                  "tryGpuSimulation": true
+                },
+                "position": {
+                  "x": 480,
+                  "y": 72
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 264
+                }
+              },
+              "node_14": {
+                "id": "node_14",
+                "type": "spawn-sphere",
+                "parameters": {
+                  "surfaceOnly": false,
+                  "radius": 1.8,
+                  "center": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_15": {
+                "id": "node_15",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_16": {
+                "id": "node_16",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_19": {
+                "id": "node_19",
+                "type": "lifetime",
+                "parameters": {
+                  "min": 6,
+                  "max": 10
+                },
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_20": {
+                "id": "node_20",
+                "type": "random",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_21": {
+                "id": "node_21",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_22": {
+                "id": "node_22",
+                "type": "delta-time",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_23": {
+                "id": "node_23",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_24": {
+                "id": "node_24",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_25": {
+                "id": "node_25",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_27": {
+                "id": "node_27",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_29": {
+                "id": "node_29",
+                "type": "point-force",
+                "parameters": {
+                  "falloff": "none",
+                  "strength": 1.8
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_33": {
+                "id": "node_33",
+                "type": "curl-noise",
+                "parameters": {
+                  "octaves": "2",
+                  "frequency": 0.55
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              },
+              "node_35": {
+                "id": "node_35",
+                "type": "add-scaled-vector",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2568
+                }
+              },
+              "node_37": {
+                "id": "node_37",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2760
+                }
+              },
+              "node_41": {
+                "id": "node_41",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 3.2
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2952
+                }
+              },
+              "node_43": {
+                "id": "node_43",
+                "type": "drag",
+                "parameters": {
+                  "damping": 1.3
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3144
+                }
+              },
+              "node_46": {
+                "id": "node_46",
+                "type": "add-scaled-vector",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 3336
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_17",
+                "from": {
+                  "nodeId": "node_15",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_16",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_18",
+                "from": {
+                  "nodeId": "node_14",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_16",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_26",
+                "from": {
+                  "nodeId": "node_24",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_25",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_28",
+                "from": {
+                  "nodeId": "node_27",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_25",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_30",
+                "from": {
+                  "nodeId": "node_21",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_29",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_31",
+                "from": {
+                  "nodeId": "node_25",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_29",
+                  "socketKey": "center"
+                }
+              },
+              {
+                "id": "conn_32",
+                "from": {
+                  "nodeId": "node_22",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_29",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_34",
+                "from": {
+                  "nodeId": "node_23",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_33",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_36",
+                "from": {
+                  "nodeId": "node_29",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_35",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_38",
+                "from": {
+                  "nodeId": "node_33",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_37",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_39",
+                "from": {
+                  "nodeId": "node_22",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_37",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_40",
+                "from": {
+                  "nodeId": "node_37",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_35",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_42",
+                "from": {
+                  "nodeId": "node_41",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_35",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_44",
+                "from": {
+                  "nodeId": "node_35",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_43",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_45",
+                "from": {
+                  "nodeId": "node_22",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_43",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_47",
+                "from": {
+                  "nodeId": "node_23",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_46",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_48",
+                "from": {
+                  "nodeId": "node_43",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_46",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_49",
+                "from": {
+                  "nodeId": "node_22",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_46",
+                  "socketKey": "scale"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_19",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:seed",
+                "from": {
+                  "nodeId": "node_20",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "node_43",
+                  "socketKey": "velocity"
+                },
+                "phase": "update"
+              },
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_46",
+                  "socketKey": "out"
+                },
+                "phase": "update"
+              }
+            ],
+            "attributes": [
+              {
+                "name": "velocity",
+                "type": "vec3"
+              },
+              {
+                "name": "seed",
+                "type": "float"
+              }
+            ],
+            "comments": []
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [],
+          "events": [
+            {
+              "id": "event_191",
+              "kind": "play",
+              "time": 0,
+              "rate": 2000,
+              "duration": 0
+            }
+          ],
+          "transform": {
+            "position": [0, 1.6, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
+          },
+          "transformTracks": [
+            {
+              "channel": "position",
+              "keys": [
+                {
+                  "id": "key_90",
+                  "time": 0,
+                  "value": [0, 1.6, 0]
+                },
+                {
+                  "id": "key_91",
+                  "time": 0.1,
+                  "value": [0.2009296624938028, 1.6936906572928625, 0.27573311384146937]
+                },
+                {
+                  "id": "key_92",
+                  "time": 0.2,
+                  "value": [0.4010663474057736, 1.784062276342339, 0.5471177517626806]
+                },
+                {
+                  "id": "key_93",
+                  "time": 0.3,
+                  "value": [0.5996202066743188, 1.8679133974894984, 0.8098740159062916]
+                },
+                {
+                  "id": "key_94",
+                  "time": 0.4,
+                  "value": [0.7958076389275354, 1.9422735529643445, 1.0598580830237738]
+                },
+                {
+                  "id": "key_95",
+                  "time": 0.5,
+                  "value": [0.9888543819998317, 2.004508497187474, 1.293127555043441]
+                },
+                {
+                  "id": "key_96",
+                  "time": 0.6,
+                  "value": [1.1779985685909693, 2.0524135262330097, 1.506003633043115]
+                },
+                {
+                  "id": "key_97",
+                  "time": 0.7,
+                  "value": [1.3624937330082325, 2.0842915805643156, 1.6951291341067363]
+                },
+                {
+                  "id": "key_98",
+                  "time": 0.8,
+                  "value": [1.5416117571254888, 2.099013364214136, 1.857521436104433]
+                },
+                {
+                  "id": "key_99",
+                  "time": 0.9,
+                  "value": [1.7146457439327891, 2.096057350657239, 1.990619515425243]
+                },
+                {
+                  "id": "key_100",
+                  "time": 1,
+                  "value": [1.8809128073359138, 2.075528258147577, 2.0923243358493377]
+                },
+                {
+                  "id": "key_101",
+                  "time": 1.1,
+                  "value": [2.039756767195807, 2.038153340021932, 2.161031951603115]
+                },
+                {
+                  "id": "key_102",
+                  "time": 1.2,
+                  "value": [2.1905507389718037, 1.9852566213878946, 2.1956588025421975]
+                },
+                {
+                  "id": "key_103",
+                  "time": 1.3,
+                  "value": [2.332699607748517, 1.918711994874345, 2.1956588025421975]
+                },
+                {
+                  "id": "key_104",
+                  "time": 1.4,
+                  "value": [2.465642376882526, 1.8408768370508577, 2.161031951603115]
+                },
+                {
+                  "id": "key_105",
+                  "time": 1.5,
+                  "value": [2.588854381999832, 1.7545084971874736, 2.0923243358493377]
+                },
+                {
+                  "id": "key_106",
+                  "time": 1.6,
+                  "value": [2.7018493616064485, 1.662666616782152, 1.990619515425243]
+                },
+                {
+                  "id": "key_107",
+                  "time": 1.7,
+                  "value": [2.804181376140364, 1.5686047402353431, 1.857521436104433]
+                },
+                {
+                  "id": "key_108",
+                  "time": 1.8,
+                  "value": [2.8954465678912626, 1.4756550564175723, 1.6951291341067358]
+                },
+                {
+                  "id": "key_109",
+                  "time": 1.9,
+                  "value": [2.9752847548424053, 1.3871103542174634, 1.5060036330431141]
+                },
+                {
+                  "id": "key_110",
+                  "time": 2,
+                  "value": [3.043380852144492, 1.3061073738537632, 1.2931275550434402]
+                },
+                {
+                  "id": "key_111",
+                  "time": 2.1,
+                  "value": [3.09946611561162, 1.235515686289294, 1.0598580830237727]
+                },
+                {
+                  "id": "key_112",
+                  "time": 2.2,
+                  "value": [3.143319202331804, 1.1778360372489922, 0.8098740159062902]
+                },
+                {
+                  "id": "key_113",
+                  "time": 2.3,
+                  "value": [3.1747670442063294, 1.1351117570558742, 0.5471177517626787]
+                },
+                {
+                  "id": "key_114",
+                  "time": 2.4,
+                  "value": [3.1936855309704693, 1.1088563746356557, 0.2757331138414671]
+                },
+                {
+                  "id": "key_115",
+                  "time": 2.5,
+                  "value": [3.2, 1.1, -2.6615664891979957e-15]
+                },
+                {
+                  "id": "key_116",
+                  "time": 2.6,
+                  "value": [3.1936855309704693, 1.108856374635656, -0.2757331138414714]
+                },
+                {
+                  "id": "key_117",
+                  "time": 2.7,
+                  "value": [3.174767044206329, 1.1351117570558746, -0.547117751762683]
+                },
+                {
+                  "id": "key_118",
+                  "time": 2.8,
+                  "value": [3.1433192023318037, 1.177836037248993, -0.8098740159062942]
+                },
+                {
+                  "id": "key_119",
+                  "time": 2.9,
+                  "value": [3.0994661156116194, 1.2355156862892949, -1.0598580830237765]
+                },
+                {
+                  "id": "key_120",
+                  "time": 3,
+                  "value": [3.043380852144491, 1.3061073738537645, -1.293127555043444]
+                },
+                {
+                  "id": "key_121",
+                  "time": 3.1,
+                  "value": [2.975284754842404, 1.3871103542174648, -1.506003633043118]
+                },
+                {
+                  "id": "key_122",
+                  "time": 3.2,
+                  "value": [2.8954465678912613, 1.475655056417574, -1.6951291341067392]
+                },
+                {
+                  "id": "key_123",
+                  "time": 3.3,
+                  "value": [2.804181376140362, 1.5686047402353447, -1.8575214361044357]
+                },
+                {
+                  "id": "key_124",
+                  "time": 3.4,
+                  "value": [2.7018493616064463, 1.6626666167821536, -1.9906195154252453]
+                },
+                {
+                  "id": "key_125",
+                  "time": 3.5,
+                  "value": [2.5888543819998295, 1.7545084971874754, -2.0923243358493395]
+                },
+                {
+                  "id": "key_126",
+                  "time": 3.6,
+                  "value": [2.465642376882524, 1.840876837050859, -2.1610319516031162]
+                },
+                {
+                  "id": "key_127",
+                  "time": 3.7,
+                  "value": [2.332699607748515, 1.9187119948743465, -2.195658802542198]
+                },
+                {
+                  "id": "key_128",
+                  "time": 3.8,
+                  "value": [2.1905507389718015, 1.985256621387896, -2.1956588025421975]
+                },
+                {
+                  "id": "key_129",
+                  "time": 3.9,
+                  "value": [2.0397567671958043, 2.0381533400219327, -2.1610319516031145]
+                },
+                {
+                  "id": "key_130",
+                  "time": 4,
+                  "value": [1.880912807335911, 2.0755282581475774, -2.0923243358493364]
+                },
+                {
+                  "id": "key_131",
+                  "time": 4.1,
+                  "value": [1.714645743932787, 2.0960573506572393, -1.9906195154252415]
+                },
+                {
+                  "id": "key_132",
+                  "time": 4.2,
+                  "value": [1.5416117571254875, 2.099013364214136, -1.857521436104432]
+                },
+                {
+                  "id": "key_133",
+                  "time": 4.3,
+                  "value": [1.362493733008232, 2.084291580564315, -1.695129134106736]
+                },
+                {
+                  "id": "key_134",
+                  "time": 4.4,
+                  "value": [1.1779985685909689, 2.0524135262330097, -1.5060036330431144]
+                },
+                {
+                  "id": "key_135",
+                  "time": 4.5,
+                  "value": [0.9888543819998321, 2.004508497187474, -1.2931275550434416]
+                },
+                {
+                  "id": "key_136",
+                  "time": 4.6,
+                  "value": [0.7958076389275368, 1.942273552964345, -1.0598580830237756]
+                },
+                {
+                  "id": "key_137",
+                  "time": 4.7,
+                  "value": [0.59962020667432, 1.8679133974894995, -0.8098740159062932]
+                },
+                {
+                  "id": "key_138",
+                  "time": 4.8,
+                  "value": [0.40106634740577596, 1.78406227634234, -0.5471177517626837]
+                },
+                {
+                  "id": "key_139",
+                  "time": 4.9,
+                  "value": [0.2009296624938063, 1.6936906572928638, -0.27573311384147414]
+                },
+                {
+                  "id": "key_140",
+                  "time": 5,
+                  "value": [4.655143390287755e-15, 1.600000000000002, -6.4008221616456626e-15]
+                },
+                {
+                  "id": "key_141",
+                  "time": 5.1,
+                  "value": [-0.20092966249379846, 1.5063093427071403, 0.27573311384146343]
+                },
+                {
+                  "id": "key_142",
+                  "time": 5.2,
+                  "value": [-0.40106634740576813, 1.4159377236576631, 0.5471177517626732]
+                },
+                {
+                  "id": "key_143",
+                  "time": 5.3,
+                  "value": [-0.5996202066743123, 1.332086602510504, 0.809874015906283]
+                },
+                {
+                  "id": "key_144",
+                  "time": 5.4,
+                  "value": [-0.7958076389275291, 1.2577264470356582, 1.059858083023766]
+                },
+                {
+                  "id": "key_145",
+                  "time": 5.5,
+                  "value": [-0.9888543819998246, 1.1954915028125286, 1.2931275550434327]
+                },
+                {
+                  "id": "key_146",
+                  "time": 5.6,
+                  "value": [-1.1779985685909613, 1.147586473766992, 1.5060036330431066]
+                },
+                {
+                  "id": "key_147",
+                  "time": 5.7,
+                  "value": [-1.362493733008225, 1.1157084194356854, 1.6951291341067292]
+                },
+                {
+                  "id": "key_148",
+                  "time": 5.8,
+                  "value": [-1.5416117571254806, 1.1009866357858646, 1.8575214361044263]
+                },
+                {
+                  "id": "key_149",
+                  "time": 5.9,
+                  "value": [-1.7146457439327802, 1.1039426493427604, 1.9906195154252369]
+                },
+                {
+                  "id": "key_150",
+                  "time": 6,
+                  "value": [-1.8809128073359045, 1.1244717418524215, 2.092324335849333]
+                },
+                {
+                  "id": "key_151",
+                  "time": 6.1,
+                  "value": [-2.0397567671957986, 1.1618466599780657, 2.1610319516031122]
+                },
+                {
+                  "id": "key_152",
+                  "time": 6.2,
+                  "value": [-2.1905507389717944, 1.2147433786121018, 2.1956588025421966]
+                },
+                {
+                  "id": "key_153",
+                  "time": 6.3,
+                  "value": [-2.3326996077485074, 1.2812880051256503, 2.195658802542199]
+                },
+                {
+                  "id": "key_154",
+                  "time": 6.4,
+                  "value": [-2.465642376882517, 1.3591231629491365, 2.161031951603119]
+                },
+                {
+                  "id": "key_155",
+                  "time": 6.5,
+                  "value": [-2.5888543819998233, 1.4454915028125195, 2.0923243358493444]
+                },
+                {
+                  "id": "key_156",
+                  "time": 6.6,
+                  "value": [-2.70184936160644, 1.537333383217841, 1.9906195154252526]
+                },
+                {
+                  "id": "key_157",
+                  "time": 6.7,
+                  "value": [-2.8041813761403556, 1.6313952597646493, 1.8575214361044459]
+                },
+                {
+                  "id": "key_158",
+                  "time": 6.8,
+                  "value": [-2.895446567891255, 1.7243449435824196, 1.6951291341067525]
+                },
+                {
+                  "id": "key_159",
+                  "time": 6.9,
+                  "value": [-2.9752847548423986, 1.8128896457825285, 1.5060036330431317]
+                },
+                {
+                  "id": "key_160",
+                  "time": 7,
+                  "value": [-3.043380852144486, 1.89389262614623, 1.2931275550434604]
+                },
+                {
+                  "id": "key_161",
+                  "time": 7.1,
+                  "value": [-3.099466115611615, 1.9644843137106998, 1.0598580830237962]
+                },
+                {
+                  "id": "key_162",
+                  "time": 7.2,
+                  "value": [-3.1433192023318, 2.0221639627510024, 0.809874015906317]
+                },
+                {
+                  "id": "key_163",
+                  "time": 7.3,
+                  "value": [-3.1747670442063267, 2.064888242944122, 0.5471177517627086]
+                },
+                {
+                  "id": "key_164",
+                  "time": 7.4,
+                  "value": [-3.193685530970468, 2.0911436253643423, 0.2757331138414996]
+                },
+                {
+                  "id": "key_165",
+                  "time": 7.5,
+                  "value": [-3.2, 2.1, 3.207214726088166e-14]
+                },
+                {
+                  "id": "key_166",
+                  "time": 7.6,
+                  "value": [-3.1936855309704706, 2.0911436253643463, -0.27573311384143984]
+                },
+                {
+                  "id": "key_167",
+                  "time": 7.7,
+                  "value": [-3.174767044206332, 2.06488824294413, -0.5471177517626502]
+                },
+                {
+                  "id": "key_168",
+                  "time": 7.8,
+                  "value": [-3.143319202331808, 2.022163962751014, -0.809874015906261]
+                },
+                {
+                  "id": "key_169",
+                  "time": 7.9,
+                  "value": [-3.099466115611626, 1.9644843137107135, -1.0598580830237434]
+                },
+                {
+                  "id": "key_170",
+                  "time": 8,
+                  "value": [-3.0433808521445, 1.893892626146246, -1.293127555043412]
+                },
+                {
+                  "id": "key_171",
+                  "time": 8.1,
+                  "value": [-2.9752847548424146, 1.8128896457825476, -1.5060036330430877]
+                },
+                {
+                  "id": "key_172",
+                  "time": 8.2,
+                  "value": [-2.8954465678912733, 1.72434494358244, -1.695129134106714]
+                },
+                {
+                  "id": "key_173",
+                  "time": 8.3,
+                  "value": [-2.8041813761403764, 1.6313952597646701, -1.8575214361044134]
+                },
+                {
+                  "id": "key_174",
+                  "time": 8.4,
+                  "value": [-2.701849361606463, 1.537333383217861, -1.9906195154252269]
+                },
+                {
+                  "id": "key_175",
+                  "time": 8.5,
+                  "value": [-2.588854381999849, 1.4454915028125392, -2.0923243358493258]
+                },
+                {
+                  "id": "key_176",
+                  "time": 8.6,
+                  "value": [-2.465642376882545, 1.359123162949155, -2.1610319516031073]
+                },
+                {
+                  "id": "key_177",
+                  "time": 8.7,
+                  "value": [-2.3326996077485385, 1.2812880051256665, -2.195658802542195]
+                },
+                {
+                  "id": "key_178",
+                  "time": 8.8,
+                  "value": [-2.1905507389718273, 1.2147433786121151, -2.1956588025422006]
+                },
+                {
+                  "id": "key_179",
+                  "time": 8.9,
+                  "value": [-2.039756767195831, 1.161846659978076, -2.1610319516031233]
+                },
+                {
+                  "id": "key_180",
+                  "time": 9,
+                  "value": [-1.88091280733594, 1.1244717418524277, -2.0923243358493515]
+                },
+                {
+                  "id": "key_181",
+                  "time": 9.1,
+                  "value": [-1.714645743932817, 1.103942649342763, -1.9906195154252626]
+                },
+                {
+                  "id": "key_182",
+                  "time": 9.2,
+                  "value": [-1.541611757125519, 1.1009866357858633, -1.8575214361044585]
+                },
+                {
+                  "id": "key_183",
+                  "time": 9.3,
+                  "value": [-1.3624937330082645, 1.1157084194356806, -1.6951291341067676]
+                },
+                {
+                  "id": "key_184",
+                  "time": 9.4,
+                  "value": [-1.1779985685910035, 1.1475864737669832, -1.5060036330431519]
+                },
+                {
+                  "id": "key_185",
+                  "time": 9.5,
+                  "value": [-0.9888543819998676, 1.1954915028125161, -1.293127555043483]
+                },
+                {
+                  "id": "key_186",
+                  "time": 9.6,
+                  "value": [-0.7958076389275702, 1.2577264470356428, -1.0598580830238171]
+                },
+                {
+                  "id": "key_187",
+                  "time": 9.7,
+                  "value": [-0.5996202066743553, 1.3320866025104863, -0.8098740159063391]
+                },
+                {
+                  "id": "key_188",
+                  "time": 9.8,
+                  "value": [-0.4010663474058116, 1.4159377236576436, -0.5471177517627316]
+                },
+                {
+                  "id": "key_189",
+                  "time": 9.9,
+                  "value": [-0.20092966249384214, 1.5063093427071206, -0.2757331138415231]
+                },
+                {
+                  "id": "key_190",
+                  "time": 10,
+                  "value": [-4.0574167154019915e-14, 1.5999999999999819, -5.578947983677739e-14]
+                }
+              ]
+            }
+          ],
+          "liveChannels": [],
+          "liveParams": []
+        }
+      ],
+      "activeEmitterId": "emitter_6",
+      "meshes": [],
+      "activeGraphKind": "emitter"
+    },
+    "assets": [
+      {
+        "name": "tGlow",
+        "label": "T_Glow.webp",
+        "dataUrl": "data:image/webp;base64,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",
+        "width": 128,
+        "height": 128
+      }
+    ],
+    "environments": [],
+    "meshAssets": [],
+    "palette": [],
+    "timeline": {
+      "duration": 10,
+      "fps": 30,
+      "loop": true
+    }
+  }
+}

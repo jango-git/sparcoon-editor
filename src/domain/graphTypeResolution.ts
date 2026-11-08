@@ -9,14 +9,17 @@ import {
   type EditorGraph,
   type GraphNode,
 } from "./graphModel";
-import type { FXGLSLTypeName } from "../engine/core/socket/FXValueType";
+import { genericWinner } from "../engine/core/compiler/FXTypeResolve.Internal";
+import { literalGenericType, type FXGLSLTypeName } from "../engine/core/socket/FXValueType";
 import type { FXNodeMeta, GraphKind } from "./nodePalette";
 import { metaForNode } from "./nodePalette";
 import { nodeFamily, type ResolveWired } from "./nodeFamilies";
 
 /**
  * The concrete type a generic node resolves its `"T"` to: its structural `valueType` parameter when it
- * has one, else the type of the first connected generic input (recursively). Cycle-guarded via `visited`.
+ * has one, else the type wired into its generic inputs as the engine picks it ({@link genericWinner}),
+ * recursively, else the one its inline values imply ({@link literalGenericType}). Cycle-guarded via
+ * `visited`.
  */
 export function resolveNodeType(
   kind: GraphKind,
@@ -40,7 +43,9 @@ export function resolveNodeType(
     }
   }
 
-  // Otherwise infer from whatever concrete type is wired into a generic input.
+  // Otherwise infer from the concrete types wired into the generic inputs, the engine's way: the
+  // first one, or the first vector when a scalar comes before it (the scalar splats).
+  const wired: { readonly id: string }[] = [];
   for (const input of metadata.inputs) {
     if (input.type !== "T") {
       continue;
@@ -58,10 +63,21 @@ export function resolveNodeType(
       visited,
     );
     if (sourceType !== undefined && sourceType !== "T") {
-      return sourceType;
+      wired.push({ id: sourceType });
     }
   }
-  return undefined;
+  if (wired.length > 0) {
+    return genericWinner(wired)?.id;
+  }
+  // Nothing wired: the inline values typed into the generic inputs decide, as in the engine.
+  const implied = literalGenericType(
+    metadata.inputs
+      .filter((input) => input.type === "T")
+      .map((input) => node.parameters[input.key] ?? input.control?.default),
+  );
+  return implied !== undefined && metadata.generic?.constraint.includes(implied) === true
+    ? implied
+    : undefined;
 }
 
 /** The concrete type carried by one socket, resolving a generic port through its node. */

@@ -1,0 +1,5390 @@
+{
+  "format": "sparcoon-project",
+  "version": 1,
+  "source": {
+    "name": "Energy Shield",
+    "scene": {
+      "vfx": {
+        "id": "vfx_1",
+        "transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "transformTracks": []
+      },
+      "emitters": [
+        {
+          "id": "emitter_237",
+          "name": "Bolts",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_259": {
+                "id": "node_259",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_260": {
+                "id": "node_260",
+                "type": "align-to-velocity",
+                "parameters": {
+                  "axis": "y",
+                  "flip": false,
+                  "cameraAxis": "z",
+                  "cameraModel": "point"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_262": {
+                "id": "node_262",
+                "type": "compose-transform",
+                "parameters": {
+                  "scale": [0.22, 1.3, 1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_263": {
+                "id": "node_263",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_264": {
+                "id": "node_264",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_265": {
+                "id": "node_265",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_268": {
+                "id": "node_268",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_273": {
+                "id": "node_273",
+                "type": "texture",
+                "parameters": {
+                  "name": "tGlow"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_274": {
+                "id": "node_274",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_276": {
+                "id": "node_276",
+                "type": "constant",
+                "parameters": {
+                  "type": "color",
+                  "value": [1, 0.5, 0.18, 1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_278": {
+                "id": "node_278",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 4
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_279": {
+                "id": "node_279",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_280": {
+                "id": "node_280",
+                "type": "constant",
+                "parameters": {
+                  "type": "color",
+                  "value": [0, 0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              },
+              "node_284": {
+                "id": "node_284",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2568
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_261",
+                "from": {
+                  "nodeId": "node_259",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_260",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_266",
+                "from": {
+                  "nodeId": "node_264",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_265",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_267",
+                "from": {
+                  "nodeId": "node_263",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_265",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_269",
+                "from": {
+                  "nodeId": "node_265",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_268",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_270",
+                "from": {
+                  "nodeId": "node_263",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_268",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_271",
+                "from": {
+                  "nodeId": "node_268",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_262",
+                  "socketKey": "position"
+                }
+              },
+              {
+                "id": "conn_272",
+                "from": {
+                  "nodeId": "node_260",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_262",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_275",
+                "from": {
+                  "nodeId": "node_273",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_274",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_277",
+                "from": {
+                  "nodeId": "node_276",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_274",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_281",
+                "from": {
+                  "nodeId": "node_280",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_279",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_282",
+                "from": {
+                  "nodeId": "node_274",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_279",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_283",
+                "from": {
+                  "nodeId": "node_278",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_279",
+                  "socketKey": "t"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "particleTransform",
+                "from": {
+                  "nodeId": "node_262",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_279",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_284",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 72
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 264
+                }
+              },
+              "node_245": {
+                "id": "node_245",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 9, 0],
+                  "name": "launch"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_246": {
+                "id": "node_246",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, -1, 0],
+                  "name": "aim"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_247": {
+                "id": "node_247",
+                "type": "lifetime",
+                "parameters": {
+                  "min": 0.4666666666666667,
+                  "max": 0.4666666666666667
+                },
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_248": {
+                "id": "node_248",
+                "type": "add-scaled-vector",
+                "parameters": {
+                  "scale": 15
+                },
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_249": {
+                "id": "node_249",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_252": {
+                "id": "node_252",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_253": {
+                "id": "node_253",
+                "type": "delta-time",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_254": {
+                "id": "node_254",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_255": {
+                "id": "node_255",
+                "type": "add-scaled-vector",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_250",
+                "from": {
+                  "nodeId": "node_249",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_248",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_251",
+                "from": {
+                  "nodeId": "node_246",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_248",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_256",
+                "from": {
+                  "nodeId": "node_254",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_255",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_257",
+                "from": {
+                  "nodeId": "node_252",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_255",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_258",
+                "from": {
+                  "nodeId": "node_253",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_255",
+                  "socketKey": "scale"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_245",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_247",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "node_248",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_255",
+                  "socketKey": "out"
+                },
+                "phase": "update"
+              }
+            ],
+            "attributes": [
+              {
+                "name": "velocity",
+                "type": "vec3"
+              }
+            ],
+            "comments": []
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [
+            {
+              "name": "launch",
+              "keys": [
+                {
+                  "id": "key_285",
+                  "time": 0.3333333333333333,
+                  "value": [4.962421600459147, 4.060163127648393, 6.315809309675277]
+                },
+                {
+                  "id": "key_286",
+                  "time": 1.4333333333333333,
+                  "value": [-5.867924546614162, 3.1596516789460867, 6.048476071125367]
+                },
+                {
+                  "id": "key_287",
+                  "time": 2.433333333333333,
+                  "value": [0.907979890149573, 7.71782906627137, 4.539899450747865]
+                },
+                {
+                  "id": "key_288",
+                  "time": 3.6333333333333333,
+                  "value": [-2.7014862262491133, 2.2512385218742614, 8.28455776049728]
+                },
+                {
+                  "id": "key_289",
+                  "time": 4.533333333333333,
+                  "value": [7.198560431856052, 2.699460161946019, 4.6790642807064335]
+                }
+              ]
+            },
+            {
+              "name": "aim",
+              "keys": [
+                {
+                  "id": "key_290",
+                  "time": 0.3333333333333333,
+                  "value": [-0.5513801778287941, -0.451129236405377, -0.7017565899639197]
+                },
+                {
+                  "id": "key_291",
+                  "time": 1.4333333333333333,
+                  "value": [0.6519916162904624, -0.3510724087717874, -0.6720528967917074]
+                },
+                {
+                  "id": "key_292",
+                  "time": 2.433333333333333,
+                  "value": [-0.10088665446106367, -0.8575365629190411, -0.5044332723053183]
+                },
+                {
+                  "id": "key_293",
+                  "time": 3.6333333333333333,
+                  "value": [0.3001651362499015, -0.2501376135415846, -0.9205064178330312]
+                },
+                {
+                  "id": "key_294",
+                  "time": 4.533333333333333,
+                  "value": [-0.7998400479840058, -0.2999400179940021, -0.5198960311896037]
+                }
+              ]
+            }
+          ],
+          "events": [
+            {
+              "id": "event_295",
+              "kind": "burst",
+              "time": 0.3333333333333333,
+              "count": 1
+            },
+            {
+              "id": "event_296",
+              "kind": "burst",
+              "time": 1.4333333333333333,
+              "count": 1
+            },
+            {
+              "id": "event_297",
+              "kind": "burst",
+              "time": 2.433333333333333,
+              "count": 1
+            },
+            {
+              "id": "event_298",
+              "kind": "burst",
+              "time": 3.6333333333333333,
+              "count": 1
+            },
+            {
+              "id": "event_299",
+              "kind": "burst",
+              "time": 4.533333333333333,
+              "count": 1
+            }
+          ],
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        },
+        {
+          "id": "emitter_300",
+          "name": "Sparks",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_333": {
+                "id": "node_333",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_334": {
+                "id": "node_334",
+                "type": "align-to-velocity",
+                "parameters": {
+                  "axis": "y",
+                  "flip": false,
+                  "cameraAxis": "z",
+                  "cameraModel": "point"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_336": {
+                "id": "node_336",
+                "type": "length",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_338": {
+                "id": "node_338",
+                "type": "remap",
+                "parameters": {
+                  "inMin": 0,
+                  "inMax": 6,
+                  "outMin": 0.02,
+                  "outMax": 0.24
+                },
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_340": {
+                "id": "node_340",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec3",
+                  "x": 0.025,
+                  "z": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_342": {
+                "id": "node_342",
+                "type": "compose-transform",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_343": {
+                "id": "node_343",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_344": {
+                "id": "node_344",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_345": {
+                "id": "node_345",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_348": {
+                "id": "node_348",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_354": {
+                "id": "node_354",
+                "type": "life-ratio",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_355": {
+                "id": "node_355",
+                "type": "color-ramp",
+                "parameters": {
+                  "gradient": {
+                    "stops": [
+                      {
+                        "position": 0,
+                        "color": [1, 0.95, 0.8, 1]
+                      },
+                      {
+                        "position": 0.3,
+                        "color": [1, 0.55, 0.2, 1]
+                      },
+                      {
+                        "position": 1,
+                        "color": [0.6, 0.1, 0.02, 0]
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_357": {
+                "id": "node_357",
+                "type": "texture",
+                "parameters": {
+                  "name": "tGlow"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              },
+              "node_358": {
+                "id": "node_358",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2568
+                }
+              },
+              "node_361": {
+                "id": "node_361",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 3.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2760
+                }
+              },
+              "node_362": {
+                "id": "node_362",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2952
+                }
+              },
+              "node_363": {
+                "id": "node_363",
+                "type": "constant",
+                "parameters": {
+                  "type": "color",
+                  "value": [0, 0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3144
+                }
+              },
+              "node_367": {
+                "id": "node_367",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3336
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_335",
+                "from": {
+                  "nodeId": "node_333",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_334",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_337",
+                "from": {
+                  "nodeId": "node_333",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_336",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_339",
+                "from": {
+                  "nodeId": "node_336",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_338",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_341",
+                "from": {
+                  "nodeId": "node_338",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_340",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_346",
+                "from": {
+                  "nodeId": "node_344",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_345",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_347",
+                "from": {
+                  "nodeId": "node_343",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_345",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_349",
+                "from": {
+                  "nodeId": "node_345",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_348",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_350",
+                "from": {
+                  "nodeId": "node_343",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_348",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_351",
+                "from": {
+                  "nodeId": "node_348",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_342",
+                  "socketKey": "position"
+                }
+              },
+              {
+                "id": "conn_352",
+                "from": {
+                  "nodeId": "node_334",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_342",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_353",
+                "from": {
+                  "nodeId": "node_340",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_342",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_356",
+                "from": {
+                  "nodeId": "node_354",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_355",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_359",
+                "from": {
+                  "nodeId": "node_357",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_358",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_360",
+                "from": {
+                  "nodeId": "node_355",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_358",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_364",
+                "from": {
+                  "nodeId": "node_363",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_362",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_365",
+                "from": {
+                  "nodeId": "node_358",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_362",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_366",
+                "from": {
+                  "nodeId": "node_361",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_362",
+                  "socketKey": "t"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "particleTransform",
+                "from": {
+                  "nodeId": "node_342",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_362",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_367",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 72
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 264
+                }
+              },
+              "node_308": {
+                "id": "node_308",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 2, 0],
+                  "name": "hit"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_309": {
+                "id": "node_309",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 1, 0],
+                  "name": "away"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_310": {
+                "id": "node_310",
+                "type": "spawn-sphere",
+                "parameters": {
+                  "surfaceOnly": false,
+                  "radius": 0.06,
+                  "center": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_311": {
+                "id": "node_311",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_314": {
+                "id": "node_314",
+                "type": "lifetime",
+                "parameters": {
+                  "min": 0.3,
+                  "max": 0.75
+                },
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_315": {
+                "id": "node_315",
+                "type": "firework",
+                "parameters": {
+                  "strength": 5,
+                  "angle": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_317": {
+                "id": "node_317",
+                "type": "custom-attribute",
+                "parameters": {
+                  "type": "vec3",
+                  "name": "velocity"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_318": {
+                "id": "node_318",
+                "type": "delta-time",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_319": {
+                "id": "node_319",
+                "type": "gravity",
+                "parameters": {
+                  "acceleration": [0, -9.81, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_322": {
+                "id": "node_322",
+                "type": "drag",
+                "parameters": {
+                  "damping": 1.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_325": {
+                "id": "node_325",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_326": {
+                "id": "node_326",
+                "type": "plane-collision",
+                "parameters": {
+                  "point": [0, 0, 0],
+                  "normal": [0, 1, 0],
+                  "radius": 0.01,
+                  "restitution": 0.3,
+                  "friction": 0.4
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_329": {
+                "id": "node_329",
+                "type": "add-scaled-vector",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_312",
+                "from": {
+                  "nodeId": "node_310",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_311",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_313",
+                "from": {
+                  "nodeId": "node_308",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_311",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_316",
+                "from": {
+                  "nodeId": "node_309",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_315",
+                  "socketKey": "axis"
+                }
+              },
+              {
+                "id": "conn_320",
+                "from": {
+                  "nodeId": "node_317",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "node_319",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_321",
+                "from": {
+                  "nodeId": "node_318",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_319",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_323",
+                "from": {
+                  "nodeId": "node_319",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_322",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_324",
+                "from": {
+                  "nodeId": "node_318",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_322",
+                  "socketKey": "dt"
+                }
+              },
+              {
+                "id": "conn_327",
+                "from": {
+                  "nodeId": "node_322",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_326",
+                  "socketKey": "velocity"
+                }
+              },
+              {
+                "id": "conn_328",
+                "from": {
+                  "nodeId": "node_325",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_326",
+                  "socketKey": "position"
+                }
+              },
+              {
+                "id": "conn_330",
+                "from": {
+                  "nodeId": "node_325",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_329",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_331",
+                "from": {
+                  "nodeId": "node_326",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_329",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_332",
+                "from": {
+                  "nodeId": "node_318",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_329",
+                  "socketKey": "scale"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_311",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_314",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "node_315",
+                  "socketKey": "velocity"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:velocity",
+                "from": {
+                  "nodeId": "node_326",
+                  "socketKey": "velocity"
+                },
+                "phase": "update"
+              },
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_329",
+                  "socketKey": "out"
+                },
+                "phase": "update"
+              }
+            ],
+            "attributes": [
+              {
+                "name": "velocity",
+                "type": "vec3"
+              }
+            ],
+            "comments": []
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [
+            {
+              "name": "hit",
+              "keys": [
+                {
+                  "id": "key_368",
+                  "time": 0.8,
+                  "value": [1.1027603556575882, 0.902258472810754, 1.4035131799278393]
+                },
+                {
+                  "id": "key_369",
+                  "time": 1.9,
+                  "value": [-1.3039832325809249, 0.7021448175435748, 1.3441057935834149]
+                },
+                {
+                  "id": "key_370",
+                  "time": 2.9,
+                  "value": [0.20177330892212733, 1.7150731258380822, 1.0088665446106366]
+                },
+                {
+                  "id": "key_371",
+                  "time": 4.1,
+                  "value": [-0.600330272499803, 0.5002752270831692, 1.8410128356660624]
+                },
+                {
+                  "id": "key_372",
+                  "time": 5,
+                  "value": [1.5996800959680115, 0.5998800359880042, 1.0397920623792074]
+                }
+              ]
+            },
+            {
+              "name": "away",
+              "keys": [
+                {
+                  "id": "key_373",
+                  "time": 0.8,
+                  "value": [0.5513801778287941, 0.451129236405377, 0.7017565899639197]
+                },
+                {
+                  "id": "key_374",
+                  "time": 1.9,
+                  "value": [-0.6519916162904624, 0.3510724087717874, 0.6720528967917074]
+                },
+                {
+                  "id": "key_375",
+                  "time": 2.9,
+                  "value": [0.10088665446106367, 0.8575365629190411, 0.5044332723053183]
+                },
+                {
+                  "id": "key_376",
+                  "time": 4.1,
+                  "value": [-0.3001651362499015, 0.2501376135415846, 0.9205064178330312]
+                },
+                {
+                  "id": "key_377",
+                  "time": 5,
+                  "value": [0.7998400479840058, 0.2999400179940021, 0.5198960311896037]
+                }
+              ]
+            }
+          ],
+          "events": [
+            {
+              "id": "event_378",
+              "kind": "burst",
+              "time": 0.8,
+              "count": 40
+            },
+            {
+              "id": "event_379",
+              "kind": "burst",
+              "time": 1.9,
+              "count": 40
+            },
+            {
+              "id": "event_380",
+              "kind": "burst",
+              "time": 2.9,
+              "count": 40
+            },
+            {
+              "id": "event_381",
+              "kind": "burst",
+              "time": 4.1,
+              "count": 40
+            },
+            {
+              "id": "event_382",
+              "kind": "burst",
+              "time": 5,
+              "count": 40
+            }
+          ],
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        },
+        {
+          "id": "emitter_383",
+          "name": "Flash",
+          "renderGraph": {
+            "nodes": {
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_394": {
+                "id": "node_394",
+                "type": "life-ratio",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_395": {
+                "id": "node_395",
+                "type": "ramp",
+                "parameters": {
+                  "curve": {
+                    "points": [
+                      {
+                        "position": 0,
+                        "value": 0.5,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.15,
+                        "value": 1.6,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 1,
+                        "value": 2.2,
+                        "interpolation": "smooth"
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_397": {
+                "id": "node_397",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec3",
+                  "z": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_400": {
+                "id": "node_400",
+                "type": "compose-transform",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 648
+                }
+              },
+              "node_401": {
+                "id": "node_401",
+                "type": "builtin-attribute",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 840
+                }
+              },
+              "node_402": {
+                "id": "node_402",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1032
+                }
+              },
+              "node_403": {
+                "id": "node_403",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1224
+                }
+              },
+              "node_406": {
+                "id": "node_406",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1416
+                }
+              },
+              "node_410": {
+                "id": "node_410",
+                "type": "look-at-camera",
+                "parameters": {
+                  "axis": "all",
+                  "cameraModel": "parallel"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1608
+                }
+              },
+              "node_413": {
+                "id": "node_413",
+                "type": "color-ramp",
+                "parameters": {
+                  "gradient": {
+                    "stops": [
+                      {
+                        "position": 0,
+                        "color": [1, 1, 1, 1]
+                      },
+                      {
+                        "position": 0.25,
+                        "color": [1, 0.6, 0.3, 1]
+                      },
+                      {
+                        "position": 1,
+                        "color": [0.3, 0.4, 1, 0]
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1800
+                }
+              },
+              "node_415": {
+                "id": "node_415",
+                "type": "ramp",
+                "parameters": {
+                  "curve": {
+                    "points": [
+                      {
+                        "position": 0,
+                        "value": 3,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 0.2,
+                        "value": 1.6,
+                        "interpolation": "smooth"
+                      },
+                      {
+                        "position": 1,
+                        "value": 0,
+                        "interpolation": "smooth"
+                      }
+                    ]
+                  }
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1992
+                }
+              },
+              "node_417": {
+                "id": "node_417",
+                "type": "texture",
+                "parameters": {
+                  "name": "tGlow"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2184
+                }
+              },
+              "node_418": {
+                "id": "node_418",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2376
+                }
+              },
+              "node_421": {
+                "id": "node_421",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2568
+                }
+              },
+              "node_422": {
+                "id": "node_422",
+                "type": "constant",
+                "parameters": {
+                  "type": "color",
+                  "value": [0, 0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2760
+                }
+              },
+              "node_426": {
+                "id": "node_426",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2952
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_396",
+                "from": {
+                  "nodeId": "node_394",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_395",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_398",
+                "from": {
+                  "nodeId": "node_395",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_397",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_399",
+                "from": {
+                  "nodeId": "node_395",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_397",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_404",
+                "from": {
+                  "nodeId": "node_402",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_403",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_405",
+                "from": {
+                  "nodeId": "node_401",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_403",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_407",
+                "from": {
+                  "nodeId": "node_403",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_406",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_408",
+                "from": {
+                  "nodeId": "node_401",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_406",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_409",
+                "from": {
+                  "nodeId": "node_406",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_400",
+                  "socketKey": "position"
+                }
+              },
+              {
+                "id": "conn_411",
+                "from": {
+                  "nodeId": "node_410",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_400",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_412",
+                "from": {
+                  "nodeId": "node_397",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_400",
+                  "socketKey": "scale"
+                }
+              },
+              {
+                "id": "conn_414",
+                "from": {
+                  "nodeId": "node_394",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_413",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_416",
+                "from": {
+                  "nodeId": "node_394",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_415",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_419",
+                "from": {
+                  "nodeId": "node_417",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_418",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_420",
+                "from": {
+                  "nodeId": "node_413",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_418",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_423",
+                "from": {
+                  "nodeId": "node_422",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_421",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_424",
+                "from": {
+                  "nodeId": "node_418",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_421",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_425",
+                "from": {
+                  "nodeId": "node_415",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_421",
+                  "socketKey": "t"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "particleTransform",
+                "from": {
+                  "nodeId": "node_400",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_421",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_426",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "behaviorGraph": {
+            "nodes": {
+              "out:spawn": {
+                "id": "out:spawn",
+                "type": "$spawn",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 72
+                }
+              },
+              "out:update": {
+                "id": "out:update",
+                "type": "$update",
+                "parameters": {},
+                "position": {
+                  "x": 480,
+                  "y": 264
+                }
+              },
+              "node_391": {
+                "id": "node_391",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 2, 0],
+                  "name": "hit"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 72
+                }
+              },
+              "node_392": {
+                "id": "node_392",
+                "type": "lifetime",
+                "parameters": {
+                  "min": 0.28,
+                  "max": 0.36
+                },
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_393": {
+                "id": "node_393",
+                "type": "random",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              }
+            },
+            "connections": [],
+            "outputBindings": [
+              {
+                "slot": "position",
+                "from": {
+                  "nodeId": "node_391",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "lifetime",
+                "from": {
+                  "nodeId": "node_392",
+                  "socketKey": "value"
+                },
+                "phase": "spawn"
+              },
+              {
+                "slot": "attr:seed",
+                "from": {
+                  "nodeId": "node_393",
+                  "socketKey": "out"
+                },
+                "phase": "spawn"
+              }
+            ],
+            "attributes": [
+              {
+                "name": "seed",
+                "type": "float"
+              }
+            ],
+            "comments": []
+          },
+          "settings": {
+            "spawnRate": 20
+          },
+          "tracks": [
+            {
+              "name": "hit",
+              "keys": [
+                {
+                  "id": "key_427",
+                  "time": 0.8,
+                  "value": [1.1027603556575882, 0.902258472810754, 1.4035131799278393]
+                },
+                {
+                  "id": "key_428",
+                  "time": 1.9,
+                  "value": [-1.3039832325809249, 0.7021448175435748, 1.3441057935834149]
+                },
+                {
+                  "id": "key_429",
+                  "time": 2.9,
+                  "value": [0.20177330892212733, 1.7150731258380822, 1.0088665446106366]
+                },
+                {
+                  "id": "key_430",
+                  "time": 4.1,
+                  "value": [-0.600330272499803, 0.5002752270831692, 1.8410128356660624]
+                },
+                {
+                  "id": "key_431",
+                  "time": 5,
+                  "value": [1.5996800959680115, 0.5998800359880042, 1.0397920623792074]
+                }
+              ]
+            }
+          ],
+          "events": [
+            {
+              "id": "event_432",
+              "kind": "burst",
+              "time": 0.8,
+              "count": 1
+            },
+            {
+              "id": "event_433",
+              "kind": "burst",
+              "time": 1.9,
+              "count": 1
+            },
+            {
+              "id": "event_434",
+              "kind": "burst",
+              "time": 2.9,
+              "count": 1
+            },
+            {
+              "id": "event_435",
+              "kind": "burst",
+              "time": 4.1,
+              "count": 1
+            },
+            {
+              "id": "event_436",
+              "kind": "burst",
+              "time": 5,
+              "count": 1
+            }
+          ],
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [1, 1, 1]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        }
+      ],
+      "activeEmitterId": "emitter_383",
+      "meshes": [
+        {
+          "id": "mesh_6",
+          "name": "Dome",
+          "renderGraph": {
+            "nodes": {
+              "node_8": {
+                "id": "node_8",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 312
+                }
+              },
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "sphere",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_9": {
+                "id": "node_9",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 504
+                }
+              },
+              "node_10": {
+                "id": "node_10",
+                "type": "inverse-world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 696
+                }
+              },
+              "node_12": {
+                "id": "node_12",
+                "type": "surface-position",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 888
+                }
+              },
+              "node_14": {
+                "id": "node_14",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "normalize"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1080
+                }
+              },
+              "node_16": {
+                "id": "node_16",
+                "type": "split",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1272
+                }
+              },
+              "node_18": {
+                "id": "node_18",
+                "type": "surface-normal",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1464
+                }
+              },
+              "node_19": {
+                "id": "node_19",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec2"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1656
+                }
+              },
+              "node_20": {
+                "id": "node_20",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1848
+                }
+              },
+              "node_23": {
+                "id": "node_23",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 5.196152422706631
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2040
+                }
+              },
+              "node_26": {
+                "id": "node_26",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "fract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2232
+                }
+              },
+              "node_28": {
+                "id": "node_28",
+                "type": "texture",
+                "parameters": {
+                  "name": "tHex"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2424
+                }
+              },
+              "node_30": {
+                "id": "node_30",
+                "type": "split-color",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 2616
+                }
+              },
+              "node_32": {
+                "id": "node_32",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec2"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2808
+                }
+              },
+              "node_33": {
+                "id": "node_33",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3000
+                }
+              },
+              "node_36": {
+                "id": "node_36",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 5.196152422706631
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3192
+                }
+              },
+              "node_39": {
+                "id": "node_39",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "fract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3384
+                }
+              },
+              "node_41": {
+                "id": "node_41",
+                "type": "texture",
+                "parameters": {
+                  "name": "tHex"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3576
+                }
+              },
+              "node_43": {
+                "id": "node_43",
+                "type": "split-color",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 3768
+                }
+              },
+              "node_45": {
+                "id": "node_45",
+                "type": "combine",
+                "parameters": {
+                  "type": "vec2"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3960
+                }
+              },
+              "node_46": {
+                "id": "node_46",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4152
+                }
+              },
+              "node_49": {
+                "id": "node_49",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 5.196152422706631
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4344
+                }
+              },
+              "node_52": {
+                "id": "node_52",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "fract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4536
+                }
+              },
+              "node_54": {
+                "id": "node_54",
+                "type": "texture",
+                "parameters": {
+                  "name": "tHex"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4728
+                }
+              },
+              "node_56": {
+                "id": "node_56",
+                "type": "split-color",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 4920
+                }
+              },
+              "node_58": {
+                "id": "node_58",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "abs"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5112
+                }
+              },
+              "node_60": {
+                "id": "node_60",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5304
+                }
+              },
+              "node_63": {
+                "id": "node_63",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "abs"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5496
+                }
+              },
+              "node_65": {
+                "id": "node_65",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5688
+                }
+              },
+              "node_68": {
+                "id": "node_68",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "abs"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5880
+                }
+              },
+              "node_70": {
+                "id": "node_70",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 6072
+                }
+              },
+              "node_73": {
+                "id": "node_73",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 6264
+                }
+              },
+              "node_76": {
+                "id": "node_76",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 6456
+                }
+              },
+              "node_79": {
+                "id": "node_79",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 6648
+                }
+              },
+              "node_82": {
+                "id": "node_82",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 6840
+                }
+              },
+              "node_85": {
+                "id": "node_85",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7032
+                }
+              },
+              "node_88": {
+                "id": "node_88",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7224
+                }
+              },
+              "node_91": {
+                "id": "node_91",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7416
+                }
+              },
+              "node_94": {
+                "id": "node_94",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "divide"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7608
+                }
+              },
+              "node_97": {
+                "id": "node_97",
+                "type": "fresnel",
+                "parameters": {
+                  "power": 2.6
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7800
+                }
+              },
+              "node_99": {
+                "id": "node_99",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 1, 0],
+                  "name": "hitDir"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 7992
+                }
+              },
+              "node_100": {
+                "id": "node_100",
+                "type": "timeline-value",
+                "parameters": {
+                  "type": "float",
+                  "value": 9,
+                  "name": "hitAge"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 8184
+                }
+              },
+              "node_101": {
+                "id": "node_101",
+                "type": "dot",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 8376
+                }
+              },
+              "node_104": {
+                "id": "node_104",
+                "type": "clamp",
+                "parameters": {
+                  "lo": -1,
+                  "hi": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 8568
+                }
+              },
+              "node_106": {
+                "id": "node_106",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "acos"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 8760
+                }
+              },
+              "node_108": {
+                "id": "node_108",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 2.4
+                },
+                "position": {
+                  "x": 168,
+                  "y": 8952
+                }
+              },
+              "node_110": {
+                "id": "node_110",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 9144
+                }
+              },
+              "node_113": {
+                "id": "node_113",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4.545454545454546
+                },
+                "position": {
+                  "x": 168,
+                  "y": 9336
+                }
+              },
+              "node_115": {
+                "id": "node_115",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 9528
+                }
+              },
+              "node_118": {
+                "id": "node_118",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "negate"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 9720
+                }
+              },
+              "node_120": {
+                "id": "node_120",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "exp"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 9912
+                }
+              },
+              "node_122": {
+                "id": "node_122",
+                "type": "smoothstep",
+                "parameters": {
+                  "edge0": 0,
+                  "edge1": 1.2
+                },
+                "position": {
+                  "x": 168,
+                  "y": 10104
+                }
+              },
+              "node_124": {
+                "id": "node_124",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "one-minus"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 10296
+                }
+              },
+              "node_126": {
+                "id": "node_126",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 10488
+                }
+              },
+              "node_129": {
+                "id": "node_129",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 4.545454545454546
+                },
+                "position": {
+                  "x": 168,
+                  "y": 10680
+                }
+              },
+              "node_131": {
+                "id": "node_131",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 10872
+                }
+              },
+              "node_134": {
+                "id": "node_134",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "negate"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 11064
+                }
+              },
+              "node_136": {
+                "id": "node_136",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "exp"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 11256
+                }
+              },
+              "node_138": {
+                "id": "node_138",
+                "type": "smoothstep",
+                "parameters": {
+                  "edge0": 0,
+                  "edge1": 0.45
+                },
+                "position": {
+                  "x": 168,
+                  "y": 11448
+                }
+              },
+              "node_140": {
+                "id": "node_140",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "one-minus"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 11640
+                }
+              },
+              "node_142": {
+                "id": "node_142",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 11832
+                }
+              },
+              "node_145": {
+                "id": "node_145",
+                "type": "time",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 12024
+                }
+              },
+              "node_146": {
+                "id": "node_146",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 12216
+                }
+              },
+              "node_148": {
+                "id": "node_148",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": -1.8
+                },
+                "position": {
+                  "x": 168,
+                  "y": 12408
+                }
+              },
+              "node_150": {
+                "id": "node_150",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 12600
+                }
+              },
+              "node_153": {
+                "id": "node_153",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "sin"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 12792
+                }
+              },
+              "node_155": {
+                "id": "node_155",
+                "type": "remap",
+                "parameters": {
+                  "inMin": -1,
+                  "inMax": 1,
+                  "outMin": 0.6,
+                  "outMax": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 12984
+                }
+              },
+              "node_157": {
+                "id": "node_157",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 13176
+                }
+              },
+              "node_160": {
+                "id": "node_160",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 0.16
+                },
+                "position": {
+                  "x": 168,
+                  "y": 13368
+                }
+              },
+              "node_162": {
+                "id": "node_162",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 0.55
+                },
+                "position": {
+                  "x": 168,
+                  "y": 13560
+                }
+              },
+              "node_164": {
+                "id": "node_164",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 13752
+                }
+              },
+              "node_167": {
+                "id": "node_167",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 0.7
+                },
+                "position": {
+                  "x": 168,
+                  "y": 13944
+                }
+              },
+              "node_169": {
+                "id": "node_169",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 1.8
+                },
+                "position": {
+                  "x": 168,
+                  "y": 14136
+                }
+              },
+              "node_171": {
+                "id": "node_171",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 0.35
+                },
+                "position": {
+                  "x": 168,
+                  "y": 14328
+                }
+              },
+              "node_172": {
+                "id": "node_172",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 14520
+                }
+              },
+              "node_175": {
+                "id": "node_175",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 14712
+                }
+              },
+              "node_178": {
+                "id": "node_178",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 1.3
+                },
+                "position": {
+                  "x": 168,
+                  "y": 14904
+                }
+              },
+              "node_180": {
+                "id": "node_180",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 15096
+                }
+              },
+              "node_183": {
+                "id": "node_183",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 15288
+                }
+              },
+              "node_186": {
+                "id": "node_186",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 15480
+                }
+              },
+              "node_189": {
+                "id": "node_189",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 15672
+                }
+              },
+              "node_192": {
+                "id": "node_192",
+                "type": "remap",
+                "parameters": {
+                  "inMin": 0,
+                  "inMax": 1,
+                  "outMin": 0.55,
+                  "outMax": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 15864
+                }
+              },
+              "node_193": {
+                "id": "node_193",
+                "type": "front-facing",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 16056
+                }
+              },
+              "node_195": {
+                "id": "node_195",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0.3, 0.62, 1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 16248
+                }
+              },
+              "node_196": {
+                "id": "node_196",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 16440
+                }
+              },
+              "node_197": {
+                "id": "node_197",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 16632
+                }
+              },
+              "node_201": {
+                "id": "node_201",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0.7, 0.35, 0.1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 16824
+                }
+              },
+              "node_202": {
+                "id": "node_202",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 17016
+                }
+              },
+              "node_203": {
+                "id": "node_203",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 17208
+                }
+              },
+              "node_207": {
+                "id": "node_207",
+                "type": "combine-color",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 17400
+                }
+              },
+              "node_208": {
+                "id": "node_208",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 17592
+                }
+              },
+              "node_212": {
+                "id": "node_212",
+                "type": "smoothstep",
+                "parameters": {
+                  "edge0": -0.01,
+                  "edge1": 0.03
+                },
+                "position": {
+                  "x": 168,
+                  "y": 17784
+                }
+              },
+              "node_214": {
+                "id": "node_214",
+                "type": "clamp",
+                "parameters": {
+                  "lo": 0,
+                  "hi": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 17976
+                }
+              },
+              "node_215": {
+                "id": "node_215",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 18168
+                }
+              },
+              "node_220": {
+                "id": "node_220",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 18360
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_11",
+                "from": {
+                  "nodeId": "node_10",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_13",
+                "from": {
+                  "nodeId": "node_12",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_9",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_15",
+                "from": {
+                  "nodeId": "node_9",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_14",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_17",
+                "from": {
+                  "nodeId": "node_14",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_16",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_21",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "y"
+                },
+                "to": {
+                  "nodeId": "node_20",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_22",
+                "from": {
+                  "nodeId": "node_20",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_19",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_24",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "z"
+                },
+                "to": {
+                  "nodeId": "node_23",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_25",
+                "from": {
+                  "nodeId": "node_23",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_19",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_27",
+                "from": {
+                  "nodeId": "node_19",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_26",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_29",
+                "from": {
+                  "nodeId": "node_26",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_28",
+                  "socketKey": "uv"
+                }
+              },
+              {
+                "id": "conn_31",
+                "from": {
+                  "nodeId": "node_28",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_30",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "id": "conn_34",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "x"
+                },
+                "to": {
+                  "nodeId": "node_33",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_35",
+                "from": {
+                  "nodeId": "node_33",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_32",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_37",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "z"
+                },
+                "to": {
+                  "nodeId": "node_36",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_38",
+                "from": {
+                  "nodeId": "node_36",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_32",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_40",
+                "from": {
+                  "nodeId": "node_32",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_39",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_42",
+                "from": {
+                  "nodeId": "node_39",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_41",
+                  "socketKey": "uv"
+                }
+              },
+              {
+                "id": "conn_44",
+                "from": {
+                  "nodeId": "node_41",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_43",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "id": "conn_47",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "x"
+                },
+                "to": {
+                  "nodeId": "node_46",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_48",
+                "from": {
+                  "nodeId": "node_46",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_45",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_50",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "y"
+                },
+                "to": {
+                  "nodeId": "node_49",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_51",
+                "from": {
+                  "nodeId": "node_49",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_45",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_53",
+                "from": {
+                  "nodeId": "node_45",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_52",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_55",
+                "from": {
+                  "nodeId": "node_52",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_54",
+                  "socketKey": "uv"
+                }
+              },
+              {
+                "id": "conn_57",
+                "from": {
+                  "nodeId": "node_54",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_56",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "id": "conn_59",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "x"
+                },
+                "to": {
+                  "nodeId": "node_58",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_61",
+                "from": {
+                  "nodeId": "node_58",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_60",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_62",
+                "from": {
+                  "nodeId": "node_58",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_60",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_64",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "y"
+                },
+                "to": {
+                  "nodeId": "node_63",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_66",
+                "from": {
+                  "nodeId": "node_63",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_65",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_67",
+                "from": {
+                  "nodeId": "node_63",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_65",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_69",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "z"
+                },
+                "to": {
+                  "nodeId": "node_68",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_71",
+                "from": {
+                  "nodeId": "node_68",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_70",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_72",
+                "from": {
+                  "nodeId": "node_68",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_70",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_74",
+                "from": {
+                  "nodeId": "node_60",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_73",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_75",
+                "from": {
+                  "nodeId": "node_65",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_73",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_77",
+                "from": {
+                  "nodeId": "node_73",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_76",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_78",
+                "from": {
+                  "nodeId": "node_70",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_76",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_80",
+                "from": {
+                  "nodeId": "node_30",
+                  "socketKey": "alpha"
+                },
+                "to": {
+                  "nodeId": "node_79",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_81",
+                "from": {
+                  "nodeId": "node_60",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_79",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_83",
+                "from": {
+                  "nodeId": "node_43",
+                  "socketKey": "alpha"
+                },
+                "to": {
+                  "nodeId": "node_82",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_84",
+                "from": {
+                  "nodeId": "node_65",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_82",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_86",
+                "from": {
+                  "nodeId": "node_56",
+                  "socketKey": "alpha"
+                },
+                "to": {
+                  "nodeId": "node_85",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_87",
+                "from": {
+                  "nodeId": "node_70",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_85",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_89",
+                "from": {
+                  "nodeId": "node_79",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_88",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_90",
+                "from": {
+                  "nodeId": "node_82",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_88",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_92",
+                "from": {
+                  "nodeId": "node_88",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_91",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_93",
+                "from": {
+                  "nodeId": "node_85",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_91",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_95",
+                "from": {
+                  "nodeId": "node_91",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_94",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_96",
+                "from": {
+                  "nodeId": "node_76",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_94",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_98",
+                "from": {
+                  "nodeId": "node_18",
+                  "socketKey": "normal"
+                },
+                "to": {
+                  "nodeId": "node_97",
+                  "socketKey": "normal"
+                }
+              },
+              {
+                "id": "conn_102",
+                "from": {
+                  "nodeId": "node_14",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_101",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_103",
+                "from": {
+                  "nodeId": "node_99",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_101",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_105",
+                "from": {
+                  "nodeId": "node_101",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_104",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_107",
+                "from": {
+                  "nodeId": "node_104",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_106",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_109",
+                "from": {
+                  "nodeId": "node_100",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_108",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_111",
+                "from": {
+                  "nodeId": "node_106",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_110",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_112",
+                "from": {
+                  "nodeId": "node_108",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_110",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_114",
+                "from": {
+                  "nodeId": "node_110",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_113",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_116",
+                "from": {
+                  "nodeId": "node_113",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_115",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_117",
+                "from": {
+                  "nodeId": "node_113",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_115",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_119",
+                "from": {
+                  "nodeId": "node_115",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_118",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_121",
+                "from": {
+                  "nodeId": "node_118",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_120",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_123",
+                "from": {
+                  "nodeId": "node_100",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_122",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_125",
+                "from": {
+                  "nodeId": "node_122",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_124",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_127",
+                "from": {
+                  "nodeId": "node_120",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_126",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_128",
+                "from": {
+                  "nodeId": "node_124",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_126",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_130",
+                "from": {
+                  "nodeId": "node_106",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_129",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_132",
+                "from": {
+                  "nodeId": "node_129",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_131",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_133",
+                "from": {
+                  "nodeId": "node_129",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_131",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_135",
+                "from": {
+                  "nodeId": "node_131",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_134",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_137",
+                "from": {
+                  "nodeId": "node_134",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_136",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_139",
+                "from": {
+                  "nodeId": "node_100",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_138",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_141",
+                "from": {
+                  "nodeId": "node_138",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_140",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_143",
+                "from": {
+                  "nodeId": "node_136",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_142",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_144",
+                "from": {
+                  "nodeId": "node_140",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_142",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_147",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "y"
+                },
+                "to": {
+                  "nodeId": "node_146",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_149",
+                "from": {
+                  "nodeId": "node_145",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_148",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_151",
+                "from": {
+                  "nodeId": "node_146",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_150",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_152",
+                "from": {
+                  "nodeId": "node_148",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_150",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_154",
+                "from": {
+                  "nodeId": "node_150",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_153",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_156",
+                "from": {
+                  "nodeId": "node_153",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_155",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_158",
+                "from": {
+                  "nodeId": "node_94",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_157",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_159",
+                "from": {
+                  "nodeId": "node_155",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_157",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_161",
+                "from": {
+                  "nodeId": "node_157",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_160",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_163",
+                "from": {
+                  "nodeId": "node_97",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_162",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_165",
+                "from": {
+                  "nodeId": "node_97",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_164",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_166",
+                "from": {
+                  "nodeId": "node_94",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_164",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_168",
+                "from": {
+                  "nodeId": "node_164",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_167",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_170",
+                "from": {
+                  "nodeId": "node_94",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_169",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_173",
+                "from": {
+                  "nodeId": "node_169",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_172",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_174",
+                "from": {
+                  "nodeId": "node_171",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_172",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_176",
+                "from": {
+                  "nodeId": "node_126",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_175",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_177",
+                "from": {
+                  "nodeId": "node_172",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_175",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_179",
+                "from": {
+                  "nodeId": "node_142",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_178",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_181",
+                "from": {
+                  "nodeId": "node_160",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_180",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_182",
+                "from": {
+                  "nodeId": "node_162",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_180",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_184",
+                "from": {
+                  "nodeId": "node_167",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_183",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_185",
+                "from": {
+                  "nodeId": "node_175",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_183",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_187",
+                "from": {
+                  "nodeId": "node_180",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_186",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_188",
+                "from": {
+                  "nodeId": "node_183",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_186",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_190",
+                "from": {
+                  "nodeId": "node_186",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_189",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_191",
+                "from": {
+                  "nodeId": "node_178",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_189",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_194",
+                "from": {
+                  "nodeId": "node_193",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_192",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_198",
+                "from": {
+                  "nodeId": "node_197",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_196",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_199",
+                "from": {
+                  "nodeId": "node_195",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_196",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_200",
+                "from": {
+                  "nodeId": "node_189",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_196",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_204",
+                "from": {
+                  "nodeId": "node_203",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_202",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_205",
+                "from": {
+                  "nodeId": "node_201",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_202",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_206",
+                "from": {
+                  "nodeId": "node_178",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_202",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_209",
+                "from": {
+                  "nodeId": "node_196",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_208",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_210",
+                "from": {
+                  "nodeId": "node_202",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_208",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_211",
+                "from": {
+                  "nodeId": "node_208",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_207",
+                  "socketKey": "rgb"
+                }
+              },
+              {
+                "id": "conn_213",
+                "from": {
+                  "nodeId": "node_16",
+                  "socketKey": "y"
+                },
+                "to": {
+                  "nodeId": "node_212",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_216",
+                "from": {
+                  "nodeId": "node_189",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_215",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_217",
+                "from": {
+                  "nodeId": "node_212",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_215",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_218",
+                "from": {
+                  "nodeId": "node_215",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_214",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_219",
+                "from": {
+                  "nodeId": "node_214",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_207",
+                  "socketKey": "alpha"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "vertexTransform",
+                "from": {
+                  "nodeId": "node_8",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "intensity",
+                "from": {
+                  "nodeId": "node_192",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_207",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_220",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "tracks": [
+            {
+              "name": "hitAge",
+              "keys": [
+                {
+                  "id": "key_221",
+                  "time": 0,
+                  "value": 9
+                },
+                {
+                  "id": "key_223",
+                  "time": 0.8,
+                  "value": 0
+                },
+                {
+                  "id": "key_224",
+                  "time": 1.8666666666666667,
+                  "value": 1.0666666666666664
+                },
+                {
+                  "id": "key_226",
+                  "time": 1.9,
+                  "value": 0
+                },
+                {
+                  "id": "key_227",
+                  "time": 2.8666666666666667,
+                  "value": 0.9666666666666668
+                },
+                {
+                  "id": "key_229",
+                  "time": 2.9,
+                  "value": 0
+                },
+                {
+                  "id": "key_230",
+                  "time": 4.066666666666666,
+                  "value": 1.1666666666666665
+                },
+                {
+                  "id": "key_232",
+                  "time": 4.1,
+                  "value": 0
+                },
+                {
+                  "id": "key_233",
+                  "time": 4.966666666666667,
+                  "value": 0.8666666666666671
+                },
+                {
+                  "id": "key_235",
+                  "time": 5,
+                  "value": 0
+                },
+                {
+                  "id": "key_236",
+                  "time": 5.966666666666667,
+                  "value": 0.9666666666666668
+                }
+              ]
+            },
+            {
+              "name": "hitDir",
+              "keys": [
+                {
+                  "id": "key_222",
+                  "time": 0.8,
+                  "value": [0.5513801778287941, 0.451129236405377, 0.7017565899639197],
+                  "ease": "step"
+                },
+                {
+                  "id": "key_225",
+                  "time": 1.9,
+                  "value": [-0.6519916162904624, 0.3510724087717874, 0.6720528967917074],
+                  "ease": "step"
+                },
+                {
+                  "id": "key_228",
+                  "time": 2.9,
+                  "value": [0.10088665446106367, 0.8575365629190411, 0.5044332723053183],
+                  "ease": "step"
+                },
+                {
+                  "id": "key_231",
+                  "time": 4.1,
+                  "value": [-0.3001651362499015, 0.2501376135415846, 0.9205064178330312],
+                  "ease": "step"
+                },
+                {
+                  "id": "key_234",
+                  "time": 5,
+                  "value": [0.7998400479840058, 0.2999400179940021, 0.5198960311896037],
+                  "ease": "step"
+                }
+              ]
+            }
+          ],
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0, 1],
+            "scale": [4, 4, 4]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        },
+        {
+          "id": "mesh_437",
+          "name": "GroundRing",
+          "renderGraph": {
+            "nodes": {
+              "node_439": {
+                "id": "node_439",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 312
+                }
+              },
+              "out": {
+                "id": "out",
+                "type": "$out",
+                "parameters": {
+                  "geometry": "plane",
+                  "renderMode": "blending"
+                },
+                "position": {
+                  "x": 480,
+                  "y": 96
+                }
+              },
+              "node_440": {
+                "id": "node_440",
+                "type": "uv",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 504
+                }
+              },
+              "node_441": {
+                "id": "node_441",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 696
+                }
+              },
+              "node_443": {
+                "id": "node_443",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec2",
+                  "value": [0.5, 0.5]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 888
+                }
+              },
+              "node_445": {
+                "id": "node_445",
+                "type": "length",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 1080
+                }
+              },
+              "node_447": {
+                "id": "node_447",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "subtract",
+                  "b": 0.3846153846153846
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1272
+                }
+              },
+              "node_449": {
+                "id": "node_449",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 20
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1464
+                }
+              },
+              "node_451": {
+                "id": "node_451",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1656
+                }
+              },
+              "node_454": {
+                "id": "node_454",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "negate"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 1848
+                }
+              },
+              "node_456": {
+                "id": "node_456",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "exp"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2040
+                }
+              },
+              "node_458": {
+                "id": "node_458",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 11.11111111111111
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2232
+                }
+              },
+              "node_460": {
+                "id": "node_460",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2424
+                }
+              },
+              "node_463": {
+                "id": "node_463",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "negate"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2616
+                }
+              },
+              "node_465": {
+                "id": "node_465",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "exp"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 2808
+                }
+              },
+              "node_467": {
+                "id": "node_467",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 0.9
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3000
+                }
+              },
+              "node_469": {
+                "id": "node_469",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply",
+                  "b": 0.25
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3192
+                }
+              },
+              "node_471": {
+                "id": "node_471",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "add"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3384
+                }
+              },
+              "node_474": {
+                "id": "node_474",
+                "type": "smoothstep",
+                "parameters": {
+                  "edge0": 0.4,
+                  "edge1": 0.5
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3576
+                }
+              },
+              "node_476": {
+                "id": "node_476",
+                "type": "unary-op",
+                "parameters": {
+                  "op": "one-minus"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3768
+                }
+              },
+              "node_478": {
+                "id": "node_478",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": 168,
+                  "y": 3960
+                }
+              },
+              "node_481": {
+                "id": "node_481",
+                "type": "combine-color",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 4152
+                }
+              },
+              "node_482": {
+                "id": "node_482",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0.3, 0.62, 1]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4344
+                }
+              },
+              "node_483": {
+                "id": "node_483",
+                "type": "mix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 4536
+                }
+              },
+              "node_484": {
+                "id": "node_484",
+                "type": "constant",
+                "parameters": {
+                  "type": "vec3",
+                  "value": [0, 0, 0]
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4728
+                }
+              },
+              "node_489": {
+                "id": "node_489",
+                "type": "clamp",
+                "parameters": {
+                  "lo": 0,
+                  "hi": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 4920
+                }
+              },
+              "node_492": {
+                "id": "node_492",
+                "type": "constant",
+                "parameters": {
+                  "type": "float",
+                  "value": 1
+                },
+                "position": {
+                  "x": 168,
+                  "y": 5112
+                }
+              }
+            },
+            "connections": [
+              {
+                "id": "conn_442",
+                "from": {
+                  "nodeId": "node_440",
+                  "socketKey": "uv"
+                },
+                "to": {
+                  "nodeId": "node_441",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_444",
+                "from": {
+                  "nodeId": "node_443",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_441",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_446",
+                "from": {
+                  "nodeId": "node_441",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_445",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_448",
+                "from": {
+                  "nodeId": "node_445",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_447",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_450",
+                "from": {
+                  "nodeId": "node_447",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_449",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_452",
+                "from": {
+                  "nodeId": "node_449",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_451",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_453",
+                "from": {
+                  "nodeId": "node_449",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_451",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_455",
+                "from": {
+                  "nodeId": "node_451",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_454",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_457",
+                "from": {
+                  "nodeId": "node_454",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_456",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_459",
+                "from": {
+                  "nodeId": "node_447",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_458",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_461",
+                "from": {
+                  "nodeId": "node_458",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_460",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_462",
+                "from": {
+                  "nodeId": "node_458",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_460",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_464",
+                "from": {
+                  "nodeId": "node_460",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_463",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_466",
+                "from": {
+                  "nodeId": "node_463",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_465",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_468",
+                "from": {
+                  "nodeId": "node_456",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_467",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_470",
+                "from": {
+                  "nodeId": "node_465",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_469",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_472",
+                "from": {
+                  "nodeId": "node_467",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_471",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_473",
+                "from": {
+                  "nodeId": "node_469",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_471",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_475",
+                "from": {
+                  "nodeId": "node_445",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_474",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_477",
+                "from": {
+                  "nodeId": "node_474",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_476",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_479",
+                "from": {
+                  "nodeId": "node_471",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_478",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_480",
+                "from": {
+                  "nodeId": "node_476",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_478",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_485",
+                "from": {
+                  "nodeId": "node_484",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_483",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_486",
+                "from": {
+                  "nodeId": "node_482",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_483",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_487",
+                "from": {
+                  "nodeId": "node_478",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_483",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_488",
+                "from": {
+                  "nodeId": "node_483",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_481",
+                  "socketKey": "rgb"
+                }
+              },
+              {
+                "id": "conn_490",
+                "from": {
+                  "nodeId": "node_478",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_489",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_491",
+                "from": {
+                  "nodeId": "node_489",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_481",
+                  "socketKey": "alpha"
+                }
+              }
+            ],
+            "outputBindings": [
+              {
+                "slot": "vertexTransform",
+                "from": {
+                  "nodeId": "node_439",
+                  "socketKey": "out"
+                }
+              },
+              {
+                "slot": "albedo",
+                "from": {
+                  "nodeId": "node_481",
+                  "socketKey": "color"
+                }
+              },
+              {
+                "slot": "additivity",
+                "from": {
+                  "nodeId": "node_492",
+                  "socketKey": "out"
+                }
+              }
+            ],
+            "attributes": [],
+            "comments": []
+          },
+          "tracks": [],
+          "transform": {
+            "position": [0, 0.015, 0],
+            "rotation": [-0.7071067811865475, 0, 0, 0.7071067811865476],
+            "scale": [5.2, 5.2, 1]
+          },
+          "transformTracks": [],
+          "liveChannels": [],
+          "liveParams": []
+        }
+      ],
+      "activeMeshId": "mesh_437",
+      "activeGraphKind": "vfxMesh"
+    },
+    "assets": [
+      {
+        "name": "tHex",
+        "label": "T_Hex.webp",
+        "dataUrl": "data:image/webp;base64,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",
+        "width": 512,
+        "height": 443
+      },
+      {
+        "name": "tGlow",
+        "label": "T_Glow.webp",
+        "dataUrl": "data:image/webp;base64,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",
+        "width": 128,
+        "height": 128
+      }
+    ],
+    "environments": [],
+    "meshAssets": [],
+    "palette": [],
+    "timeline": {
+      "duration": 6,
+      "fps": 30,
+      "loop": true
+    }
+  }
+}

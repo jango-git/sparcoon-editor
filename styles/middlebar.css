@@ -123,14 +123,38 @@
   border-style: dashed;
 }
 
-/* Removes the trail: a square icon-only button right after the Trail button, hidden without one.
+/* Removes the trail: a square trash button right after the Trail button, hidden without one. Its
+   danger look and countdown are the shared `.confirm-danger` (countdownConfirm.ts); this sets its
+   size and, at rest, the opaque backdrop the floating switch needs over the graph grid.
    `[hidden]` is re-asserted for the same reason as `.graph-switch[hidden]` above. */
 .graph-switch__remove {
+  flex: none;
   width: 28px;
-  justify-content: center;
-  padding: 0;
-  margin-left: -6px;
-  font-size: 16px;
+  height: 28px;
+  /* Over the switch's 6px gap and one px more: its left border lies on the Trail button's right one,
+     a single line where they meet, not two side by side. */
+  margin-left: -7px;
+}
+
+/* On that shared line the highlighted one shows its border: the Trail button while hovered or
+   active, the remove button over it while hovered or counting down. */
+.graph-switch--floating .graph-switch__button:is(:hover, .graph-switch__button--active),
+.graph-switch__remove:is(:hover, .counting) {
+  position: relative;
+  z-index: 1;
+}
+
+.graph-switch__remove:is(:hover, .counting) {
+  z-index: 2;
+}
+
+.graph-switch__remove:not(:hover, .counting) {
+  background: var(--panel-background);
+}
+
+.graph-switch__remove svg {
+  width: 15px;
+  height: 15px;
 }
 
 .graph-switch__remove[hidden] {

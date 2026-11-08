@@ -70,6 +70,7 @@ import {
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { externalSlots } from "./externalSlots";
 import { EmitterTrail, type AssembledTrail } from "./emitterTrail.Internal";
+import { gpuSortWarnings } from "../domain/sortChecks";
 import { trailSortError } from "../domain/trailChecks";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 
@@ -401,6 +402,13 @@ export class EmitterView implements GraphApplier {
     const renderWarnings = [
       ...budget.warnings,
       ...unwrittenAttributeWarnings(this.renderLive.graphView, written, declaredAttributes),
+      // The same "does this emitter run on the GPU" installEmitter decides by.
+      ...gpuSortWarnings(
+        config.sortInterval,
+        spawnConfig.tryGpuSimulation &&
+          this.renderer.capabilities.isWebGL2 &&
+          artifacts.gpuBehavior !== undefined,
+      ),
     ];
     const trailWarnings =
       trail === undefined || trailBudget === undefined

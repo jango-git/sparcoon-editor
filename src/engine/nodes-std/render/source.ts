@@ -1,5 +1,6 @@
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
+import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
  * Standard-library render source nodes: scalar/coordinate producers that read a host-provided
@@ -89,6 +90,45 @@ export const fxCameraDistance = defineNode({
 });
 
 /**
+ * The fragment's world-space position (the `worldPosition` builtin): on a VFX mesh the point of
+ * its surface being shaded, on a particle or a trail the point of its quad or ribbon. Into the
+ * object's own space through `inverse-world-matrix` + `transform-point`.
+ */
+export const fxSurfacePosition = defineNode({
+  type: "surface-position",
+  domain: "render",
+  stage: "fragment",
+  category: "source",
+  inputs: {},
+  outputs: { position: { type: "vec3" } },
+  params: {},
+  cost: 0,
+  reads: ["worldPosition"],
+  build: ({ target }) => ({ position: target.read("worldPosition") }),
+});
+
+/**
+ * Which side of the surface the fragment shows: 1 on a front face, 0 on a back one (GLSL
+ * `gl_FrontFacing`). The material is double-sided, so a back face is the inside of a closed mesh
+ * seen through its open or transparent front - and `surface-normal` there is flipped toward the
+ * camera, which this tells apart.
+ */
+export const fxFrontFacing = defineNode({
+  type: "front-facing",
+  domain: "render",
+  stage: "fragment",
+  category: "source",
+  inputs: {},
+  outputs: { out: { type: "float" } },
+  params: {},
+  // A select on a builtin flag.
+  cost: 1,
+  build: ({ fn }) => ({
+    out: fn.raw(FX_VALUE_TYPES.float, "glsl", "(gl_FrontFacing ? 1.0 : 0.0)"),
+  }),
+});
+
+/**
  * All standard render source node definitions. A constant RGBA color is not a dedicated node -
  * use a `constant` with its `color` type instead (a `vec4` edited via a color picker).
  */
@@ -98,4 +138,6 @@ export const FX_RENDER_SOURCE_NODES: readonly FXNodeDefinition[] = [
   fxLifeRatio,
   fxUV,
   fxCameraDistance,
+  fxSurfacePosition,
+  fxFrontFacing,
 ];

@@ -18,7 +18,10 @@ function harness(events: readonly TimelineEvent[]) {
   const transport = new TransportStore(() => store.getSource().timeline.duration);
   const log: string[] = [];
   const emitters = {
-    applySceneTransforms: vi.fn((_scene: unknown, time: number) => log.push(`pose ${time}`)),
+    // Rounded: while playing, poses sample the raw caret time (a lap wrap leaves float noise).
+    applySceneTransforms: vi.fn((_scene: unknown, time: number) =>
+      log.push(`pose ${String(Number(time.toFixed(6)))}`),
+    ),
     driveParamValues: vi.fn(),
     driveMeshParamValues: vi.fn(),
     clearManualPoses: vi.fn(),

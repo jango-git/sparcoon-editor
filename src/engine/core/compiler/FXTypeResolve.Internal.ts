@@ -90,12 +90,16 @@ export function resolveGenerics(graph: FXGraph, order: readonly string[]): FXTyp
 
     let resolved: FXValueType | undefined;
     if (first !== undefined) {
-      // First connected generic input fixes `T`; the rest coerce at readInput, so
-      // differing numeric widths are not a conflict - only numeric-vs-opaque is.
+      // The first connected generic input fixes `T` - unless it is a scalar and a vector is wired
+      // too: then the first vector does, and the scalar splats across it (`vec3 * float` works
+      // whichever side the float is on, instead of the vector being cut to its `.x`). The rest
+      // coerce at readInput, so differing numeric widths are not a conflict - only
+      // numeric-vs-opaque is.
+      const chosen = genericWinner(candidates.map((candidate) => candidate.type)) ?? first;
       const conflict = candidates.find(
         (candidate) =>
-          candidate.type.id !== first.id &&
-          !(isNumericType(candidate.type) && isNumericType(first)),
+          candidate.type.id !== chosen.id &&
+          !(isNumericType(candidate.type) && isNumericType(chosen)),
       );
       if (conflict !== undefined) {
         errors.push({
@@ -105,7 +109,7 @@ export function resolveGenerics(graph: FXGraph, order: readonly string[]): FXTyp
           socketKey: conflict.socketKey,
         });
       }
-      resolved = first;
+      resolved = chosen;
     } else {
       const hint = node.resolveGenericHint?.();
       if (hint !== undefined) {
@@ -134,6 +138,20 @@ export function resolveGenerics(graph: FXGraph, order: readonly string[]): FXTyp
   }
 
   return { types, errors };
+}
+
+/**
+ * Which of the types wired into a node's generic inputs (in socket order) fixes its `T`: the first
+ * vector when a scalar comes before it, else the first. `undefined` for none.
+ */
+export function genericWinner<T extends { readonly id: string }>(
+  types: readonly T[],
+): T | undefined {
+  const first: T | undefined = types.at(0);
+  if (first?.id !== "float") {
+    return first;
+  }
+  return types.find((type) => /^vec[234]$/.test(type.id)) ?? first;
 }
 
 /** The constraint of a node's generic type variable, taken from any generic socket. */

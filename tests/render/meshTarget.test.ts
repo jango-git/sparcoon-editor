@@ -131,6 +131,7 @@ describe("FX_MESH_TARGET shape", () => {
     expect(slots.has("albedo")).toBe(true);
     expect(slots.has("vertexTransform")).toBe(true);
     expect(slots.has("additivity")).toBe(true);
+    expect(slots.has("intensity")).toBe(true);
     expect(slots.has("alphaThreshold")).toBe(true);
     expect(slots.has("particleTransform")).toBe(false);
   });

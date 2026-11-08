@@ -17,8 +17,18 @@ function readBundledPreset(fileName: string): string {
 }
 
 describe("bundled project presets", () => {
-  it("lists Empty first, then Sparks", () => {
-    expect(PROJECT_PRESETS.map((preset) => preset.id)).toEqual(["empty", "sparks"]);
+  it("lists Empty first, then Sparks, then the showcase effects", () => {
+    expect(PROJECT_PRESETS.map((preset) => preset.id)).toEqual([
+      "empty",
+      "sparks",
+      "campfire",
+      "lightning-crack",
+      "portal",
+      "shield",
+      "fireworks",
+      "fireflies",
+      "destruction",
+    ]);
     expect(PROJECT_PRESETS[0]).toBe(EMPTY_PRESET);
   });
 
@@ -39,6 +49,14 @@ describe("bundled project presets", () => {
     expect(source).toBeDefined();
     expect(source?.name).toBe("Empty");
     expect(source?.scene.emitters.length).toBeGreaterThan(0);
+  });
+
+  it("every bundled preset's JSON parses to a document with something in it", () => {
+    for (const preset of PROJECT_PRESETS) {
+      const source = deserializeProject(readBundledPreset(preset.fileName));
+      expect(source, preset.fileName).toBeDefined();
+      expect(source!.scene.emitters.length, preset.fileName).toBeGreaterThan(0);
+    }
   });
 
   it("every bundled preset's emitters and meshes actually compile, not just parse", () => {

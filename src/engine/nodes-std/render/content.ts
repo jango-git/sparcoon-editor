@@ -2,6 +2,7 @@ import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import type { FXExpr } from "../../core/ir/FXExpr";
+import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
@@ -73,23 +74,43 @@ const FLIPBOOK_LOOP_PARAM = {
   default: false,
 } as const satisfies FXParamSpec;
 
-// previous = the cell the playhead sits on; current = the next cell; factor = how far between.
+// frame = the cell the playhead sits on; next = the cell after it; factor = how far between.
 const FLIPBOOK_FRAME_ONCE = `vec3 fxAnimatedFrameOnce(float ratio, float totalFrames) {
   float framePos = clamp(ratio, 0.0, 1.0) * totalFrames;
   float last = totalFrames - 1.0;
-  float previous = min(floor(framePos), last);
-  return vec3(previous, min(previous + 1.0, last), framePos - previous);
+  float frame = min(floor(framePos), last);
+  return vec3(frame, min(frame + 1.0, last), framePos - frame);
 }`;
 const FLIPBOOK_FRAME_LOOP = `vec3 fxAnimatedFrameLoop(float ratio, float totalFrames) {
   float framePos = fract(ratio) * totalFrames;
-  float previous = floor(framePos);
-  return vec3(previous, mod(previous + 1.0, totalFrames), framePos - previous);
+  float frame = floor(framePos);
+  return vec3(frame, mod(frame + 1.0, totalFrames), framePos - frame);
 }`;
 
 /**
- * Sprite-sheet flipbook sampler with inter-frame blending: maps `lifetimeRatio` to the `previous`/
- * `current` frame UVs straddling the playhead plus a cross-fade `factor` - once through or looping
- * (see {@link FLIPBOOK_LOOP_PARAM}).
+ * The UV of cell `frame` (a whole number) of a `columns` x `rows` sheet, cells left to right, top
+ * to bottom. The column is taken off the row rather than by `mod`: `mod(8.0, 8.0)` may come out
+ * 7.99..., which would read the cell's right neighbour - a whole frame off.
+ */
+const FLIPBOOK_FRAME_UV = `vec2 fxFlipbookFrameUV(vec2 uv, float frame, float columns, float rows) {
+  float row = floor((frame + 0.5) / columns);
+  float column = frame - row * columns;
+  return vec2((column + uv.x) / columns, 1.0 - (row + 1.0 - uv.y) / rows);
+}`;
+
+/** The sheet's frame count: `frames` when set (above 0), else every cell of the grid. */
+function sheetFrames(fn: FXExprBuilderApi, frames: FXExpr, columns: FXExpr, rows: FXExpr): FXExpr {
+  return fn.raw(FLOAT, "glsl", "($0 > 0.5 ? floor($0 + 0.5) : $1 * $2)", frames, columns, rows);
+}
+
+/** The `frames` input both flipbook nodes share: how many cells the sheet uses, 0 = all of them. */
+const FRAMES_INPUT = { type: "float", value: 0, min: 0, max: 4096, step: 1 } as const;
+
+/**
+ * Sprite-sheet flipbook sampler with inter-frame blending: maps `lifetimeRatio` over the sheet's
+ * `frames` (every cell when 0) to the UV of the frame the playhead is on (`uvFrame`), of the one
+ * after it (`uvNext`), and how far between (`factor`) - once through or looping (see
+ * {@link FLIPBOOK_LOOP_PARAM}). Mix `uvFrame`'s sample to `uvNext`'s by `factor` to cross-fade.
  */
 export const fxAnimatedTexture = defineNode({
   type: "animated-texture",
@@ -101,32 +122,26 @@ export const fxAnimatedTexture = defineNode({
     lifetimeRatio: { type: "float", value: 0, step: 0.01 },
     columns: { type: "float", value: 1, min: 1, max: 64, step: 1 },
     rows: { type: "float", value: 1, min: 1, max: 64, step: 1 },
+    frames: FRAMES_INPUT,
   },
   outputs: {
-    uvPrevious: { type: "vec2" },
-    uvCurrent: { type: "vec2" },
+    uvFrame: { type: "vec2" },
+    uvNext: { type: "vec2" },
     factor: { type: "float" },
   },
   params: { loop: FLIPBOOK_LOOP_PARAM },
   // Frame info (once: clamp+mul(2) + floor(1) + sub(1) + two min(2) + add(1) + sub(1) = 8; loop:
-  // fract+mul(2) + floor(1) + mod-based wrap(add+mod=6) + subtract(1) = 10) + the columns*rows
-  // multiply (1) + two fxFlipbookFrameUV calls (mod(5) + div+floor(3) + two div-heavy components
-  // (3+5) = 16 each, so 32).
-  cost: ({ params }) => (params.loop === true ? 10 : 8) + 1 + 32,
+  // fract+mul(2) + floor(1) + mod-based wrap(add+mod=6) + subtract(1) = 10) + the frame count
+  // (compare + select + floor/add or multiply, 3) + two fxFlipbookFrameUV calls (row: add + div +
+  // floor (4), column: mul + sub (2), two div-heavy components (3+5) = 14 each, so 28).
+  cost: ({ params }) => (params.loop === true ? 10 : 8) + 3 + 28,
   build: ({ inputs, params, emitHelper, local, fn }) => {
     const frameFunction = params.loop ? "fxAnimatedFrameLoop" : "fxAnimatedFrameOnce";
     emitHelper(
       `animated-texture-${frameFunction}`,
       params.loop ? FLIPBOOK_FRAME_LOOP : FLIPBOOK_FRAME_ONCE,
     );
-    emitHelper(
-      "animated-texture-uv",
-      `vec2 fxFlipbookFrameUV(vec2 uv, float frame, float columns, float rows) {
-        float column = mod(frame, columns);
-        float row = floor(frame / columns);
-        return vec2((column + uv.x) / columns, 1.0 - (row + 1.0 - uv.y) / rows);
-      }`,
-    );
+    emitHelper("animated-texture-uv", FLIPBOOK_FRAME_UV);
     const frameInfo = local(
       "at_frame",
       fn.raw(
@@ -134,10 +149,10 @@ export const fxAnimatedTexture = defineNode({
         "glsl",
         `${frameFunction}($0, $1)`,
         inputs["lifetimeRatio"],
-        fn.mul(inputs["columns"], inputs["rows"]),
+        sheetFrames(fn, inputs["frames"], inputs["columns"], inputs["rows"]),
       ),
     );
-    // frameInfo is $0: its .x (previous) / .y (current) channel feeds the frame index.
+    // frameInfo is $0: its .x (this frame) / .y (the next) channel feeds the frame index.
     const frameUV = (channel: "x" | "y"): FXExpr =>
       fn.raw(
         VEC2,
@@ -149,9 +164,60 @@ export const fxAnimatedTexture = defineNode({
         inputs["rows"],
       );
     return {
-      uvPrevious: frameUV("x"),
-      uvCurrent: frameUV("y"),
+      uvFrame: frameUV("x"),
+      uvNext: frameUV("y"),
       factor: fn.raw(FLOAT, "glsl", "$0.z", frameInfo),
+    };
+  },
+});
+
+/**
+ * One cell of a sprite sheet by its number: `frame` (any float: rounded down, then wrapped round
+ * the sheet's `frames`, every cell when 0) to that cell's UV - no cross-fade, so a frame never
+ * smears into its neighbour. For picking frames by hand: a random one per particle, one stepped at
+ * a rate of its own, one per state.
+ */
+export const fxFlipbookFrame = defineNode({
+  type: "flipbook-frame",
+  domain: "render",
+  stage: "fragment",
+  category: "uv",
+  inputs: {
+    uv: { type: "vec2", default: { targetInput: "p_uv" } },
+    frame: { type: "float", value: 0, step: 1 },
+    columns: { type: "float", value: 1, min: 1, max: 64, step: 1 },
+    rows: { type: "float", value: 1, min: 1, max: 64, step: 1 },
+    frames: FRAMES_INPUT,
+  },
+  outputs: { uv: { type: "vec2" } },
+  params: {},
+  // The frame count (3) + floor + the wrap (floor, add, div, floor, mul, sub: 7) + one
+  // fxFlipbookFrameUV call (14).
+  cost: 3 + 8 + 14,
+  build: ({ inputs, emitHelper, local, fn }) => {
+    emitHelper("animated-texture-uv", FLIPBOOK_FRAME_UV);
+    const total = local(
+      "fb_frames",
+      sheetFrames(fn, inputs["frames"], inputs["columns"], inputs["rows"]),
+    );
+    // Wrapped as the column is (see FLIPBOOK_FRAME_UV), not by `mod`, which may land on `total`
+    const cell = fn.raw(
+      FLOAT,
+      "glsl",
+      "(floor($0) - $1 * floor((floor($0) + 0.5) / $1))",
+      inputs["frame"],
+      total,
+    );
+    return {
+      uv: fn.raw(
+        VEC2,
+        "glsl",
+        "fxFlipbookFrameUV($0, $1, $2, $3)",
+        inputs["uv"],
+        cell,
+        inputs["columns"],
+        inputs["rows"],
+      ),
     };
   },
 });
@@ -193,5 +259,6 @@ export const FX_RENDER_CONTENT_NODES: readonly FXNodeDefinition[] = [
   fxRotateUV,
   fxTileUV,
   fxAnimatedTexture,
+  fxFlipbookFrame,
   fxFresnel,
 ];

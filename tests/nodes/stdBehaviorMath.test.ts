@@ -168,6 +168,47 @@ describe("standard behavior math - registration & compilation", () => {
     expect([...buffers.position]).toEqual([11, 22, 33]);
   });
 
+  it("binary-op splats a single-number inline pin value across a vector, as a wired scalar", () => {
+    const r = registry();
+    const nodes = new Map<string, FXBehaviorNode>([
+      ["a", r.create("constant", { type: "vec3", value: [1, 2, 3] })],
+      ["mul", r.create("binary-op", { op: "multiply", b: 2 })],
+    ]);
+    const graph = new FXGraph<FXBehaviorNode>();
+    graph.ingest({
+      nodes,
+      connections: [edge("a", "out", "mul", "a")],
+      outputBindings: [bind("position", "mul", "out")],
+    });
+    const compiled = compileParticleBehavior(graph);
+    const update = buildParticleUpdateKernel(compiled);
+    const buffers = coreBuffers();
+    update(buffers, 1, 0.016, compiled.update.bindings);
+    // Every component scaled - not (2, 0, 0) with the tail padded
+    expect([...buffers.position]).toEqual([2, 4, 6]);
+  });
+
+  it("binary-op multiplies by a wired scalar on either side, the scalar splatting", () => {
+    const r = registry();
+    const nodes = new Map<string, FXBehaviorNode>([
+      ["s", r.create("constant", { type: "float", value: 3 })],
+      ["v", r.create("constant", { type: "vec3", value: [1, 2, 3] })],
+      ["mul", r.create("binary-op", { op: "multiply" })],
+    ]);
+    const graph = new FXGraph<FXBehaviorNode>();
+    graph.ingest({
+      nodes,
+      // The scalar on `a`, the vector on `b`: the vector still decides the width
+      connections: [edge("s", "out", "mul", "a"), edge("v", "out", "mul", "b")],
+      outputBindings: [bind("position", "mul", "out")],
+    });
+    const compiled = compileParticleBehavior(graph);
+    const update = buildParticleUpdateKernel(compiled);
+    const buffers = coreBuffers();
+    update(buffers, 1, 0.016, compiled.update.bindings);
+    expect([...buffers.position]).toEqual([3, 6, 9]);
+  });
+
   it("add-scaled-vector computes out = a + b * scale, b unconnected at the resolved width", () => {
     const r = registry();
     const nodes = new Map<string, FXBehaviorNode>([

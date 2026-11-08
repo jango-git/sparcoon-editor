@@ -124,9 +124,11 @@ const PARTICLE_TRANSFORM_OUTPUT: FXTargetOutput = {
 };
 
 // Compositing slots the `$out` surface sink owns: `additivity` (0 = normal "over" -> 1 = additive,
-// honored only in `blending`) and `alphaThreshold` (discard cutoff, honored in every mode but `opaque`).
+// honored only in `blending`), `intensity` (a multiplier on the color alone, never its alpha, in every
+// mode) and `alphaThreshold` (discard cutoff, honored in every mode but `opaque`).
 const COMPOSITING_OUTPUTS: readonly FXTargetOutput[] = [
   { slot: "additivity", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
+  { slot: "intensity", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
   { slot: "alphaThreshold", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
 ];
 

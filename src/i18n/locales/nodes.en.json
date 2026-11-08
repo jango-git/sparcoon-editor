@@ -1,12 +1,15 @@
 {
   "$out": {
-    "description": "The surface sink: wire the base color into Color (required) and, optionally, per-particle/per-vertex transforms. Render Mode picks how alpha composites - blending (Additivity Factor 0=over..1=additive), alphaHash (stochastic), alphaTest (hard cutout at Alpha Threshold), or opaque; Additivity Factor shows only in blending and Alpha Threshold in every mode but opaque. Geometry picks the primitive or a custom mesh asset; for a particle emitter, Sort Every N re-sorts particles back-to-front every N frames (0 = off). In a trail graph the sink draws a ribbon behind every particle instead: Width sets the ribbon's width (0.1 when unwired), Trail Points how many recorded points of each particle's path it keeps, and Point Interval the seconds between two points.",
+    "description": "The surface sink: wire the base color into Color (required) and, optionally, per-particle/per-vertex transforms. Render Mode picks how alpha composites - blending (Additivity Factor 0=over..1=additive), alphaHash (stochastic), alphaTest (hard cutout at Alpha Threshold), or opaque; Additivity Factor shows only in blending and Alpha Threshold in every mode but opaque; Intensity (1 when unwired) multiplies the color alone, never its alpha, in every mode - in blending an additive fragment's light is its color times its alpha, so Intensity is the way to dim or brighten a glow. Geometry picks the primitive or a custom mesh asset; for a particle emitter, Sort Every N re-sorts particles back-to-front every N frames (0 = off). In a trail graph the sink draws a ribbon behind every particle instead: Width sets the ribbon's width (0.1 when unwired), Trail Points how many recorded points of each particle's path it keeps, and Point Interval the seconds between two points.",
     "inputs": {
       "additivity": {
         "label": "Additivity Factor"
       },
       "albedo": {
         "label": "Color"
+      },
+      "intensity": {
+        "label": "Intensity"
       },
       "alphaThreshold": {
         "label": "Alpha Threshold"
@@ -178,10 +181,13 @@
     }
   },
   "animated-texture": {
-    "description": "Cross-fades a sprite sheet: previous/current frame UVs and a blend factor from a ratio - once through [0, 1], holding the last frame, or looping.",
+    "description": "Cross-fades a sprite sheet: the UV of the frame the ratio is on, of the next one, and how far between - once through [0, 1], holding the last frame, or looping. Frames: how many cells the sheet uses (0 = all).",
     "inputs": {
       "columns": {
         "label": "Columns"
+      },
+      "frames": {
+        "label": "Frames"
       },
       "lifetimeRatio": {
         "label": "Lifetime"
@@ -198,11 +204,11 @@
       "factor": {
         "label": "Factor"
       },
-      "uvCurrent": {
-        "label": "UV Current"
+      "uvFrame": {
+        "label": "UV Frame"
       },
-      "uvPrevious": {
-        "label": "UV Previous"
+      "uvNext": {
+        "label": "UV Next"
       }
     },
     "params": {
@@ -212,8 +218,35 @@
     },
     "searchTags": ["sprite", "flipbook", "sheet", "atlas", "sequence"]
   },
+  "flipbook-frame": {
+    "description": "One cell of a sprite sheet by its number (rounded down, wrapped round the sheet's frames; 0 frames = all cells), with no cross-fade: for picking frames by hand - a random one per particle, one stepped at a rate of its own.",
+    "inputs": {
+      "columns": {
+        "label": "Columns"
+      },
+      "frame": {
+        "label": "Frame"
+      },
+      "frames": {
+        "label": "Frames"
+      },
+      "rows": {
+        "label": "Rows"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Flipbook Frame",
+    "outputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "searchTags": ["sprite", "flipbook", "sheet", "atlas", "frame", "random"]
+  },
   "binary-op": {
-    "description": "Applies a two-input operation (add, multiply, min, pow, step, ...) to same-typed values.",
+    "description": "Applies a two-input operation (add, multiply, min, pow, step, ...) to two values of one type, or a vector and a scalar (the scalar applies to every component).",
     "inputs": {
       "a": {
         "label": "A"
@@ -503,8 +536,11 @@
     }
   },
   "compose-transform": {
-    "description": "Builds a mat4 from position, rotation (mat3) and scale (T * R * S).",
+    "description": "Builds a mat4 from position, rotation (mat3) and scale (T * R * S); the pivot is the point of the mesh (in its own units, before scaling) that lands on the position - a unit quad's bottom edge is (0, -0.5, 0).",
     "inputs": {
+      "pivot": {
+        "label": "Pivot"
+      },
       "position": {
         "label": "Position"
       },
@@ -716,6 +752,16 @@
       }
     },
     "searchTags": ["rim", "edge", "glow", "facing"]
+  },
+  "front-facing": {
+    "description": "1 on a front face, 0 on a back one. The material is double-sided, and a back face (the inside of a closed mesh) gets its surface normal flipped toward the camera; this tells the two apart.",
+    "label": "Front Facing",
+    "outputs": {
+      "out": {
+        "label": "Front"
+      }
+    },
+    "searchTags": ["back face", "side", "gl_FrontFacing", "inside"]
   },
   "gravity": {
     "description": "Applies a constant acceleration to velocity.",
@@ -1737,6 +1783,16 @@
       }
     },
     "searchTags": ["normal", "surface", "shading", "fresnel", "rim", "facing"]
+  },
+  "surface-position": {
+    "description": "World-space position of the point being shaded: of a VFX mesh's surface, of a particle's quad or a trail's ribbon. Into object space through Inverse World Matrix and Transform Point.",
+    "label": "Surface Position",
+    "outputs": {
+      "position": {
+        "label": "Position"
+      }
+    },
+    "searchTags": ["world position", "fragment", "point"]
   },
   "texture": {
     "description": "Samples a named texture asset at the given UV (defaulting to the particle UV); the sampler is an external uniform bound by the host.",

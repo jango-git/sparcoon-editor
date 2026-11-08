@@ -92,10 +92,12 @@ async function bootstrap(): Promise<void> {
     () => hasInfinitePlay(store),
     () => store.getSource().timeline.loop,
   );
-  // The caret time snapped to its frame - the timeline is frame-stepped, so every transform
-  // re-pose (rebuild, view edit, transport drive) samples at the same frame the caret sits on.
-  const frameTime = (): number =>
-    snapTimeToFrame(transport.getTime(), store.getSource().timeline.fps);
+  // The time a re-pose (rebuild, view edit) samples at, the same as the transport drive's: the
+  // caret itself while playing (poses run continuously), else snapped to the frame it sits on.
+  const poseTime = (): number =>
+    transport.isPlaying()
+      ? transport.getTime()
+      : snapTimeToFrame(transport.getTime(), store.getSource().timeline.fps);
 
   // Which workspace panel the pointer is over drives both the accent ring and the keymap the
   // hotkey router applies. The tracker sets it from the cursor; the router reads it live.
@@ -180,7 +182,7 @@ async function bootstrap(): Promise<void> {
     coordinator.getCamera(),
     coordinator.getRenderer(),
     renderBackend,
-    frameTime,
+    poseTime,
     () => meshGeometries.resolveAll(),
   );
   // The FPS readout reports the live particle count alongside it; wire the source now that the
@@ -226,7 +228,7 @@ async function bootstrap(): Promise<void> {
   // A view-only transform edit (gizmo commit / inspector field / transform keyframe) never
   // recompiles, so it doesn't run the pipeline - re-pose the scene directly at the caret.
   signals.on("sourceViewChanged", () =>
-    sceneEmitters.applySceneTransforms(store.getSource().scene, frameTime()),
+    sceneEmitters.applySceneTransforms(store.getSource().scene, poseTime()),
   );
   // Highlight the selected entity's preview gizmo, and keep it lit across rebuilds.
   sceneEmitters.setSelected(timelineSelection.get());

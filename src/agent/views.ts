@@ -168,9 +168,15 @@ export interface GraphStatusView {
   }[];
 }
 
+/**
+ * The compile status of an owner's graphs. Which graphs there are depends on the owner: an emitter
+ * has a render and a behavior graph (and a trail one when it has a trail), a VFX mesh only the
+ * render one - its `behavior` is `undefined`, so check before reading it.
+ */
 export interface StatusView {
   readonly ownerId: string | undefined;
   readonly render: GraphStatusView | undefined;
+  /** The behavior graph's status; `undefined` for a VFX mesh, which has none. */
   readonly behavior: GraphStatusView | undefined;
   /** The trail graph's status; `undefined` without a trail. */
   readonly trail: GraphStatusView | undefined;
