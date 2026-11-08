@@ -176,7 +176,7 @@ describe("FXLiveGraph.apply - target-input reads", () => {
     const held = live.artifact;
     backend.compileThrows = true;
 
-    let result;
+    let result: ReturnType<typeof live.apply> | undefined;
     expect(() => {
       result = live.apply(reduced); // structural change forces the recompile path
     }).not.toThrow();

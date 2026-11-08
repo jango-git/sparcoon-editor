@@ -12,6 +12,7 @@ import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import { FXGraph } from "../engine/core/FXGraph";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
@@ -26,6 +27,7 @@ import type { FXTarget } from "../engine/render/target/FXTarget";
 import { FX_GLSL_RENDER_COMPILERS } from "../engine/render/compiler/FXRenderCompilers";
 import {
   buildParticleTarget,
+  buildTrailTarget,
   FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
@@ -44,19 +46,29 @@ import {
   FX_SMOOTHSTEP_HELPER,
 } from "../engine/core/ir/FXFunctions.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
-import type { FXGeometrySource } from "sparcoon";
-import { fxEmitterRenderBudget, fxMeshRenderBudget, type FXRenderBudget } from "sparcoon/editor";
+import type { FXBufferLayout, FXGeometrySource } from "sparcoon";
+import { fxMeshRenderBudget } from "sparcoon/editor";
 import { assembleRenderArtifact, attributeDecls } from "../engine/emit/assembleArtifacts";
-import { renderBudgetFindings } from "../domain/renderBudget";
+import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
+import {
+  emitterRenderBudgetFindings,
+  renderBudgetFindings,
+  trailRenderBudgetFindings,
+  type RenderBudgetFindings,
+} from "../domain/renderBudget";
+import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import {
   GraphKind,
   readRenderSinkConfig,
   readSpawnSinkConfig,
+  readTrailSinkConfig,
+  timelineValueConflicts,
   toArtifactGeometrySource,
+  type RenderMode,
 } from "../domain/nodePalette";
 import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
-import type { EmitterDoc, VfxMeshDoc } from "../model/editorState";
+import { emitterGraphs, type EmitterDoc, type VfxMeshDoc } from "../model/editorState";
 
 /**
  * Compiled helper source (matched by identity) -> the `sparcoon` export name(s) it corresponds to.
@@ -135,9 +147,92 @@ export interface EmitterIR {
   // From the spawn sink (readSpawnSinkConfig), not the surface sink - the same authored number
   // the live preview builds with, so an exported project's capacity never drifts from the editor's.
   readonly expectedCapacity: number;
+  /** The emitter's trail; absent when it has none. */
+  readonly trail?: TrailIR;
+  /**
+   * What the export ships but the author may not mean - the live preview shows the same ones on
+   * the render graph (domain/attributeChecks.ts). Never stops an export.
+   */
+  readonly warnings: readonly FXCompilerError[];
+}
+
+/** An emitter's trail graph, compiled through every GLSL tier like its render graph. */
+export interface TrailIR {
+  readonly shaders: CompiledShadersByGLSLTier;
+  readonly renderAttributes: readonly FXAttributeRequest[];
+  readonly renderMode: RenderMode;
+  readonly frames: number;
+  readonly sampleInterval: number;
+  /** The same as {@link EmitterIR.warnings}, for the trail graph. */
+  readonly warnings: readonly FXCompilerError[];
+}
+
+/**
+ * Compiles an emitter's trail graph, held to the same checks as the live preview
+ * (domain/trailChecks.ts) and the same GPU budget (domain/renderBudget.ts) - counting the GPU
+ * backend's history over `kernelBuffers`, the slot of the GPU kernel the emitter ships, if any.
+ */
+function compileTrail(
+  emitter: EmitterDoc,
+  trailGraph: EditorGraph,
+  sortInterval: number,
+  behaviorAttributes: readonly FXAttributeRequest[],
+  kernel: FXCompiledKernel,
+  kernelBuffers: readonly FXBufferLayout[] | undefined,
+): TrailIR {
+  const fail = (message: string): never => {
+    throw new Error(`exportTypeScript: ${emitter.name} (trail): ${message}`);
+  };
+  const sortError = trailSortError(sortInterval);
+  if (sortError !== undefined) {
+    fail(sortError.message);
+  }
+  const graph = buildRenderGraph(trailGraph);
+  const config = readTrailSinkConfig(trailGraph);
+  const renderAttributes = collectAttributeRequests(graph).requests;
+  const [attributeError] = trailAttributeErrors(
+    renderAttributes,
+    behaviorAttributes,
+    emitter.behaviorGraph.attributes,
+  );
+  if (attributeError !== undefined) {
+    fail(attributeError.message);
+  }
+  const shaders = compileForEveryGLSLTier(graph, buildTrailTarget(renderAttributes));
+  const [budgetError] = trailRenderBudgetFindings(
+    assembleRenderArtifact(
+      shaders.standard,
+      [],
+      TRAIL_GEOMETRY,
+      renderAttributes,
+      config.renderMode,
+    ),
+    attributeDecls(behaviorAttributes),
+    kernelBuffers,
+  ).errors;
+  if (budgetError !== undefined) {
+    fail(budgetError.message);
+  }
+  return {
+    shaders,
+    renderAttributes,
+    renderMode: config.renderMode,
+    frames: config.frames,
+    sampleInterval: config.sampleInterval,
+    warnings: unwrittenAttributeWarnings(
+      graph,
+      kernelWrittenBuffers(kernel),
+      emitter.behaviorGraph.attributes,
+    ),
+  };
 }
 
 export function compileEmitter(emitter: EmitterDoc): EmitterIR {
+  // A Timeline Value declared at two types or with two defaults across the emitter's graphs.
+  const [declarationConflict] = timelineValueConflicts(emitterGraphs(emitter));
+  if (declarationConflict !== undefined) {
+    throw new Error(`exportTypeScript: ${emitter.name}: ${declarationConflict.error.message}`);
+  }
   const renderGraph = buildRenderGraph(emitter.renderGraph);
   const behaviorGraph = buildBehaviorGraph(emitter.behaviorGraph);
   const config = readRenderSinkConfig(emitter.renderGraph);
@@ -161,9 +256,17 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
 
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
   const lightingIntrinsics = collectLightingRequirements(renderGraph);
+
+  // Compiled before the budget is counted: the GPU kernel's slot layout, when there is one,
+  // decides what the Standard tier's particle mesh takes.
+  const bundle = compileBehaviorBundle(
+    behaviorGraph,
+    buildParticleBehaviorTargets(behaviorAttributes, spawnConfig.tryGpuSimulation),
+  );
+  const kernelBuffers = bundle.standardProgram?.buffers;
   requireWithinRenderBudget(
     emitter.name,
-    fxEmitterRenderBudget(
+    emitterRenderBudgetFindings(
       assembleRenderArtifact(
         shaders.standard,
         lightingIntrinsics,
@@ -172,13 +275,9 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
         config.renderMode,
       ),
       attributeDecls(behaviorAttributes),
-      { castShadow: config.castShadow },
+      config.castShadow,
+      kernelBuffers,
     ),
-  );
-
-  const bundle = compileBehaviorBundle(
-    behaviorGraph,
-    buildParticleBehaviorTargets(behaviorAttributes, spawnConfig.tryGpuSimulation),
   );
 
   return {
@@ -194,6 +293,23 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
     castShadow: config.castShadow,
     receiveShadow: config.receiveShadow,
     expectedCapacity: spawnConfig.expectedCapacity,
+    warnings: unwrittenAttributeWarnings(
+      renderGraph,
+      kernelWrittenBuffers(bundle.kernel),
+      emitter.behaviorGraph.attributes,
+    ),
+    ...(emitter.trailGraph === undefined
+      ? {}
+      : {
+          trail: compileTrail(
+            emitter,
+            emitter.trailGraph,
+            config.sortInterval,
+            behaviorAttributes,
+            bundle.kernel,
+            kernelBuffers,
+          ),
+        }),
   };
 }
 
@@ -213,15 +329,17 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   const lightingIntrinsics = collectLightingRequirements(renderGraph);
   requireWithinRenderBudget(
     mesh.name,
-    fxMeshRenderBudget(
-      assembleRenderArtifact(
-        shaders.standard,
-        lightingIntrinsics,
-        toArtifactGeometrySource(config.geometry),
-        [],
-        config.renderMode,
+    renderBudgetFindings(
+      fxMeshRenderBudget(
+        assembleRenderArtifact(
+          shaders.standard,
+          lightingIntrinsics,
+          toArtifactGeometrySource(config.geometry),
+          [],
+          config.renderMode,
+        ),
+        { castShadow: config.castShadow },
       ),
-      { castShadow: config.castShadow },
     ),
   );
   return {
@@ -238,8 +356,8 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
  * Refuses an emitter or mesh whose Standard-tier materials some WebGL2 GPU could not link (see
  * domain/renderBudget.ts) - the live preview holds the same graph as invalid.
  */
-function requireWithinRenderBudget(name: string, budget: FXRenderBudget): void {
-  const [error] = renderBudgetFindings(budget).errors;
+function requireWithinRenderBudget(name: string, findings: RenderBudgetFindings): void {
+  const [error] = findings.errors;
   if (error !== undefined) {
     throw new Error(`exportTypeScript: ${name}: ${error.message}`);
   }

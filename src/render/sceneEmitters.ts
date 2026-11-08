@@ -27,7 +27,13 @@ import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBe
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { serializeGraph } from "../domain/serialize";
-import { GraphKind, readRenderSinkConfig, readSpawnSinkConfig } from "../domain/nodePalette";
+import {
+  GraphKind,
+  readRenderSinkConfig,
+  readSpawnSinkConfig,
+  readTrailSinkConfig,
+  timelineValueConflicts,
+} from "../domain/nodePalette";
 import {
   resolveGraphOwner,
   type EmitterDoc,
@@ -36,12 +42,14 @@ import {
   type VfxMeshDoc,
 } from "../model/editorState";
 import { entityKey, VFX_ENTITY, type SceneEntity } from "../model/entity";
+import { authoredGraphs, type GraphName } from "../model/graphSlots";
 import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
 import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
+import { blocked, invalidFromErrors } from "./applyStatus.Internal";
 
 const IDLE: LiveApplyStatus = { status: "invalid", messages: [] };
 // The placeholder snapshot for a graph half that doesn't apply (no emitters yet, or a mesh's
@@ -303,6 +311,29 @@ export class SceneEmitters implements SceneApplier {
     return total;
   }
 
+  /**
+   * Births lost to a full ring since the last reset (stop/rewind) or rebuild, across every unmuted
+   * emitter that can report it (see {@link EmitterView.particleOverflowCount}) - nonzero means some
+   * emitter's Expected Capacity is too small. `undefined` when no visible emitter can report it
+   * (all GPU-driven, or none); `partial` when some visible emitter cannot.
+   */
+  public totalParticleOverflowCount(): ParticleOverflow | undefined {
+    let count: number | undefined;
+    let partial = false;
+    for (const view of this.views.values()) {
+      if (!view.visible) {
+        continue;
+      }
+      const overflow = view.particleOverflowCount;
+      if (overflow === undefined) {
+        partial = true;
+      } else {
+        count = (count ?? 0) + overflow;
+      }
+    }
+    return count === undefined ? undefined : { count, partial };
+  }
+
   /** Clears live particles and cancels emission on every emitter - used on stop / rewind. */
   public resetAll(): void {
     for (const view of this.views.values()) {
@@ -383,18 +414,50 @@ export class SceneEmitters implements SceneApplier {
     }
     const renderSnapshot = serializeGraph(emitter.renderGraph, GraphKind.Render);
     const behaviorSnapshot = serializeGraph(emitter.behaviorGraph, GraphKind.Behavior);
+    const trail =
+      emitter.trailGraph === undefined
+        ? undefined
+        : {
+            snapshot: serializeGraph(emitter.trailGraph, GraphKind.Render),
+            config: readTrailSinkConfig(emitter.trailGraph),
+          };
+    // One Timeline Value name is one value across the emitter's graphs, so it must have one type
+    // and one default: a clash is held like any graph error (the running emitter is left as it was).
+    const graphs = authoredGraphs(emitter);
+    const conflicts = timelineValueConflicts(graphs.map(({ graph }) => graph));
+    if (conflicts.length > 0) {
+      const statusOf = (name: GraphName): LiveApplyStatus => {
+        const errors = conflicts
+          .filter((conflict) => graphs[conflict.graphIndex]?.name === name)
+          .map((conflict) => conflict.error);
+        return errors.length > 0 ? invalidFromErrors(errors) : blocked();
+      };
+      return {
+        renderSnapshot,
+        behaviorSnapshot,
+        renderStatus: statusOf("render"),
+        behaviorStatus: statusOf("behavior"),
+        ...(trail === undefined
+          ? {}
+          : { trailSnapshot: trail.snapshot, trailStatus: statusOf("trail") }),
+        emitterRebuilt: false,
+      };
+    }
     const result = view.apply(
       renderSnapshot,
       behaviorSnapshot,
       readRenderSinkConfig(emitter.renderGraph),
       readSpawnSinkConfig(emitter.behaviorGraph),
       emitter.behaviorGraph.attributes,
+      trail,
     );
     return {
       renderSnapshot,
       behaviorSnapshot,
       renderStatus: result.render,
       behaviorStatus: result.behavior,
+      ...(trail === undefined ? {} : { trailSnapshot: trail.snapshot }),
+      ...(result.trail === undefined ? {} : { trailStatus: result.trail }),
       emitterRebuilt: result.emitterRebuilt,
     };
   }
@@ -431,6 +494,13 @@ export class SceneEmitters implements SceneApplier {
       recompiled: created || renderStatus.status === "recompiled",
     };
   }
+}
+
+/** Particles lost to full emitters, as the viewport stats report it. */
+export interface ParticleOverflow {
+  readonly count: number;
+  /** Some visible emitter cannot report its overflow (GPU-driven), so `count` leaves it out. */
+  readonly partial: boolean;
 }
 
 /** Whether an emitter apply actually tore down and rebuilt the runtime emitter (a real rebuild) -

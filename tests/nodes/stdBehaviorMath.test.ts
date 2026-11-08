@@ -67,7 +67,7 @@ describe("standard behavior math - registration & compilation", () => {
     const compiled = compileParticleBehavior(graph);
     const spawn = buildParticleSpawnKernel(compiled);
     const buffers = coreBuffers();
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[1]).toBe(7); // lifecycle = [age, lifetime]
   });
 
@@ -136,7 +136,7 @@ describe("standard behavior math - registration & compilation", () => {
     const compiled = compileParticleBehavior(graph);
     const spawn = buildParticleSpawnKernel(compiled);
     const buffers = coreBuffers();
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[1]).toBe(5); // lifecycle = [age, lifetime]
   });
 

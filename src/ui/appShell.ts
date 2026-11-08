@@ -11,6 +11,7 @@
  */
 
 import { selectSceneCost } from "../model/selectors";
+import type { ParticleOverflow } from "../render/sceneEmitters";
 import { createAssetsModal } from "./assetsModal";
 import type { EditorContext } from "./editorContext";
 import { EditorPanel } from "./focus/panelFocus";
@@ -27,8 +28,9 @@ import { createMiddlebar } from "./middlebar";
 export interface ApplicationShell {
   readonly canvas: HTMLCanvasElement;
   readonly previewContainer: HTMLElement;
-  /** Pushes fresh FPS + particle-count readings into the viewport's stats overlay (render loop). */
-  readonly reportStats: (fps: number, particles: number) => void;
+  /** Pushes fresh FPS, particle-count and overflow readings into the viewport's stats overlay
+   *  (render loop); `overflow` is `undefined` when no emitter can report it. */
+  readonly reportStats: (fps: number, particles: number, overflow?: ParticleOverflow) => void;
   /** Collapses/expands the N-panel's active tab. The viewport keymap (in main.ts) binds it to N. */
   readonly toggleTransformPanel: () => void;
   /** Opens the Content screen (assets + import/export). The global keymap (in main.ts) binds it

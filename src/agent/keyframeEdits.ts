@@ -27,7 +27,12 @@ import {
   setTransformKeyframeEase,
   setTransformKeyframeValue,
 } from "../model/commands";
-import type { AnimationTrack, Keyframe, SourceState } from "../model/editorState";
+import {
+  emitterGraphs,
+  type AnimationTrack,
+  type Keyframe,
+  type SourceState,
+} from "../model/editorState";
 import { KEY_EPSILON, snapTime } from "../model/keyframeTrackOps";
 import type { SceneEntity } from "../model/entity";
 import {
@@ -141,7 +146,7 @@ function entityKeys(source: SourceState, entityId: string): EntityKeys {
         entity,
         transformTracks: emitter.transformTracks,
         tracks: emitter.tracks,
-        graphs: [emitter.renderGraph, emitter.behaviorGraph],
+        graphs: emitterGraphs(emitter),
       };
     }
   } else {

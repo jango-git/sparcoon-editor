@@ -1,11 +1,20 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { RenderBudgetMemo, renderBudgetFindings } from "../../src/domain/renderBudget";
+import type { FXAttributeDecl, FXBufferLayout } from "sparcoon";
+import { packingOrder } from "sparcoon/editor";
+import {
+  emitterRenderBudgetFindings,
+  RenderBudgetMemo,
+  renderBudgetFindings,
+  trailRenderBudgetFindings,
+} from "../../src/domain/renderBudget";
+import { unlitArtifact } from "../helpers/artifacts";
 import { createDefaultEmitter, createDefaultVfxMesh } from "../../src/model/editorState";
 import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
 import { PROJECT_PRESETS } from "../../src/persistence/presets";
 import { deserializeProject } from "../../src/persistence/projectFile";
 import type { EmitterDoc } from "../../src/model/editorState";
+import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
 
 describe("renderBudgetFindings", () => {
   it("finds nothing within both tiers' minimums", () => {
@@ -34,6 +43,103 @@ describe("renderBudgetFindings", () => {
   });
 });
 
+/** A GPU kernel's slot over `decls`: the core buffers and every attribute, in packing order (as
+ *  `FXKernelBuildStandard.Internal.ts` lays it out). */
+function kernelSlot(decls: readonly FXAttributeDecl[]): FXBufferLayout[] {
+  return packingOrder([
+    { name: "position", components: 3 },
+    { name: "lifecycle", components: 3 },
+    ...decls,
+  ]).map((field) => ({ name: field.name, stride: field.components }));
+}
+
+/** `count` float attributes named a0, a1, ... */
+function floats(count: number): FXAttributeDecl[] {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `a${String(index)}`,
+    components: 1 as const,
+  }));
+}
+
+/** An unlit render declaring `decls` and reading every one in its vertex stage. */
+function reading(decls: readonly FXAttributeDecl[]): ReturnType<typeof unlitArtifact> {
+  return unlitArtifact({
+    attributeReads: decls,
+    // A held field the render never names takes no attribute.
+    vertexBody: [`float fxSum = ${decls.map((decl) => `p_fx_${decl.name}`).join(" + ")};`],
+  });
+}
+
+describe("emitterRenderBudgetFindings", () => {
+  // Twelve floats the render reads: one attribute each on the JS mesh (17, past WebGL2's 16), but
+  // packed four to a view over the GPU kernel's slot (8).
+  const decls = floats(12);
+  const render = reading(decls);
+
+  it("errs on the JS mesh when the emitter has no GPU kernel", () => {
+    const { errors, warnings } = emitterRenderBudgetFindings(render, decls, false, undefined);
+    expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
+    expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
+    expect(warnings).toEqual([]);
+  });
+
+  it("measures Standard on the GPU kernel's packed slot, Baseline still on the JS mesh", () => {
+    const { errors, warnings } = emitterRenderBudgetFindings(
+      render,
+      decls,
+      false,
+      kernelSlot(decls),
+    );
+    expect(errors).toEqual([]);
+    expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
+    expect(warnings[0]?.params).toEqual({ used: 17, limit: 8 });
+  });
+});
+
+describe("trailRenderBudgetFindings", () => {
+  // Five vec4 attributes the trail reads and the behavior writes: 15 vertex attributes over the
+  // JS history (within WebGL2's 16, past WebGL1's 8), 18 over the GPU one (which also records the
+  // position and the lifecycle, a view each, two per segment).
+  const decls = Array.from({ length: 5 }, (_, index) => ({
+    name: `a${String(index)}`,
+    components: 4 as const,
+  }));
+  const render = reading(decls);
+
+  it("measures a JS-only emitter's trail on the JS history alone", () => {
+    const { errors, warnings } = trailRenderBudgetFindings(render, decls, undefined);
+    expect(errors).toEqual([]);
+    expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
+    expect(warnings[0]?.params).toEqual({ used: 15, limit: 8 });
+  });
+
+  it("errs on the GPU history when the emitter has a GPU kernel, without also warning", () => {
+    const { errors, warnings } = trailRenderBudgetFindings(render, decls, kernelSlot(decls));
+    expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
+    expect(errors[0]?.params).toEqual({ used: 18, limit: 16 });
+    // The same resource's Baseline overrun (15 on the JS history) is not repeated as a warning.
+    expect(warnings).toEqual([]);
+  });
+
+  it("counts the GPU history over the kernel's packed slot, not one view per field", () => {
+    // Twelve floats: 32 attributes if every recorded field had a view of its own, 14 over the
+    // kernel's slot, where they pack four to a view.
+    const many = floats(12);
+    const { errors, warnings } = trailRenderBudgetFindings(reading(many), many, kernelSlot(many));
+    expect(errors).toEqual([]);
+    expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
+  });
+
+  it("finds nothing for a light trail on either backend", () => {
+    const light = unlitArtifact();
+    expect(trailRenderBudgetFindings(light, [], kernelSlot([]))).toEqual({
+      errors: [],
+      warnings: [],
+    });
+    expect(trailRenderBudgetFindings(light, [], undefined)).toEqual({ errors: [], warnings: [] });
+  });
+});
+
 describe("RenderBudgetMemo", () => {
   it("counts again only when a key part changes identity", () => {
     const memo = new RenderBudgetMemo();
@@ -52,26 +158,45 @@ describe("RenderBudgetMemo", () => {
   });
 });
 
-/** The starter emitter with `count` vec4 behavior attributes, each read in the fragment stage. */
-function emitterReading(count: number): EmitterDoc {
+/**
+ * The starter emitter with `count` behavior attributes of `type` (vec4 by default), each read in
+ * the fragment stage; `tryGpuSimulation: false` turns its spawn sink's GPU kernel off.
+ */
+function emitterReading(
+  count: number,
+  {
+    type = "vec4",
+    tryGpuSimulation = true,
+  }: { type?: "float" | "vec4"; tryGpuSimulation?: boolean } = {},
+): EmitterDoc {
   const emitter = createDefaultEmitter("emitter_1", "Heavy");
   const names = Array.from({ length: count }, (_, index) => `a${String(index)}`);
   const behavior = emitter.behaviorGraph;
   const render = emitter.renderGraph;
+  // A vec4 sum is the albedo; a float one the (optional, fragment-stage) additivity.
+  const slot = type === "vec4" ? "albedo" : "additivity";
+  const spawnSink = behavior.nodes[SPAWN_SINK_ID];
   return {
     ...emitter,
     behaviorGraph: {
       ...behavior,
-      attributes: names.map((name) => ({ name, type: "vec4" })),
+      attributes: names.map((name) => ({ name, type })),
       nodes: {
         ...behavior.nodes,
+        [SPAWN_SINK_ID]: {
+          ...spawnSink,
+          parameters: {
+            ...spawnSink.parameters,
+            [SPAWN_TRY_GPU_SIMULATION_PARAM]: tryGpuSimulation,
+          },
+        },
         ...Object.fromEntries(
           names.map((name, index) => [
             `w_${name}`,
             {
               id: `w_${name}`,
               type: "constant",
-              parameters: { type: "vec4", value: [index, 0, 0, 1] },
+              parameters: { type, value: type === "vec4" ? [index, 0, 0, 1] : index },
               position: { x: 0, y: index * 80 },
             },
           ]),
@@ -86,7 +211,7 @@ function emitterReading(count: number): EmitterDoc {
         })),
       ],
     },
-    // albedo = a0 + a1 + ... - every read reachable, every read in the fragment stage.
+    // slot = a0 + a1 + ... - every read reachable, every read in the fragment stage.
     renderGraph: {
       ...render,
       nodes: {
@@ -97,13 +222,13 @@ function emitterReading(count: number): EmitterDoc {
             {
               id: `r_${name}`,
               type: "custom-attribute",
-              parameters: { name, type: "vec4" },
+              parameters: { name, type },
               position: { x: 0, y: index * 80 },
             },
           ]),
         ),
         ...Object.fromEntries(
-          names.slice(1).map((name, index) => [
+          names.slice(1).map((_name, index) => [
             `sum_${String(index)}`,
             {
               id: `sum_${String(index)}`,
@@ -130,9 +255,9 @@ function emitterReading(count: number): EmitterDoc {
         },
       ]),
       outputBindings: [
-        ...render.outputBindings.filter((binding) => binding.slot !== "albedo"),
+        ...render.outputBindings.filter((binding) => binding.slot !== slot),
         {
-          slot: "albedo",
+          slot,
           from:
             names.length === 1
               ? { nodeId: `r_${names[0]}`, socketKey: "value" }
@@ -169,6 +294,15 @@ describe("export render budget", () => {
     expect(() => compileEmitter(emitterReading(11))).toThrow(
       /16 varying vectors; every WebGL2 GPU/,
     );
+  });
+
+  it("counts an emitter with a GPU kernel's Standard-tier attributes over its packed slot", () => {
+    // Twelve floats: 17 vertex attributes on the JS mesh (one per field, past WebGL2's 16), far
+    // fewer over the GPU kernel's slot, which packs them four to a view.
+    expect(() => compileEmitter(emitterReading(12, { type: "float" }))).not.toThrow();
+    expect(() =>
+      compileEmitter(emitterReading(12, { type: "float", tryGpuSimulation: false })),
+    ).toThrow(/17 vertex attributes; every WebGL2 GPU/);
   });
 });
 

@@ -5,7 +5,7 @@
 
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { EditorAttribute } from "../domain/graphModel";
-import type { RenderSinkConfig, SpawnSinkConfig } from "../domain/nodePalette";
+import type { RenderSinkConfig, SpawnSinkConfig, TrailSinkConfig } from "../domain/nodePalette";
 import type { LiveApplyStatus, SceneModel } from "./editorState";
 import type { Store } from "./store";
 
@@ -13,6 +13,8 @@ import type { Store } from "./store";
 export interface GraphApplyResult {
   readonly render: LiveApplyStatus;
   readonly behavior: LiveApplyStatus;
+  /** The trail graph's status; absent when the emitter has no trail. */
+  readonly trail?: LiveApplyStatus;
   /**
    * Whether this apply tore down and rebuilt the runtime emitter (fresh `FXEmitter.fromArtifacts`)
    * vs a rebind or render-only in-place swap - `render`/`behavior` alone conflate "artifact
@@ -32,7 +34,14 @@ export interface GraphApplier {
     config: RenderSinkConfig,
     spawnConfig: SpawnSinkConfig,
     declaredAttributes: readonly EditorAttribute[],
+    trail?: TrailApplyInput,
   ): GraphApplyResult;
+}
+
+/** An emitter's trail graph as one apply takes it; omitted when the emitter has no trail. */
+export interface TrailApplyInput {
+  readonly snapshot: FXGraphSnapshotData;
+  readonly config: TrailSinkConfig;
 }
 
 /** What one scene-sync produced: everything the derived state (and the UI) needs. */
@@ -41,6 +50,9 @@ export interface SceneApplyResult {
   readonly behaviorSnapshot: FXGraphSnapshotData;
   readonly renderStatus: LiveApplyStatus;
   readonly behaviorStatus: LiveApplyStatus;
+  /** The active emitter's trail graph and its status; absent when it has no trail. */
+  readonly trailSnapshot?: FXGraphSnapshotData;
+  readonly trailStatus?: LiveApplyStatus;
   /**
    * An emitter's own `GraphApplyResult.emitterRebuilt` (absent for a mesh, which has no
    * render-only-swap path). Folded into `recompiled` below, not a signal consumers need on its own.
@@ -91,6 +103,9 @@ export class Pipeline {
       behaviorSnapshot: result.behaviorSnapshot,
       renderStatus: result.renderStatus,
       behaviorStatus: result.behaviorStatus,
+      // Always written: setDerived patches, so an omitted key would keep a stale trail.
+      trailSnapshot: result.trailSnapshot,
+      trailStatus: result.trailStatus,
     });
     if (result.recompiled === true) {
       this.onRecompiled();

@@ -295,5 +295,14 @@
   },
   "mesh-ignores-transform": {
     "message": "this mesh never reads its world matrix, so its transform, its keyframes and the effect's placement do not move it - wire a World Matrix node into Vertex Transform"
+  },
+  "trail-with-sort": {
+    "message": "a trail cannot be combined with depth sorting - set the render graph's Sort Every to 0"
+  },
+  "param-value-conflict": {
+    "message": "Timeline Value \"{name}\" has a different default here than another declaration of it in this emitter"
+  },
+  "attribute-never-written": {
+    "message": "attribute \"{name}\" is read here but the behavior never writes it - it is always 0"
   }
 }

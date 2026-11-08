@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
 import nodesEn from "../../src/i18n/locales/nodes.en.json" with { type: "json" };
+import type { NodeTextEntry } from "../helpers/nodeTextDictionary";
+import { NODE_TEXT_EN } from "../helpers/nodeTextDictionary";
 
 /**
  * Node definitions carry no display text (see `src/i18n/nodeText.ts` for why) - this is the
@@ -13,8 +15,6 @@ import nodesEn from "../../src/i18n/locales/nodes.en.json" with { type: "json" }
  * needs a real HTTP origin - unavailable under vitest's Node environment.
  */
 
-type NodeTextEntry = (typeof nodesEn)[keyof typeof nodesEn];
-
 function descriptionFor(entry: NodeTextEntry | undefined, domain: string): string | undefined {
   const value = entry?.description;
   if (value === undefined) {
@@ -23,7 +23,7 @@ function descriptionFor(entry: NodeTextEntry | undefined, domain: string): strin
   if (typeof value === "string") {
     return value;
   }
-  return (value as Record<string, string>)[domain];
+  return value[domain];
 }
 
 const RESERVED_TYPES: readonly { readonly type: string; readonly domain: string }[] = [
@@ -46,9 +46,9 @@ describe("node-text dictionary completeness (nodes.en.json)", () => {
 
   for (const { type, domain } of cases) {
     it(`${type} (${domain}) has a non-empty label and description`, () => {
-      const entry = (nodesEn as Record<string, NodeTextEntry>)[type];
+      const entry = NODE_TEXT_EN[type];
       expect(entry, `no nodes.en.json entry for "${type}"`).toBeDefined();
-      expect(entry.label.length).toBeGreaterThan(0);
+      expect((entry?.label ?? "").length).toBeGreaterThan(0);
       const description = descriptionFor(entry, domain);
       expect(description, `no description for "${type}" in domain "${domain}"`).toBeDefined();
       expect((description ?? "").length).toBeGreaterThan(0);
@@ -56,9 +56,9 @@ describe("node-text dictionary completeness (nodes.en.json)", () => {
   }
 
   it(`${ROUTE_TYPE} has a non-empty label (no description - it has no help tooltip)`, () => {
-    const entry = (nodesEn as Record<string, NodeTextEntry>)[ROUTE_TYPE];
+    const entry = NODE_TEXT_EN[ROUTE_TYPE];
     expect(entry).toBeDefined();
-    expect(entry.label.length).toBeGreaterThan(0);
+    expect((entry?.label ?? "").length).toBeGreaterThan(0);
   });
 
   it("has no orphaned entries for a type nothing registers", () => {
@@ -75,8 +75,8 @@ describe("node-text dictionary completeness (nodes.en.json)", () => {
 
 describe("node-text search tags (nodes.en.json)", () => {
   it("every searchTags entry is a non-empty array of non-empty, deduped strings", () => {
-    for (const [type, entry] of Object.entries(nodesEn as Record<string, NodeTextEntry>)) {
-      const tags = entry.searchTags;
+    for (const [type, entry] of Object.entries(NODE_TEXT_EN)) {
+      const tags = entry?.searchTags;
       if (tags === undefined) {
         continue;
       }

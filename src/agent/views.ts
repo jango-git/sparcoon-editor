@@ -26,9 +26,11 @@ import {
 } from "../model/transform";
 import { renderGraphLighting } from "../persistence/exportCompile";
 import { targetGraph, type GraphTarget } from "./address.Internal";
+import type { GraphName } from "../model/graphSlots";
 
-/** Which of an owner's two graphs: the material (render) or the simulation (behavior). */
-export type GraphName = "render" | "behavior";
+/** Which of an owner's graphs: the material (render), the simulation (behavior), or an emitter's
+ *  trail (render-kind, on the trail host) - see `model/graphSlots.ts`. */
+export type { GraphName };
 
 /** A socket as the agent names it: a node id and that node's socket key. */
 export interface SocketAddress {
@@ -73,6 +75,8 @@ export interface EmitterView extends AnimatedView {
   readonly events: readonly TimelineEvent[];
   /** The events play in the editor only; the export ships none (`timeline.setEventsExcluded`). */
   readonly eventsExcluded: boolean;
+  /** Whether the emitter draws a trail - its `"trail"` graph exists (`scene.setTrail`). */
+  readonly trail: boolean;
 }
 
 export interface MeshView extends AnimatedView {
@@ -168,6 +172,8 @@ export interface StatusView {
   readonly ownerId: string | undefined;
   readonly render: GraphStatusView | undefined;
   readonly behavior: GraphStatusView | undefined;
+  /** The trail graph's status; `undefined` without a trail. */
+  readonly trail: GraphStatusView | undefined;
 }
 
 export function transformView(transform: Transform): TransformView {
@@ -225,6 +231,7 @@ export function sceneView(source: SourceState): SceneView {
       transform: transformView(emitter.transform),
       events: emitter.events,
       eventsExcluded: emitter.liveEvents === true,
+      trail: emitter.trailGraph !== undefined,
       ...animatedView(emitter),
     })),
     meshes: scene.meshes.map((mesh) => ({

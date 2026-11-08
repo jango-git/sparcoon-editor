@@ -5,7 +5,14 @@
  */
 
 import { createEmptyGraph, type EditorGraph } from "../domain/graphModel";
-import { GraphKind, PARTICLE_ONLY_SURFACE_SLOTS } from "../domain/nodePalette";
+import {
+  DEFAULT_RENDER_HOST,
+  GraphKind,
+  NON_TRAIL_SURFACE_SLOTS,
+  PARTICLE_ONLY_SURFACE_SLOTS,
+  RENDER_SINK_ID,
+  type RenderHost,
+} from "../domain/nodePalette";
 import { ensureSinks } from "../domain/sinks";
 import {
   seedIdentifierCounterFromRawSource,
@@ -100,7 +107,11 @@ async function hydrateEnvironments(source: SourceState): Promise<SourceState> {
 
 /** Guarantees a persisted graph's structural containers so a missing/non-object field can't crash
  *  {@link ensureSinks}. Node/connection *contents* are trusted as-is - a bad one is a graph error. */
-function normalizeGraph(raw: unknown, kind: GraphKind): EditorGraph {
+function normalizeGraph(
+  raw: unknown,
+  kind: GraphKind,
+  host: RenderHost = DEFAULT_RENDER_HOST,
+): EditorGraph {
   const empty = createEmptyGraph();
   const record = isRecord(raw) ? raw : {};
   const graph: EditorGraph = {
@@ -118,7 +129,7 @@ function normalizeGraph(raw: unknown, kind: GraphKind): EditorGraph {
       ? (record["comments"] as EditorGraph["comments"])
       : empty.comments,
   };
-  return ensureSinks(migrateRenamedInputs(graph), kind);
+  return ensureSinks(migrateRenamedInputs(graph), kind, host);
 }
 
 /** Normalizes a persisted document to the current source shape; anything unrecognized (not a
@@ -185,6 +196,31 @@ function pruneParticleOnlyBindings(graph: EditorGraph): EditorGraph {
     (binding) => !PARTICLE_ONLY_SURFACE_SLOTS.has(binding.slot),
   );
   return kept.length === graph.outputBindings.length ? graph : { ...graph, outputBindings: kept };
+}
+
+/** Drops trail-graph bindings to a slot the trail target lacks (the particle transforms). */
+function pruneNonTrailBindings(graph: EditorGraph): EditorGraph {
+  const kept = graph.outputBindings.filter((binding) => !NON_TRAIL_SURFACE_SLOTS.has(binding.slot));
+  return kept.length === graph.outputBindings.length ? graph : { ...graph, outputBindings: kept };
+}
+
+/** Drops the `geometry` parameter a trail's surface sink was once created with: a trail builds its
+ *  own segment quad, and its sink offers no geometry choice. */
+function pruneTrailSinkGeometry(graph: EditorGraph): EditorGraph {
+  const sink = graph.nodes[RENDER_SINK_ID];
+  if (sink === undefined || !("geometry" in sink.parameters)) {
+    return graph;
+  }
+  const parameters = { ...sink.parameters };
+  delete parameters["geometry"];
+  return { ...graph, nodes: { ...graph.nodes, [RENDER_SINK_ID]: { ...sink, parameters } } };
+}
+
+/** A persisted trail graph: normalized on the trail host, minus what a trail has no place for. */
+function normalizeTrailGraph(raw: unknown): EditorGraph {
+  return pruneTrailSinkGeometry(
+    pruneNonTrailBindings(normalizeGraph(raw, GraphKind.Render, "trail")),
+  );
 }
 
 function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
@@ -347,6 +383,10 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     name: typeof name === "string" && name.trim() !== "" ? name : "Emitter",
     renderGraph: normalizeGraph(value["renderGraph"], GraphKind.Render),
     behaviorGraph: normalizeGraph(value["behaviorGraph"], GraphKind.Behavior),
+    // Omitted when the emitter has no trail, like `hidden` below.
+    ...(isRecord(value["trailGraph"])
+      ? { trailGraph: normalizeTrailGraph(value["trailGraph"]) }
+      : {}),
     settings: normalizeSettings(value["settings"]),
     tracks: normalizeTracks(value["tracks"]),
     events: normalizeEvents(value["events"]),

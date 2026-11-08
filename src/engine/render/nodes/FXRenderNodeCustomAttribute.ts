@@ -15,7 +15,8 @@ import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 
 /**
  * Render node: reads a named per-particle attribute as its `value` output - a user attribute
- * rides `a_fx_<name>` into the `p_fx_<name>` varying, reserved through {@link attributeRequest}.
+ * is read through the `p_fx_<name>` varying (filled by the runtime from its packed attribute),
+ * reserved through {@link attributeRequest}.
  * A core builtin (position/age/lifetime/id) reads through the separate `builtin-attribute`
  * node instead, never this one. Stage-flexible: both varyings are exposed in both stages, so
  * the compiler places this by its consumers (fragment tint vs. vertex billboard driver).
@@ -44,7 +45,7 @@ export class FXRenderNodeCustomAttribute extends FXRenderNode {
    */
   constructor(name: string, type: FXValueType, stage: FXShaderStage = FXShaderStage.FRAGMENT) {
     super();
-    // Rides from `a_fx_<name>` into the `p_fx_<name>` varying this reads.
+    // The runtime fills the `p_fx_<name>` varying this reads from its packed attribute.
     const source = resolveAttributeSource(name, type, attributeVaryingName);
     this.sourceName = source.sourceName;
     this.valueType = source.valueType;

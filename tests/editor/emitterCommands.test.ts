@@ -126,7 +126,7 @@ describe("emitter commands", () => {
 
   it("renameEmitter renames an emitter and rejects a blank name", () => {
     const store = freshStore();
-    const id = selectActiveEmitterId(store);
+    const id = selectActiveEmitterId(store)!;
 
     renameEmitter(store, id, "  Sparks  ");
     expect(selectActiveEmitter(store).name).toBe("Sparks");
@@ -138,7 +138,9 @@ describe("emitter commands", () => {
   it("withFreshIds re-mints comment ids too, not just node/connection ids", () => {
     const graph = {
       ...createEmptyGraph(),
-      comments: [{ id: "comment_1", text: "note", position: { x: 0, y: 0 }, size: { w: 1, h: 1 } }],
+      comments: [
+        { id: "comment_1", text: "note", position: { x: 0, y: 0 }, size: { width: 1, height: 1 } },
+      ],
     };
 
     const fresh = withFreshIds(graph);

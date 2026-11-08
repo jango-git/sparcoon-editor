@@ -28,6 +28,7 @@ import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
 import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
+import type { ParticleOverflow } from "./sceneEmitters";
 import type { DecodedEnvironment } from "./environmentTexture";
 
 /**
@@ -119,7 +120,11 @@ export class SceneCoordinator {
     // Gates the simulation clock: the timeline transport drives it, so a stopped/paused
     // timeline freezes every emitter (see {@link frame}). Defaults to always-on.
     private readonly isSimulating: () => boolean = () => true,
-    private readonly onStats?: (fps: number, particles: number) => void,
+    private readonly onStats?: (
+      fps: number,
+      particles: number,
+      overflow?: ParticleOverflow,
+    ) => void,
   ) {
     this.renderer = createSceneRenderer(canvas, renderBackend);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -184,6 +189,11 @@ export class SceneCoordinator {
   /** Wires the live particle-count source (the scene emitters), reported alongside FPS. */
   public setParticleCountSource(source: () => number): void {
     this.getParticleCount = source;
+  }
+
+  /** Wires the live particle-overflow source (the scene emitters), reported alongside FPS. */
+  public setParticleOverflowSource(source: () => ParticleOverflow | undefined): void {
+    this.getParticleOverflow = source;
   }
 
   /**
@@ -307,6 +317,8 @@ export class SceneCoordinator {
   // Total alive particle count across the scene, sampled when stats are reported. The scene
   // emitters own this figure and wire it in via {@link setParticleCountSource}; 0 until then.
   private getParticleCount: () => number = () => 0;
+  // Births lost to full emitters, sampled alongside the particle count; `undefined` = unknown.
+  private getParticleOverflow: () => ParticleOverflow | undefined = () => undefined;
 
   /** Wheel handler: touchpad pans/pinch-zooms; mouse dollies through the direction lock. */
   private onWheel(event: WheelEvent): void {
@@ -404,7 +416,11 @@ export class SceneCoordinator {
     this.statsFrames += 1;
     this.statsElapsed += deltaSeconds;
     if (this.statsElapsed >= 0.5) {
-      this.onStats(this.statsFrames / this.statsElapsed, this.getParticleCount());
+      this.onStats(
+        this.statsFrames / this.statsElapsed,
+        this.getParticleCount(),
+        this.getParticleOverflow(),
+      );
       this.statsFrames = 0;
       this.statsElapsed = 0;
     }

@@ -1,14 +1,14 @@
 /**
  * How the agent API names things: graph owners and scene entities by the ids `scene.get()`
- * reports, graphs as `"render"`/`"behavior"`. Resolves those names against a source (throwing
+ * reports, graphs as `"render"`/`"behavior"`/`"trail"`. Resolves those names against a source (throwing
  * {@link AgentError} on a miss) and focuses an owner the way a click in the editor does - the
  * graph commands always edit the active owner.
  */
 
 import type { EditorGraph } from "../domain/graphModel";
-import { GraphKind } from "../domain/nodePalette";
-import type { RenderHost } from "../domain/nodePalette";
-import { selectEmitter, selectVfxMesh, type GraphSlot } from "../model/commands";
+import type { GraphKind, RenderHost } from "../domain/nodePalette";
+import { selectEmitter, selectVfxMesh } from "../model/commands";
+import { GRAPH_SLOTS, renderHostFor, type GraphSlot } from "../model/graphSlots";
 import type { GraphOwnerRef, SourceState } from "../model/editorState";
 import { emitterEntity, VFX_ENTITY, vfxMeshEntity, type SceneEntity } from "../model/entity";
 import type { Store } from "../model/store";
@@ -46,31 +46,42 @@ export function resolveEntity(source: SourceState, entityId: string): SceneEntit
 }
 
 export function parseGraphName(graph: string): GraphName {
-  if (graph !== "render" && graph !== "behavior") {
+  if (graph !== "render" && graph !== "behavior" && graph !== "trail") {
     throw new AgentError(
       "invalid_argument",
-      `Graph must be "render" or "behavior", got "${graph}".`,
+      `Graph must be "render", "behavior" or "trail", got "${graph}".`,
     );
   }
   return graph;
 }
 
+/** The palette a graph draws from: the trail graph is render-kind. */
 export function graphKindFor(graph: GraphName): GraphKind {
-  return graph === "render" ? GraphKind.Render : GraphKind.Behavior;
+  return GRAPH_SLOTS[graph].kind;
 }
 
-/** Resolves `ownerId`'s `graph`; a VFX mesh has only a render graph. */
+/** Resolves `ownerId`'s `graph`; a VFX mesh has only a render graph, and only an emitter whose
+ *  trail is on has a trail graph. */
 export function resolveGraph(source: SourceState, ownerId: string, graph: GraphName): GraphTarget {
   const owner = resolveOwner(source, ownerId);
-  if (owner.kind === "vfxMesh" && graph === "behavior") {
-    throw new AgentError("invalid_argument", `Mesh "${ownerId}" has no behavior graph.`);
+  if (owner.kind === "vfxMesh" && graph !== "render") {
+    throw new AgentError("invalid_argument", `Mesh "${ownerId}" has no ${graph} graph.`);
+  }
+  if (
+    graph === "trail" &&
+    source.scene.emitters.find((emitter) => emitter.id === ownerId)?.trailGraph === undefined
+  ) {
+    throw new AgentError(
+      "invalid_argument",
+      `Emitter "${ownerId}" has no trail - turn it on with scene.setTrail first.`,
+    );
   }
   return {
     owner,
     name: graph,
-    slot: graph === "render" ? "renderGraph" : "behaviorGraph",
-    kind: graphKindFor(graph),
-    host: owner.kind === "vfxMesh" ? "mesh" : "particle",
+    slot: GRAPH_SLOTS[graph].slot,
+    kind: GRAPH_SLOTS[graph].kind,
+    host: renderHostFor(owner.kind, graph),
   };
 }
 
@@ -87,7 +98,11 @@ export function targetGraph(source: SourceState, target: GraphTarget): EditorGra
   if (emitter === undefined) {
     throw new AgentError("not_found", `No emitter with id "${target.owner.id}".`);
   }
-  return emitter[target.slot];
+  const graph = emitter[target.slot];
+  if (graph === undefined) {
+    throw new AgentError("not_found", `Emitter "${target.owner.id}" has no trail.`);
+  }
+  return graph;
 }
 
 /** Makes `owner` the active graph owner, so the graph commands that follow edit its graphs. */

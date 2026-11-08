@@ -10,8 +10,8 @@ describe("FXSocketIndex", () => {
       outputs: [socket("out", "vec4")],
     });
 
-    expect(inputSocket(node, "b")?.type.glslTypeName).toBe("vec3");
-    expect(outputSocket(node, "out")?.type.glslTypeName).toBe("vec4");
+    expect(inputSocket(node, "b")?.type).toMatchObject({ glslTypeName: "vec3" });
+    expect(outputSocket(node, "out")?.type).toMatchObject({ glslTypeName: "vec4" });
   });
 
   it("returns undefined for an unknown key", () => {

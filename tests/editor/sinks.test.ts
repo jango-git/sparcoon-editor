@@ -51,10 +51,13 @@ describe("output sink nodes", () => {
   });
 
   it("readRenderSinkConfig reads geometry/toggles from the surface sink", () => {
-    const graph = ensureSinks(createEmptyGraph(), GraphKind.Render);
-    graph.nodes[RENDER_SINK_ID] = {
-      ...graph.nodes[RENDER_SINK_ID],
-      parameters: { geometry: "sphere" },
+    const base = ensureSinks(createEmptyGraph(), GraphKind.Render);
+    const graph = {
+      ...base,
+      nodes: {
+        ...base.nodes,
+        [RENDER_SINK_ID]: { ...base.nodes[RENDER_SINK_ID], parameters: { geometry: "sphere" } },
+      },
     };
     const config = readRenderSinkConfig(graph);
     expect(config.geometry).toEqual({ kind: "primitive", primitive: "sphere" });
@@ -64,10 +67,16 @@ describe("output sink nodes", () => {
     const blank = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
     expect(readSpawnSinkConfig(blank).tryGpuSimulation).toBe(true);
 
-    const graph = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
-    graph.nodes[SPAWN_SINK_ID] = {
-      ...graph.nodes[SPAWN_SINK_ID],
-      parameters: { [SPAWN_TRY_GPU_SIMULATION_PARAM]: false },
+    const base = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
+    const graph = {
+      ...base,
+      nodes: {
+        ...base.nodes,
+        [SPAWN_SINK_ID]: {
+          ...base.nodes[SPAWN_SINK_ID],
+          parameters: { [SPAWN_TRY_GPU_SIMULATION_PARAM]: false },
+        },
+      },
     };
     expect(readSpawnSinkConfig(graph).tryGpuSimulation).toBe(false);
   });
@@ -77,10 +86,16 @@ describe("output sink nodes", () => {
     expect(readSpawnSinkConfig(blank).expectedCapacity).toBe(256);
 
     const withValue = (value: unknown): number => {
-      const graph = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
-      graph.nodes[SPAWN_SINK_ID] = {
-        ...graph.nodes[SPAWN_SINK_ID],
-        parameters: { [SPAWN_EXPECTED_CAPACITY_PARAM]: value },
+      const base = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
+      const graph = {
+        ...base,
+        nodes: {
+          ...base.nodes,
+          [SPAWN_SINK_ID]: {
+            ...base.nodes[SPAWN_SINK_ID],
+            parameters: { [SPAWN_EXPECTED_CAPACITY_PARAM]: value },
+          },
+        },
       };
       return readSpawnSinkConfig(graph).expectedCapacity;
     };

@@ -20,6 +20,7 @@ import type {
   VfxMeshDoc,
 } from "./editorState";
 import type { SceneEntity } from "./entity";
+import { GRAPH_SLOTS, type GraphName } from "./graphSlots";
 import type { Store } from "./store";
 
 /** The scene's VFX group (the container every emitter sits under). */
@@ -56,6 +57,9 @@ export function selectTextureAssetUsage(store: Store): ReadonlyMap<string, numbe
   const scene = store.getSource().scene;
   const renderGraphs = [
     ...scene.emitters.map((emitter) => emitter.renderGraph),
+    ...scene.emitters.flatMap((emitter) =>
+      emitter.trailGraph === undefined ? [] : [emitter.trailGraph],
+    ),
     ...scene.meshes.map((mesh) => mesh.renderGraph),
   ];
   for (const graph of renderGraphs) {
@@ -89,6 +93,9 @@ export function selectSceneCost(store: Store): number {
     }
     total += computeGraphStats(GraphKind.Render, emitter.renderGraph).cost;
     total += computeGraphStats(GraphKind.Behavior, emitter.behaviorGraph).cost;
+    if (emitter.trailGraph !== undefined) {
+      total += computeGraphStats(GraphKind.Render, emitter.trailGraph).cost;
+    }
   }
   for (const mesh of scene.meshes) {
     if (mesh.hidden === true) {
@@ -145,6 +152,8 @@ export interface ActiveGraphOwner {
   /** An emitter's simulation graph (spawn + update sinks). Absent for a VFX mesh - it has no
    *  behavior graph at all - so callers summing "every graph this owner authors" skip it then. */
   readonly behaviorGraph?: EditorGraph;
+  /** An emitter's trail graph, when its trail is on. */
+  readonly trailGraph?: EditorGraph;
   /** The owner's animated Timeline Value tracks (an emitter's or a mesh's render-graph values). */
   readonly tracks: readonly AnimationTrack[];
 }
@@ -171,6 +180,7 @@ export function selectActiveGraphOwner(store: Store): ActiveGraphOwner {
     id: emitter.id,
     renderGraph: emitter.renderGraph,
     behaviorGraph: emitter.behaviorGraph,
+    ...(emitter.trailGraph === undefined ? {} : { trailGraph: emitter.trailGraph }),
     tracks: emitter.tracks,
   };
 }
@@ -210,10 +220,7 @@ export function selectEntityDoc(store: Store, entity: SceneEntity): SceneEntityD
   }
 }
 
-export function selectRenderStatus(store: Store): LiveApplyStatus | undefined {
-  return store.getState().derived.renderStatus;
-}
-
-export function selectBehaviorStatus(store: Store): LiveApplyStatus | undefined {
-  return store.getState().derived.behaviorStatus;
+/** The live compile status of the active owner's graph `name` (see {@link GRAPH_SLOTS}). */
+export function selectGraphStatus(store: Store, name: GraphName): LiveApplyStatus | undefined {
+  return store.getState().derived[GRAPH_SLOTS[name].status];
 }

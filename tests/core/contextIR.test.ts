@@ -150,7 +150,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBe(2.5);
   });
 
@@ -172,7 +172,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect([
       buffers.position[FX_POSITION_X],
       buffers.position[FX_POSITION_Y],
@@ -207,7 +207,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect([
       buffers.position[FX_POSITION_X],
       buffers.position[FX_POSITION_Y],

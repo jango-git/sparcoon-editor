@@ -6,7 +6,7 @@ build.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
 [Runtime](https://github.com/jango-git/sparcoon) -
-[npm](https://www.npmjs.com/package/sparcoon/v/0.10.0)
+[npm](https://www.npmjs.com/package/sparcoon/v/0.11.0)
 
 ![Editor demo](assets/demo.gif)
 
@@ -114,14 +114,31 @@ A project holds one **VFX group** - the root transform of the whole effect - and
 objects under it:
 
 - **Emitter** - a particle system. It owns two graphs: a **Behavior graph** (per-particle simulation)
-  and a **Render graph** (per-particle material). It spawns nothing until a timeline event fires.
+  and a **Render graph** (per-particle material), plus an optional **Trail graph** - a ribbon drawn
+  behind every particle along its recorded path, added with the graph switch's **Add trail**. It
+  spawns nothing until a timeline event fires.
 - **VFX mesh** - a single non-instanced mesh with a render graph and no simulation: the non-particle
   parts of an effect, such as a shockwave quad or a shaded prop.
 
 Every graph ends in permanent **sink** nodes. The behavior graph feeds the **Spawn sink** and the
 **Update sink** - initial and per-frame position, lifetime, velocity and any declared particle
 attributes. The render graph feeds the **Surface sink** - color, transforms, geometry, render mode,
-sorting and shadow flags.
+sorting and shadow flags. A trail graph feeds the same sink, shaped for a ribbon: color, **Width**
+(which can taper along the trail through its UV), and how many points of each particle's path it
+keeps and how often it records one. Lighting and surface-normal nodes are not offered there, and a
+trail cannot be combined with depth sorting. A particle or trail material also has to fit the GPU:
+its vertex attributes and varyings are counted against what every WebGL2 GPU guarantees (an error
+past that, counted on the GPU simulation - whose particle state the editor lays out so adjacent
+fields share one attribute - when the emitter has a GPU kernel, else on the CPU one) and against
+WebGL1's lower minimums (a warning, always counted on the CPU simulation - the only one WebGL1
+runs; on a device that really lacks them, the runtime skips such a trail and draws the particles
+without it). A render or trail graph reading a declared attribute the behavior graph never writes gets a
+warning: the attribute is always 0 there.
+
+A Timeline Value name is one value across all of an emitter's graphs - one track, one
+`setEmitterParam` - so every node declaring it must agree on its type and on its default value,
+keyframed or not: declaring it at two types, or with two defaults (compared as the value the
+engine reads, so a vec3's `0` equals `[0, 0, 0]`), is an error on the disagreeing node.
 
 The **timeline** owns everything time-based: **Burst** events (how many particles to release on one
 frame) and **Play** events (a rate over a duration, or infinite), keyframes on **Timeline Value**
@@ -200,7 +217,7 @@ Known and deliberate, so you do not discover them mid-project:
 
 |             |                                                                 |
 | ----------- | --------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.10.0                                               |
+| Runtime     | `sparcoon` 0.11.0                                               |
 | three.js    | `>=0.157 <0.180` (peer dependency of the runtime)               |
 | Editor      | Any browser with WebGL2; WebGL1 is enough for the Baseline tier |
 | Your build  | A bundler (Vite, webpack, Rollup, esbuild). ES2020 output       |

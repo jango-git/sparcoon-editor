@@ -5,9 +5,12 @@
 
 import type { EditorGraph, GraphNode } from "../../domain/graphModel";
 import { isSink } from "../../domain/sinks";
+import { timelineValueNames } from "../../domain/nodePalette";
 import {
   canRemoveObject,
+  emitterGraphs,
   createDefaultEmitter,
+  createDefaultTrailGraph,
   type EmitterDoc,
   type SceneModel,
 } from "../editorState";
@@ -126,6 +129,39 @@ export function toggleEmitterHidden(store: Store, id: string): void {
       ),
     },
     "view",
+  );
+}
+
+/**
+ * Turns emitter `id`'s trail on (seeded with the default trail graph) or off (its trail graph is
+ * dropped - an undo brings it back). Structural: the preview rebuilds the trail. No-op if unknown
+ * or already in that state.
+ */
+export function setEmitterTrail(store: Store, id: string, enabled: boolean): void {
+  const scene = store.getSource().scene;
+  const emitter = scene.emitters.find((candidate) => candidate.id === id);
+  if (emitter === undefined || (emitter.trailGraph !== undefined) === enabled) {
+    return;
+  }
+  commitScene(
+    store,
+    {
+      ...scene,
+      emitters: scene.emitters.map((candidate) => {
+        if (candidate.id !== id) {
+          return candidate;
+        }
+        if (enabled) {
+          return { ...candidate, trailGraph: withFreshIds(createDefaultTrailGraph()) };
+        }
+        const { trailGraph: removed, ...rest } = candidate;
+        void removed;
+        // The trail's Timeline Values go with it, unless another graph declares the same name.
+        const referenced = timelineValueNames(emitterGraphs(rest));
+        return { ...rest, tracks: rest.tracks.filter((track) => referenced.has(track.name)) };
+      }),
+    },
+    "structural",
   );
 }
 

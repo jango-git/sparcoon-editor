@@ -55,7 +55,7 @@
   background: var(--border-mid);
 }
 
-/* Graph switch: two separate icon+label buttons (Behavior / Render), spaced apart, the
+/* Graph switch: separate icon+label buttons (Behavior / Render / Trail), spaced apart, the
    active graph carrying the accent (STYLE_GUIDE section 4.7 look, but not a joined strip). */
 .graph-switch {
   display: flex;
@@ -115,6 +115,26 @@
 
 .graph-switch--floating .graph-switch__button--active {
   background: color-mix(in srgb, var(--accent) 16%, var(--panel-background));
+}
+
+/* The Trail button while the emitter has no trail: an "add" action, drawn dashed so it never
+   reads as a third graph that already exists. */
+.graph-switch__button--add {
+  border-style: dashed;
+}
+
+/* Removes the trail: a square icon-only button right after the Trail button, hidden without one.
+   `[hidden]` is re-asserted for the same reason as `.graph-switch[hidden]` above. */
+.graph-switch__remove {
+  width: 28px;
+  justify-content: center;
+  padding: 0;
+  margin-left: -6px;
+  font-size: 16px;
+}
+
+.graph-switch__remove[hidden] {
+  display: none;
 }
 
 /* Language switch: a compact middlebar-chrome trigger showing the active locale badge (e.g. "EN").

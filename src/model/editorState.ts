@@ -17,8 +17,9 @@ import type {
   GraphOutputBinding,
 } from "../domain/graphModel";
 import { createEmptyGraph } from "../domain/graphModel";
-import { GraphKind } from "../domain/nodePalette";
+import { DEFAULT_RENDER_HOST, GraphKind, type RenderHost } from "../domain/nodePalette";
 import { ensureSinks } from "../domain/sinks";
+import { authoredGraphs } from "./graphSlots";
 import {
   IDENTITY_TRANSFORM,
   type Transform,
@@ -91,6 +92,12 @@ export interface EmitterDoc {
   readonly name: string;
   readonly renderGraph: EditorGraph;
   readonly behaviorGraph: EditorGraph;
+  /**
+   * The emitter's trail graph - a ribbon behind every particle, drawn from its recorded path. A
+   * render-kind graph compiled against the trail target. Omitted when the emitter has no trail
+   * (the default), so a document saved before trails existed round-trips unchanged.
+   */
+  readonly trailGraph?: EditorGraph;
   readonly settings: EmitterSettings;
   /** This emitter's animation tracks (one per animated Timeline Value); the timeline shows them. */
   readonly tracks: readonly AnimationTrack[];
@@ -118,6 +125,14 @@ export interface EmitterDoc {
   readonly liveEvents?: true;
   /** Hidden in the preview + outline. Editor-only - never affects the TS export. */
   readonly hidden?: boolean;
+}
+
+/**
+ * Every graph an emitter authors: render, behavior, and the trail when it has one - one parameter
+ * namespace across all of them (a Timeline Value name drives every graph that declares it).
+ */
+export function emitterGraphs(emitter: EmitterDoc): readonly EditorGraph[] {
+  return authoredGraphs(emitter).map(({ graph }) => graph);
 }
 
 /**
@@ -365,6 +380,10 @@ export interface DerivedState {
   behaviorSnapshot?: FXGraphSnapshotData;
   renderStatus?: LiveApplyStatus;
   behaviorStatus?: LiveApplyStatus;
+  /** The active emitter's trail graph; both `undefined` when it has no trail - written every
+   *  recompute, so a trail that went away (or another owner's) never lingers. */
+  trailSnapshot?: FXGraphSnapshotData | undefined;
+  trailStatus?: LiveApplyStatus | undefined;
 }
 
 /** The whole editor state. */
@@ -385,6 +404,7 @@ function buildGraph(
   nodes: readonly GraphNode[],
   outputBindings: readonly GraphOutputBinding[],
   connections: readonly GraphConnection[] = [],
+  host: RenderHost = DEFAULT_RENDER_HOST,
 ): EditorGraph {
   const base: EditorGraph = {
     ...createEmptyGraph(),
@@ -392,7 +412,7 @@ function buildGraph(
     connections,
     outputBindings,
   };
-  return ensureSinks(base, kind);
+  return ensureSinks(base, kind, host);
 }
 
 /**
@@ -475,6 +495,27 @@ export function createDefaultEmitter(id: string, name: string): EmitterDoc {
     liveChannels: [],
     liveParams: [],
   };
+}
+
+/**
+ * The trail graph an emitter starts with when its trail is turned on: a flat color on the surface
+ * sink, the ribbon width and history left at the sink's defaults.
+ */
+export function createDefaultTrailGraph(): EditorGraph {
+  return buildGraph(
+    GraphKind.Render,
+    [
+      {
+        id: "n_trail_albedo",
+        type: "constant",
+        parameters: { type: "vec4", value: [0.55, 0.68, 0.95, 0.6] },
+        position: { x: 168, y: 96 },
+      },
+    ],
+    [{ slot: "albedo", from: { nodeId: "n_trail_albedo", socketKey: "out" } }],
+    [],
+    "trail",
+  );
 }
 
 /** A fresh VFX group: identity transform, no animation - the container every emitter sits under. */

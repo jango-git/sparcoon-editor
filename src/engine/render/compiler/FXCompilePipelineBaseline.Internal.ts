@@ -197,6 +197,9 @@ class FXCompileState {
   private readonly fragmentHelpers = new Map<string, string>();
   /** Promotion cache: producer socket key -> the varying carrying it. */
   private readonly varyingCache = new Map<string, string>();
+  /** The target inputs each stage's emitted code reads. */
+  private readonly vertexTargetReads = new Set<string>();
+  private readonly fragmentTargetReads = new Set<string>();
 
   /** Allocates a collision-free, GLSL-safe identifier from a hint. */
   public uniqueName(hint: string): string {
@@ -207,6 +210,11 @@ class FXCompileState {
 
   public emit(stage: FXShaderStage, statement: string): void {
     this.bodyFor(stage).push(statement);
+  }
+
+  /** Records that code emitted into `stage` reads the target input `name`. */
+  public noteTargetRead(stage: FXShaderStage, name: string): void {
+    (stage === FXShaderStage.VERTEX ? this.vertexTargetReads : this.fragmentTargetReads).add(name);
   }
 
   /** Adds a helper function to a stage, deduplicated by `key`. */
@@ -309,11 +317,13 @@ class FXCompileState {
         varyingDeclarations,
         helperFunctions: [...this.vertexHelpers.values()],
         body: this.vertexBody,
+        targetReads: [...this.vertexTargetReads].sort(),
       },
       fragment: {
         varyingDeclarations,
         helperFunctions: [...this.fragmentHelpers.values()],
         body: this.fragmentBody,
+        targetReads: [...this.fragmentTargetReads].sort(),
       },
       outputs,
       hash,
@@ -383,10 +393,7 @@ class FXNodeCompilerContext
       );
     }
 
-    const { code, helpers } = printGLSLBaseline(expression, FX_FUNCTIONS);
-    for (const [key, source] of helpers) {
-      this.state.emitHelper(this.stage, key, source);
-    }
+    const code = this.print(expression);
 
     const key = socketRefKey({ nodeId: this.nodeId, socketKey });
     if (socketType.instantiable) {
@@ -400,10 +407,7 @@ class FXNodeCompilerContext
   }
 
   public defineLocal(hint: string, expression: FXExpr): FXExpr {
-    const { code, helpers } = printGLSLBaseline(expression, FX_FUNCTIONS);
-    for (const [key, source] of helpers) {
-      this.state.emitHelper(this.stage, key, source);
-    }
+    const code = this.print(expression);
     const name = this.state.uniqueName(hint);
     this.state.emit(this.stage, `${expression.type.glslTypeName} ${name} = ${code};`);
     return ref("local", name, expression.type);
@@ -496,6 +500,23 @@ class FXNodeCompilerContext
             this.stage,
           );
     return ref("local", variable, producerType);
+  }
+
+  /**
+   * Prints `expression` for this node's stage: pulls in its helpers and records every target
+   * input it reads - at print time, so a read counts only once it is in the emitted code.
+   */
+  private print(expression: FXExpr): string {
+    const { code, helpers } = printGLSLBaseline(expression, FX_FUNCTIONS, (reference) => {
+      if (reference.ref === "targetInput") {
+        this.state.noteTargetRead(this.stage, reference.name);
+      }
+      return reference.name;
+    });
+    for (const [key, source] of helpers) {
+      this.state.emitHelper(this.stage, key, source);
+    }
+    return code;
   }
 }
 

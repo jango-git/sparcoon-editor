@@ -21,6 +21,7 @@ import {
 } from "../../model/commands";
 import {
   canRemoveObject,
+  emitterGraphs,
   projectDisplayName,
   type EmitterDoc,
   type VfxDoc,
@@ -376,7 +377,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
         ),
       );
     }
-    const graphs = [emitter.renderGraph, emitter.behaviorGraph];
+    const graphs = emitterGraphs(emitter);
     for (const row of timelineValueRows(graphs, emitter.tracks)) {
       output.push(buildTimelineValueRow(entity, row, emitter.liveParams, graphs, total));
     }

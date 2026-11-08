@@ -10,6 +10,7 @@ import {
   removeVfxMesh,
   renameEmitter,
   renameVfxMesh,
+  setEmitterTrail,
   setEntityBaseChannel,
   toggleEmitterHidden,
   toggleVfxMeshHidden,
@@ -43,6 +44,12 @@ export interface SceneEdits {
   /** Renames an emitter or mesh. The project (the VFX group's name) is `project.setName`. */
   rename(ownerId: string, name: string): void;
   setHidden(ownerId: string, hidden: boolean): void;
+  /**
+   * Turns an emitter's trail on (a ribbon behind every particle, authored in its `"trail"` graph,
+   * seeded with a flat color) or off (the trail graph is dropped). A trail cannot be combined with
+   * depth sorting.
+   */
+  setTrail(emitterId: string, enabled: boolean): void;
   /** Sets the base (un-keyframed) transform channels given; the others stay as they are. */
   setTransform(entityId: string, patch: TransformPatch): void;
 }
@@ -102,6 +109,15 @@ export function createSceneEdits(session: EditSession): SceneEdits {
         } else {
           toggleVfxMeshHidden(store, owner.id);
         }
+      }),
+
+    setTrail: (emitterId, enabled) =>
+      session.mutate((store) => {
+        const owner = resolveOwner(store.getSource(), emitterId);
+        if (owner.kind !== "emitter") {
+          throw new AgentError("invalid_argument", `"${emitterId}" is not an emitter.`);
+        }
+        setEmitterTrail(store, owner.id, enabled);
       }),
 
     setTransform: (entityId, patch) =>

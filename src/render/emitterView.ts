@@ -1,10 +1,12 @@
 /**
- * Turns the two authored graphs into artifacts and runs them through the runtime executor - the
- * editor's own live gate (the runtime has none), deciding structural rebuild vs value-only rebind.
+ * Turns an emitter's authored graphs (render, behavior, and its trail when it has one) into
+ * artifacts and runs them through the runtime executor - the editor's own live gate (the runtime
+ * has none), deciding between a full rebuild, an in-place render or trail swap, and a value-only
+ * rebind. The trail graph's own live compile and built state live in {@link EmitterTrail}.
  */
 
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
-import { FXEmitter, fxEmitterRenderBudget } from "sparcoon/editor";
+import { FXEmitter } from "sparcoon/editor";
 import type { FXApplyValues } from "sparcoon/editor";
 import type { FXBehaviorArtifact, FXParticleKernelArtifact, FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
@@ -47,16 +49,18 @@ import {
   type SpawnSinkConfig,
 } from "../domain/nodePalette";
 import {
+  emitterRenderBudgetFindings,
   RenderBudgetMemo,
-  renderBudgetFindings,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import { undeclaredAttributeErrors } from "../domain/serialize";
+import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
 import type { LiveApplyStatus } from "../model/editorState";
 import type { Transform } from "../model/transform";
 import { normalizeQuat } from "../model/transform";
-import type { GraphApplier, GraphApplyResult } from "../model/pipeline";
+import type { GraphApplier, GraphApplyResult, TrailApplyInput } from "../model/pipeline";
 import {
+  blocked,
   invalid,
   invalidFromErrors,
   REBOUND,
@@ -65,21 +69,47 @@ import {
 } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { externalSlots } from "./externalSlots";
+import { EmitterTrail, type AssembledTrail } from "./emitterTrail.Internal";
+import { trailSortError } from "../domain/trailChecks";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
 export type TextureResolver = (paramName: string) => Texture;
 
-/** The runnable artifact pair assembled from the two live graphs' compiled IR. */
+/** The runnable artifacts assembled from the live graphs' compiled IR. */
 interface PreviewArtifacts {
   readonly render: FXRenderArtifact;
   readonly behavior: FXBehaviorArtifact;
   readonly gpuBehavior?: FXParticleKernelArtifact;
+  /** The trail's runtime options and the sink config they were assembled from, with the live
+   *  trail graph they came from; absent when the emitter has no trail. */
+  readonly trail?: AssembledTrail & { readonly live: EmitterTrail };
 }
 
-const BLOCKED: LiveApplyStatus = {
-  status: "invalid",
-  messages: ["blocked by an error in the other graph"],
-};
+/** Every material `artifacts` draws with: the particles', then the trail's. One parameter
+ *  namespace spans them all - the runtime routes a value to every material that declares it. */
+function renderArtifactsOf(artifacts: PreviewArtifacts): readonly FXRenderArtifact[] {
+  return artifacts.trail === undefined
+    ? [artifacts.render]
+    : [artifacts.render, artifacts.trail.options.render];
+}
+
+/** The statuses of a held apply: each graph named here gets its own, every other one is blocked. */
+interface HeldStatuses {
+  readonly render?: LiveApplyStatus | undefined;
+  readonly behavior?: LiveApplyStatus | undefined;
+  readonly trail?: LiveApplyStatus | undefined;
+}
+
+/** An apply that changed nothing in the running emitter; the trail's status only with a trail. */
+function heldResult(hasTrail: boolean, statuses: HeldStatuses): GraphApplyResult {
+  return {
+    render: statuses.render ?? blocked(),
+    behavior: statuses.behavior ?? blocked(),
+    ...(hasTrail ? { trail: statuses.trail ?? blocked() } : {}),
+    emitterRebuilt: false,
+  };
+}
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -88,6 +118,8 @@ function describeError(error: unknown): string {
 export class EmitterView implements GraphApplier {
   private readonly renderLive: FXLiveGraph<FXRenderNode, FXCompiledShader>;
   private readonly behaviorLive: FXLiveGraph<FXBehaviorNode, FXCompiledBehaviorBundle>;
+  // The trail graph's live part, created when the emitter first has a trail and dropped with it.
+  private liveTrail: EmitterTrail | undefined = undefined;
   private emitter: FXEmitter | undefined = undefined;
 
   // Latest installed IR + the attribute set it was compiled over (captured on each install).
@@ -102,9 +134,12 @@ export class EmitterView implements GraphApplier {
 
   private readonly budget = new RenderBudgetMemo();
 
-  // Kept so the timeline value-drive can find each param's slot names and baked baseline (to
-  // revert a param that stops being driven); reassembled every apply, no re-compile.
+  // The artifacts the running emitter last accepted - kept so the timeline value-drive can find
+  // each param's slot names and baked baseline (to revert a param that stops being driven).
+  // Reassembled every apply (no re-compile), but replaced only once the emitter takes them.
   private artifacts: PreviewArtifacts | undefined = undefined;
+  // The emitter's overflow count at its last reset, so the viewport reports one run's losses.
+  private overflowAtReset = 0;
 
   // The exact IR + runtime shape the emitter was built from - compared against the latest to
   // force a rebuild on drift (recompile-while-other-invalid, or a geometry/renderMode/shadow change).
@@ -140,6 +175,10 @@ export class EmitterView implements GraphApplier {
   // The persistent preview gizmo (wireframe box), re-parented onto each rebuilt emitter Object3D.
   private readonly marker: GizmoMarker = createGizmoMarker("emitter");
 
+  // Kept to build the trail's live graph lazily, the same way the render one is built.
+  private readonly renderRegistry: FXNodeRegistry<FXRenderNode>;
+  private readonly renderBackend: FXGLSLRenderTier;
+
   constructor(
     private readonly parent: Object3D,
     private readonly resolveTexture: TextureResolver,
@@ -160,6 +199,8 @@ export class EmitterView implements GraphApplier {
       Record<string, BufferGeometry>
     > = () => ({}),
   ) {
+    this.renderRegistry = renderRegistry;
+    this.renderBackend = renderBackend;
     this.renderLive = new FXLiveGraph(
       new FXGraphReconciler(renderRegistry),
       new FXRenderLiveBackend(
@@ -190,6 +231,13 @@ export class EmitterView implements GraphApplier {
     return this.emitter?.particleCount ?? 0;
   }
 
+  /** Births lost to a full ring since the emitter was last reset or built (its capacity is too
+   *  small), or `undefined` when that is unknowable - a GPU-driven emitter, or none built yet. */
+  public get particleOverflowCount(): number | undefined {
+    const total = this.emitter?.particleOverflowCount;
+    return total === undefined ? undefined : total - this.overflowAtReset;
+  }
+
   /** The runtime emitter's Object3D (its transform is the emitter's pose), or `undefined` before build. */
   public get object3D(): Object3D | undefined {
     return this.emitter;
@@ -214,34 +262,49 @@ export class EmitterView implements GraphApplier {
     // custom-attribute request in either graph, so a name left over after a
     // removal/retype is a held error.
     declaredAttributes: readonly EditorAttribute[],
+    trailInput?: TrailApplyInput,
   ): GraphApplyResult {
     const { geometry, renderMode, castShadow } = config;
+    // The trail's live part and this apply's input to it, narrowed once: both or neither.
+    const trail = this.liveTrailFor(trailInput);
     // Read by the behaviorLive target-builder closure (constructor) - must be set before
     // behaviorLive.apply runs below, since validate/previewHash/compile all read it synchronously.
     this.currentTryGpuSimulation = spawnConfig.tryGpuSimulation;
+    const hold = (statuses: HeldStatuses): GraphApplyResult =>
+      heldResult(trail !== undefined, statuses);
 
     // Each live graph reconciles + gates internally and never throws: a bad edit (unknown node,
     // failed validation, a codegen fault) comes back in its `errors`, holding the last good IR.
     const renderResult = this.renderLive.apply(renderSnapshot);
     const behaviorResult = this.behaviorLive.apply(behaviorSnapshot);
+    const trailResult = trail?.live.apply(trail.input.snapshot);
 
-    // The preview is all-or-nothing (the two artifacts run as one emitter). If either graph is
-    // invalid, surface its node-attributed errors and leave the last emitter running.
-    if (renderResult.status === "invalid" || behaviorResult.status === "invalid") {
-      return {
-        render:
-          renderResult.status === "invalid" ? invalidFromErrors(renderResult.errors) : BLOCKED,
-        behavior:
-          behaviorResult.status === "invalid" ? invalidFromErrors(behaviorResult.errors) : BLOCKED,
-        emitterRebuilt: false,
-      };
+    // The preview is all-or-nothing (the artifacts run as one emitter). If any graph is invalid,
+    // surface its node-attributed errors and leave the last emitter running.
+    const invalidOf = (
+      result: { status: string; errors: readonly FXCompilerError[] } | undefined,
+    ): LiveApplyStatus | undefined =>
+      result?.status === "invalid" ? invalidFromErrors(result.errors) : undefined;
+    if (
+      renderResult.status === "invalid" ||
+      behaviorResult.status === "invalid" ||
+      trailResult?.status === "invalid"
+    ) {
+      return hold({
+        render: invalidOf(renderResult),
+        behavior: invalidOf(behaviorResult),
+        trail: invalidOf(trailResult),
+      });
     }
 
-    // Both graphs are valid, so each live graph has installed its current IR through the backend
-    // callback above; guard defensively (a valid apply always installs both before we get here).
+    // Every graph is valid, so each live graph has installed its current IR through the backend
+    // callback above; guard defensively (a valid apply always installs them before we get here).
     if (this.shader === undefined || this.kernel === undefined) {
       const held = invalid(["EmitterView: no compiled IR after a valid apply"]);
-      return { render: held, behavior: held, emitterRebuilt: false };
+      return hold({ render: held, behavior: held });
+    }
+    if (trail !== undefined && !trail.live.compiled) {
+      return hold({ trail: invalid(["EmitterView: no compiled trail IR after a valid apply"]) });
     }
 
     // A *cross-graph* attribute conflict (behavior writes `foo` as vec3, render reads vec2) is
@@ -259,11 +322,22 @@ export class EmitterView implements GraphApplier {
       ),
     ];
     if (attributeErrors.length > 0) {
-      return {
-        render: invalidFromErrors(attributeErrors),
-        behavior: BLOCKED,
-        emitterRebuilt: false,
-      };
+      return hold({ render: invalidFromErrors(attributeErrors) });
+    }
+    if (trail !== undefined) {
+      // A sort scrambles the per-slot path a trail records: the fix is on the render graph's
+      // sink, so the error is pinned there, and repeated on the trail.
+      const sortError = trailSortError(config.sortInterval);
+      if (sortError !== undefined) {
+        return hold({
+          render: invalidFromErrors([sortError]),
+          trail: invalidFromErrors([{ code: sortError.code, message: sortError.message }]),
+        });
+      }
+      const trailErrors = trail.live.attributeErrors(this.behaviorAttributes, declaredAttributes);
+      if (trailErrors.length > 0) {
+        return hold({ trail: invalidFromErrors(trailErrors) });
+      }
     }
 
     // Assembly copies compiled strings + snapshots values (no code generation), so a value-only
@@ -282,30 +356,71 @@ export class EmitterView implements GraphApplier {
         ...(this.standardProgram !== undefined
           ? { gpuBehavior: assembleGpuKernelArtifact(this.standardProgram) }
           : {}),
+        ...(trail === undefined
+          ? {}
+          : { trail: { ...trail.live.assemble(trail.input.config), live: trail.live } }),
       };
     } catch (error) {
       const held = invalid([describeError(error)]);
-      return { render: held, behavior: held, emitterRebuilt: false };
+      return hold({ render: held, behavior: held, trail: held });
     }
 
     // An effect some GPUs could not link is held like any other graph error, before it replaces
-    // anything; one past only the Baseline tier's limits runs, with a warning.
+    // anything; one past only the Baseline tier's limits runs, with a warning. Each graph's count
+    // is its own: a failure counting the trail's materials is the trail's.
     let budget: RenderBudgetFindings;
     try {
       budget = this.budgetFindings(artifacts, renderMode, castShadow);
     } catch (error) {
-      return { render: invalid([describeError(error)]), behavior: BLOCKED, emitterRebuilt: false };
+      return hold({ render: invalid([describeError(error)]) });
     }
     if (budget.errors.length > 0) {
-      return { render: invalidFromErrors(budget.errors), behavior: BLOCKED, emitterRebuilt: false };
+      return hold({ render: invalidFromErrors(budget.errors) });
     }
-    this.artifacts = artifacts;
+    let trailBudget: RenderBudgetFindings | undefined;
+    if (artifacts.trail !== undefined) {
+      try {
+        trailBudget = artifacts.trail.live.budgetFindings(
+          artifacts.trail,
+          artifacts.behavior.attributeWrites,
+          this.behaviorAttributes,
+          // The same "can this emitter run on the GPU" the export counts by: a compiled kernel,
+          // whose slot (in its order) the GPU history copies.
+          this.standardProgram?.buffers,
+        );
+      } catch (error) {
+        return hold({ trail: invalid([describeError(error)]) });
+      }
+      if (trailBudget.errors.length > 0) {
+        return hold({ trail: invalidFromErrors(trailBudget.errors) });
+      }
+    }
+
+    // A read of an attribute nothing writes runs (as a constant 0) - the same check the export runs.
+    const written = kernelWrittenBuffers(this.kernel);
+    const renderWarnings = [
+      ...budget.warnings,
+      ...unwrittenAttributeWarnings(this.renderLive.graphView, written, declaredAttributes),
+    ];
+    const trailWarnings =
+      trail === undefined || trailBudget === undefined
+        ? undefined
+        : [
+            ...trailBudget.warnings,
+            ...trail.live.unwrittenAttributeWarnings(written, declaredAttributes),
+          ];
 
     const result = this.applyArtifacts(artifacts, config, spawnConfig, {
       render: renderResult.status === "recompiled",
       behavior: behaviorResult.status === "recompiled",
     });
-    return { ...result, render: withWarnings(result.render, budget.warnings) };
+    return {
+      ...result,
+      render: withWarnings(result.render, renderWarnings),
+      ...(result.trail === undefined || trailWarnings === undefined
+        ? {}
+        : { trail: withWarnings(result.trail, trailWarnings) }),
+    };
   }
 
   public destroy(): void {
@@ -317,6 +432,8 @@ export class EmitterView implements GraphApplier {
     this.drivenParams.clear();
     this.renderLive.destroy();
     this.behaviorLive.destroy();
+    this.liveTrail?.destroy();
+    this.liveTrail = undefined;
   }
 
   /** Highlights this emitter's preview gizmo as the selected one (accent tint), or not. */
@@ -365,10 +482,12 @@ export class EmitterView implements GraphApplier {
     this.emitter?.loopTimeline();
   }
 
-  /** Clears live particles and cancels any active emission - the emitter returns to idle. */
+  /** Clears live particles and cancels any active emission - the emitter returns to idle, and
+   *  {@link particleOverflowCount} starts counting the next run from zero. */
   public reset(): void {
     this.emitter?.stop();
     this.emitter?.reset();
+    this.overflowAtReset = this.emitter?.particleOverflowCount ?? 0;
   }
 
   /** Shows/hides the emitter in the preview (the outline's mute toggle). Cached like the pose. */
@@ -388,9 +507,29 @@ export class EmitterView implements GraphApplier {
   }
 
   /**
+   * The trail's live part for this apply, paired with its input: built the first time the emitter
+   * has a trail, and dropped (with everything compiled from it) once it has none, so turning a
+   * trail back on starts from a clean compile.
+   */
+  private liveTrailFor(
+    input: TrailApplyInput | undefined,
+  ): { readonly live: EmitterTrail; readonly input: TrailApplyInput } | undefined {
+    if (input === undefined) {
+      this.liveTrail?.destroy();
+      this.liveTrail = undefined;
+      return undefined;
+    }
+    this.liveTrail ??= new EmitterTrail(this.renderRegistry, this.renderBackend);
+    return { live: this.liveTrail, input };
+  }
+
+  /**
    * Puts valid `artifacts` into effect the cheapest way their changes allow: a full rebuild when
-   * the behavior half reshaped, an in-place render swap when only the render half did, else a
-   * value scrub. `recompiled` says which half's graph just recompiled.
+   * the behavior half reshaped; else an in-place trail swap when the trail turned on/off or
+   * reshaped, and an in-place render swap when the render half did; values (behavior bindings,
+   * the uniforms of whichever material was not swapped) are scrubbed in on every in-place path.
+   * `recompiled` says which half's graph just recompiled. `artifacts` become the installed ones
+   * only once the emitter has taken them.
    */
   private applyArtifacts(
     artifacts: PreviewArtifacts,
@@ -433,6 +572,26 @@ export class EmitterView implements GraphApplier {
       return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
     }
 
+    // The trail turning on/off, a new trail shader, or new history settings - swapped in place.
+    const { trail } = artifacts;
+    const trailStructural =
+      trail === undefined
+        ? this.emitter.hasTrail
+        : trail.live.needsSwap(trail, this.emitter.hasTrail);
+    if (trailStructural) {
+      try {
+        this.emitter.applyTrailArtifact(
+          trail?.options,
+          trail === undefined ? {} : this.resolveExternalTextures(trail.options.render),
+        );
+      } catch (error) {
+        return heldResult(true, { trail: invalid([describeError(error)]) });
+      }
+      trail?.live.markBuilt(trail);
+    }
+    const trailResult =
+      trail === undefined ? {} : { trail: trailStructural ? RECOMPILED : REBOUND };
+
     if (renderStructural) {
       try {
         this.emitter.applyRenderArtifact(artifacts.render, {
@@ -458,33 +617,50 @@ export class EmitterView implements GraphApplier {
       this.builtRenderMode = renderMode;
       this.builtCastShadow = castShadow;
       this.builtReceiveShadow = receiveShadow;
-      this.applySorting(sortInterval);
-      // Particle buffers/instance count/simulation were never touched - no rebuild happened, so
-      // playback must not restart over this (see emitterRebuilt on GraphApplyResult).
-      return { render: RECOMPILED, behavior: REBOUND, emitterRebuilt: false };
     }
 
-    // Neither half is structural: only values changed. Scrub them into the running emitter so
-    // live particles never reset (external textures ride the value path too, so a texture swap
-    // rebinds).
+    // Only values changed in whatever was not swapped above - the behavior bindings always, and an
+    // unswapped trail's or render's uniforms. Scrub them into the running emitter so live particles
+    // never reset (external textures ride the value path too, so a texture swap rebinds).
     this.emitter.applyValues(this.valuesFromArtifacts(artifacts));
     this.applySorting(sortInterval);
-    return { render: REBOUND, behavior: REBOUND, emitterRebuilt: false };
+    this.artifacts = artifacts;
+    // Particle buffers/instance count/simulation were never touched - no rebuild happened, so
+    // playback must not restart over this (see emitterRebuilt on GraphApplyResult).
+    return {
+      render: renderStructural ? RECOMPILED : REBOUND,
+      behavior: REBOUND,
+      ...trailResult,
+      emitterRebuilt: false,
+    };
   }
 
-  /** What `artifacts`' materials take of a GPU, against each tier's minimums - memoized. */
+  /**
+   * What `artifacts`' materials take of a GPU, against each tier's minimums (see
+   * `emitterRenderBudgetFindings`) - memoized, the GPU kernel's program included in the key: its
+   * slot layout decides the Standard-tier count, and it is replaced on every behavior recompile.
+   */
   private budgetFindings(
     artifacts: PreviewArtifacts,
     renderMode: string,
     castShadow: boolean,
   ): RenderBudgetFindings {
+    const program = this.standardProgram;
     return this.budget.get(
-      [this.shader, this.behaviorAttributes, this.renderAttributes, renderMode, castShadow],
+      [
+        this.shader,
+        this.behaviorAttributes,
+        this.renderAttributes,
+        program,
+        renderMode,
+        castShadow,
+      ],
       () =>
-        renderBudgetFindings(
-          fxEmitterRenderBudget(artifacts.render, artifacts.behavior.attributeWrites, {
-            castShadow,
-          }),
+        emitterRenderBudgetFindings(
+          artifacts.render,
+          artifacts.behavior.attributeWrites,
+          castShadow,
+          program?.buffers,
         ),
     );
   }
@@ -512,7 +688,12 @@ export class EmitterView implements GraphApplier {
       // The runtime rejected the artifact pair; installEmitter builds the new emitter before
       // dropping the old, so the last good preview still runs - hold rather than crash.
       const held = invalid([describeError(error)]);
-      return { render: held, behavior: held, emitterRebuilt: false };
+      return {
+        render: held,
+        behavior: held,
+        ...(artifacts.trail === undefined ? {} : { trail: held }),
+        emitterRebuilt: false,
+      };
     }
     this.builtShader = this.shader;
     this.builtKernel = this.kernel;
@@ -523,8 +704,15 @@ export class EmitterView implements GraphApplier {
     this.builtReceiveShadow = receiveShadow;
     this.builtTryGpuSimulation = spawnConfig.tryGpuSimulation;
     this.builtExpectedCapacity = spawnConfig.expectedCapacity;
+    artifacts.trail?.live.markBuilt(artifacts.trail);
     this.applySorting(sortInterval);
-    return { render: RECOMPILED, behavior: RECOMPILED, emitterRebuilt: true };
+    this.artifacts = artifacts;
+    return {
+      render: RECOMPILED,
+      behavior: RECOMPILED,
+      ...(artifacts.trail === undefined ? {} : { trail: RECOMPILED }),
+      emitterRebuilt: true,
+    };
   }
 
   /** Every external sampler slot `artifact` declares, bound to its live texture - shared by
@@ -556,14 +744,18 @@ export class EmitterView implements GraphApplier {
   /** The live uniform/binding values to scrub into a running emitter on a rebind. */
   private valuesFromArtifacts(artifacts: PreviewArtifacts): FXApplyValues {
     const uniforms: Record<string, number | readonly number[] | Texture> = {};
-    for (const [name, init] of Object.entries(artifacts.render.uniforms)) {
-      if (init.value !== undefined) {
-        uniforms[name] = init.value;
+    for (const render of renderArtifactsOf(artifacts)) {
+      // A name every material declares carries one default (`param-value-conflict`), so the first
+      // material's value stands for all of them.
+      for (const [name, init] of Object.entries(render.uniforms)) {
+        if (init.value !== undefined && !(name in uniforms)) {
+          uniforms[name] = init.value;
+        }
       }
-    }
-    // External sampler slots carry no baked value: bind each to its live texture.
-    for (const slot of externalSlots(artifacts.render)) {
-      uniforms[slot.uniformName] = this.resolveTexture(slot.paramName);
+      // External sampler slots carry no baked value: bind each to its live texture.
+      for (const slot of externalSlots(render)) {
+        uniforms[slot.uniformName] = this.resolveTexture(slot.paramName);
+      }
     }
     const bindings: Record<string, number | Float32Array> = {};
     for (const [name, slot] of Object.entries(artifacts.behavior.bindings)) {
@@ -581,7 +773,7 @@ export class EmitterView implements GraphApplier {
     bindings: Record<string, number | Float32Array>,
   ): void {
     const uniformKey = paramUniformName(name);
-    if (uniformKey in artifacts.render.uniforms) {
+    if (renderArtifactsOf(artifacts).some((render) => uniformKey in render.uniforms)) {
       uniforms[uniformKey] = value;
     }
     // Behavior scalarizes a vector into one binding per component (`b_param_<name>_x/...`);
@@ -608,7 +800,9 @@ export class EmitterView implements GraphApplier {
     bindings: Record<string, number | Float32Array>,
   ): void {
     const uniformKey = paramUniformName(name);
-    const uniform = artifacts.render.uniforms[uniformKey];
+    const uniform = renderArtifactsOf(artifacts)
+      .map((render) => render.uniforms[uniformKey])
+      .find((candidate) => candidate !== undefined);
     if (uniform !== undefined && "value" in uniform) {
       uniforms[uniformKey] = uniform.value;
     }
@@ -629,7 +823,10 @@ export class EmitterView implements GraphApplier {
   ): void {
     // Every external sampler slot must be bound at build time (a missing one throws); a
     // deleted/absent texture resolves to a transparent fallback, keeping the preview alive.
-    const textures = this.resolveExternalTextures(artifacts.render);
+    const textures = Object.assign(
+      {},
+      ...renderArtifactsOf(artifacts).map((render) => this.resolveExternalTextures(render)),
+    ) as Record<string, Texture>;
     // Present only when actually compiled: `gpuKernel` is a bare optional under
     // exactOptionalPropertyTypes, so an explicit `undefined` value is rejected - omit the key.
     // isWebGL2 gates USE here only, never whether to compile (already compiled/cached above
@@ -646,9 +843,12 @@ export class EmitterView implements GraphApplier {
       renderer: this.renderer,
       expectedCapacity,
       ...(gpuKernel !== undefined ? { gpuKernel } : {}),
+      ...(artifacts.trail !== undefined ? { trail: artifacts.trail.options } : {}),
     });
     this.emitter?.destroy();
     this.emitter = next;
+    // A fresh emitter counts its overflow from zero.
+    this.overflowAtReset = 0;
     this.parent.add(next);
     // The preview gizmo rides the emitter's Object3D, so re-parent it onto the fresh emitter.
     next.add(this.marker.object);

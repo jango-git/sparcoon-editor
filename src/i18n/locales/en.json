@@ -61,6 +61,12 @@
   "graph": {
     "modeRender": "Render graph",
     "modeBehavior": "Behavior graph",
+    "blockedByOtherGraph": "blocked by an error in another graph of this emitter",
+    "modeTrail": "Trail graph",
+    "addTrail": "Add trail",
+    "addTrailTip": "Gives this emitter a trail: a ribbon drawn behind every particle along its recent path, authored in its own graph.",
+    "removeTrail": "Remove trail",
+    "removeTrailTip": "Drops this emitter's trail graph. Undo brings it back.",
     "noNodes": "No nodes for this graph",
     "noGroupGraph": "The VFX group has no graph - select an emitter or VFX mesh",
     "comment": "Comment",
@@ -132,6 +138,9 @@
   "stats": {
     "title": "Stats",
     "particles": "Particles",
+    "overflow": "Overflow",
+    "overflowTip": "Particles lost because an emitter was full, since playback was last stopped or rewound (or the emitter was rebuilt): a birth into a full emitter replaces a live particle. Nonzero means some emitter's Expected Capacity is too small. Counted for CPU-simulated emitters only - \"-\" when every visible emitter runs on the GPU.",
+    "overflowPartialTip": "Partial: some visible emitters run on the GPU and are not counted.",
     "nodes": "Nodes",
     "cost": "Cost",
     "costTip": "This node's approximate ALU cost - higher runs more expensive.",

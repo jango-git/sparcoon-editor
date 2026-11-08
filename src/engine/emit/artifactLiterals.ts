@@ -1,11 +1,12 @@
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
+import { particleReadsOf } from "../render/target/FXParticleRenderTarget";
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
   FXKernelBindingHandle,
 } from "../behavior/FXCompiledKernel";
-import type { FXGeometrySource, FXRenderMode } from "sparcoon";
+import type { FXGeometrySource, FXRenderMode, FXShaderStageSource } from "sparcoon";
 import {
   assembleKernelBody,
   SPAWN_LOOP_HEADER,
@@ -27,11 +28,27 @@ export function attributeDecls(attributes: readonly FXAttributeRequest[]): strin
   );
 }
 
-function stageLiteral(stage: FXCompiledShader["vertex"]): string {
+/**
+ * The runtime's {@link FXShaderStageSource} for one compiled stage: its code, and what that code
+ * reads of each particle. Shared with {@link assembleArtifacts}'s in-memory assembler, so the
+ * exported module and the live preview never part ways on it.
+ */
+export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
+  return {
+    varyingDeclarations: [...stage.varyingDeclarations],
+    helperFunctions: [...stage.helperFunctions],
+    body: [...stage.body],
+    particleReads: particleReadsOf(stage.targetReads),
+  };
+}
+
+function stageLiteral(stage: FXCompiledStage): string {
+  const source = stageSource(stage);
   return (
-    `{ varyingDeclarations: ${JSON.stringify(stage.varyingDeclarations)}, ` +
-    `helperFunctions: ${JSON.stringify(stage.helperFunctions)}, ` +
-    `body: ${JSON.stringify(stage.body)} }`
+    `{ varyingDeclarations: ${JSON.stringify(source.varyingDeclarations)}, ` +
+    `helperFunctions: ${JSON.stringify(source.helperFunctions)}, ` +
+    `body: ${JSON.stringify(source.body)}, ` +
+    `particleReads: ${JSON.stringify(source.particleReads)} }`
   );
 }
 

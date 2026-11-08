@@ -165,7 +165,7 @@ describe("standard behavior forces - registration & numerics", () => {
     const compiled = compileBehavior(graph, velocityTargets);
     const spawn = buildParticleSpawnKernel(compiled);
     const buffers = freshBuffers();
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
     return buffers.velocity;
   }
 

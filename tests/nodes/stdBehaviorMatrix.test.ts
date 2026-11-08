@@ -51,7 +51,7 @@ function spawnPosition(
   const compiled = compileBehavior(graph, buildParticleBehaviorTargets());
   const spawn = buildParticleSpawnKernel(compiled);
   const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
-  spawn(buffers, 0, 1, compiled.spawn.bindings);
+  spawn(buffers, 0, 1, compiled.spawn!.bindings);
   return [buffers.position[0], buffers.position[1], buffers.position[2]];
 }
 
@@ -71,7 +71,7 @@ function spawnSocket(
   const compiled = compileBehavior(graph, buildParticleBehaviorTargets());
   const spawn = buildParticleSpawnKernel(compiled);
   const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
-  spawn(buffers, 0, 1, compiled.spawn.bindings);
+  spawn(buffers, 0, 1, compiled.spawn!.bindings);
   return [buffers.position[0], buffers.position[1], buffers.position[2]];
 }
 

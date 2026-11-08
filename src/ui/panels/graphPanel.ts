@@ -6,18 +6,14 @@
  */
 
 import { t } from "../../i18n";
-import type { EditorGraph } from "../../domain/graphModel";
-import { GraphKind } from "../../domain/nodePalette";
 import { computeGraphStats } from "../../domain/graphStats";
 import type { LiveApplyStatus } from "../../model/editorState";
-import {
-  selectActiveGraphOwner,
-  selectBehaviorStatus,
-  selectRenderStatus,
-} from "../../model/selectors";
+import { setEmitterTrail } from "../../model/commands";
+import { authoredGraphs, GRAPH_SLOTS } from "../../model/graphSlots";
+import { selectActiveGraphOwner, selectGraphStatus } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import type { SignalBus } from "../../model/signals";
-import { attachTooltip } from "../components/tooltip";
+import { attachTooltip, clearTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import type { EditorContext } from "../editorContext";
 import { GraphCanvas } from "../graph/graphCanvas";
@@ -54,19 +50,13 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
   const stats = createGraphStats();
   graph.append(stats.element);
   // Nodes/Cost: every graph the active owner authors, summed - an emitter's render + behavior
-  // pair, or a VFX mesh's lone render graph. The Behavior/Render switch no longer changes this
+  // pair (and its trail), or a VFX mesh's lone render graph. The Behavior/Render switch no longer changes this
   // total (each graph's own number now lives on its sink's header instead; see graphCanvas.ts's
   // `sinkCosts`). Only moves on a structural edit (a different active owner counts as one).
   const updateStats = (): void => {
-    const owner = selectActiveGraphOwner(store);
-    const graphs: readonly [GraphKind, EditorGraph][] =
-      owner.behaviorGraph === undefined
-        ? [[GraphKind.Render, owner.renderGraph]]
-        : [
-            [GraphKind.Render, owner.renderGraph],
-            [GraphKind.Behavior, owner.behaviorGraph],
-          ];
-    const totals = graphs.map(([kind, editorGraph]) => computeGraphStats(kind, editorGraph));
+    const totals = authoredGraphs(selectActiveGraphOwner(store)).map(({ name, graph: authored }) =>
+      computeGraphStats(GRAPH_SLOTS[name].kind, authored),
+    );
     stats.report(
       totals.reduce((sum, total) => sum + total.nodeCount, 0),
       totals.reduce((sum, total) => sum + total.cost, 0),
@@ -80,8 +70,7 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
   graph.append(errors);
 
   const updateErrors = (): void => {
-    const status =
-      graphView.mode === GraphMode.Render ? selectRenderStatus(store) : selectBehaviorStatus(store);
+    const status = selectGraphStatus(store, graphView.mode);
     renderErrors(graph, errors, status, (nodeId) => canvas.focusNode(nodeId));
   };
   updateErrors();
@@ -91,7 +80,11 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
   return graph;
 }
 
-/** The floating Behavior/Render switch in the graph's top-left corner; the active graph is highlighted. */
+/**
+ * The floating Behavior/Render/Trail switch in the graph's top-left corner; the active graph is
+ * highlighted. An emitter without a trail shows the Trail button as an "add trail" action, and an
+ * emitter with one shows a remove button beside it.
+ */
 function createGraphSwitch(
   graphView: GraphViewState,
   store: Store,
@@ -107,16 +100,63 @@ function createGraphSwitch(
     return button;
   };
 
+  const trailButton = createElement("button", {
+    className: "graph-switch__button",
+    type: "button",
+  });
+  const trailLabel = createElement("span");
+  trailButton.append(icon(graphModeIcons.trail), trailLabel);
+  trailButton.addEventListener("click", () => {
+    const owner = selectActiveGraphOwner(store);
+    if (owner.kind === "emitter" && owner.trailGraph === undefined) {
+      setEmitterTrail(store, owner.id, true);
+    }
+    graphView.setMode(GraphMode.Trail);
+  });
+  buttons.set(GraphMode.Trail, trailButton);
+
+  const removeTrail = createElement("button", {
+    className: "graph-switch__button graph-switch__remove",
+    textContent: "\u00d7",
+    type: "button",
+  });
+  attachTooltip(removeTrail, t("graph.removeTrail"), t("graph.removeTrailTip"));
+  removeTrail.addEventListener("click", () => {
+    const owner = selectActiveGraphOwner(store);
+    if (owner.kind === "emitter") {
+      setEmitterTrail(store, owner.id, false);
+    }
+  });
+
   const group = createElement("div", { className: "graph-switch graph-switch--floating" }, [
     build(GraphMode.Behavior, graphModeIcons.behavior),
     build(GraphMode.Render, graphModeIcons.render),
+    trailButton,
+    removeTrail,
   ]);
 
+  // Whether the Trail button currently shows as the plain switch (`undefined` before the first refresh).
+  let trailButtonIsSwitch: boolean | undefined;
   const refresh = (): void => {
     // A VFX mesh has no authorable graph choice (render only, no behavior), so hide the whole
     // switch for it; the canvas already coerces the mode to Render.
-    const meshOwner = selectActiveGraphOwner(store).kind === "vfxMesh";
-    group.hidden = meshOwner;
+    const owner = selectActiveGraphOwner(store);
+    group.hidden = owner.kind === "vfxMesh";
+    const hasTrail = owner.trailGraph !== undefined;
+    trailLabel.textContent = hasTrail ? graphModeLabel(GraphMode.Trail) : t("graph.addTrail");
+    trailButton.classList.toggle("graph-switch__button--add", !hasTrail);
+    // Doubling as "add trail", the button says what a click will do; as the plain Trail switch it
+    // needs no more than its label, like Behavior and Render. Only on a flip: clearing hides
+    // whichever tooltip is showing.
+    if (hasTrail !== trailButtonIsSwitch) {
+      trailButtonIsSwitch = hasTrail;
+      if (hasTrail) {
+        clearTooltip(trailButton);
+      } else {
+        attachTooltip(trailButton, t("graph.addTrail"), t("graph.addTrailTip"));
+      }
+    }
+    removeTrail.hidden = !hasTrail;
     for (const [mode, button] of buttons) {
       button.classList.toggle("graph-switch__button--active", mode === graphView.mode);
     }

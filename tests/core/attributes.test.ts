@@ -26,7 +26,11 @@ const FLOAT = FX_VALUE_TYPES.float;
 
 /** A FakeNode with an output `out` (so it can be bound) reserving `request`. */
 function attrNode(type: string, request?: FXAttributeRequest): FakeNode {
-  return new FakeNode({ type, outputs: [socket("out")], attributeRequest: request });
+  return new FakeNode({
+    type,
+    outputs: [socket("out")],
+    ...(request !== undefined && { attributeRequest: request }),
+  });
 }
 
 /** Builds a graph and binds `boundIds`' `out` sockets so those nodes are reachable. */

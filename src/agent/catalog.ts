@@ -6,6 +6,7 @@
 
 import {
   isMeshExcludedRenderNode,
+  isTrailExcludedRenderNode,
   metaFor,
   paletteForKind,
   type FXNodeMeta,
@@ -62,9 +63,10 @@ export function createCatalogApi(): CatalogApi {
   return {
     nodeTypes: (graph, options = {}): readonly NodeTypeSummary[] => {
       requireKnownKeys("options", options, ["mesh"]);
-      const kind = graphKindFor(parseGraphName(graph));
-      return paletteForKind(kind)
+      const name = parseGraphName(graph);
+      return paletteForKind(graphKindFor(name))
         .filter((metadata) => options.mesh !== true || !isMeshExcludedRenderNode(metadata))
+        .filter((metadata) => name !== "trail" || !isTrailExcludedRenderNode(metadata))
         .map(summarize);
     },
     nodeType: (graph, type): NodeTypeInfo => {

@@ -78,7 +78,7 @@ describe("behavior attribute buffers", () => {
     const spawn = buildParticleSpawnKernel(compiled);
 
     const buffers = { ...coreBuffers(2), seed: new Float32Array(2) };
-    spawn(buffers, 0, 2, compiled.spawn.bindings);
+    spawn(buffers, 0, 2, compiled.spawn!.bindings);
 
     expect(buffers.lifecycle[0 * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME]).toBe(4);
     expect(buffers.lifecycle[FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME]).toBe(4);
@@ -107,7 +107,7 @@ describe("behavior attribute buffers", () => {
     const spawn = buildParticleSpawnKernel(compiled);
 
     const buffers = { ...coreBuffers(1), tint: new Float32Array(3) };
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
 
     [0.1, 0.2, 0.3].forEach((expected, i) => {
       expect(buffers.tint[i]).toBeCloseTo(expected, 6);

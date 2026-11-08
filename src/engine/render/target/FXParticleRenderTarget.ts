@@ -1,3 +1,4 @@
+import type { FXParticleReads } from "sparcoon";
 import { FXShaderStage } from "../FXShaderStage";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
@@ -59,8 +60,39 @@ export function attributeVaryingName(name: string): string {
   return `p_fx_${name}`;
 }
 
+/** The particle builtins backed by the core `position` buffer, and by the `lifecycle` one. */
+const POSITION_INPUTS: ReadonlySet<string> = new Set([
+  "PARTICLE_POSITION",
+  "PARTICLE_POSITION_X",
+  "PARTICLE_POSITION_Y",
+  "PARTICLE_POSITION_Z",
+]);
+const LIFECYCLE_INPUTS: ReadonlySet<string> = new Set([
+  "PARTICLE_AGE",
+  "PARTICLE_LIFETIME",
+  "PARTICLE_ID",
+]);
+const ATTRIBUTE_INPUT_PREFIX = attributeVaryingName("");
+
+/**
+ * What a stage reading the particle or trail target inputs `targetReads` (see
+ * `FXCompiledStage.targetReads`) reads of each particle - the artifact's `particleReads`, from
+ * which the runtime declares the attributes and varyings the stage needs. Every other input (the
+ * camera, `p_uv`, the clock) is the runtime's own, not particle state.
+ */
+export function particleReadsOf(targetReads: readonly string[]): FXParticleReads {
+  return {
+    position: targetReads.some((name) => POSITION_INPUTS.has(name)),
+    lifecycle: targetReads.some((name) => LIFECYCLE_INPUTS.has(name)),
+    attributes: targetReads
+      .filter((name) => name.startsWith(ATTRIBUTE_INPUT_PREFIX))
+      .map((name) => name.slice(ATTRIBUTE_INPUT_PREFIX.length)),
+  };
+}
+
 /** Per-attribute render inputs: each requested attribute is readable in both stages through its
- *  `p_fx_<name>` varying, mirrored from `a_fx_<name>` by the material adapter. */
+ *  `p_fx_<name>` varying, which the runtime's material fills from whichever packed attribute
+ *  holds the field (or a constant zero when nothing writes it). */
 function attributeRenderInputs(
   attributes: readonly FXAttributeRequest[],
 ): readonly FXTargetInput[] {
@@ -153,3 +185,50 @@ export const FX_MESH_TARGET: FXTarget = {
   inputs: MESH_BUILTINS,
   outputs: SHARED_SURFACE_OUTPUTS,
 };
+
+/** Particle builtins a trail does not expose: a ribbon segment has no authored surface frame, so
+ *  every node reading `geometryNormal` or `geometryTangent` is kept out of a trail graph - the
+ *  lighting nodes (ambient/lambert shading), normal-map, spherical-normal and surface-normal.
+ *  A node that reads only the view (fresnel) stays. */
+const TRAIL_EXCLUDED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
+  "geometryNormal",
+  "geometryTangent",
+]);
+
+/**
+ * The trail render builtins: every particle builtin - each one interpolated along the ribbon
+ * between two recorded points of the particle's path - minus the surface frame. `p_uv` means
+ * something else here: x runs along the trail (0 at the particle, 1 at the tail) and y across it
+ * (0 -> 1), and it is readable in the vertex stage too, for a `width` that tapers along the trail.
+ */
+const TRAIL_BUILTINS: readonly FXTargetInput[] = PARTICLE_BUILTINS.filter(
+  (input) => !TRAIL_EXCLUDED_BUILTIN_NAMES.has(input.name),
+).map((input) => (input.name === "p_uv" ? { ...input, stages: BOTH_STAGES } : input));
+
+/** The ribbon's width in world units at a vertex; `0.1` when unwired. */
+const TRAIL_WIDTH_OUTPUT: FXTargetOutput = {
+  slot: "width",
+  type: FLOAT,
+  stage: FXShaderStage.VERTEX,
+  required: false,
+};
+
+/** The trail surface interface: `albedo`, the compositing slots, and the ribbon `width`. */
+const TRAIL_OUTPUTS: readonly FXTargetOutput[] = [
+  { slot: "albedo", type: VEC4, stage: FXShaderStage.FRAGMENT, required: true },
+  ...COMPOSITING_OUTPUTS,
+  TRAIL_WIDTH_OUTPUT,
+];
+
+/** The trail render target (an emitter's trail graph), with a `p_fx_<name>` input per requested
+ *  attribute - read off the particle's recorded path like every other builtin. */
+export function buildTrailTarget(attributes: readonly FXAttributeRequest[] = []): FXTarget {
+  return {
+    name: `trail${canonicalAttributeSuffix(attributes)}`,
+    inputs: [...TRAIL_BUILTINS, ...attributeRenderInputs(attributes)],
+    outputs: TRAIL_OUTPUTS,
+  };
+}
+
+/** The trail render target with no user attributes. */
+export const FX_TRAIL_TARGET: FXTarget = buildTrailTarget();

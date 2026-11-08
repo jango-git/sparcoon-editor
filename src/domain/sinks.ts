@@ -7,6 +7,7 @@
 import type { EditorGraph, GraphNode, GraphPosition } from "./graphModel";
 import {
   DEFAULT_GEOMETRY,
+  DEFAULT_RENDER_HOST,
   DEFAULT_RENDER_MODE,
   GraphKind,
   RENDER_SINK_ID,
@@ -16,6 +17,7 @@ import {
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
   isSinkType,
+  type RenderHost,
 } from "./nodePalette";
 
 /** Default canvas placements: sinks sit to the right; the two behavior sinks stack. */
@@ -43,24 +45,34 @@ function createBehaviorSinks(): readonly GraphNode[] {
   ];
 }
 
-/** The surface sink: albedo + transforms + geometry/render-mode/sort (lighting-model-independent). */
-export function createRenderSink(): GraphNode {
-  return makeSink(RENDER_SINK_ID, RENDER_SINK_TYPE, RENDER_SINK_POSITION, {
-    geometry: DEFAULT_GEOMETRY,
-    renderMode: DEFAULT_RENDER_MODE,
-  });
+/** The surface sink for `host`: albedo + transforms + render mode, and the geometry choice on a
+ *  particle or mesh host - a trail builds its own segment quad, so its sink carries none. */
+export function createRenderSink(host: RenderHost = DEFAULT_RENDER_HOST): GraphNode {
+  return makeSink(
+    RENDER_SINK_ID,
+    RENDER_SINK_TYPE,
+    RENDER_SINK_POSITION,
+    host === "trail"
+      ? { renderMode: DEFAULT_RENDER_MODE }
+      : { geometry: DEFAULT_GEOMETRY, renderMode: DEFAULT_RENDER_MODE },
+  );
 }
 
-function sinksFor(kind: GraphKind): readonly GraphNode[] {
-  return kind === GraphKind.Render ? [createRenderSink()] : createBehaviorSinks();
+function sinksFor(kind: GraphKind, host: RenderHost): readonly GraphNode[] {
+  return kind === GraphKind.Render ? [createRenderSink(host)] : createBehaviorSinks();
 }
 
 /**
- * `graph` guaranteed to carry every sink its `kind` requires, adding any missing. Idempotent:
- * a graph that already has them is returned by the same reference (matters on document load).
+ * `graph` guaranteed to carry every sink its `kind` (and, for a render graph, its `host`)
+ * requires, adding any missing. Idempotent: a graph that already has them is returned by the same
+ * reference (matters on document load).
  */
-export function ensureSinks(graph: EditorGraph, kind: GraphKind): EditorGraph {
-  const required = sinksFor(kind);
+export function ensureSinks(
+  graph: EditorGraph,
+  kind: GraphKind,
+  host: RenderHost = DEFAULT_RENDER_HOST,
+): EditorGraph {
+  const required = sinksFor(kind, host);
   const missing = required.filter((sink) => graph.nodes[sink.id]?.type !== sink.type);
   if (missing.length === 0) {
     return graph;

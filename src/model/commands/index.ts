@@ -64,6 +64,7 @@ export {
   removeEmitter,
   renameEmitter,
   selectEmitter,
+  setEmitterTrail,
   toggleEmitterHidden,
 } from "./emitterCommands";
 export {

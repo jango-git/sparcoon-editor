@@ -126,7 +126,7 @@ describe("combine/split matrix facades: editor -> serialize -> engine compile", 
     const compiled = compileBehavior(reconstructBehavior(snapshot), buildParticleBehaviorTargets());
     const spawn = buildParticleSpawnKernel(compiled);
     const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
     // Column 1 of the assembled mat3 is (4,5,6).
     expect([buffers.position[0], buffers.position[1], buffers.position[2]]).toEqual([4, 5, 6]);
   });

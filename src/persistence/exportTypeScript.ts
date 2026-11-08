@@ -17,6 +17,7 @@ import {
 } from "../engine/emit/artifactLiterals";
 import type { FXGeometrySource } from "sparcoon";
 import type { SourceState } from "../model/editorState";
+import { TRAIL_GEOMETRY } from "../domain/trailChecks";
 import {
   compileEmitter,
   compileMesh,
@@ -33,7 +34,16 @@ import {
   meshSpecLiteral,
   needsLiveGetter,
   projectSpecLiteral,
+  type RenderArtifactNames,
 } from "./exportLiterals";
+
+/** The GLSL tiers every render artifact ships in, in the order their constants are written. */
+const RENDER_TIERS = ["baseline", "standard"] as const;
+
+/** The per-tier constant names for one render artifact, e.g. `render0Baseline`/`render0Standard`. */
+function tierNames(stem: string): RenderArtifactNames {
+  return { baseline: `${stem}Baseline`, standard: `${stem}Standard` };
+}
 
 export interface EmitProjectOptions {
   /** Package specifier the emitted module imports the runtime from. @defaultValue `"sparcoon"` */
@@ -55,6 +65,16 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   // compileBehaviorBundle's standardProgram field) - gates the FXParticleKernelArtifact type
   // import so a project with no GPU-driven emitters never imports a type it never uses.
   let needsGpuKernelType = false;
+  // One `FXRenderArtifact` constant per GLSL tier, in tier order - an emitter's render and trail
+  // and a mesh's render alike.
+  const pushRenderArtifacts = (
+    names: RenderArtifactNames,
+    body: (tier: keyof RenderArtifactNames) => string,
+  ): void => {
+    for (const tier of RENDER_TIERS) {
+      artifactBlocks.push(`const ${names[tier]}: FXRenderArtifact = ${body(tier)};`);
+    }
+  };
 
   const collectGeometryName = (geometry: FXGeometrySource): void => {
     if (geometry.type === "custom") {
@@ -69,28 +89,16 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
         helperNames.add(name);
       }
     }
-    const renderNames = {
-      baseline: `render${String(index)}Baseline`,
-      standard: `render${String(index)}Standard`,
-    };
+    const renderNames = tierNames(`render${String(index)}`);
     const behaviorName = `behavior${String(index)}`;
-    artifactBlocks.push(
-      `const ${renderNames.baseline}: FXRenderArtifact = ${renderArtifactBody(
-        ir.shaders.baseline,
+    pushRenderArtifacts(renderNames, (tier) =>
+      renderArtifactBody(
+        ir.shaders[tier],
         ir.lightingIntrinsics,
         ir.geometry,
         ir.renderAttributes,
         ir.renderMode,
-      )};`,
-    );
-    artifactBlocks.push(
-      `const ${renderNames.standard}: FXRenderArtifact = ${renderArtifactBody(
-        ir.shaders.standard,
-        ir.lightingIntrinsics,
-        ir.geometry,
-        ir.renderAttributes,
-        ir.renderMode,
-      )};`,
+      ),
     );
     artifactBlocks.push(
       `const ${behaviorName}: FXBehaviorArtifact = ${behaviorArtifactBody(
@@ -106,37 +114,39 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
         `const ${gpuKernelName}: FXParticleKernelArtifact = ${gpuKernelArtifactBody(ir.gpuProgram)};`,
       );
     }
-    const slots = externalParamNames(ir.shaders.baseline);
+    let trailNames: RenderArtifactNames | undefined;
+    if (ir.trail !== undefined) {
+      const trail = ir.trail;
+      trailNames = tierNames(`trail${String(index)}`);
+      pushRenderArtifacts(trailNames, (tier) =>
+        renderArtifactBody(
+          trail.shaders[tier],
+          [],
+          TRAIL_GEOMETRY,
+          trail.renderAttributes,
+          trail.renderMode,
+        ),
+      );
+    }
+    // One external-slot list per emitter: its particles' and its trail's textures together.
+    const slots = [
+      ...new Set([
+        ...externalParamNames(ir.shaders.baseline),
+        ...(ir.trail === undefined ? [] : externalParamNames(ir.trail.shaders.baseline)),
+      ]),
+    ];
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
     emitterSpecs.push(
-      emitterSpecLiteral(emitter, renderNames, behaviorName, ir, slots, gpuKernelName),
+      emitterSpecLiteral(emitter, renderNames, behaviorName, ir, slots, gpuKernelName, trailNames),
     );
   });
 
   source.scene.meshes.forEach((mesh, index) => {
     const ir = compileMesh(mesh);
-    const renderNames = {
-      baseline: `meshRender${String(index)}Baseline`,
-      standard: `meshRender${String(index)}Standard`,
-    };
-    artifactBlocks.push(
-      `const ${renderNames.baseline}: FXRenderArtifact = ${renderArtifactBody(
-        ir.shaders.baseline,
-        ir.lightingIntrinsics,
-        ir.geometry,
-        [],
-        ir.renderMode,
-      )};`,
-    );
-    artifactBlocks.push(
-      `const ${renderNames.standard}: FXRenderArtifact = ${renderArtifactBody(
-        ir.shaders.standard,
-        ir.lightingIntrinsics,
-        ir.geometry,
-        [],
-        ir.renderMode,
-      )};`,
+    const renderNames = tierNames(`meshRender${String(index)}`);
+    pushRenderArtifacts(renderNames, (tier) =>
+      renderArtifactBody(ir.shaders[tier], ir.lightingIntrinsics, ir.geometry, [], ir.renderMode),
     );
     const slots = externalParamNames(ir.shaders.baseline);
     slots.forEach((name) => externalTextureNames.add(name));

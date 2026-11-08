@@ -1,5 +1,5 @@
 /**
- * Which graph is shown - Render or Behavior. UI state (not document state): the graph panel's own
+ * Which graph is shown - Behavior, Render, or the emitter's Trail. UI state (not document state): the graph panel's own
  * switch sets it, and both the graph panel and its status display read it. A tiny observable so both
  * stay in sync.
  */
@@ -7,9 +7,11 @@
 import { createSignal, type Signal } from "./primitives/signal";
 import { t } from "../i18n";
 
+/** The graph shown, by its graph name - so a mode indexes `GRAPH_SLOTS` (model/graphSlots.ts). */
 export enum GraphMode {
   Render = "render",
   Behavior = "behavior",
+  Trail = "trail",
 }
 
 export class GraphViewState {
@@ -31,5 +33,12 @@ export class GraphViewState {
 }
 
 export function graphModeLabel(mode: GraphMode): string {
-  return mode === GraphMode.Render ? t("graph.modeRender") : t("graph.modeBehavior");
+  switch (mode) {
+    case GraphMode.Render:
+      return t("graph.modeRender");
+    case GraphMode.Behavior:
+      return t("graph.modeBehavior");
+    case GraphMode.Trail:
+      return t("graph.modeTrail");
+  }
 }

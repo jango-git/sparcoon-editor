@@ -4,7 +4,7 @@
  */
 
 import type { EditorGraph } from "../../domain/graphModel";
-import type { SourceState } from "../editorState";
+import { emitterGraphs, type SourceState } from "../editorState";
 import type { TransformTrack } from "../transform";
 import { isRecord } from "../../util/guards";
 import { seedIdentifierCounter } from "./identifier";
@@ -44,7 +44,7 @@ function collectSourceIds(source: SourceState): readonly string[] {
     ids.push(...emitter.events.map((event) => event.id));
     ids.push(...emitter.tracks.flatMap((track) => track.keys.map((key) => key.id)));
     ids.push(...transformTrackKeyIds(emitter.transformTracks));
-    for (const graph of [emitter.renderGraph, emitter.behaviorGraph]) {
+    for (const graph of emitterGraphs(emitter)) {
       ids.push(...graphIds(graph));
     }
   }

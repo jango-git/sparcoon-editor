@@ -43,6 +43,8 @@ export interface FXCompiledStage {
   readonly helperFunctions: readonly string[];
   /** Ordered statements to splice into this stage's main body. */
   readonly body: readonly string[];
+  /** The target inputs this stage's code reads (sorted, each once), recorded as it is printed. */
+  readonly targetReads: readonly string[];
 }
 
 /** The compiler's Three-independent intermediate representation; a material adapter consumes

@@ -22,7 +22,7 @@ const COMPONENTS = ["x", "y", "z", "w"] as const;
  * fans it straight out to its float components (`x`/`y`/`z`/`w` up to its width) instead of a
  * single combined `value` - the fused equivalent of `custom-attribute` piped into `split`,
  * without an extra node or wire for the common case of only needing one or two components. A
- * user attribute rides `a_fx_<name>` into the `p_fx_<name>` varying. Stage-flexible: both
+ * user attribute is read through the `p_fx_<name>` varying. Stage-flexible: both
  * varyings are exposed in both stages, so the compiler places this by its consumers.
  */
 export class FXRenderNodeCustomAttributeSplit extends FXRenderNode {

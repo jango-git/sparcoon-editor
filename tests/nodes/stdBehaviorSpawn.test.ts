@@ -52,7 +52,7 @@ function spawnKernelOf(
   const compiled = compileBehavior(graph, buildParticleBehaviorTargets(requests));
   const spawn = buildParticleSpawnKernel(compiled);
   return (buffers: Record<string, Float32Array>): void =>
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
 }
 
 /** Core-only buffers (position vec3 + lifecycle vec3), one particle. */
@@ -107,7 +107,7 @@ describe("standard behavior spawn - registration & numerics", () => {
 
     const c1 = compileBehavior(graph, buildParticleBehaviorTargets());
     const first = coreBuffers();
-    buildParticleSpawnKernel(c1)(first, 0, 1, c1.spawn.bindings);
+    buildParticleSpawnKernel(c1)(first, 0, 1, c1.spawn!.bindings);
     expect(first.lifecycle[1]).toBe(3);
 
     // A snapshot omitting `min`/`max` (a "reset to default" serialized as key removal) resets
@@ -116,7 +116,7 @@ describe("standard behavior spawn - registration & numerics", () => {
     life.applyParams?.({});
     const c2 = compileBehavior(graph, buildParticleBehaviorTargets());
     const second = coreBuffers();
-    buildParticleSpawnKernel(c2)(second, 0, 1, c2.spawn.bindings);
+    buildParticleSpawnKernel(c2)(second, 0, 1, c2.spawn!.bindings);
     expect(second.lifecycle[1]).toBe(1);
   });
 

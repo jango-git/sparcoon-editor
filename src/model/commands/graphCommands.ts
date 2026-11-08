@@ -14,7 +14,7 @@ import {
 } from "../../domain/nodePalette";
 import { nodeFamily, pruneStaleFamilyComponents } from "../../domain/nodeFamilies";
 import { isSink } from "../../domain/sinks";
-import { resolveGraphOwner, type SourceState } from "../editorState";
+import { emitterGraphs, resolveGraphOwner, type SourceState } from "../editorState";
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
 import {
@@ -129,7 +129,7 @@ function withPrunedTracks(source: SourceState): SourceState {
     scene: {
       ...source.scene,
       emitters: source.scene.emitters.map((emitter) => {
-        const referenced = timelineValueNames([emitter.renderGraph, emitter.behaviorGraph]);
+        const referenced = timelineValueNames(emitterGraphs(emitter));
         const tracks = emitter.tracks.filter((track) => referenced.has(track.name));
         return tracks.length === emitter.tracks.length ? emitter : { ...emitter, tracks };
       }),

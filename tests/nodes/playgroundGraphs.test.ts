@@ -93,7 +93,7 @@ describe("playground graphs - standard registries + hand-written resource nodes"
     for (const buffer of compiled.update.buffers) {
       buffers[buffer.name] = new Float32Array(buffer.stride);
     }
-    expect(() => spawn(buffers, 0, 1, compiled.spawn.bindings)).not.toThrow();
+    expect(() => spawn(buffers, 0, 1, compiled.spawn!.bindings)).not.toThrow();
     expect(() => update(buffers, 1, 0.016, compiled.update.bindings)).not.toThrow();
     expect(buffers.lifecycle[FX_LIFETIME]).toBe(4); // lifetime (core lifecycle buffer)
     expect(Number.isFinite(buffers.velocity[1])).toBe(true); // velocity.y (attribute buffer)

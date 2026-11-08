@@ -7,6 +7,7 @@ import { nextIdentifier } from "./identifier";
 import {
   activeGraph,
   activeOwnerHasBehaviorGraph,
+  activeOwnerHasGraph,
   withGraph,
   type GraphSlot,
 } from "./graphAccess.Internal";
@@ -97,13 +98,15 @@ export function renameAttribute(
       binding.slot === oldSlot ? { ...binding, slot: newSlot } : binding,
     ),
   }));
-  const next = (["behaviorGraph", "renderGraph"] as const).reduce(
-    (source, graphSlot) =>
-      withGraph(source, graphSlot, (current) =>
-        retargetCustomAttributeNodes(current, oldName, trimmed),
-      ),
-    renamed,
-  );
+  const next = (["behaviorGraph", "renderGraph", "trailGraph"] as const)
+    .filter((graphSlot) => activeOwnerHasGraph(renamed, graphSlot))
+    .reduce(
+      (source, graphSlot) =>
+        withGraph(source, graphSlot, (current) =>
+          retargetCustomAttributeNodes(current, oldName, trimmed),
+        ),
+      renamed,
+    );
   store.commit(next, "structural");
   return true;
 }

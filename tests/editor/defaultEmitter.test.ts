@@ -6,6 +6,8 @@ import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
@@ -22,15 +24,15 @@ describe("default emitter", () => {
   it("its seeded graphs reconcile and compile to a runnable artifact pair", () => {
     const emitter = createDefaultEmitter("e1", "Emitter");
 
-    const renderRegistry = new FXNodeRegistry();
+    const renderRegistry = new FXNodeRegistry<FXRenderNode>();
     registerStandardRenderNodes(renderRegistry);
     registerManualRenderNodes(renderRegistry);
-    const behaviorRegistry = new FXNodeRegistry();
+    const behaviorRegistry = new FXNodeRegistry<FXBehaviorNode>();
     registerStandardBehaviorNodes(behaviorRegistry);
     registerManualBehaviorNodes(behaviorRegistry);
 
-    const renderGraph = new FXGraph();
-    const behaviorGraph = new FXGraph();
+    const renderGraph = new FXGraph<FXRenderNode>();
+    const behaviorGraph = new FXGraph<FXBehaviorNode>();
     const renderResult = new FXGraphReconciler(renderRegistry).reconcile(
       renderGraph,
       serializeGraph(emitter.renderGraph),

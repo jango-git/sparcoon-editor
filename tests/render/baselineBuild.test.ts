@@ -89,7 +89,7 @@ class HashNoiseNode extends FXRenderNode {
     ctx.setOutput("out", div(toFloat(masked), lit(16777216)));
   }
 
-  public baselineBuild(ctx: FXRenderContext): void {
+  public override baselineBuild(ctx: FXRenderContext): void {
     const p = ctx.readInput("p");
     const dotValue = ctx.builders.call("dot", p, litVec(12.9898, 78.233));
     const sinValue = ctx.builders.call("sin", dotValue);

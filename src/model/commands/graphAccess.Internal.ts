@@ -6,19 +6,17 @@
 
 import { createEmptyGraph } from "../../domain/graphModel";
 import type { EditorGraph, GraphOutputBinding } from "../../domain/graphModel";
-import { GraphKind } from "../../domain/nodePalette";
 import { resolveGraphOwner, type SourceState } from "../editorState";
+import type { GraphSlot } from "../graphSlots";
 
-/** Which authored graph a command targets. */
-export type GraphSlot = "renderGraph" | "behaviorGraph";
-
-export function kindForSlot(slot: GraphSlot): GraphKind {
-  return slot === "renderGraph" ? GraphKind.Render : GraphKind.Behavior;
-}
+export { kindForSlot, type GraphSlot } from "../graphSlots";
 
 /**
  * The active owner's graph for `slot`. A VFX mesh is render-only, so its behavior slot resolves to
- * an empty graph, symmetric with {@link withGraph}'s no-op write - inert at this boundary, not just UI-hidden.
+ * an empty graph, symmetric with {@link withGraph}'s no-op write - inert at this boundary, not just
+ * UI-hidden. An emitter's trail slot throws while its trail is off: unlike a mesh's behavior slot,
+ * that graph can exist, so an edit aimed at it must not silently vanish (turn the trail on with
+ * `setEmitterTrail` first).
  */
 export function activeGraph(source: SourceState, slot: GraphSlot): EditorGraph {
   const owner = resolveGraphOwner(source.scene);
@@ -39,12 +37,21 @@ export function activeGraph(source: SourceState, slot: GraphSlot): EditorGraph {
   if (emitter === undefined) {
     throw new Error("Scene has no emitters");
   }
-  return emitter[slot];
+  const graph = emitter[slot];
+  if (graph === undefined) {
+    throw new Error(missingTrailMessage(emitter.name));
+  }
+  return graph;
+}
+
+function missingTrailMessage(emitterName: string): string {
+  return `Emitter "${emitterName}" has no trail graph - turn its trail on first`;
 }
 
 /**
  * Applies `update` to the active owner's `slot` graph, replacing just that owner. A VFX mesh's
- * behavior-slot write (attributes included) leaves the source unchanged - see {@link activeGraph}.
+ * behavior-slot write (attributes included) leaves the source unchanged, while a write to the
+ * trail of an emitter whose trail is off throws - see {@link activeGraph}.
  */
 export function withGraph(
   source: SourceState,
@@ -71,11 +78,28 @@ export function withGraph(
     ...source,
     scene: {
       ...source.scene,
-      emitters: source.scene.emitters.map((emitter) =>
-        emitter.id === activeId ? { ...emitter, [slot]: update(emitter[slot]) } : emitter,
-      ),
+      emitters: source.scene.emitters.map((emitter) => {
+        if (emitter.id !== activeId) {
+          return emitter;
+        }
+        const graph = emitter[slot];
+        if (graph === undefined) {
+          throw new Error(missingTrailMessage(emitter.name));
+        }
+        return { ...emitter, [slot]: update(graph) };
+      }),
     },
   };
+}
+
+/** Whether the active owner authors a `slot` graph: a mesh only its render graph, an emitter its
+ *  render and behavior graphs, and its trail graph while its trail is on. */
+export function activeOwnerHasGraph(source: SourceState, slot: GraphSlot): boolean {
+  const owner = resolveGraphOwner(source.scene);
+  if (owner?.kind === "vfxMesh") {
+    return slot === "renderGraph";
+  }
+  return source.scene.emitters.find((emitter) => emitter.id === owner?.id)?.[slot] !== undefined;
 }
 
 /** Whether the active graph owner has a behavior graph - only an emitter does (a mesh is render-only). */

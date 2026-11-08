@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
+import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import type { FXCallSignature } from "../../src/engine/core/ir/FXExprBuilder";
 import {
   add,
@@ -224,7 +225,7 @@ describe("raw", () => {
   it("declares its own type and keeps deps in order", () => {
     const e = raw(FX_VALUE_TYPES.vec2, "glsl", "vec2($0, $1)", lit(1), lit(2));
     expect(e).toMatchObject({ kind: "raw", type: FX_VALUE_TYPES.vec2, language: "glsl" });
-    expect((e as { deps: unknown[] }).deps).toHaveLength(2);
+    expect((e as Extract<FXExpr, { kind: "raw" }>).deps).toHaveLength(2);
   });
 });
 

@@ -100,7 +100,7 @@ describe("custom-attribute-split behavior node", () => {
 
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.velocity[FX_POSITION_X]).toBe(1);
     expect(buffers.velocity[FX_POSITION_Y]).toBe(2);
     expect(buffers.velocity[FX_POSITION_Z]).toBe(3);
@@ -123,7 +123,7 @@ describe("custom-attribute-split behavior node", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
     buffers["seed"][0] = 0.7;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBeCloseTo(0.7, 6);
   });
 
@@ -142,7 +142,7 @@ describe("custom-attribute-split behavior node", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
     buffers["src"][0] = 42;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers["dst"][0]).toBe(42);
   });
 });

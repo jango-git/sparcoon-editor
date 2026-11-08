@@ -28,6 +28,7 @@ export function createTestState(): EditorState {
       environments: [],
       activeEnvironmentName: undefined,
       meshAssets: [],
+      palette: [],
       timeline: DEFAULT_TIMELINE,
     },
     derived: {},

@@ -136,7 +136,17 @@ export function emitterSpecLiteral(
   ir: EmitterIR,
   slots: readonly string[],
   gpuKernelName?: string,
+  trailNames?: RenderArtifactNames,
 ): string {
+  const trail = ir.trail;
+  // The names are the constants the trail's artifacts were written to - one without the other is
+  // a caller bug, never an emitter to export without its trail.
+  if ((trail === undefined) !== (trailNames === undefined)) {
+    throw new Error(
+      `exportTypeScript: ${emitter.name}: trail artifact names must be given exactly when the ` +
+        "emitter has a trail",
+    );
+  }
   return [
     "    {",
     `      name: ${JSON.stringify(emitter.name)},`,
@@ -151,6 +161,12 @@ export function emitterSpecLiteral(
     // omit-when-false optional FXEffectEmitterSpec fields.
     ...(ir.castShadow ? ["      castShadow: true,"] : []),
     ...(ir.receiveShadow ? ["      receiveShadow: true,"] : []),
+    // Present only when the emitter has a trail graph.
+    ...(trail !== undefined && trailNames !== undefined
+      ? [
+          `      trail: { render: { baseline: ${trailNames.baseline}, standard: ${trailNames.standard} }, frames: ${String(trail.frames)}, sampleInterval: ${String(trail.sampleInterval)} },`,
+        ]
+      : []),
     `      externalSlots: ${JSON.stringify(slots)},`,
     `      transform: ${transformLiteral(emitter.transform)},`,
     `      transformTracks: ${transformTracksLiteral(emitter.transformTracks, emitter.liveChannels)},`,

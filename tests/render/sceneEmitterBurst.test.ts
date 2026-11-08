@@ -4,7 +4,11 @@ import { FXWorld } from "sparcoon";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
 import { createTestState } from "../helpers/testDocument";
-import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/nodePalette";
+import {
+  SPAWN_EXPECTED_CAPACITY_PARAM,
+  SPAWN_SINK_ID,
+  SPAWN_TRY_GPU_SIMULATION_PARAM,
+} from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
 import { SceneEmitters } from "../../src/render/sceneEmitters";
 
@@ -71,5 +75,53 @@ describe("SceneEmitters: emitter burst through the live-preview path", () => {
       FXWorld.update(1 / 60);
     }
     expect(emitters.totalParticleCount()).toBe(32);
+  });
+});
+
+describe("SceneEmitters: particle overflow for the viewport stats", () => {
+  function baselineEmitters(): SceneEmitters {
+    const renderer = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
+    return new SceneEmitters(
+      new Scene(),
+      () => new Texture(),
+      new PerspectiveCamera(),
+      renderer,
+      "baseline",
+      () => 0,
+    );
+  }
+
+  it("is unknown before any emitter is built", () => {
+    expect(baselineEmitters().totalParticleOverflowCount()).toBeUndefined();
+  });
+
+  it("counts births lost to an emitter whose Expected Capacity is too small", () => {
+    const store = new Store(createTestState(), new SignalBus());
+    updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 16);
+    const emitters = baselineEmitters();
+    emitters.sync(store.getSource().scene);
+    const emitterId = store.getSource().scene.emitters[0].id;
+
+    emitters.burst(emitterId, 16);
+    expect(emitters.totalParticleOverflowCount()).toEqual({ count: 0, partial: false });
+
+    emitters.burst(emitterId, 4); // the ring is full: four live particles are replaced
+    expect(emitters.totalParticleCount()).toBe(16);
+    expect(emitters.totalParticleOverflowCount()).toEqual({ count: 4, partial: false });
+  });
+
+  it("counts each run from its stop or rewind, not from the build", () => {
+    const store = new Store(createTestState(), new SignalBus());
+    updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 16);
+    const emitters = baselineEmitters();
+    emitters.sync(store.getSource().scene);
+    const emitterId = store.getSource().scene.emitters[0].id;
+    emitters.burst(emitterId, 20);
+    expect(emitters.totalParticleOverflowCount()?.count).toBe(4);
+
+    emitters.resetAll();
+    expect(emitters.totalParticleOverflowCount()?.count).toBe(0);
+    emitters.burst(emitterId, 18);
+    expect(emitters.totalParticleOverflowCount()?.count).toBe(2);
   });
 });

@@ -16,6 +16,14 @@ export const graphModeIcons = {
     <path d="M6.1 9.6a1.9 1.9 0 0 0 1.7 1.8"/>
   </svg>`,
 
+  // A comet: a head with a streak trailing behind it - the particle trail.
+  trail: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11.5" cy="4.5" r="2"/>
+    <path d="M9.8 6.2 3 13"/>
+    <path d="M10.5 8.5 6.5 12.5"/>
+    <path d="M7.5 5.5 3.5 9.5"/>
+  </svg>`,
+
   // A mouse with a scroll seam - wheel-driven zoom, drag-to-pan.
   mouse: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="4.5" y="2.5" width="7" height="11" rx="3.5"/>

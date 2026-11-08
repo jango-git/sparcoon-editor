@@ -48,8 +48,8 @@ function freshBuffers(): Record<string, Float32Array> {
 const gravityDef = defineNode({
   type: "test-gravity",
   domain: "behavior",
+  category: "force",
   phase: "update",
-  label: "Gravity",
   inputs: { velocity: { type: "vec3", default: litVec(0, 0, 0) } },
   outputs: { velocity: { type: "vec3" } },
   params: { acceleration: { kind: "value", type: "vec3", default: [0, -10, 0] } },
@@ -63,8 +63,8 @@ const gravityDef = defineNode({
 const colorDef = defineNode({
   type: "test-color",
   domain: "render",
+  category: "color",
   stage: "fragment",
-  label: "Color",
   inputs: {},
   outputs: { color: { type: "vec4" } },
   params: { tint: { kind: "value", type: "vec4", default: [1, 0, 0, 1] } },
@@ -150,7 +150,7 @@ describe("defineNode - structural params & metadata", () => {
   const opDef = defineNode({
     type: "test-op",
     domain: "shared",
-    label: "Op",
+    category: "math",
     inputs: { a: { type: "float", required: true } },
     outputs: { out: { type: "float" } },
     params: {
@@ -206,8 +206,8 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
     const def = defineNode({
       type: "test-c4",
       domain: "render",
+      category: "color",
       stage: "fragment",
-      label: "C4",
       inputs: { tint: { type: "vec4", required: true, default: litVec(1, 1, 1, 1) } },
       outputs: { out: { type: "vec4" } },
       params: {},
@@ -232,7 +232,7 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
       defineNode({
         type: "test-c5-socket",
         domain: "shared",
-        label: "C5",
+        category: "math",
         inputs: { "bad key": { type: "float" } },
         outputs: { out: { type: "float" } },
         params: {},
@@ -246,7 +246,7 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
     const def = defineNode({
       type: "test-c5-key",
       domain: "shared",
-      label: "K",
+      category: "math",
       inputs: {},
       outputs: { out: { type: "float" } },
       params: {
@@ -270,7 +270,7 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
       defineNode({
         type: "test-n7",
         domain: "shared",
-        label: "N7",
+        category: "math",
         inputs: {},
         outputs: { out: { type: "vec3" } },
         params: { v: { kind: "value", type: "vec3", default: [1, 2] } },

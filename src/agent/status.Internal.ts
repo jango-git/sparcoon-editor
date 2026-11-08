@@ -42,5 +42,6 @@ async function readStatusNow(store: Store, ownerId: string | undefined): Promise
     render: graphStatusView(derived.renderStatus),
     // A VFX mesh has no behavior graph; the pipeline reports a placeholder status for it.
     behavior: owner?.kind === "emitter" ? graphStatusView(derived.behaviorStatus) : undefined,
+    trail: derived.trailStatus === undefined ? undefined : graphStatusView(derived.trailStatus),
   };
 }

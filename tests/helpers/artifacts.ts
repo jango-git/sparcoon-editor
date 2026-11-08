@@ -8,7 +8,9 @@ import {
   type FXBufferLayout,
   type FXKernelBuffers,
   type FXRenderArtifact,
+  type FXShaderStageSource,
 } from "sparcoon";
+import { particleReadsOf } from "../../src/engine/render/target/FXParticleRenderTarget";
 
 /**
  * Hand-written artifact builders for the runtime executor tests. They stand in for the
@@ -16,6 +18,25 @@ import {
  * them through `FXEmitter.fromArtifacts`, so the runtime loop is exercised without any
  * graph/compiler.
  */
+
+/** The output slots the vertex stage computes; every other slot is the fragment stage's. */
+const VERTEX_OUTPUT_SLOTS: ReadonlySet<string> = new Set([
+  "particleTransform",
+  "vertexTransform",
+  "width",
+]);
+
+/** A hand-written stage: its code, and what it reads of each particle - every identifier it
+ *  names, through the compiler's own target-input mapping. */
+function stage(body: readonly string[], outputs: readonly string[]): FXShaderStageSource {
+  const identifiers = new Set([...body, ...outputs].join("\n").match(/\b[A-Za-z_]\w*\b/g));
+  return {
+    varyingDeclarations: [],
+    helperFunctions: [],
+    body,
+    particleReads: particleReadsOf([...identifiers]),
+  };
+}
 
 /** A minimal unlit render artifact (flat white albedo). Override any field. */
 export function unlitArtifact(
@@ -28,12 +49,17 @@ export function unlitArtifact(
     fragmentBody?: readonly string[];
   } = {},
 ): FXRenderArtifact {
+  const outputs = over.outputs ?? { albedo: "vec4(1.0)" };
+  const outputsOf = (vertex: boolean): string[] =>
+    Object.keys(outputs)
+      .filter((slot) => VERTEX_OUTPUT_SLOTS.has(slot) === vertex)
+      .map((slot) => outputs[slot] ?? "");
   return {
     lightingIntrinsics: [],
     uniformDeclarations: over.uniformDeclarations ?? [],
-    vertex: { varyingDeclarations: [], helperFunctions: [], body: over.vertexBody ?? [] },
-    fragment: { varyingDeclarations: [], helperFunctions: [], body: over.fragmentBody ?? [] },
-    outputs: over.outputs ?? { albedo: "vec4(1.0)" },
+    vertex: stage(over.vertexBody ?? [], outputsOf(true)),
+    fragment: stage(over.fragmentBody ?? [], outputsOf(false)),
+    outputs,
     uniforms: over.uniforms ?? {},
     attributeReads: over.attributeReads ?? [],
   };

@@ -149,7 +149,7 @@ describe("FXGraphBuilder - snapshot compiles on both backends", () => {
     const position = new Float32Array(3);
     const lifecycle = new Float32Array(3);
     const velocity = new Float32Array(3);
-    spawn({ position, lifecycle, velocity }, 0, 1, compiled.spawn.bindings);
+    spawn({ position, lifecycle, velocity }, 0, 1, compiled.spawn!.bindings);
     expect(lifecycle[FX_LIFETIME]).toBe(3); // PARTICLE_LIFETIME
   });
 });

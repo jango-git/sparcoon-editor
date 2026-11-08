@@ -8,6 +8,11 @@ import type { FXCompiledPhaseStandard } from "../../src/engine/behavior/FXPartic
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
+import { resolveValueType, type FXValueTypeId } from "../../src/engine/core/socket/FXValueType";
+import { assembleGpuKernelArtifact } from "../../src/engine/emit/assembleArtifacts";
+import { gpuKernelArtifactBody } from "../../src/engine/emit/artifactLiterals";
+import { packingOrder } from "sparcoon/editor";
 import {
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM,
@@ -27,7 +32,7 @@ function registry(): FXNodeRegistry<FXBehaviorNode> {
   return r;
 }
 
-function compileMotionGraph() {
+function compileMotionGraph(attributes: readonly FXAttributeRequest[] = []) {
   const r = registry();
   const graph = new FXGraph<FXBehaviorNode>();
   graph.ingest({
@@ -61,7 +66,7 @@ function compileMotionGraph() {
       },
     ],
   });
-  const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets());
+  const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets(attributes));
   return assembleTransformFeedbackProgram(compiled);
 }
 
@@ -72,8 +77,51 @@ describe("fused transform-feedback program assembly", () => {
     expect(program.vertexSource).toContain("in vec3 in_lifecycle;");
     expect(program.vertexSource).toContain("out vec3 out_position;");
     expect(program.vertexSource).toContain("out vec3 out_lifecycle;");
-    expect(program.transformFeedbackVaryings).toEqual(["out_position", "out_lifecycle"]);
-    expect(program.buffers.map((b) => b.name)).toEqual(["position", "lifecycle"]);
+    // Two vec3s of a packing bin each, by name (see the slot-order test below).
+    expect(program.transformFeedbackVaryings).toEqual(["out_lifecycle", "out_position"]);
+    expect(program.buffers.map((b) => b.name)).toEqual(["lifecycle", "position"]);
+  });
+
+  it("lays the slot out in the runtime's packing order, and every index follows it", () => {
+    const attribute = (name: string, type: FXValueTypeId): FXAttributeRequest => ({
+      name,
+      type: resolveValueType(type),
+    });
+    // Declared in an order that packs badly when laid out as given (every field a view of its own).
+    const attributes = [
+      attribute("alpha", "float"),
+      attribute("offset", "vec2"),
+      attribute("tint", "vec3"),
+      attribute("uv2", "vec2"),
+      attribute("velocity", "vec3"),
+    ];
+    const program = compileMotionGraph(attributes);
+    // First-fit decreasing into vec4 bins, ties by name: the vec3s lifecycle, position, tint and
+    // velocity open a bin each, offset and uv2 share one, and alpha fills the first bin with room
+    // left - lifecycle's: [lifecycle, alpha], [position], [tint], [velocity], [offset, uv2].
+    const expected = ["lifecycle", "alpha", "position", "tint", "velocity", "offset", "uv2"];
+    expect(program.buffers.map((buffer) => buffer.name)).toEqual(expected);
+    // The runtime's own order, not a copy of it: the same as packingOrder over the same set.
+    expect(
+      packingOrder(
+        program.buffers.map((buffer) => ({ name: buffer.name, components: buffer.stride })),
+      ).map((field) => field.name),
+    ).toEqual(expected);
+    // Set-based: declaring the attributes in another order changes nothing.
+    expect(compileMotionGraph([...attributes].reverse()).buffers).toEqual(program.buffers);
+    // Input locations, varyings and the artifact all follow the one list.
+    expected.forEach((name, index) => {
+      expect(program.vertexSource).toMatch(
+        new RegExp(`layout\\(location = ${String(index)}\\) in \\w+ in_${name};`),
+      );
+    });
+    expect(program.transformFeedbackVaryings).toEqual(expected.map((name) => `out_${name}`));
+    expect(assembleGpuKernelArtifact(program).buffers.map((buffer) => buffer.name)).toEqual(
+      expected,
+    );
+    expect(gpuKernelArtifactBody(program)).toContain(
+      `buffers: ${JSON.stringify(program.buffers)},`,
+    );
   });
 
   it("zero-defaults every buffer in the spawn branch before the graph's own writes", () => {
@@ -145,8 +193,8 @@ describe("fused transform-feedback program assembly", () => {
       buffers: [],
       writtenBuffers: [],
     };
-    expect(() =>
-      assembleTransformFeedbackProgram({ spawn: undefined, update: emptyPhase, hash: "" }),
-    ).toThrow(/requires a spawn phase/);
+    expect(() => assembleTransformFeedbackProgram({ update: emptyPhase, hash: "" })).toThrow(
+      /requires a spawn phase/,
+    );
   });
 });

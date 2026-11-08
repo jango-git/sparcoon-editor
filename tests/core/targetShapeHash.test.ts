@@ -109,7 +109,7 @@ describe("structural hash folds the target shape, not just its name", () => {
     const graph = behaviorGraph();
     const withFlag = (tryGpuSimulation?: boolean): FXBehaviorTargets => ({
       ...kernelTarget(0),
-      tryGpuSimulation,
+      ...(tryGpuSimulation !== undefined && { tryGpuSimulation }),
     });
     const off = previewBehaviorHash(graph, withFlag(false));
     const on = previewBehaviorHash(graph, withFlag(true));

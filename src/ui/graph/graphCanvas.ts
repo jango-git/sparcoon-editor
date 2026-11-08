@@ -22,7 +22,7 @@ import type {
   GraphNode,
   GraphPosition,
 } from "../../domain/graphModel";
-import { isKeyframeValue } from "../../domain/graphModel";
+import { createEmptyGraph, isKeyframeValue } from "../../domain/graphModel";
 import { bindingSinkId, findIncomingEdge } from "../../domain/graphEdges";
 import {
   GraphKind,
@@ -34,6 +34,7 @@ import {
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
   isMeshExcludedRenderNode,
+  isTrailExcludedRenderNode,
   isTimelineValueType,
   isFakeNodeType,
   metaForNode,
@@ -69,9 +70,8 @@ import { buildSinkAttributes } from "./sinkAttributes";
 import {
   selectActiveGraphOwner,
   selectBehaviorGraph,
-  selectBehaviorStatus,
+  selectGraphStatus,
   selectMeshAssets,
-  selectRenderStatus,
   selectTextureAssets,
 } from "../../model/selectors";
 import { emitterEntity, vfxMeshEntity } from "../../model/entity";
@@ -84,6 +84,7 @@ import { WheelDirectionLock } from "../primitives/wheelDirectionLock";
 import { EditorPanel } from "../focus/panelFocus";
 import type { Keymap } from "../focus/keymap";
 import { GraphMode, type GraphViewState } from "../graphViewState";
+import { GRAPH_SLOTS, renderHostFor } from "../../model/graphSlots";
 import { InputMode, type InputModeState } from "../inputMode";
 import type { EditorContext } from "../editorContext";
 import { createPaletteAccess } from "../components/paletteAccess";
@@ -351,16 +352,17 @@ export class GraphCanvas {
   }
 
   private activeSlot(): GraphSlot {
-    return this.graphView.mode === GraphMode.Render ? "renderGraph" : "behaviorGraph";
+    return GRAPH_SLOTS[this.graphView.mode].slot;
   }
 
   private activeKind(): GraphKind {
-    return this.graphView.mode === GraphMode.Render ? GraphKind.Render : GraphKind.Behavior;
+    return GRAPH_SLOTS[this.graphView.mode].kind;
   }
 
-  /** Which render entity the active graph drives - reshapes the surface sink (mesh vs particle). */
+  /** Which render entity the active graph drives - reshapes the surface sink (mesh, particle, or
+   *  an emitter's trail). */
   private activeRenderHost(): RenderHost {
-    return selectActiveGraphOwner(this.store).kind === "vfxMesh" ? "mesh" : "particle";
+    return renderHostFor(selectActiveGraphOwner(this.store).kind, this.graphView.mode);
   }
 
   /** The content library's current mesh asset names, offered by the surface sink's Geometry parameter. */
@@ -371,8 +373,12 @@ export class GraphCanvas {
   /** The add-node palette for the active graph, minus the particle-only nodes on a VFX mesh. */
   private paletteForActive(): readonly FXNodeMeta[] {
     const palette = paletteForKind(this.activeKind());
-    if (selectActiveGraphOwner(this.store).kind === "vfxMesh") {
+    const host = this.activeRenderHost();
+    if (host === "mesh") {
       return palette.filter((metadata) => !isMeshExcludedRenderNode(metadata));
+    }
+    if (host === "trail") {
+      return palette.filter((metadata) => !isTrailExcludedRenderNode(metadata));
     }
     return palette;
   }
@@ -383,9 +389,14 @@ export class GraphCanvas {
   }
 
   private activeGraph(): EditorGraph {
-    return this.graphView.mode === GraphMode.Render
-      ? selectActiveGraphOwner(this.store).renderGraph
-      : selectBehaviorGraph(this.store);
+    switch (this.graphView.mode) {
+      case GraphMode.Render:
+        return selectActiveGraphOwner(this.store).renderGraph;
+      case GraphMode.Behavior:
+        return selectBehaviorGraph(this.store);
+      case GraphMode.Trail:
+        return selectActiveGraphOwner(this.store).trailGraph ?? createEmptyGraph();
+    }
   }
 
   private render(): void {
@@ -393,6 +404,11 @@ export class GraphCanvas {
     // A VFX mesh has no behavior graph: force the Render view. setMode fires onChange -> render()
     // again, so return and let that pass draw the graph.
     if (owner.kind === "vfxMesh" && this.graphView.mode !== GraphMode.Render) {
+      this.graphView.setMode(GraphMode.Render);
+      return;
+    }
+    // Likewise an emitter whose trail is off (removed, or never added) has no trail graph to show.
+    if (this.graphView.mode === GraphMode.Trail && owner.trailGraph === undefined) {
       this.graphView.setMode(GraphMode.Render);
       return;
     }
@@ -532,10 +548,7 @@ export class GraphCanvas {
   }
 
   private applyErrorHighlights(): void {
-    const status =
-      this.graphView.mode === GraphMode.Render
-        ? selectRenderStatus(this.store)
-        : selectBehaviorStatus(this.store);
+    const status = selectGraphStatus(this.store, this.graphView.mode);
     paintErrorHighlights(this.nodeViews, status);
   }
 
@@ -1011,10 +1024,14 @@ export class GraphCanvas {
   /**
    * Pastes the clipboard as fresh nodes/comments with new ids (a structural clone, not a second
    * reference), positioned so the group's AABB centre lands under the cursor, and selects the
-   * paste. Only pastes into the graph it was copied from - the two kinds have disjoint node types.
+   * paste. Only pastes into a graph of the kind it was copied from - behavior and render have
+   * disjoint node types, while a render and a trail graph share theirs.
    */
   private pasteClipboard(): void {
-    if (this.clipboard?.slot !== this.activeSlot()) {
+    if (
+      this.clipboard === undefined ||
+      (this.clipboard.slot === "behaviorGraph") !== (this.activeSlot() === "behaviorGraph")
+    ) {
       return;
     }
     // Shift the whole fragment so its group centre sits at the cursor (grid-snapped).

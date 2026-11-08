@@ -104,7 +104,8 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
 
   it("unmigratable snapshot version -> invalid `unsupported-snapshot-version`", () => {
     expectHeldInvalid(
-      { ...VALID, version: 99 } as FXGraphSnapshotData,
+      // Deliberately malformed: a version the migrator does not know.
+      { ...VALID, version: 99 } as unknown as FXGraphSnapshotData,
       "unsupported-snapshot-version",
     );
   });
@@ -474,7 +475,8 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
         connections: [],
         outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
       },
-      { ...VALID, version: 99 } as FXGraphSnapshotData,
+      // Deliberately malformed: a version the migrator does not know.
+      { ...VALID, version: 99 } as unknown as FXGraphSnapshotData,
       {
         version: 2,
         nodes: { a: { type: "chain", params: { forcedThrowMessage: "bad" } } },

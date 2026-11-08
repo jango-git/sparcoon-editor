@@ -8,6 +8,7 @@ import type { AttributeTypeName, EditorGraph, GraphPosition } from "../domain/gr
 import {
   ATTRIBUTE_TYPES,
   isMeshExcludedRenderNode,
+  isTrailExcludedRenderNode,
   isSinkType,
   metaFor,
 } from "../domain/nodePalette";
@@ -125,6 +126,12 @@ export function createGraphHandle(
         }
         if (target.host === "mesh" && isMeshExcludedRenderNode(metadata)) {
           throw new AgentError("invalid_argument", `Node type "${type}" needs a particle host.`);
+        }
+        if (target.host === "trail" && isTrailExcludedRenderNode(metadata)) {
+          throw new AgentError(
+            "invalid_argument",
+            `Node type "${type}" reads a surface normal, which a trail does not have.`,
+          );
         }
         requireKnownKeys("options", options, ["params", "position"]);
         const params = copyPlainData("params", options.params ?? {});

@@ -128,7 +128,13 @@ export type FXCompilerErrorCode =
   | "render-varying-budget"
   | "render-attribute-budget-baseline"
   | "render-varying-budget-baseline"
-  | "mesh-ignores-transform";
+  | "mesh-ignores-transform"
+  // An emitter's trail graph on a depth-sorted emitter (domain/trailChecks.ts).
+  | "trail-with-sort"
+  // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
+  | "param-value-conflict"
+  // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).
+  | "attribute-never-written";
 
 /** A single, editor-presentable problem found in a graph. */
 export interface FXCompilerError {

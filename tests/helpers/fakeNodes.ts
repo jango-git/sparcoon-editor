@@ -22,8 +22,8 @@ export function socket(
   return {
     key,
     type: resolveValueType(type),
-    required: opts?.required,
-    defaultValue: opts?.defaultValue,
+    ...(opts?.required !== undefined && { required: opts.required }),
+    ...(opts?.defaultValue !== undefined && { defaultValue: opts.defaultValue }),
   };
 }
 
@@ -53,7 +53,7 @@ export class FakeNode extends FXGraphNode {
   public readonly type: string;
   public readonly inputs: readonly FXSocketDescriptor[];
   public readonly outputs: readonly FXSocketDescriptor[];
-  public override readonly attributeRequest?: FXAttributeRequest;
+  public override readonly attributeRequest?: FXAttributeRequest | undefined;
   public readonly stage?: string;
   private readonly declaredReads?: readonly string[];
   private readonly prepareThrows?: () => boolean;
@@ -71,9 +71,15 @@ export class FakeNode extends FXGraphNode {
     this.inputs = config.inputs ?? [];
     this.outputs = config.outputs ?? [];
     this.attributeRequest = config.attributeRequest;
-    this.stage = config.stage;
-    this.declaredReads = config.targetReads;
-    this.prepareThrows = config.prepareThrows;
+    if (config.stage !== undefined) {
+      this.stage = config.stage;
+    }
+    if (config.targetReads !== undefined) {
+      this.declaredReads = config.targetReads;
+    }
+    if (config.prepareThrows !== undefined) {
+      this.prepareThrows = config.prepareThrows;
+    }
     this.variant = config.variant ?? "";
   }
 

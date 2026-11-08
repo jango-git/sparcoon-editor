@@ -396,6 +396,12 @@
   border: 1px solid var(--border-mid);
 }
 
+/* Overflow > 0: some emitter's capacity is too small - the timeline's amber, as graph warnings. */
+.viewport-stats__value--warning {
+  color: var(--timeline-event);
+  border-color: var(--timeline-event);
+}
+
 .viewport-stats__label {
   align-self: center;
   color: var(--muted);

@@ -4,6 +4,7 @@
  */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import { t } from "../i18n";
 import { compilerErrorMessage } from "../i18n/compilerErrors";
 import type { LiveApplyStatus } from "../model/editorState";
 
@@ -31,4 +32,9 @@ export function withWarnings(
   return warnings.length === 0 || status.status === "invalid"
     ? status
     : { ...status, warnings: warnings.map((warning) => compilerErrorMessage(warning)) };
+}
+
+/** A graph held back only because another graph of the same emitter is invalid. */
+export function blocked(): LiveApplyStatus {
+  return { status: "invalid", messages: [t("graph.blockedByOtherGraph")] };
 }

@@ -6,13 +6,16 @@
  * here so existing importers keep their one import path.
  */
 
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXNodeMeta, FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 import { FX_READABLE_CORE_BUILTINS } from "../engine/core/socket/FXReadableBuiltins";
 import { FX_STANDARD_NODES } from "../engine/nodes-std/index";
+import { coerceParamValue, resolveParamType } from "../engine/nodes-std/paramSupport.Internal";
 import { FX_MANUAL_NODE_METAS } from "../engine/nodes-std/manualNodeMetas";
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
+  FX_TRAIL_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import { ROUTE_TYPE, routeMeta } from "./fakeNodes";
 import type { AttributeTypeName, EditorAttribute, EditorGraph, GraphNode } from "./graphModel";
@@ -38,6 +41,7 @@ export {
   isSinkType,
   readRenderSinkConfig,
   readSpawnSinkConfig,
+  readTrailSinkConfig,
   RENDER_CAST_SHADOW_PARAM,
   RENDER_MODE_PARAM_KEY,
   RENDER_RECEIVE_SHADOW_PARAM,
@@ -51,6 +55,8 @@ export {
   SPAWN_SINK_TYPE,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
   toArtifactGeometrySource,
+  TRAIL_FRAMES_PARAM_KEY,
+  TRAIL_INTERVAL_PARAM_KEY,
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
   type GeometryKind,
@@ -60,6 +66,7 @@ export {
   type RenderSinkConfig,
   type SinkMetaOptions,
   type SpawnSinkConfig,
+  type TrailSinkConfig,
 } from "./sinkMeta";
 
 /** Which authored graph a node belongs to. Maps to the engine node `domain`. */
@@ -98,6 +105,94 @@ export function timelineValueDeclarations(
     }
   }
   return declarations;
+}
+
+/** A Timeline Value declared unlike the first declaration of its name. */
+export interface TimelineValueConflict {
+  /** Index into the `graphs` passed in: the graph holding the conflicting node. */
+  readonly graphIndex: number;
+  readonly error: FXCompilerError;
+}
+
+/** A Timeline Value's declared type and default, as the engine reads them. */
+interface TimelineValueShape {
+  /** The type's GLSL name - a color is the vec4 it is. */
+  readonly type: string;
+  /** The default at the type's width (see `coerceParamValue`); `undefined` when the type or the
+   *  value is malformed - the node's own compile reports that. */
+  readonly value: readonly number[] | undefined;
+}
+
+/** Reads `node`'s type and default the way the engine's `timeline-value` factory does: an unset
+ *  type is a float and an unset value 0, padded or truncated to the type's width. */
+function timelineValueShape(node: GraphNode): TimelineValueShape {
+  const rawType = node.parameters["type"] ?? "float";
+  // A color is a vec4 uniform: the two declare the same value.
+  const type = rawType === "color" ? "vec4" : typeof rawType === "string" ? rawType : "float";
+  try {
+    const coerced = coerceParamValue(
+      resolveParamType(rawType).components,
+      node.parameters["value"] ?? 0,
+    );
+    return { type, value: typeof coerced === "number" ? [coerced] : coerced };
+  } catch {
+    return { type, value: undefined };
+  }
+}
+
+/**
+ * Every `timeline-value` node declared unlike the first declaration of the same name across
+ * `graphs` (in graph order, then node order) - attributed to the disagreeing node, never to that
+ * first one. One name is one value for all of an entity's graphs (one track, one
+ * `setEmitterParam`), so every declaration must agree on its type and on its default: each graph
+ * bakes its own default into its artifact (and within one graph the compiler keeps whichever
+ * declaration it meets first), so two defaults would leave the name's value up to which material
+ * or which node happened to win - keyframed or not. Defaults compare as the engine reads them
+ * (see {@link timelineValueShape}), so a fresh node's scalar `0` matches a vec3's `[0, 0, 0]`.
+ */
+export function timelineValueConflicts(
+  graphs: readonly EditorGraph[],
+): readonly TimelineValueConflict[] {
+  const first = new Map<string, TimelineValueShape>();
+  const conflicts: TimelineValueConflict[] = [];
+  graphs.forEach((graph, graphIndex) => {
+    for (const node of Object.values(graph.nodes)) {
+      const name = node.parameters["name"];
+      if (node.type !== TIMELINE_VALUE_TYPE || typeof name !== "string") {
+        continue;
+      }
+      const shape = timelineValueShape(node);
+      const prior = first.get(name);
+      if (prior === undefined) {
+        first.set(name, shape);
+      } else if (prior.type !== shape.type) {
+        conflicts.push({
+          graphIndex,
+          error: {
+            code: "param-uniform-type-conflict",
+            message: `param uniform "${name}" is declared as both ${prior.type} and ${shape.type}`,
+            params: { name, priorType: prior.type, newType: shape.type },
+            nodeId: node.id,
+          },
+        });
+      } else if (
+        prior.value !== undefined &&
+        shape.value !== undefined &&
+        prior.value.some((component, index) => component !== shape.value?.[index])
+      ) {
+        conflicts.push({
+          graphIndex,
+          error: {
+            code: "param-value-conflict",
+            message: `Timeline Value "${name}" has a different default here than another declaration of it in this emitter`,
+            params: { name },
+            nodeId: node.id,
+          },
+        });
+      }
+    }
+  });
+  return conflicts;
 }
 
 /**
@@ -168,6 +263,33 @@ export const PARTICLE_ONLY_SURFACE_SLOTS: ReadonlySet<string> = new Set(
   buildParticleTarget()
     .outputs.map((output) => output.slot)
     .filter((slot) => !FX_MESH_TARGET.outputs.some((output) => output.slot === slot)),
+);
+
+/** Target inputs the particle host provides but a trail does not (the surface frame); a render
+ *  node reading any of these cannot resolve in a trail graph. Derived from the two targets. */
+const TRAIL_MISSING_RENDER_INPUTS: ReadonlySet<string> = new Set(
+  buildParticleTarget()
+    .inputs.map((input) => input.name)
+    .filter((name) => !FX_TRAIL_TARGET.inputs.some((trailInput) => trailInput.name === name)),
+);
+
+/**
+ * Whether a render node can't be offered in a trail graph: it reads an input the trail target
+ * lacks (the lighting and surface-normal nodes). Attribute-dynamic reads are fine - a trail reads
+ * attributes off the recorded path.
+ */
+export function isTrailExcludedRenderNode(metadata: FXNodeMeta): boolean {
+  return metadata.reads === "dynamic"
+    ? false
+    : metadata.reads.some((name) => TRAIL_MISSING_RENDER_INPUTS.has(name));
+}
+
+/** Surface slots a trail has no place for (the particle transforms), derived from the targets.
+ *  A trail binding to one of these is pruned on load like a mesh's. */
+export const NON_TRAIL_SURFACE_SLOTS: ReadonlySet<string> = new Set(
+  buildParticleTarget()
+    .outputs.map((output) => output.slot)
+    .filter((slot) => !FX_TRAIL_TARGET.outputs.some((output) => output.slot === slot)),
 );
 
 function domainMatchesKind(domain: FXNodeMeta["domain"], kind: GraphKind): boolean {

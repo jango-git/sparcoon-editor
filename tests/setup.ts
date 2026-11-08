@@ -10,7 +10,9 @@ interface DocumentStub {
   removeEventListener(): void;
 }
 
-const globalWithDocument = globalThis as typeof globalThis & { document?: DocumentStub };
+// The DOM lib types `globalThis.document` as a full `Document`, but under node it is absent;
+// view the global as holding only the optional stub so the fallback assignment type-checks.
+const globalWithDocument = globalThis as unknown as { document?: DocumentStub };
 globalWithDocument.document ??= {
   createElement: () => ({ getContext: () => undefined }),
   addEventListener: () => {},

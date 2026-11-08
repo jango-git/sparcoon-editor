@@ -68,7 +68,7 @@ describe("compileParticleBehavior - kernels produce correct numbers", () => {
     const spawn = buildParticleSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 2);
-    spawn(buffers, 0, 2, compiled.spawn.bindings);
+    spawn(buffers, 0, 2, compiled.spawn!.bindings);
 
     for (let i = 0; i < 2; i++) {
       expect(buffers.lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME]).toBe(2);
@@ -177,7 +177,7 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
     buffers["src"][0] = 42;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers["dst"][0]).toBe(42);
   });
 
@@ -228,14 +228,20 @@ describe("phase-scoped output bindings place flexible nodes", () => {
     graphOf(
       { box: reg.create("spawn-box", { size: [0, 0, 0], center: [5, 6, 7] }) },
       [],
-      [{ slot: "position", from: { nodeId: "box", socketKey: "position" }, phase }],
+      [
+        {
+          slot: "position",
+          from: { nodeId: "box", socketKey: "position" },
+          ...(phase !== undefined && { phase }),
+        },
+      ],
     );
 
   it("runs a flexible spawn node in update when its binding names the update phase", () => {
     const compiled = compileParticleBehavior(boundPosition("update"));
     const buffers = buffersFor(compiled, 1);
 
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     // Bound into update, not spawn: the spawn kernel leaves position at its zero default.
     expect(buffers.position[FX_POSITION_X]).toBe(0);
 
@@ -247,7 +253,7 @@ describe("phase-scoped output bindings place flexible nodes", () => {
     const compiled = compileParticleBehavior(boundPosition(undefined));
     const buffers = buffersFor(compiled, 1);
 
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn.bindings);
+    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     // No phase signal: spawn-box keeps its declared `spawn` default, so it seeds at birth.
     expect(buffers.position[FX_POSITION_X]).toBe(5);
   });
@@ -293,7 +299,7 @@ describe("numeric coercion into output slots", () => {
     const spawn = buildParticleSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 1);
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
 
     expect(buffers.position[FX_POSITION_X]).toBe(5);
     expect(buffers.position[FX_POSITION_Y]).toBe(5);
@@ -310,7 +316,7 @@ describe("numeric coercion into output slots", () => {
     const spawn = buildParticleSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 1);
-    spawn(buffers, 0, 1, compiled.spawn.bindings);
+    spawn(buffers, 0, 1, compiled.spawn!.bindings);
 
     // The vec3 (7, 2, 3) narrows to its first component for the scalar slot.
     expect(buffers.lifecycle[FX_LIFETIME]).toBe(7);

@@ -13,8 +13,10 @@ import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../engine/core/nodes
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
+  FX_TRAIL_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
+import { FX_TRAIL_MAX_FRAMES } from "sparcoon/editor";
 import type { EditorAttribute, EditorGraph } from "./graphModel";
 
 /**
@@ -55,9 +57,11 @@ export function sinkPhase(type: string): "spawn" | "update" | undefined {
 
 /**
  * Which render entity a render graph drives. A `"mesh"` has no `particleTransform` slot or
- * `sortInterval` parameter (posed by its own scene transform, no runtime emitter).
+ * `sortInterval` parameter (posed by its own scene transform, no runtime emitter). A `"trail"` is
+ * an emitter's trail graph: a ribbon behind every particle, with its own `width` slot and history
+ * parameters instead of geometry, sorting and shadows.
  */
-export type RenderHost = "particle" | "mesh";
+export type RenderHost = "particle" | "mesh" | "trail";
 export const DEFAULT_RENDER_HOST: RenderHost = "particle";
 
 /** How the surface sink composites the fragment's alpha (see the runtime `FXRenderMode`). */
@@ -169,9 +173,11 @@ function showsSurfaceSlot(slot: string, renderMode: RenderMode): boolean {
 }
 
 /** The surface (`$out`) input sockets for a render mode and host - the host's target output
- *  slots gated by the mode. A `"mesh"` host draws from {@link FX_MESH_TARGET}. */
+ *  slots gated by the mode: a `"mesh"` host draws from {@link FX_MESH_TARGET}, a `"trail"` from
+ *  {@link FX_TRAIL_TARGET}, a `"particle"` from the particle target. */
 function renderSinkInputsFor(renderMode: RenderMode, host: RenderHost): readonly FXSocketMeta[] {
-  const target = host === "mesh" ? FX_MESH_TARGET : buildParticleTarget();
+  const target =
+    host === "mesh" ? FX_MESH_TARGET : host === "trail" ? FX_TRAIL_TARGET : buildParticleTarget();
   return target.outputs
     .filter((output) => showsSurfaceSlot(output.slot, renderMode))
     .map(slotSocket);
@@ -269,9 +275,9 @@ export const SPAWN_TRY_GPU_SIMULATION_PARAM = "tryGpuSimulation";
 const DEFAULT_EXPECTED_CAPACITY = 256;
 
 /**
- * The spawn sink's expected-particle-count: sizes this emitter's state buffers at build time - a
- * starting size that grows on demand (`capacityStep`) for a JS-driven emitter, but a fixed hard
- * ceiling for a GPU-driven one (see {@link TRY_GPU_SIMULATION_PARAM}), which has no growth path.
+ * The spawn sink's expected-particle-count: the emitter's fixed ring capacity, a hard ceiling on
+ * both the JS and the GPU backend (see {@link TRY_GPU_SIMULATION_PARAM}) - neither grows, and a
+ * birth into a full ring overwrites the particle at the cursor.
  *
  * `kind: "value"` only because {@link FXParamSpec} has no structural numeric variant; sink params
  * never reach the engine's structural-hash gate anyway, so EmitterView's own rebuild tracking is
@@ -334,6 +340,70 @@ export function readRenderSinkConfig(renderGraph: EditorGraph): RenderSinkConfig
   };
 }
 
+const DEFAULT_TRAIL_FRAMES = 16;
+const DEFAULT_TRAIL_INTERVAL = 0.03;
+/** The shortest sample interval offered, in seconds - below a frame it only repeats points. */
+const MIN_TRAIL_INTERVAL = 0.001;
+
+/** The trail sink's history length in recorded points per particle. Structural: it sizes the
+ *  history buffer, so a change rebuilds the trail. */
+const TRAIL_FRAMES_PARAM: FXParamMeta = {
+  kind: "value",
+  type: "float",
+  default: DEFAULT_TRAIL_FRAMES,
+  min: 2,
+  max: FX_TRAIL_MAX_FRAMES,
+  step: 1,
+};
+
+/** The trail sink parameter key carrying the history length. */
+export const TRAIL_FRAMES_PARAM_KEY = "trailFrames";
+
+/** The trail sink's seconds between two recorded points - with the length, how long the trail is. */
+const TRAIL_INTERVAL_PARAM: FXParamMeta = {
+  kind: "value",
+  type: "float",
+  default: DEFAULT_TRAIL_INTERVAL,
+  min: MIN_TRAIL_INTERVAL,
+  step: 0.005,
+};
+
+/** The trail sink parameter key carrying the sample interval. */
+export const TRAIL_INTERVAL_PARAM_KEY = "trailInterval";
+
+/** A whole history length in `[2, FX_TRAIL_MAX_FRAMES]`, defaulting on anything unreadable. */
+function coerceTrailFrames(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_TRAIL_FRAMES;
+  }
+  return Math.min(FX_TRAIL_MAX_FRAMES, Math.max(2, Math.floor(parsed)));
+}
+
+/** A sample interval clamped to at least {@link MIN_TRAIL_INTERVAL} seconds (like
+ *  {@link coerceTrailFrames}, a too-small value clamps), defaulting on anything unreadable. */
+function coerceTrailInterval(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(MIN_TRAIL_INTERVAL, parsed) : DEFAULT_TRAIL_INTERVAL;
+}
+
+/** An emitter trail graph's runtime config: how it composites and how much path it keeps. */
+export interface TrailSinkConfig {
+  readonly renderMode: RenderMode;
+  readonly frames: number;
+  readonly sampleInterval: number;
+}
+
+/** Reads a trail graph's surface-sink parameters into a {@link TrailSinkConfig}. */
+export function readTrailSinkConfig(trailGraph: EditorGraph): TrailSinkConfig {
+  const surface = trailGraph.nodes[RENDER_SINK_ID]?.parameters;
+  return {
+    renderMode: coerceRenderMode(surface?.[RENDER_MODE_PARAM_KEY]),
+    frames: coerceTrailFrames(surface?.[TRAIL_FRAMES_PARAM_KEY]),
+    sampleInterval: coerceTrailInterval(surface?.[TRAIL_INTERVAL_PARAM_KEY]),
+  };
+}
+
 /**
  * Metadata for a reserved sink: inputs are the target's output slots, no outputs. Not in
  * `NODE_PALETTE`; resolved by `metaForNode` so the canvas renders a sink like any node.
@@ -380,6 +450,21 @@ export function sinkMeta(type: string, options: SinkMetaOptions = {}): FXNodeMet
   }
   const host = options.renderHost ?? DEFAULT_RENDER_HOST;
   const isMesh = host === "mesh";
+  if (host === "trail") {
+    return {
+      type: RENDER_SINK_TYPE,
+      category: "source",
+      domain: "render",
+      inputs: renderSinkInputsFor(options.renderMode ?? DEFAULT_RENDER_MODE, host),
+      outputs: [],
+      params: {
+        [RENDER_MODE_PARAM_KEY]: RENDER_MODE_PARAM,
+        [TRAIL_FRAMES_PARAM_KEY]: TRAIL_FRAMES_PARAM,
+        [TRAIL_INTERVAL_PARAM_KEY]: TRAIL_INTERVAL_PARAM,
+      },
+      reads: [],
+    };
+  }
   const geometry = geometryParam(options.meshAssetNames ?? []);
   return {
     type: RENDER_SINK_TYPE,

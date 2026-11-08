@@ -5,7 +5,11 @@ import type {
   GraphPosition,
   GraphSocketReference,
 } from "../../domain/graphModel";
-import { isMeshExcludedRenderNode, metaFor } from "../../domain/nodePalette";
+import {
+  isMeshExcludedRenderNode,
+  isTrailExcludedRenderNode,
+  metaFor,
+} from "../../domain/nodePalette";
 import { ROUTE_TYPE } from "../../domain/fakeNodes";
 import { isSink } from "../../domain/sinks";
 import { resolveGraphOwner } from "../editorState";
@@ -35,12 +39,19 @@ export function pasteFragment(
   // there; the add-node menu hides these via `isMeshExcludedRenderNode` - paste needs the same gate.
   const pastingIntoMeshRender =
     slot === "renderGraph" && resolveGraphOwner(store.getSource().scene)?.kind === "vfxMesh";
+  // A trail graph has no surface frame, so the lighting/normal nodes are kept out the same way.
+  const pastingIntoTrail = slot === "trailGraph";
   const eligible = (node: GraphNode): boolean => {
-    if (!pastingIntoMeshRender) {
+    if (!pastingIntoMeshRender && !pastingIntoTrail) {
       return true;
     }
     const metadata = metaFor(kindForSlot(slot), node.type);
-    return metadata === undefined || !isMeshExcludedRenderNode(metadata);
+    if (metadata === undefined) {
+      return true;
+    }
+    return pastingIntoTrail
+      ? !isTrailExcludedRenderNode(metadata)
+      : !isMeshExcludedRenderNode(metadata);
   };
   // Old id => fresh id, so the copied edges can be rewired onto the pasted nodes.
   const idMap = new Map<string, string>();
