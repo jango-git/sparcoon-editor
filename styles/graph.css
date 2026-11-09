@@ -39,6 +39,7 @@
 .graph--no-owner .graph__marquee,
 .graph--no-owner .graph__knife,
 .graph--no-owner .graph-switch,
+.graph--no-owner .graph-arrange,
 .graph--no-owner .graph-stats,
 .graph--no-owner .graph__errors {
   display: none;
@@ -197,4 +198,22 @@
   pointer-events: none;
   border: 1px dashed var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Arrange (graphPanel.ts): the graph's auto-layout, floating over the top-right corner and drawn
+   like the graph switch's buttons (styles/middlebar.css). While its countdown is live
+   (countdownConfirm.ts) it fills with the accent and shows the presses still needed. */
+.graph-arrange {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  background: var(--panel-background);
+  font-variant-numeric: tabular-nums;
+}
+
+.graph-arrange.counting {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
 }

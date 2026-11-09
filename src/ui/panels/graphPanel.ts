@@ -24,12 +24,20 @@ import { createGraphStats } from "./graphStats";
 
 /** Presses to confirm removing an emitter's trail (see {@link attachCountdownConfirm}). */
 const REMOVE_TRAIL_CLICKS = 3;
+/** Presses to confirm auto-arranging the graph: it rewires routes and drops comments (undoable). */
+const ARRANGE_CLICKS = 2;
 
-export function createGraphPanel(context: EditorContext, graphView: GraphViewState): HTMLElement {
+export interface GraphPanel {
+  readonly element: HTMLElement;
+  /** Shows graph `mode` of the active owner and auto-arranges it - the Arrange button's action. */
+  readonly arrange: (mode: GraphMode) => void;
+}
+
+export function createGraphPanel(context: EditorContext, graphView: GraphViewState): GraphPanel {
   const { store, signals, selection } = context;
   const graph = createElement("div", { className: "graph" });
   const canvas = new GraphCanvas(graph, context, graphView);
-  graph.append(createGraphSwitch(graphView, store, signals));
+  graph.append(createGraphSwitch(graphView, store, signals), createArrangeButton(canvas));
 
   // The VFX group (the outliner's root row) owns no graph of its own - unlike picking an
   // emitter/mesh, selecting it commits nothing to the model (no id to make active), so nothing
@@ -81,7 +89,26 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
   signals.on("derivedChanged", updateErrors);
   graphView.onChange(updateErrors);
 
-  return graph;
+  return {
+    element: graph,
+    arrange: (mode): void => {
+      graphView.setMode(mode);
+      canvas.arrange();
+    },
+  };
+}
+
+/** The floating Arrange button in the graph's top-right corner, guarded by a countdown. */
+function createArrangeButton(canvas: GraphCanvas): HTMLElement {
+  const content = `${actionIcons.arrange}<span>${t("graph.arrange")}</span>`;
+  const button = createElement("button", {
+    className: "graph-switch__button graph-arrange",
+    type: "button",
+  });
+  button.innerHTML = content;
+  attachTooltip(button, t("graph.arrange"), t("graph.arrangeTip"));
+  attachCountdownConfirm(button, content, ARRANGE_CLICKS, () => canvas.arrange());
+  return button;
 }
 
 /**

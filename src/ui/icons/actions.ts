@@ -27,4 +27,12 @@ export const actionIcons = {
     <path d="M4.4 4.5l.55 8a1 1 0 0 0 1 .93h4.1a1 1 0 0 0 1-.93l.55-8"/>
     <path d="M6.7 6.8v3.9M9.3 6.8v3.9"/>
   </svg>`,
+
+  // Three cards joined by right-angled wires: the graph's auto-layout.
+  arrange: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="1.5" y="2.5" width="4" height="3"/>
+    <rect x="10.5" y="2.5" width="4" height="3"/>
+    <rect x="10.5" y="10.5" width="4" height="3"/>
+    <path d="M5.5 4h5M8 4v8h2.5"/>
+  </svg>`,
 };

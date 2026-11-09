@@ -10,12 +10,13 @@
  * keymap.
  */
 
+import type { GraphName } from "../model/graphSlots";
 import { selectSceneCost } from "../model/selectors";
 import type { ParticleOverflow } from "../render/sceneEmitters";
 import { createAssetsModal } from "./assetsModal";
 import type { EditorContext } from "./editorContext";
 import { EditorPanel } from "./focus/panelFocus";
-import { GraphViewState } from "./graphViewState";
+import { graphModeFor, GraphViewState } from "./graphViewState";
 import { createWorkspace } from "./layout/panelLayout";
 import { createGraphPanel } from "./panels/graphPanel";
 import { createPreviewPanel } from "./panels/previewPanel";
@@ -36,6 +37,8 @@ export interface ApplicationShell {
   /** Opens the Content screen (assets + import/export). The global keymap (in main.ts) binds it
    *  to Ctrl+Space, alongside the middlebar's own Content button. */
   readonly openAssets: () => void;
+  /** Shows the active owner's graph `name` and auto-arranges it (the graph's Arrange button). */
+  readonly arrangeGraph: (name: GraphName) => void;
 }
 
 export function mountApplicationShell(root: HTMLElement, context: EditorContext): ApplicationShell {
@@ -69,7 +72,8 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   signals.on("sourceStructureChanged", updateCost);
   signals.on("sourceViewChanged", updateCost);
 
-  const graph = createGraphPanel(context, graphView);
+  const graphPanel = createGraphPanel(context, graphView);
+  const graph = graphPanel.element;
   const timeline = createTimelinePanel(context);
 
   const assets = createAssetsModal(context);
@@ -105,5 +109,6 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
     reportStats: stats.report,
     toggleTransformPanel: () => transformPanel.toggle(),
     openAssets: assets.open,
+    arrangeGraph: (name) => graphPanel.arrange(graphModeFor(name)),
   };
 }

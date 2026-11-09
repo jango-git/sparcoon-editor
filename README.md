@@ -8,7 +8,30 @@ build.
 [Runtime](https://github.com/jango-git/sparcoon) -
 [npm](https://www.npmjs.com/package/sparcoon/v/0.12.0)
 
-![Editor demo](assets/demo.gif)
+<table>
+  <tr>
+    <td align="center"><img src="assets/gallery/campfire.webp" width="400" alt="Campfire" /><br /><b>Campfire</b></td>
+    <td align="center"><img src="assets/gallery/lightning-crack.webp" width="400" alt="Lightning Crack" /><br /><b>Lightning Crack</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/gallery/portal.webp" width="400" alt="Portal" /><br /><b>Portal</b></td>
+    <td align="center"><img src="assets/gallery/shield.webp" width="400" alt="Energy Shield" /><br /><b>Energy Shield</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/gallery/fireworks.webp" width="400" alt="Fireworks" /><br /><b>Fireworks</b></td>
+    <td align="center"><img src="assets/gallery/destruction.webp" width="400" alt="Destruction" /><br /><b>Destruction</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b></td>
+    <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="assets/editor.webp" width="100%" alt="The Portal preset being built in the editor" /><br /><b>Portal, built node by node in the editor</b></td>
+  </tr>
+</table>
+
+Every effect above is a bundled preset built from the editor's own nodes: press `Ctrl+Space`, pick
+it on the **Content** screen and hit **Load**.
 
 > **Pre-release.** The editor works end to end, but the project format and the exported artifact are
 > not frozen yet - breaking changes are possible before the first stable release. A project lives in
@@ -57,10 +80,6 @@ expects a bundler), or you work on another engine - Babylon.js, PlayCanvas, Pixi
 
 Nothing is uploaded anywhere: the project lives in your browser (autosaved to `localStorage`), and
 `Ctrl+S` writes it out as `.json`.
-
-## Gallery
-
-This section will grow as the project develops.
 
 ## Using an exported effect
 

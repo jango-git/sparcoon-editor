@@ -67,6 +67,8 @@
     "addTrailTip": "Gives this emitter a trail: a ribbon drawn behind every particle along its recent path, authored in its own graph.",
     "removeTrail": "Remove trail",
     "removeTrailTip": "Drops this emitter's trail graph. Undo brings it back.",
+    "arrange": "Arrange",
+    "arrangeTip": "Lays the whole graph out: columns from inputs to outputs, wires at right angles, routes where a wire turns. Comments are removed. Click twice to confirm; undo restores the old layout.",
     "noNodes": "No nodes for this graph",
     "noGroupGraph": "The VFX group has no graph - select an emitter or VFX mesh",
     "comment": "Comment",

@@ -11,6 +11,7 @@
  */
 
 import type { AttributeTypeName, GraphNode } from "../../domain/graphModel";
+import type { NodeMetrics } from "../../domain/layout/arrangeGraph";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../../domain/nodePalette";
 import { humanizeKey, attributeNameFromSlot } from "../../domain/nodePalette";
 import { createElement } from "../dom";
@@ -353,6 +354,26 @@ export class NodeView {
   /** The socket dot element for one port, used by the canvas to place a wire's endpoint. */
   public socketDot(side: SocketSide, key: string): HTMLElement | undefined {
     return this.socketDots.get(`${side}:${key}`);
+  }
+
+  /**
+   * The card's size and each socket dot's centre height from its top, in graph units - what the
+   * auto-layout (`domain/layout/arrangeGraph.ts`) places it by. Measured live, so it reflects the
+   * card as drawn (collapsed value editors, font-snapped width).
+   */
+  public layoutMetrics(): NodeMetrics {
+    const card = this.element.getBoundingClientRect();
+    const height = this.element.offsetHeight;
+    const scale = height > 0 ? card.height / height : 1;
+    const inputRows: Record<string, number> = {};
+    const outputRows: Record<string, number> = {};
+    for (const [entry, dot] of this.socketDots) {
+      const separator = entry.indexOf(":");
+      const rows = entry.slice(0, separator) === "input" ? inputRows : outputRows;
+      const box = dot.getBoundingClientRect();
+      rows[entry.slice(separator + 1)] = (box.top + box.height / 2 - card.top) / scale;
+    }
+    return { width: this.element.offsetWidth, height, inputRows, outputRows };
   }
 
   /**

@@ -11,6 +11,7 @@
  * - Top-level edits (`scene`, `graph(...)`, `timeline`) are one undo step each;
  *   `edit((transaction) => ...)` makes a whole body one step, all or nothing.
  * - A graph edit makes that graph's owner the active one, like a click on it in the editor.
+ * - `arrange()` lays a graph out from its cards on the live canvas, so it shows that graph.
  * - Reads are synchronous, except `status()`, `preview.capture*()`, `assets.add()` and the
  *   `project` loads: those wait for the editor (a recompute, a decode, a fetch) and return a
  *   Promise to await.
@@ -23,6 +24,8 @@ import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
+import type { GraphName } from "../model/graphSlots";
+import { arrangeOwnerGraph } from "./arrange.Internal";
 import { createAssetsApi, type AssetsApi } from "./assets";
 import { createCatalogApi, type CatalogApi } from "./catalog";
 import { createEditApi, type EditApi } from "./editApi";
@@ -57,6 +60,13 @@ export interface SparcoonAgentApi extends EditApi {
    * a returned object serializes to `{}`. A VFX mesh reports no `behavior` (it has no such graph).
    */
   status(ownerId?: string): Promise<StatusView>;
+  /**
+   * Auto-arranges `ownerId`'s `graph`, as the graph's Arrange button does: columns from inputs to
+   * the sinks, every wire at right angles (routes rebuilt), comments dropped. One undo step. It
+   * lays the graph out from its cards as drawn, so the editor shows that graph afterwards; not
+   * available inside `edit()`.
+   */
+  arrange(ownerId: string, graph: string): void;
 }
 
 export interface AgentApiDependencies {
@@ -69,6 +79,8 @@ export interface AgentApiDependencies {
   readonly focusEntity: (entity: SceneEntity) => void;
   /** The live viewport object of an entity, for framing a capture on it. */
   readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
+  /** Shows the active owner's graph `name` and auto-arranges it (the graph's Arrange button). */
+  readonly arrangeGraph: (name: GraphName) => void;
 }
 
 declare global {
@@ -78,7 +90,7 @@ declare global {
 }
 
 export function createAgentApi(dependencies: AgentApiDependencies): SparcoonAgentApi {
-  const { store, transport, coordinator, focusEntity, entityObject } = dependencies;
+  const { store, transport, coordinator, focusEntity, entityObject, arrangeGraph } = dependencies;
   return {
     version: AGENT_API_VERSION,
     ...createEditApi(liveSession(store)),
@@ -98,6 +110,7 @@ export function createAgentApi(dependencies: AgentApiDependencies): SparcoonAgen
       return available;
     },
     status: (ownerId) => readStatus(store, ownerId),
+    arrange: (ownerId, graph) => arrangeOwnerGraph(store, arrangeGraph, ownerId, graph),
   };
 }
 

@@ -4,6 +4,7 @@
  * stay in sync.
  */
 
+import type { GraphName } from "../model/graphSlots";
 import { createSignal, type Signal } from "./primitives/signal";
 import { t } from "../i18n";
 
@@ -30,6 +31,17 @@ export class GraphViewState {
   public onChange(listener: (mode: GraphMode) => void): () => void {
     return this.signal.onChange(listener);
   }
+}
+
+const MODE_BY_NAME: Readonly<Record<GraphName, GraphMode>> = {
+  render: GraphMode.Render,
+  behavior: GraphMode.Behavior,
+  trail: GraphMode.Trail,
+};
+
+/** The mode showing the graph the model and the agent API call `name`. */
+export function graphModeFor(name: GraphName): GraphMode {
+  return MODE_BY_NAME[name];
 }
 
 export function graphModeLabel(mode: GraphMode): string {

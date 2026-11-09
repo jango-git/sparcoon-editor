@@ -350,6 +350,7 @@ async function bootstrap(): Promise<void> {
     coordinator,
     focusEntity,
     entityObject: (entity) => sceneEmitters.entityObject(entity),
+    arrangeGraph: shell.arrangeGraph,
   });
 
   // Initial derive: seed the texture caches, then run the source through the library once.

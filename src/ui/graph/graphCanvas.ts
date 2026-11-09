@@ -47,6 +47,7 @@ import { computeNodeCosts, computeSinkCost } from "../../domain/graphStats";
 import {
   addAttribute,
   addCatalogNode,
+  arrangeActiveGraph,
   connectSockets,
   disconnectInput,
   dissolveRoute,
@@ -89,7 +90,7 @@ import { InputMode, type InputModeState } from "../inputMode";
 import type { EditorContext } from "../editorContext";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { AddNodeMenu } from "./addNodeMenu";
-import { snapToGrid } from "./grid";
+import { GRID_SIZE, snapToGrid } from "./grid";
 import {
   GraphViewport,
   dottedGridTarget,
@@ -105,7 +106,7 @@ import {
   type SocketRef,
   type TextureAssetOption,
 } from "./nodeView";
-import { RouteView } from "./routeView";
+import { ROUTE_GEOMETRY, RouteView } from "./routeView";
 import { CommentView } from "./commentView";
 import {
   carriedTypeForRoute,
@@ -349,6 +350,28 @@ export class GraphCanvas {
     this.refreshSelection();
     this.viewport.frameRect(rectangle, this.root.getBoundingClientRect());
     this.redrawWires();
+  }
+
+  /**
+   * Auto-lays out the graph on screen (`domain/layout/arrangeGraph.ts`) from its cards as drawn -
+   * one undo step - then frames the result. Comments are dropped with the old arrangement.
+   */
+  public arrange(): void {
+    arrangeActiveGraph(this.store, this.activeSlot(), {
+      grid: GRID_SIZE,
+      route: ROUTE_GEOMETRY,
+      measure: (nodeId) => {
+        const view = this.nodeViews.get(nodeId);
+        if (view === undefined) {
+          throw new Error(`No card on the canvas for node "${nodeId}"`);
+        }
+        return view.layoutMetrics();
+      },
+    });
+    this.selected.clear();
+    this.selectedComments.clear();
+    this.refreshSelection();
+    this.frameGraph();
   }
 
   private activeSlot(): GraphSlot {

@@ -34,6 +34,7 @@ export {
   setAttributeType,
 } from "./attributeCommands";
 export { pasteFragment, type GraphFragment } from "./fragmentCommands";
+export { arrangeActiveGraph } from "./layoutCommands";
 export {
   type ChannelValue,
   insertTransformKeyframes,

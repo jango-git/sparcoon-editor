@@ -10,11 +10,16 @@
  * dragging, selection and reconciliation (it lives in `graph.nodes`).
  */
 
+import type { RouteGeometry } from "../../domain/layout/arrangeGraph";
 import { createElement } from "../dom";
 import { GRID_SIZE } from "./grid";
 import { socketTypeColor } from "./socketColors";
 import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";
 import type { SocketPointerHandler, SocketRef, SocketSide } from "./nodeView";
+
+/** Three grid cells wide, one tall; both dots sit on the middle of that one row. Also what the
+ *  auto-layout (`domain/layout/arrangeGraph.ts`) places routes by. */
+export const ROUTE_GEOMETRY: RouteGeometry = { width: GRID_SIZE * 3, row: GRID_SIZE / 2 };
 
 export class RouteView {
   public readonly element: HTMLElement;
@@ -23,10 +28,10 @@ export class RouteView {
   constructor(nodeId: string, onSocketPointerDown?: SocketPointerHandler) {
     const input = this.buildDot(nodeId, ROUTE_INPUT_KEY, "input", onSocketPointerDown);
     const output = this.buildDot(nodeId, ROUTE_OUTPUT_KEY, "output", onSocketPointerDown);
-    // Three grid cells wide, one tall: the input dot hugs the left edge, the output the right,
-    // and the roomy middle is an easy drag target that never lands on a pin.
+    // The input dot hugs the left edge, the output the right, and the roomy middle is an easy
+    // drag target that never lands on a pin.
     this.element = createElement("div", { className: "node node--route" }, [input, output]);
-    this.element.style.width = `${GRID_SIZE * 3}px`;
+    this.element.style.width = `${ROUTE_GEOMETRY.width}px`;
     this.element.style.height = `${GRID_SIZE}px`;
   }
 
