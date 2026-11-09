@@ -19,12 +19,6 @@ function indexedSource(): { data: Float32Array; width: number; height: number } 
 }
 
 describe("downsampleEquirect", () => {
-  it("returns RGBA float data sized for the target resolution", () => {
-    const result = downsampleEquirect(indexedSource(), 2, 1);
-    expect(result).toBeInstanceOf(Float32Array);
-    expect(result.length).toBe(2 * 1 * 4);
-  });
-
   it("point-samples the nearest source texel per target texel", () => {
     // Downsampling 4x2 to 2x1: the single target row's center (y=0.5) maps to source row
     // floor(0.5/1 * 2) = 1; the two target columns' centers map to source x floor(0.5/2 * 4) = 1
@@ -42,6 +36,7 @@ describe("downsampleEquirect", () => {
 
   it("clamps to the last row/column instead of reading out of bounds", () => {
     const result = downsampleEquirect(indexedSource(), 9, 5);
+    expect(result).toBeInstanceOf(Float32Array);
     expect(result.length).toBe(9 * 5 * 4);
     expect(Array.from(result)).not.toContain(NaN);
   });

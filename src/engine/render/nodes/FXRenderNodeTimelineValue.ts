@@ -34,6 +34,11 @@ export class FXRenderNodeTimelineValue extends FXRenderNode {
     this.parameter = new FXTimelineValueState(name, type, value);
   }
 
+  /** Reads no target input: its value is a live binding, not a builtin. */
+  public override get targetReads(): readonly string[] {
+    return [];
+  }
+
   /** Palette metadata (the read set is empty; the value is not a builtin read). */
   public static describe(): FXNodeMeta {
     return TIMELINE_VALUE_RENDER_META;

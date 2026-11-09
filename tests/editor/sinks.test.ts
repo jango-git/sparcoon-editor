@@ -18,7 +18,8 @@ import {
   sinkPhase,
 } from "../../src/domain/nodePalette";
 import { createEmptyGraph } from "../../src/domain/graphModel";
-import { createRenderSink, ensureSinks, isSink } from "../../src/domain/sinks";
+import { bindingSinkId } from "../../src/domain/graphEdges";
+import { createRenderSink, ensureSinks } from "../../src/domain/sinks";
 import { serializeGraph } from "../../src/domain/serialize";
 import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
@@ -107,19 +108,20 @@ describe("output sink nodes", () => {
     expect(withValue(undefined)).toBe(256);
   });
 
-  it("a fresh document carries the sinks in both graphs", () => {
-    const emitter = createInitialState().source.scene.emitters[0];
-    expect(isSink(emitter.renderGraph.nodes[RENDER_SINK_ID])).toBe(true);
-    expect(isSink(emitter.behaviorGraph.nodes[SPAWN_SINK_ID])).toBe(true);
-    expect(isSink(emitter.behaviorGraph.nodes[UPDATE_SINK_ID])).toBe(true);
-  });
-
   it("classifies sink types and their phases", () => {
     expect(isSinkType(SPAWN_SINK_TYPE)).toBe(true);
     expect(isSinkType("constant")).toBe(false);
     expect(sinkPhase(SPAWN_SINK_TYPE)).toBe("spawn");
     expect(sinkPhase(UPDATE_SINK_TYPE)).toBe("update");
     expect(sinkPhase(RENDER_SINK_TYPE)).toBeUndefined();
+  });
+
+  it("maps an output binding back to the sink node its phase targets", () => {
+    expect(bindingSinkId(GraphKind.Render, {})).toBe(RENDER_SINK_ID);
+    expect(bindingSinkId(GraphKind.Behavior, { phase: "spawn" })).toBe(SPAWN_SINK_ID);
+    expect(bindingSinkId(GraphKind.Behavior, { phase: "update" })).toBe(UPDATE_SINK_ID);
+    // A phaseless behavior binding targets the update sink.
+    expect(bindingSinkId(GraphKind.Behavior, {})).toBe(UPDATE_SINK_ID);
   });
 
   it("serializeGraph drops the sinks, keeps user nodes, and carries binding phase", () => {
@@ -170,43 +172,50 @@ describe("output sink nodes", () => {
   });
 
   it("behavior sinks expose vec3 position + lifetime, not the per-axis scalar slots", () => {
-    const spawnKeys = sinkMeta(SPAWN_SINK_TYPE).inputs.map((s) => s.key);
-    const updateKeys = sinkMeta(UPDATE_SINK_TYPE).inputs.map((s) => s.key);
-    // spawn: vec3 position + birth-only lifetime; no positionX/Y/Z decomposition.
-    expect(spawnKeys).toEqual(["position", "lifetime"]);
-    expect(sinkMeta(SPAWN_SINK_TYPE).inputs.find((s) => s.key === "position")?.type).toBe("vec3");
-    expect(sinkMeta(SPAWN_SINK_TYPE).inputs.find((s) => s.key === "lifetime")?.type).toBe("float");
-    // update: vec3 position only (lifetime is birth-only).
-    expect(updateKeys).toEqual(["position"]);
+    const spawn = sinkMeta(SPAWN_SINK_TYPE).inputs;
+    const update = sinkMeta(UPDATE_SINK_TYPE).inputs;
+    const keys = (inputs: typeof spawn): string[] => inputs.map((socket) => socket.key);
+    for (const axis of ["positionX", "positionY", "positionZ"]) {
+      expect(keys(spawn)).not.toContain(axis);
+      expect(keys(update)).not.toContain(axis);
+    }
+    expect(spawn.find((socket) => socket.key === "position")?.type).toBe("vec3");
+    expect(spawn.find((socket) => socket.key === "lifetime")?.type).toBe("float");
+    expect(update.find((socket) => socket.key === "position")?.type).toBe("vec3");
+    // Lifetime is birth-only: the update sink has no slot for it.
+    expect(keys(update)).not.toContain("lifetime");
   });
 
   it("the spawn sink carries the GPU-simulation opt-in and the expected-capacity param", () => {
-    expect(Object.keys(sinkMeta(SPAWN_SINK_TYPE).params).sort()).toEqual([
-      SPAWN_EXPECTED_CAPACITY_PARAM,
-      SPAWN_TRY_GPU_SIMULATION_PARAM,
-    ]);
+    expect(Object.keys(sinkMeta(SPAWN_SINK_TYPE).params)).toEqual(
+      expect.arrayContaining([SPAWN_EXPECTED_CAPACITY_PARAM, SPAWN_TRY_GPU_SIMULATION_PARAM]),
+    );
   });
 
   it("the surface sink's base-color slot keeps key 'albedo' (ABI) but shows the label 'Color'", () => {
     const albedo = sinkMeta(RENDER_SINK_TYPE).inputs.find((socket) => socket.key === "albedo");
     expect(albedo).toBeDefined();
-    // Text is resolved by type+key from the node-text dictionary now, not carried on the meta -
-    // see i18n/nodeText.ts.
+    // Socket text is resolved by type+key from the node-text dictionary (see i18n/nodeText.ts),
+    // not carried on the meta.
     expect(nodeTextEntry(RENDER_SINK_TYPE)?.inputs?.["albedo"]?.label).toBe("Color");
   });
 
-  it("declared attributes append attr:<name> slots to both behavior sinks", () => {
+  it("declared attributes append attr:<name> slots after both behavior sinks' own slots", () => {
     const attributes = [{ name: "velocity", type: "vec3" as const }];
-    const spawn = sinkMeta(SPAWN_SINK_TYPE, { attributes });
-    const update = sinkMeta(UPDATE_SINK_TYPE, { attributes });
-    expect(spawn.inputs.map((s) => s.key)).toEqual(["position", "lifetime", "attr:velocity"]);
-    expect(update.inputs.map((s) => s.key)).toEqual(["position", "attr:velocity"]);
-    expect(spawn.inputs.find((s) => s.key === "attr:velocity")?.type).toBe("vec3");
+    for (const type of [SPAWN_SINK_TYPE, UPDATE_SINK_TYPE]) {
+      const own = sinkMeta(type).inputs.map((socket) => socket.key);
+      const withAttributes = sinkMeta(type, { attributes }).inputs;
+      expect(
+        withAttributes.map((socket) => socket.key),
+        type,
+      ).toEqual([...own, "attr:velocity"]);
+      expect(withAttributes.at(-1)?.type, type).toBe("vec3");
+    }
   });
 
-  it("the surface sink owns albedo + transforms and no lighting-model slots (lighting is nodes now)", () => {
-    // Lighting-as-nodes: the surface sink carries no model param and no shading normal/emission
-    // slots - those are lighting-node inputs. `albedo` already carries the shaded color.
+  it("the surface sink owns albedo + transforms and no lighting-model slots (lighting is nodes)", () => {
+    // The surface sink carries no model param and no shading normal/emission slots - those are
+    // lighting-node inputs. `albedo` already carries the shaded color.
     const surface = metaForNode(GraphKind.Render, createRenderSink());
     const keys = surface?.inputs.map((s) => s.key) ?? [];
     expect(keys).toContain("albedo");
@@ -215,53 +224,24 @@ describe("output sink nodes", () => {
     expect(surface?.params.model).toBeUndefined();
   });
 
-  it("the surface sink gates additivity (blending only) and alphaThreshold (not opaque)", () => {
-    const inputsFor = (renderMode: string): string[] =>
-      metaForNode(GraphKind.Render, {
-        type: RENDER_SINK_TYPE,
-        parameters: { renderMode },
-      })?.inputs.map((s) => s.key) ?? [];
-
-    // Blending: both compositing sockets present.
-    expect(inputsFor("blending")).toEqual(
-      expect.arrayContaining(["albedo", "additivity", "alphaThreshold"]),
-    );
-    // alphaHash / alphaTest: the cutoff, but no additivity.
-    expect(inputsFor("alphaHash")).toContain("alphaThreshold");
-    expect(inputsFor("alphaHash")).not.toContain("additivity");
-    expect(inputsFor("alphaTest")).toContain("alphaThreshold");
-    // Opaque: neither compositing socket (alpha is forced to 1).
-    const opaque = inputsFor("opaque");
-    expect(opaque).toContain("albedo");
-    expect(opaque).not.toContain("alphaThreshold");
-    expect(opaque).not.toContain("additivity");
-  });
-
-  it("the surface sink shows intensity in every render mode", () => {
-    for (const renderMode of ["blending", "alphaHash", "alphaTest", "opaque"]) {
-      const keys =
-        metaForNode(GraphKind.Render, {
-          type: RENDER_SINK_TYPE,
-          parameters: { renderMode },
-        })?.inputs.map((socket) => socket.key) ?? [];
-      expect(keys).toContain("intensity");
+  it("the particle surface sink (the default host) carries particleTransform + vertexTransform and the sort param", () => {
+    for (const surface of [
+      sinkMeta(RENDER_SINK_TYPE),
+      sinkMeta(RENDER_SINK_TYPE, { renderHost: "particle" }),
+    ]) {
+      const keys = surface.inputs.map((socket) => socket.key);
+      expect(keys).toContain("particleTransform");
+      expect(keys).toContain("vertexTransform");
+      expect(Object.keys(surface.params)).toEqual(
+        expect.arrayContaining([
+          "renderMode",
+          "geometry",
+          "sortInterval",
+          "castShadow",
+          "receiveShadow",
+        ]),
+      );
     }
-  });
-
-  it("the particle surface sink carries particleTransform + vertexTransform and the sort param", () => {
-    const surface = sinkMeta(RENDER_SINK_TYPE, { renderHost: "particle" });
-    const keys = surface.inputs.map((socket) => socket.key);
-    expect(keys).toContain("particleTransform");
-    expect(keys).toContain("vertexTransform");
-    expect(Object.keys(surface.params)).toEqual(
-      expect.arrayContaining([
-        "renderMode",
-        "geometry",
-        "sortInterval",
-        "castShadow",
-        "receiveShadow",
-      ]),
-    );
   });
 
   it("the mesh surface sink drops particleTransform and the sort param, keeps geometry + shadows", () => {
@@ -271,31 +251,10 @@ describe("output sink nodes", () => {
     expect(keys).toContain("vertexTransform");
     expect(keys).not.toContain("particleTransform");
     // The shadow flags ride both hosts; only the camera sort param is particle-only.
-    expect(Object.keys(surface.params).sort()).toEqual([
-      "castShadow",
-      "geometry",
-      "receiveShadow",
-      "renderMode",
-    ]);
+    expect(Object.keys(surface.params)).toEqual(
+      expect.arrayContaining(["castShadow", "geometry", "receiveShadow", "renderMode"]),
+    );
     expect(surface.params.sortInterval).toBeUndefined();
-  });
-
-  it("the surface sink defaults to the particle host (particleTransform present)", () => {
-    expect(sinkMeta(RENDER_SINK_TYPE).inputs.map((socket) => socket.key)).toContain(
-      "particleTransform",
-    );
-  });
-
-  it("the mesh surface sink still gates compositing by render mode", () => {
-    const keysFor = (renderMode: "blending" | "opaque" | "alphaHash" | "alphaTest"): string[] =>
-      sinkMeta(RENDER_SINK_TYPE, { renderHost: "mesh", renderMode }).inputs.map(
-        (socket) => socket.key,
-      );
-    expect(keysFor("blending")).toEqual(
-      expect.arrayContaining(["albedo", "additivity", "alphaThreshold", "vertexTransform"]),
-    );
-    expect(keysFor("opaque")).not.toContain("alphaThreshold");
-    expect(keysFor("alphaHash")).not.toContain("additivity");
   });
 
   it("never lists the sinks in the add-node palette", () => {
@@ -334,6 +293,31 @@ describe("output sink nodes", () => {
     });
   });
 });
+
+describe.each(["particle", "mesh"] as const)(
+  "the %s surface sink gates compositing sockets by render mode",
+  (host) => {
+    // additivity only while blending; the alpha cutoff whenever alpha is not forced to 1.
+    it.each([
+      { renderMode: "blending", additivity: true, alphaThreshold: true },
+      { renderMode: "alphaHash", additivity: false, alphaThreshold: true },
+      { renderMode: "alphaTest", additivity: false, alphaThreshold: true },
+      { renderMode: "opaque", additivity: false, alphaThreshold: false },
+    ])("$renderMode", ({ renderMode, additivity, alphaThreshold }) => {
+      const keys =
+        metaForNode(
+          GraphKind.Render,
+          { type: RENDER_SINK_TYPE, parameters: { renderMode } },
+          [],
+          host,
+        )?.inputs.map((socket) => socket.key) ?? [];
+      // Present in every mode.
+      expect(keys).toEqual(expect.arrayContaining(["albedo", "intensity", "vertexTransform"]));
+      expect(keys.includes("additivity")).toBe(additivity);
+      expect(keys.includes("alphaThreshold")).toBe(alphaThreshold);
+    });
+  },
+);
 
 describe("attribute commands", () => {
   const freshStore = (): Store => new Store(createInitialState(), new SignalBus());

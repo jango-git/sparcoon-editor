@@ -75,36 +75,36 @@ describe("call resolves against the registered signatures", () => {
   });
 });
 
-describe("printer metadata", () => {
-  it("GLSL name overrides only where the builtin differs", () => {
-    expect(FX_FUNCTIONS.get("sin")!.glslBaseline).toBeUndefined();
-    expect(FX_FUNCTIONS.get("atan2")!.glslBaseline).toBe("atan");
-    const saturate = FX_FUNCTIONS.get("saturate")!.glslBaseline as (
-      args: readonly string[],
-    ) => string;
-    expect(saturate(["v"])).toBe("clamp(v, 0.0, 1.0)");
+/** Evaluates a function's scalar JS form (plus its helper, when it has one) on numeric args. */
+function evalJS(name: string, ...args: number[]): number {
+  const def = FX_FUNCTIONS.get(name)!;
+  const params = args.map((_, index) => `a${index}`);
+  const body = `${def.jsHelper ?? ""}\nreturn ${def.js(params)};`;
+  return (new Function(...params, body) as (...values: number[]) => number)(...args);
+}
+
+describe("scalar JS forms", () => {
+  it("step matches GLSL: 1 at the edge, 0 below it", () => {
+    expect(evalJS("step", 0.5, 0.5)).toBe(1);
+    expect(evalJS("step", 0.5, 0.49)).toBe(0);
   });
 
-  it("round overrides GLSL to floor(x + 0.5) but keeps Math.round in JS (N2)", () => {
-    const round = FX_FUNCTIONS.get("round")!;
-    const glslBaseline = round.glslBaseline as (args: readonly string[]) => string;
-    expect(glslBaseline(["x"])).toBe("floor(x + 0.5)");
-    expect(round.js(["x"])).toBe("Math.round(x)");
+  it("fract and mod match GLSL: floor toward negative infinity", () => {
+    expect(evalJS("fract", -0.25)).toBeCloseTo(0.75);
+    expect(evalJS("mod", -1, 3)).toBe(2);
   });
 
-  it("scalar JS printers emit the expected code", () => {
-    expect(FX_FUNCTIONS.get("sin")!.js(["a"])).toBe("Math.sin(a)");
-    expect(FX_FUNCTIONS.get("fract")!.js(["a"])).toBe("fxFract(a)");
-    expect(FX_FUNCTIONS.get("step")!.js(["e", "x"])).toBe("(x < e ? 0.0 : 1.0)");
-    expect(FX_FUNCTIONS.get("saturate")!.js(["a"])).toBe("Math.min(Math.max(a, 0.0), 1.0)");
-    expect(FX_FUNCTIONS.get("mix")!.js(["a", "b", "t"])).toBe("fxMix(a, b, t)");
+  it("saturate, mix and smoothstep match their GLSL definitions", () => {
+    expect(evalJS("saturate", -2)).toBe(0);
+    expect(evalJS("saturate", 3)).toBe(1);
+    expect(evalJS("mix", 2, 6, 0.25)).toBe(3);
+    expect(evalJS("smoothstep", 0, 1, 0.5)).toBe(0.5);
+    expect(evalJS("smoothstep", 0, 1, 2)).toBe(1);
   });
 
-  it("helper-backed functions carry their helper source", () => {
-    for (const name of ["fract", "mod", "mix", "smoothstep"]) {
-      expect(FX_FUNCTIONS.get(name)!.jsHelper, name).toBeTruthy();
-    }
-    expect(FX_FUNCTIONS.get("sin")!.jsHelper).toBeUndefined();
+  it("round keeps Math.round in JS (half rounds up, as GLSL's floor(x + 0.5))", () => {
+    expect(evalJS("round", 2.5)).toBe(3);
+    expect(evalJS("round", -2.5)).toBe(-2);
   });
 
   it("vector reductions throw if their scalar JS is ever reached", () => {

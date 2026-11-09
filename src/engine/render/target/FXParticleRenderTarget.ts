@@ -1,9 +1,16 @@
-import type { FXParticleReads } from "sparcoon";
+import type { FXParticleReads, FXSurfaceReads } from "sparcoon";
+import {
+  fxGraphVaryingAllowance,
+  fxVaryingShape,
+  packedVaryingVectors,
+  type FXGLSLRenderTier,
+} from "sparcoon/editor";
+import type { FXValueType } from "../../core/socket/FXValueType";
 import { FXShaderStage } from "../FXShaderStage";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import { canonicalAttributeSuffix } from "../../core/socket/FXAttribute";
-import type { FXTarget, FXTargetInput, FXTargetOutput } from "./FXTarget";
+import type { FXInputRate, FXTarget, FXTargetInput, FXTargetOutput } from "./FXTarget";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;
@@ -18,41 +25,41 @@ const BOTH_STAGES: readonly FXShaderStage[] = [FXShaderStage.VERTEX, FXShaderSta
  *  varyings (`p_position`, `p_lifecycle`) via `FX_CORE_PARTICLE_DEFINES`. Velocity, scale,
  *  rotation etc. are ordinary user-declared attributes, not target builtins. */
 const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
-  { name: "PARTICLE_POSITION_X", type: FLOAT, stages: BOTH_STAGES },
-  { name: "PARTICLE_POSITION_Y", type: FLOAT, stages: BOTH_STAGES },
-  { name: "PARTICLE_POSITION_Z", type: FLOAT, stages: BOTH_STAGES },
+  { name: "PARTICLE_POSITION_X", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "PARTICLE_POSITION_Y", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "PARTICLE_POSITION_Z", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   // A single `vec3` (the `p_position` varying), so `builtin-attribute`'s position output
   // reads the core builtin symmetrically to the behavior side.
-  { name: "PARTICLE_POSITION", type: VEC3, stages: BOTH_STAGES },
-  { name: "PARTICLE_AGE", type: FLOAT, stages: BOTH_STAGES },
-  { name: "PARTICLE_LIFETIME", type: FLOAT, stages: BOTH_STAGES },
-  { name: "PARTICLE_ID", type: FLOAT, stages: BOTH_STAGES },
-  { name: "p_uv", type: VEC2, stages: [FXShaderStage.FRAGMENT] },
+  { name: "PARTICLE_POSITION", type: VEC3, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "PARTICLE_AGE", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "PARTICLE_LIFETIME", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "PARTICLE_ID", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  { name: "p_uv", type: VEC2, stages: [FXShaderStage.FRAGMENT], rate: "vertex" },
   // World-space surface frame + position, built by the runtime from the billboard transform:
   // geometryNormal (surface normal), geometryTangent (u-axis tangent, spans the TBN with the
   // normal), worldPosition (fragment world position, for fresnel / view-direction).
-  { name: "geometryNormal", type: VEC3, stages: [FXShaderStage.FRAGMENT] },
-  { name: "geometryTangent", type: VEC3, stages: [FXShaderStage.FRAGMENT] },
-  { name: "worldPosition", type: VEC3, stages: [FXShaderStage.FRAGMENT] },
+  { name: "geometryNormal", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
+  { name: "geometryTangent", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
+  { name: "worldPosition", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
   // Global clock (seconds since start), updated per frame by the material adapter + FXEmitter.
-  { name: "u_time", type: FLOAT, stages: BOTH_STAGES },
+  { name: "u_time", type: FLOAT, stages: BOTH_STAGES, rate: "draw" },
   // Time elapsed since the previous frame (seconds), updated per frame likewise.
-  { name: "u_deltaTime", type: FLOAT, stages: BOTH_STAGES },
+  { name: "u_deltaTime", type: FLOAT, stages: BOTH_STAGES, rate: "draw" },
   // View-space distance from the camera to the particle center, computed in the vertex stage
   // and interpolated. Enables distance-based fades.
-  { name: "p_cameraDistance", type: FLOAT, stages: [FXShaderStage.FRAGMENT] },
+  { name: "p_cameraDistance", type: FLOAT, stages: [FXShaderStage.FRAGMENT], rate: "vertex" },
   // Three declares and populates `modelMatrix` automatically; costs no per-frame plumbing.
-  { name: "modelMatrix", type: MAT4, stages: BOTH_STAGES },
+  { name: "modelMatrix", type: MAT4, stages: BOTH_STAGES, rate: "draw" },
   // Three declares and updates `viewMatrix` in both prefixes (BOTH_STAGES also keeps a
   // stage-flexible reader like `look-at-camera` from failing the nominal-stage read check).
-  { name: "viewMatrix", type: MAT4, stages: BOTH_STAGES },
+  { name: "viewMatrix", type: MAT4, stages: BOTH_STAGES, rate: "draw" },
   // Three declares `cameraPosition` in both prefixes; feeds billboards and fresnel.
-  { name: "cameraPosition", type: VEC3, stages: BOTH_STAGES },
+  { name: "cameraPosition", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
   // The emitter/mesh's world-space linear/angular velocity, pushed by FXEmitter/FXEffect each
   // tick. Unprefixed: a domain-shared builtin, also exposed by the behavior target, not a
   // render-local uniform.
-  { name: "objectVelocity", type: VEC3, stages: BOTH_STAGES },
-  { name: "objectAngularVelocity", type: VEC3, stages: BOTH_STAGES },
+  { name: "objectVelocity", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
+  { name: "objectAngularVelocity", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
 ];
 
 /** Varying (and render target-input) name a user attribute `name` is read through. */
@@ -90,16 +97,80 @@ export function particleReadsOf(targetReads: readonly string[]): FXParticleReads
   };
 }
 
+/**
+ * What a fragment stage reading the target inputs `targetReads` reads of the world-space surface
+ * frame - the artifact's `surfaceReads`, from which the runtime builds exactly the builtins (and
+ * the varyings carrying them) the stage needs.
+ */
+export function surfaceReadsOf(targetReads: readonly string[]): FXSurfaceReads {
+  return {
+    normal: targetReads.includes("geometryNormal"),
+    tangent: targetReads.includes("geometryTangent"),
+    position: targetReads.includes("worldPosition"),
+  };
+}
+
+/**
+ * The varyings the runtime declares for the particle properties a fragment stage reading the
+ * target inputs `targetReads` reads (see {@link particleReadsOf}): the core position and lifecycle
+ * as a `vec3` each, an attribute at its own width - as `packedVaryingVectors` counts them.
+ */
+export function fragmentPropertyVaryings(
+  target: FXTarget,
+  targetReads: readonly string[],
+): { readonly components: number; readonly count: number }[] {
+  const reads = particleReadsOf(targetReads);
+  const vec3 = { components: 3, count: 1 };
+  return [
+    ...(reads.position ? [vec3] : []),
+    ...(reads.lifecycle ? [vec3] : []),
+    ...reads.attributes.map((name) => {
+      const input = target.inputs.find(
+        (candidate) => candidate.name === attributeVaryingName(name),
+      );
+      if (input === undefined) {
+        throw new Error(
+          `fragmentPropertyVaryings: target "${target.name}" has no attribute "${name}"`,
+        );
+      }
+      return { components: input.type.components, count: 1 };
+    }),
+  ];
+}
+
+/**
+ * Whether what a graph carries from its vertex to its fragment stage fits what `tier` leaves a
+ * graph beside the heaviest particle material (`fxGraphVaryingAllowance`), counted by the
+ * runtime's own packing rule: the `carried` values and the particle properties a fragment stage
+ * reading `lateReads` needs as varyings (see {@link fragmentPropertyVaryings}). `fragmentReads` -
+ * what the fragment stage reads of the target at all - fixes the surface frame the material
+ * builds, which no move between the stages changes (it is per fragment).
+ */
+export function crossingBudget(
+  target: FXTarget,
+  tier: FXGLSLRenderTier,
+  fragmentReads: readonly string[],
+): (carried: readonly FXValueType[], lateReads: readonly string[]) => boolean {
+  const allowance = fxGraphVaryingAllowance(tier, surfaceReadsOf(fragmentReads));
+  return (carried, lateReads) =>
+    packedVaryingVectors([
+      ...carried.map((type) => fxVaryingShape(type.glslTypeName)),
+      ...fragmentPropertyVaryings(target, lateReads),
+    ]) <= allowance;
+}
+
 /** Per-attribute render inputs: each requested attribute is readable in both stages through its
  *  `p_fx_<name>` varying, which the runtime's material fills from whichever packed attribute
  *  holds the field (or a constant zero when nothing writes it). */
 function attributeRenderInputs(
   attributes: readonly FXAttributeRequest[],
+  rate: FXInputRate,
 ): readonly FXTargetInput[] {
   return attributes.map((attribute) => ({
     name: attributeVaryingName(attribute.name),
     type: attribute.type,
     stages: BOTH_STAGES,
+    rate,
   }));
 }
 
@@ -152,7 +223,7 @@ const SURFACE_OUTPUTS: readonly FXTargetOutput[] = [
 export function buildParticleTarget(attributes: readonly FXAttributeRequest[] = []): FXTarget {
   return {
     name: `particle${canonicalAttributeSuffix(attributes)}`,
-    inputs: [...PARTICLE_BUILTINS, ...attributeRenderInputs(attributes)],
+    inputs: [...PARTICLE_BUILTINS, ...attributeRenderInputs(attributes, "primitive")],
     outputs: SURFACE_OUTPUTS,
   };
 }
@@ -199,13 +270,18 @@ const TRAIL_EXCLUDED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
 
 /**
  * The trail render builtins: every particle builtin - each one interpolated along the ribbon
- * between two recorded points of the particle's path - minus the surface frame. `p_uv` means
- * something else here: x runs along the trail (0 at the particle, 1 at the tail) and y across it
- * (0 -> 1), and it is readable in the vertex stage too, for a `width` that tapers along the trail.
+ * between two recorded points of the particle's path, so per vertex, not per primitive - minus the
+ * surface frame. `p_uv` means something else here: x runs along the trail (0 at the particle, 1 at
+ * the tail) and y across it (0 -> 1), and it is readable in the vertex stage too, for a `width`
+ * that tapers along the trail.
  */
 const TRAIL_BUILTINS: readonly FXTargetInput[] = PARTICLE_BUILTINS.filter(
   (input) => !TRAIL_EXCLUDED_BUILTIN_NAMES.has(input.name),
-).map((input) => (input.name === "p_uv" ? { ...input, stages: BOTH_STAGES } : input));
+).map((input) => ({
+  ...input,
+  stages: input.name === "p_uv" ? BOTH_STAGES : input.stages,
+  rate: input.rate === "primitive" ? "vertex" : input.rate,
+}));
 
 /** The ribbon's width in world units at a vertex; `0.1` when unwired. */
 const TRAIL_WIDTH_OUTPUT: FXTargetOutput = {
@@ -227,7 +303,7 @@ const TRAIL_OUTPUTS: readonly FXTargetOutput[] = [
 export function buildTrailTarget(attributes: readonly FXAttributeRequest[] = []): FXTarget {
   return {
     name: `trail${canonicalAttributeSuffix(attributes)}`,
-    inputs: [...TRAIL_BUILTINS, ...attributeRenderInputs(attributes)],
+    inputs: [...TRAIL_BUILTINS, ...attributeRenderInputs(attributes, "vertex")],
     outputs: TRAIL_OUTPUTS,
   };
 }

@@ -14,7 +14,7 @@ import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBa
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import type { FXTarget } from "../../src/engine/render/target/FXTarget";
+import type { FXInputRate, FXTarget } from "../../src/engine/render/target/FXTarget";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;
@@ -27,8 +27,8 @@ function baseTarget(): FXTarget {
   return {
     name: "lint-render",
     inputs: [
-      { name: "PARTICLE_AGE", type: FLOAT, stages: [VERTEX, FRAGMENT] },
-      { name: "p_uv", type: VEC2, stages: [FRAGMENT] },
+      { name: "PARTICLE_AGE", type: FLOAT, stages: [VERTEX, FRAGMENT], rate: "primitive" },
+      { name: "p_uv", type: VEC2, stages: [FRAGMENT], rate: "draw" },
     ],
     outputs: [{ slot: "albedo", type: VEC4, stage: FRAGMENT, required: false }],
   };
@@ -56,6 +56,7 @@ const TARGET_SHAPE_CODES: readonly FXCompilerErrorCode[] = [
   "render-input-matches-generated-pattern",
   "duplicate-target-input",
   "unknown-render-input-stage",
+  "unknown-render-input-rate",
   "duplicate-target-output",
   "unknown-render-output-stage",
 ];
@@ -73,7 +74,7 @@ describe("validateRenderTarget (render target shape lint)", () => {
     const target = baseTarget();
     const result = lint({
       ...target,
-      inputs: [{ name: "p uv", type: VEC2, stages: [FRAGMENT] }],
+      inputs: [{ name: "p uv", type: VEC2, stages: [FRAGMENT], rate: "vertex" }],
     });
     expect(hasError(result, "bad-render-input-identifier", "GLSL identifier")).toBe(true);
   });
@@ -82,7 +83,10 @@ describe("validateRenderTarget (render target shape lint)", () => {
     const target = baseTarget();
     const result = lint({
       ...target,
-      inputs: [...target.inputs, { name: "PARTICLE_AGE", type: FLOAT, stages: [FRAGMENT] }],
+      inputs: [
+        ...target.inputs,
+        { name: "PARTICLE_AGE", type: FLOAT, stages: [FRAGMENT], rate: "primitive" },
+      ],
     });
     expect(hasError(result, "duplicate-target-input", "more than once")).toBe(true);
   });
@@ -92,9 +96,28 @@ describe("validateRenderTarget (render target shape lint)", () => {
     const result = lint({
       ...target,
       // Editor data can carry a junk stage past the type system.
-      inputs: [{ name: "PARTICLE_AGE", type: FLOAT, stages: ["geometry" as FXShaderStage] }],
+      inputs: [
+        {
+          name: "PARTICLE_AGE",
+          type: FLOAT,
+          stages: ["geometry" as FXShaderStage],
+          rate: "primitive",
+        },
+      ],
     });
     expect(hasError(result, "unknown-render-input-stage", "unknown stage")).toBe(true);
+  });
+
+  it("flags an input naming an unknown rate", () => {
+    const target = baseTarget();
+    const result = lint({
+      ...target,
+      // Editor data can carry a junk rate past the type system too.
+      inputs: [
+        { name: "PARTICLE_AGE", type: FLOAT, stages: [FRAGMENT], rate: "geologic" as FXInputRate },
+      ],
+    });
+    expect(hasError(result, "unknown-render-input-rate", "unknown rate")).toBe(true);
   });
 
   it("flags a duplicated output slot", () => {
@@ -110,12 +133,12 @@ describe("validateRenderTarget (render target shape lint)", () => {
   });
 });
 
-describe("validateRenderTarget v2 - keywords, reserved forms, value types (P12)", () => {
+describe("validateRenderTarget v2 - keywords, reserved forms, value types", () => {
   it("flags an input named after a GLSL keyword", () => {
     const target = baseTarget();
     const result = lint({
       ...target,
-      inputs: [{ name: "float", type: FLOAT, stages: [FRAGMENT] }],
+      inputs: [{ name: "float", type: FLOAT, stages: [FRAGMENT], rate: "draw" }],
     });
     expect(hasError(result, "render-input-is-glsl-keyword", "GLSL keyword")).toBe(true);
   });
@@ -125,7 +148,7 @@ describe("validateRenderTarget v2 - keywords, reserved forms, value types (P12)"
     for (const name of ["u_uniform_0", "v_bridge_3"]) {
       const result = lint({
         ...target,
-        inputs: [{ name, type: FLOAT, stages: [FRAGMENT] }],
+        inputs: [{ name, type: FLOAT, stages: [FRAGMENT], rate: "draw" }],
       });
       expect(hasError(result, "render-input-matches-generated-pattern", "reserved"), name).toBe(
         true,
@@ -137,7 +160,7 @@ describe("validateRenderTarget v2 - keywords, reserved forms, value types (P12)"
     const target = baseTarget();
     const result = lint({
       ...target,
-      inputs: [{ name: "p_glow_2", type: FLOAT, stages: [FRAGMENT] }],
+      inputs: [{ name: "p_glow_2", type: FLOAT, stages: [FRAGMENT], rate: "draw" }],
     });
     expect(hasAnyTargetShapeError(result)).toBe(false);
   });
@@ -147,7 +170,10 @@ describe("validateRenderTarget v2 - keywords, reserved forms, value types (P12)"
     const junk = { glslTypeName: "vec4; } void main() {", components: 4 } as unknown as typeof VEC4;
     expect(
       hasError(
-        lint({ ...target, inputs: [{ name: "p_junk", type: junk, stages: [FRAGMENT] }] }),
+        lint({
+          ...target,
+          inputs: [{ name: "p_junk", type: junk, stages: [FRAGMENT], rate: "draw" }],
+        }),
         "unknown-target-value-type",
         "unknown value type",
       ),
@@ -164,14 +190,14 @@ describe("validateRenderTarget v2 - keywords, reserved forms, value types (P12)"
     ).toBe(true);
   });
 
-  it("regression: the built-in particle target (with attributes) stays green", () => {
+  it("accepts the built-in particle target with attributes", () => {
     expect(
       hasAnyTargetShapeError(lint(buildParticleTarget([{ name: "glow_2", type: FLOAT }]))),
     ).toBe(false);
   });
 });
 
-describe("render live apply against a broken target -> invalid (P12)", () => {
+describe("render live apply against a broken target -> invalid", () => {
   const snapshot: FXGraphSnapshotData = {
     version: 2,
     nodes: { e: { type: "constant", params: { type: "color" } } },
@@ -192,7 +218,7 @@ describe("render live apply against a broken target -> invalid (P12)", () => {
           "baseline",
           (): FXTarget => ({
             ...buildParticleTarget([]),
-            inputs: [{ name, type: FLOAT, stages: [FRAGMENT] }],
+            inputs: [{ name, type: FLOAT, stages: [FRAGMENT], rate: "draw" }],
           }),
           () => {
             /* install sink */
@@ -209,14 +235,14 @@ describe("render live apply against a broken target -> invalid (P12)", () => {
   }
 });
 
-describe("static compile surface carries typed errors (T10)", () => {
+describe("static compile surface carries typed errors", () => {
   it("FXCompilerBaseline.compile over an invalid target throws FXCompilerErrorException with a code", () => {
     const target = baseTarget();
     let caught: unknown;
     try {
       new FXCompilerBaseline().compile(new FXGraph<FXRenderNode>(), {
         ...target,
-        inputs: [{ name: "float", type: FLOAT, stages: [FRAGMENT] }],
+        inputs: [{ name: "float", type: FLOAT, stages: [FRAGMENT], rate: "draw" }],
       });
     } catch (error) {
       caught = error;

@@ -69,6 +69,76 @@ describe("pasteTimelineItems", () => {
     expect(keys.find((k) => k.id === pasted[0].id)!.value).toBe(4);
   });
 
+  it("creates the named track on a target that has none", () => {
+    const store = freshStore();
+    const id = emitterId(store);
+    const mesh = vfxMeshEntity(addVfxMesh(store));
+
+    const pasted = pasteTimelineItems(
+      store,
+      [
+        { type: "key", entity: emitterEntity(id), name: "size", time: 1, value: 4 },
+        { type: "key", entity: mesh, name: "tint", time: 1, value: [1, 0, 0, 1] },
+      ],
+      0,
+    );
+
+    expect(pasted).toHaveLength(2);
+    expect(tracks(store)).toEqual([
+      { name: "size", keys: [expect.objectContaining({ id: pasted[0].id, time: 1, value: 4 })] },
+    ]);
+    expect(store.getSource().scene.meshes[0].tracks).toEqual([
+      {
+        name: "tint",
+        keys: [expect.objectContaining({ id: pasted[1].id, time: 1, value: [1, 0, 0, 1] })],
+      },
+    ]);
+  });
+
+  it("clamps an offset that pushes an item before 0 or past the duration", () => {
+    const store = freshStore();
+    const entity = emitterEntity(emitterId(store));
+
+    pasteTimelineItems(
+      store,
+      [
+        { type: "key", entity, name: "early", time: 1, value: 1 },
+        { type: "transformKey", entity, channel: "position", time: 1, value: [0, 0, 0] },
+      ],
+      -3, // would land at -2
+    );
+    pasteTimelineItems(store, [{ type: "key", entity, name: "late", time: 4, value: 1 }], 3);
+
+    expect(tracks(store).find((track) => track.name === "early")!.keys[0].time).toBe(0);
+    expect(transformTracks(store)[0].keys[0].time).toBe(0);
+    expect(tracks(store).find((track) => track.name === "late")!.keys[0].time).toBe(5);
+  });
+
+  it("drops a Timeline Value key aimed at the VFX group, which has no such tracks", () => {
+    const store = freshStore();
+    const pasted = pasteTimelineItems(
+      store,
+      [{ type: "key", entity: VFX_ENTITY, name: "size", time: 1, value: 1 }],
+      0,
+    );
+    expect(pasted).toEqual([]);
+  });
+
+  it("records no edit when every item is dropped", () => {
+    const signals = new SignalBus();
+    const store = new Store(createTestState(), signals);
+    const before = store.getSource();
+    let historyChanges = 0;
+    signals.on("historyChanged", () => historyChanges++);
+    pasteTimelineItems(
+      store,
+      [{ type: "key", entity: VFX_ENTITY, name: "size", time: 1, value: 1 }],
+      0,
+    );
+    expect(store.getSource()).toBe(before);
+    expect(historyChanges).toBe(0);
+  });
+
   it("pastes a transform key onto the VFX group, an emitter, and a mesh", () => {
     const store = freshStore();
     const emitter = emitterEntity(emitterId(store));

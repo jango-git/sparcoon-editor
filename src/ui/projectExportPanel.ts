@@ -180,7 +180,7 @@ async function importFromFile(file: File | undefined, context: EditorContext): P
     console.warn(`"${file.name}" is not a readable project file`);
     return;
   }
-  await replaceDocument(context, source);
+  replaceDocument(context, source);
 }
 
 /**
@@ -217,7 +217,7 @@ function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
  *  file goes through, viewport settings reset included. */
 async function applyPreset(context: EditorContext, preset: ProjectPreset): Promise<void> {
   const source = await loadPresetSource(preset);
-  await replaceDocument(context, source);
+  replaceDocument(context, source);
 }
 
 /** A safe download stem from the project name: keep word characters, fall back when nothing remains. */

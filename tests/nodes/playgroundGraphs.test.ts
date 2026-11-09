@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import {
-  registerStandardBehaviorNodes,
-  registerStandardRenderNodes,
-} from "../../src/engine/nodes-std/index";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
   buildParticleSpawnKernel,
@@ -19,6 +13,8 @@ import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_LIFETIME } from "sparcoon";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
+import { bind, edge } from "../helpers/graphBuild";
+import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 const FLOAT = FX_VALUE_TYPES.float;
@@ -27,21 +23,9 @@ const FLOAT = FX_VALUE_TYPES.float;
 // two not-yet-migrated resource/curve nodes registered by hand. Guards the param
 // shapes the playground feeds (ranges as [min,max]) against the descriptors.
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
 describe("playground graphs - standard registries + hand-written resource nodes", () => {
   it("compiles and runs the smoke behavior snapshot", () => {
-    const r = new FXNodeRegistry<FXBehaviorNode>();
-    registerStandardBehaviorNodes(r);
+    const r = behaviorRegistry();
 
     // Executor model: velocity/rotation are user attributes now, not builtin slots.
     // Spawn seeds velocity + rotation into their attribute buffers; the update phase
@@ -100,8 +84,7 @@ describe("playground graphs - standard registries + hand-written resource nodes"
   });
 
   it("compiles the smoke render graph (descriptor clip + color source)", () => {
-    const r = new FXNodeRegistry<FXRenderNode>();
-    registerStandardRenderNodes(r);
+    const r = renderRegistry();
 
     const color = r.create("constant", { type: "color", value: [0.5, 0.5, 0.5, 0.5] });
     const clip = r.create("spherical-clip", { innerRadius: 0.35 });

@@ -400,11 +400,13 @@
    transform sub-row. Square-bordered icon cells matching the middlebar's icon buttons. Shown only for
    the selected entity - its active header and its (only-then-rendered) track sub-rows; an inactive
    entity's header hides them (its remove stays), so a resting timeline reads clean. */
+/* Out of the layout (not just transparent) while hidden, so an inactive row's name keeps the room
+   its hidden buttons would take. */
 .timeline-row__action {
   flex: none;
   width: 20px;
   height: 20px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -423,6 +425,7 @@
 
 .timeline-row--active .timeline-row__action,
 .timeline-row--track .timeline-row__action {
+  display: flex;
   opacity: 1;
   pointer-events: auto;
 }
@@ -444,6 +447,18 @@
   background: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
   /* Lit, it stays shown at rest (unlike the hover-only add buttons beside it on an emitter header,
      where it marks the spawn events editor-only), so what the game must drive reads at a glance. */
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The link on a death source's row (`is-linked`): lit and shown at rest like the live toggle, so an
+   emitter whose particles' deaths spawn elsewhere reads at a glance. */
+.timeline-row__action.is-linked {
+  color: var(--timeline-event);
+  border-color: color-mix(in srgb, var(--timeline-event) 70%, var(--border-mid));
+  background: color-mix(in srgb, var(--timeline-event) 14%, var(--surface-raised));
+  display: flex;
   opacity: 1;
   pointer-events: auto;
 }
@@ -664,6 +679,78 @@
 
 .timeline-event--live.timeline-event--infinite {
   outline-color: var(--timeline-infinite);
+}
+
+/* A death reaction sub-row: its badge wears the spawn-event amber (it spawns, like an event), and
+   picking it for the inspector lights its label the way a selected marker lights. Its lane is
+   armed end to end - a death can come at any time - as a dashed amber band, pointer-transparent so
+   the lane keeps its seek / marquee / pan gestures. */
+.timeline-reaction__label .timeline-row__icon {
+  color: color-mix(in srgb, var(--timeline-event) 70%, var(--dim));
+}
+
+/* The death glyph between the kind badge and the source: reads "when it dies". */
+.timeline-reaction__death {
+  flex: none;
+  display: flex;
+  color: var(--dim);
+}
+
+.timeline-reaction__death svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The source emitter's name: a link to it - italic, in the emitter accent, underlined on hover -
+   so it reads apart from the row's own (receiving) emitter. */
+.timeline-reaction__source {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-style: italic;
+  color: color-mix(in srgb, var(--accent-emitter) 80%, var(--panel-foreground));
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.timeline-reaction__source:hover {
+  color: var(--accent-emitter);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.timeline-reaction__label.is-picked {
+  color: var(--panel-foreground);
+  box-shadow: inset 2px 0 0 var(--timeline-event);
+  background: color-mix(in srgb, var(--timeline-event) 14%, var(--panel-background));
+}
+
+.timeline-reaction__band {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  border-top: 1px dashed color-mix(in srgb, var(--timeline-event) 60%, transparent);
+  border-bottom: 1px dashed color-mix(in srgb, var(--timeline-event) 60%, transparent);
+}
+
+.timeline-reaction__band--burst {
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--timeline-event) 35%, transparent) 0 2px,
+    transparent 2px 14px
+  );
+}
+
+.timeline-reaction__band--play {
+  background: color-mix(in srgb, var(--timeline-event) 18%, transparent);
 }
 
 /* A selected keyframe rings on the outside; a selected event rings on the INSIDE so the

@@ -17,7 +17,7 @@ import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
 } from "../behavior/FXParticleBehaviorKernel.Internal";
-import { stageSource, uniformTypes } from "./artifactLiterals";
+import { fragmentStageSource, stageSource, uniformTypes, varyingDecls } from "./artifactLiterals";
 
 /**
  * In-memory assembler: turns the compiler's IR into the runtime's {@link FXRenderArtifact} /
@@ -76,8 +76,9 @@ export function assembleRenderArtifact(
     geometry,
     options: { renderMode },
     uniformDeclarations: [...shader.uniformDeclarations],
+    varyings: varyingDecls(shader),
     vertex: stageSource(shader.vertex),
-    fragment: stageSource(shader.fragment),
+    fragment: fragmentStageSource(shader.fragment),
     outputs: { ...shader.outputs },
     uniforms,
     attributeReads: attributeDecls(attributes),

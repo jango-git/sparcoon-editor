@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import * as ts from "typescript";
 import * as three from "three";
 import * as sparcoon from "sparcoon";
 import { createDefaultVfxMesh, type SourceState } from "../../src/model/editorState";
@@ -12,32 +11,9 @@ import {
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { renderArtifactDeclarations } from "../../src/engine/emit/artifactLiterals";
+import { loadModule } from "../helpers/loadModule";
 import { createTestState } from "../helpers/testDocument";
-
-/**
- * Transpiles an emitted TS project module to CJS and evaluates it with the real `sparcoon` + `three`
- * (resolved through the test's own imports), returning its exports - the runtime path a consumer
- * gets, minus the bundler.
- */
-function loadModule(text: string): Record<string, unknown> {
-  const js = ts.transpileModule(text, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  }).outputText;
-  const shimExports: Record<string, unknown> = {};
-  const shimModule = { exports: shimExports };
-  const shimRequire = (id: string): unknown => {
-    if (id === "three") {
-      return three;
-    }
-    if (id === "sparcoon") {
-      return sparcoon;
-    }
-    throw new Error(`unexpected import "${id}"`);
-  };
-
-  new Function("require", "exports", "module", js)(shimRequire, shimExports, shimModule);
-  return shimModule.exports;
-}
 
 /** The live particle count across every FXEmitter the effect built.
  *  `"particleCount" in child`, not `instanceof sparcoon.FXEmitter`: `FXEmitter` is a type-only
@@ -136,6 +112,87 @@ function fakeParamEmitterSource(): SourceState {
   };
 }
 
+/** `graph` with its surface sink's shadow flags set as given (an undefined one left unset): they
+ *  live on the render graph's surface sink, like geometry/sortInterval, not on the entity. */
+function withSinkShadow(graph: EditorGraph, cast?: boolean, receive?: boolean): EditorGraph {
+  const sink = graph.nodes[RENDER_SINK_ID];
+  return {
+    ...graph,
+    nodes: {
+      ...graph.nodes,
+      [RENDER_SINK_ID]: {
+        ...sink,
+        parameters: {
+          ...sink.parameters,
+          ...(cast !== undefined ? { castShadow: cast } : {}),
+          ...(receive !== undefined ? { receiveShadow: receive } : {}),
+        },
+      },
+    },
+  };
+}
+
+function emitterWithShadows(cast?: boolean, receive?: boolean): SourceState {
+  const base = createTestState().source;
+  const emitter = base.scene.emitters[0];
+  return {
+    ...base,
+    scene: {
+      ...base.scene,
+      emitters: [{ ...emitter, renderGraph: withSinkShadow(emitter.renderGraph, cast, receive) }],
+    },
+  };
+}
+
+/** The starter with "Try GPU simulation" set on its spawn sink - the same read-a-sink-parameter
+ *  pattern as the shadow flags. */
+function emitterWithGpuFlag(on: boolean): SourceState {
+  const base = createTestState().source;
+  const emitter = base.scene.emitters[0];
+  const graph = emitter.behaviorGraph;
+  const sink = graph.nodes[SPAWN_SINK_ID];
+  const behaviorGraph: EditorGraph = {
+    ...graph,
+    nodes: {
+      ...graph.nodes,
+      [SPAWN_SINK_ID]: {
+        ...sink,
+        parameters: { ...sink.parameters, [SPAWN_TRY_GPU_SIMULATION_PARAM]: on },
+      },
+    },
+  };
+  return { ...base, scene: { ...base.scene, emitters: [{ ...emitter, behaviorGraph }] } };
+}
+
+describe("renderArtifactDeclarations", () => {
+  it("names an earlier tier's word-for-word identical artifact instead of repeating it", () => {
+    expect(
+      renderArtifactDeclarations([
+        { name: "aBaseline", body: "{ a: 1 }" },
+        { name: "aStandard", body: "{ a: 1 }" },
+      ]),
+    ).toEqual([
+      "const aBaseline: FXRenderArtifact = { a: 1 };",
+      "const aStandard: FXRenderArtifact = aBaseline;",
+    ]);
+  });
+
+  it("writes out each tier whose artifact differs", () => {
+    expect(
+      renderArtifactDeclarations(
+        [
+          { name: "renderBaseline", body: "{ a: 1 }" },
+          { name: "renderStandard", body: "{ a: 2 }" },
+        ],
+        "export const",
+      ),
+    ).toEqual([
+      "export const renderBaseline: FXRenderArtifact = { a: 1 };",
+      "export const renderStandard: FXRenderArtifact = { a: 2 };",
+    ]);
+  });
+});
+
 describe("emitProjectModule - structure", () => {
   it("emits a self-contained class with per-entity artifacts and a scene spec", () => {
     const text = emitProjectModule(createTestState().source);
@@ -147,7 +204,8 @@ describe("emitProjectModule - structure", () => {
     expect(text).toContain('from "three"');
     expect(text).toContain("  FXEffect,");
     expect(text).toContain("const render0Baseline: FXRenderArtifact = {");
-    expect(text).toContain("const render0Standard: FXRenderArtifact = {");
+    // The default graph uses nothing only one tier has: Standard names Baseline's artifact.
+    expect(text).toContain("const render0Standard: FXRenderArtifact = render0Baseline;");
     expect(text).toContain("const behavior0: FXBehaviorArtifact = {");
     expect(text).toContain("const SPEC: FXEffectSpec = {");
     expect(text).toContain("export class Effect extends FXEffect");
@@ -249,7 +307,7 @@ describe("emitProjectModule - executes", () => {
     };
     const text = emitProjectModule(source);
     expect(text).toContain("const render0Baseline: FXRenderArtifact = {");
-    expect(text).toContain("const render1Standard: FXRenderArtifact = {");
+    expect(text).toContain("const render1Standard: FXRenderArtifact = render1Baseline;");
     expect(text).toContain("const behavior1: FXBehaviorArtifact = {");
 
     const module = loadModule(text);
@@ -336,13 +394,33 @@ describe("emitProjectModule - executes", () => {
     }).not.toThrow();
   });
 
-  it("binds an external texture supplied to the constructor", () => {
-    const module = loadModule(emitProjectModule(textureEmitterSource()));
-    const Effect = module["Effect"] as new (assets: { sprite: three.Texture }) => three.Group & {
-      play(): void;
-      dispose(): void;
-    };
-    const effect = new Effect({ sprite: new three.Texture() });
+  it.each([
+    {
+      variant: "an external texture supplied to the constructor",
+      source: textureEmitterSource,
+      assets: (): Record<string, three.Texture> => ({ sprite: new three.Texture() }),
+      marker: 'externalSlots: ["sprite"]',
+    },
+    {
+      variant: "a cast-shadow emitter",
+      source: () => emitterWithShadows(true, true),
+      assets: (): Record<string, three.Texture> => ({}),
+      marker: "castShadow: true,",
+    },
+    {
+      // No renderer is supplied, so the mandatory JS fallback is what actually drives it.
+      variant: "a GPU-simulated emitter",
+      source: () => emitterWithGpuFlag(true),
+      assets: (): Record<string, three.Texture> => ({}),
+      marker: "gpuBehavior: gpuKernel0,",
+    },
+  ])("still builds and spawns with $variant", ({ source, assets, marker }) => {
+    const text = emitProjectModule(source());
+    expect(text).toContain(marker);
+    const Effect = loadModule(text)["Effect"] as new (
+      assets: Record<string, three.Texture>,
+    ) => three.Group & { play(): void; dispose(): void };
+    const effect = new Effect(assets());
     try {
       effect.play();
       sparcoon.FXWorld.update(0.1);
@@ -354,38 +432,6 @@ describe("emitProjectModule - executes", () => {
 });
 
 describe("emitProjectModule - shadow flags", () => {
-  // castShadow/receiveShadow live on the render graph's surface sink (like geometry/sortInterval),
-  // so drive them through the sink node's parameters, not an entity-level field.
-  const withSinkShadow = (graph: EditorGraph, cast?: boolean, receive?: boolean): EditorGraph => {
-    const sink = graph.nodes[RENDER_SINK_ID];
-    return {
-      ...graph,
-      nodes: {
-        ...graph.nodes,
-        [RENDER_SINK_ID]: {
-          ...sink,
-          parameters: {
-            ...sink.parameters,
-            ...(cast !== undefined ? { castShadow: cast } : {}),
-            ...(receive !== undefined ? { receiveShadow: receive } : {}),
-          },
-        },
-      },
-    };
-  };
-
-  const emitterWithShadows = (cast?: boolean, receive?: boolean): SourceState => {
-    const base = createTestState().source;
-    const emitter = base.scene.emitters[0];
-    return {
-      ...base,
-      scene: {
-        ...base.scene,
-        emitters: [{ ...emitter, renderGraph: withSinkShadow(emitter.renderGraph, cast, receive) }],
-      },
-    };
-  };
-
   it("emits castShadow/receiveShadow only when true (omit-when-false, like hidden)", () => {
     const both = emitProjectModule(emitterWithShadows(true, true));
     expect(both).toContain("castShadow: true,");
@@ -410,23 +456,17 @@ describe("emitProjectModule - shadow flags", () => {
     expect(text).toContain("castShadow: true,");
     expect(text).toContain("receiveShadow: true,");
   });
-
-  it("a cast-shadow emitter still builds and spawns at runtime", () => {
-    const module = loadModule(emitProjectModule(emitterWithShadows(true, true)));
-    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
-      play(): void;
-      dispose(): void;
-    };
-    const effect = new Effect({});
-    try {
-      effect.play();
-      sparcoon.FXWorld.update(0.1);
-      expect(totalParticles(effect)).toBe(32);
-    } finally {
-      effect.dispose();
-    }
-  });
 });
+
+/** `source` with every emitter's live channels and params dropped - its tracks all bake in. */
+function withoutLiveness(source: SourceState): SourceState {
+  const emitters = source.scene.emitters.map((emitter) => ({
+    ...emitter,
+    liveChannels: [],
+    liveParams: [],
+  }));
+  return { ...source, scene: { ...source.scene, emitters } };
+}
 
 describe("emitProjectModule - fake tracks / live update", () => {
   it("never re-poses the root transform - the consumer positions the exported effect directly", () => {
@@ -447,8 +487,12 @@ describe("emitProjectModule - fake tracks / live update", () => {
   });
 
   it("drops a fake transform track's keys and exposes the channel through getEmitter instead", () => {
-    const text = emitProjectModule(fakePositionEmitterSource());
-    expect(text).not.toContain("9,9,9"); // the fake key's value must never reach the export
+    const source = fakePositionEmitterSource();
+    const text = emitProjectModule(source);
+    // The fake key's value never reaches the export, though the same key exports when not live.
+    const fakeKey = '"value":[9,9,9]';
+    expect(emitProjectModule(withoutLiveness(source))).toContain(fakeKey);
+    expect(text).not.toContain(fakeKey);
     expect(text).toContain('liveChannels: ["position"]');
     expect(text).toContain('public override getEmitter(name: "Emitter"): FXEmitter | undefined;');
 
@@ -472,8 +516,12 @@ describe("emitProjectModule - fake tracks / live update", () => {
   });
 
   it("drops a fake Timeline Value track's keys and exposes it through setEmitterParam instead", () => {
-    const text = emitProjectModule(fakeParamEmitterSource());
-    expect(text).not.toContain("0.25"); // the fake key's value must never reach the export
+    const source = fakeParamEmitterSource();
+    const text = emitProjectModule(source);
+    // The fake key's value never reaches the export, though the same key exports when not live.
+    const fakeKey = '"value":[0.25,0.5,0.75,1]';
+    expect(emitProjectModule(withoutLiveness(source))).toContain(fakeKey);
+    expect(text).not.toContain(fakeKey);
     expect(text).toContain('liveParams: ["tint"]');
     expect(text).toContain(
       'public override setEmitterParam(name: "Emitter", parameter: "tint", value: number | readonly number[]): void;',
@@ -573,37 +621,84 @@ describe("emitProjectModule - fake tracks / live update", () => {
   });
 });
 
-describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () => {
-  // "Try GPU simulation" lives on the behavior graph's spawn sink, like castShadow/receiveShadow
-  // live on the render graph's surface sink - same read-a-sink-parameter pattern.
-  const withTryGpuSimulation = (graph: EditorGraph, on: boolean): EditorGraph => {
-    const sink = graph.nodes[SPAWN_SINK_ID];
-    return {
-      ...graph,
-      nodes: {
-        ...graph.nodes,
-        [SPAWN_SINK_ID]: {
-          ...sink,
-          parameters: { ...sink.parameters, [SPAWN_TRY_GPU_SIMULATION_PARAM]: on },
-        },
-      },
-    };
-  };
-
-  const emitterWithGpuFlag = (on: boolean): SourceState => {
+describe("emitProjectModule - live meshes and name clashes", () => {
+  /** One VFX mesh named `Shield` with a live `position` channel and a live `glow` value. */
+  function liveMeshSource(): SourceState {
     const base = createTestState().source;
-    const emitter = base.scene.emitters[0];
-    return {
-      ...base,
-      scene: {
-        ...base.scene,
-        emitters: [{ ...emitter, behaviorGraph: withTryGpuSimulation(emitter.behaviorGraph, on) }],
-      },
+    const mesh = {
+      ...createDefaultVfxMesh("mesh_1", "Shield"),
+      transformTracks: [
+        { channel: "position" as const, keys: [{ id: "k1", time: 0, value: [7, 7, 7] }] },
+      ],
+      tracks: [{ name: "glow", keys: [{ id: "k2", time: 0, value: 0.625 }] }],
+      liveChannels: ["position" as const],
+      liveParams: ["glow"],
     };
-  };
+    return { ...base, scene: { ...base.scene, meshes: [mesh] } };
+  }
 
-  it("emits an FXParticleKernelArtifact block and references it from the spec when the flag is on", () => {
+  it("drops a live mesh's keys and types getMesh/setMeshParam for it", () => {
+    const text = emitProjectModule(liveMeshSource());
+    expect(text).not.toContain('"value":[7,7,7]');
+    expect(text).not.toContain('"value":0.625');
+    expect(text).toContain('public override getMesh(name: "Shield"): Mesh | undefined;');
+    expect(text).toContain(
+      'public override setMeshParam(name: "Shield", parameter: "glow", value: number | readonly number[]): void;',
+    );
+  });
+
+  it("hands the host the mesh to pose, and never re-poses its live channel", () => {
+    const Effect = loadModule(emitProjectModule(liveMeshSource()))["Effect"] as new (
+      assets: Record<string, never>,
+    ) => three.Group & {
+      getMesh(name: "Shield"): three.Object3D | undefined;
+      setMeshParam(name: "Shield", parameter: "glow", value: number): void;
+      play(): void;
+      dispose(): void;
+    };
+    const effect = new Effect({});
+    try {
+      const mesh = effect.getMesh("Shield");
+      expect(mesh?.type).toBe("Mesh");
+      mesh!.position.set(1, 2, 3);
+      effect.play();
+      sparcoon.FXWorld.update(0.1);
+      expect(mesh!.position.toArray()).toEqual([1, 2, 3]);
+      expect(() => effect.setMeshParam("Shield", "glow", 0.5)).not.toThrow();
+    } finally {
+      effect.dispose();
+    }
+  });
+
+  it.each([
+    ["both have", ["tint"], ["tint"]],
+    ["only the first has", ["tint"], []],
+    ["only the second has", [], ["tint"]],
+  ])("refuses two emitters sharing a name when %s a live track", (_case, firstLive, twinLive) => {
+    const base = createTestState().source;
+    const first = { ...base.scene.emitters[0], liveParams: firstLive };
+    const twin = { ...first, id: "emitter_2", liveParams: twinLive };
+    const clash: SourceState = { ...base, scene: { ...base.scene, emitters: [first, twin] } };
+    expect(() => emitProjectModule(clash)).toThrow(/two emitters are both named "Emitter"/);
+  });
+
+  it("lets two emitters share a name when neither has a live track", () => {
+    const base = createTestState().source;
+    const first = base.scene.emitters[0];
+    const twin = { ...first, id: "emitter_2" };
+    // Neither is addressed by name, so the clash is harmless.
+    const plain = [first, twin].map((emitter) => ({ ...emitter, liveParams: [] }));
+    expect(() =>
+      emitProjectModule({ ...base, scene: { ...base.scene, emitters: plain } }),
+    ).not.toThrow();
+  });
+});
+
+describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () => {
+  it("emits an FXParticleKernelArtifact block and references it from the spec when the flag is on, its default", () => {
     const text = emitProjectModule(emitterWithGpuFlag(true));
+    // createTestState()'s spawn sink never sets the flag: it exports exactly as switched on.
+    expect(emitProjectModule(createTestState().source)).toBe(text);
     // The default project's spawn graph (spawn-box + lifetime) is fully GLSL-portable (rand/cbrt/
     // fbm all have a standard-tier twin) - it must actually compile, not silently fall back, or
     // this test would be exercising the wrong branch.
@@ -619,33 +714,9 @@ describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () =>
     expect(text).toContain("layout(location = 0) in");
   });
 
-  it("includes the GPU artifact by default (Try GPU simulation defaults on)", () => {
-    // No override - createTestState()'s spawn sink never has the flag explicitly set.
-    const text = emitProjectModule(createTestState().source);
-    expect(text).toContain("FXParticleKernelArtifact");
-    expect(text).toContain("gpuBehavior");
-  });
-
   it("omits the GPU artifact and its type import entirely when the flag is explicitly off", () => {
     const text = emitProjectModule(emitterWithGpuFlag(false));
     expect(text).not.toContain("FXParticleKernelArtifact");
     expect(text).not.toContain("gpuBehavior");
-  });
-
-  it("the exported module still builds and spawns at runtime with the flag on (no renderer supplied,\
- so the mandatory JS fallback is what actually drives it)", () => {
-    const module = loadModule(emitProjectModule(emitterWithGpuFlag(true)));
-    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
-      play(): void;
-      dispose(): void;
-    };
-    const effect = new Effect({});
-    try {
-      effect.play();
-      sparcoon.FXWorld.update(0.1);
-      expect(totalParticles(effect)).toBe(32);
-    } finally {
-      effect.dispose();
-    }
   });
 });

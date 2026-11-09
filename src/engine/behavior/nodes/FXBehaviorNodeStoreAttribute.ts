@@ -38,6 +38,11 @@ export class FXBehaviorNodeStoreAttribute extends FXBehaviorNode {
     this.outputs = [{ key: "value", type }];
   }
 
+  /** Writes its attribute; reads no target input. */
+  public override get targetReads(): readonly string[] {
+    return [];
+  }
+
   /** Palette metadata (category `attribute`; writes only, reads nothing). */
   public static describe(): FXNodeMeta {
     return STORE_ATTRIBUTE_META;

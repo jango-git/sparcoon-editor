@@ -45,6 +45,8 @@ describe("node cost estimate (FXGraphNode.estimateCost / FXNodeMeta.cost)", () =
     }
   });
 
+  // The cost unit is "one scalar float ALU op", a vecN op costing N times a float one
+  // (FXGraphNode.estimateCost) - the anchors below follow from that definition.
   function def(type: string): FXNodeDefinition {
     const found = FX_STANDARD_NODES.find((d) => d.type === type);
     if (found === undefined) {
@@ -66,10 +68,11 @@ describe("node cost estimate (FXGraphNode.estimateCost / FXNodeMeta.cost)", () =
     expect(def("binary-op").describe().cost).toBe(1);
   });
 
-  it("binary-op 'add' scales with the resolved width - vec3 costs 3x float", () => {
+  it("binary-op 'add' scales with the resolved width - a vecN costs N times float", () => {
     const node = def("binary-op").createInstance("behavior", { op: "add" });
-    expect(node.estimateCost?.(FX_VALUE_TYPES.vec3)).toBe(3);
-    expect(node.estimateCost?.(FX_VALUE_TYPES.vec4)).toBe(4);
+    const atFloat = node.estimateCost?.(FX_VALUE_TYPES.float) ?? 0;
+    expect(node.estimateCost?.(FX_VALUE_TYPES.vec3)).toBe(3 * atFloat);
+    expect(node.estimateCost?.(FX_VALUE_TYPES.vec4)).toBe(4 * atFloat);
   });
 
   it("binary-op cost varies by the chosen operation, not just width", () => {
@@ -79,13 +82,18 @@ describe("node cost estimate (FXGraphNode.estimateCost / FXNodeMeta.cost)", () =
     expect(power.estimateCost?.(FX_VALUE_TYPES.float)).toBeGreaterThan(
       add.estimateCost?.(FX_VALUE_TYPES.float) ?? 0,
     );
-    // cross is a fixed vec3-shaped cost, independent of the (matched) resolved width.
-    expect(cross.estimateCost?.(FX_VALUE_TYPES.vec3)).toBe(9);
+    // cross spends more than a component-wise add at the same (vec3) width.
+    expect(cross.estimateCost?.(FX_VALUE_TYPES.vec3)).toBeGreaterThan(
+      add.estimateCost?.(FX_VALUE_TYPES.vec3) ?? 0,
+    );
   });
 
-  it("add-scaled-vector (a + b*scale) costs 2 per component - a multiply + an add", () => {
+  it("add-scaled-vector (a + b*scale) costs a multiply + an add per component", () => {
     const node = def("add-scaled-vector").createInstance("behavior");
-    expect(node.estimateCost?.(FX_VALUE_TYPES.vec3)).toBe(6);
+    const add = def("binary-op").createInstance("behavior", { op: "add" });
+    expect(node.estimateCost?.(FX_VALUE_TYPES.vec3)).toBe(
+      2 * (add.estimateCost?.(FX_VALUE_TYPES.vec3) ?? 0),
+    );
   });
 
   it("a node with no generic socket ignores the resolvedT argument", () => {

@@ -46,6 +46,16 @@ export const timelineIcons = {
     <path d="M3.4 3.4a6.8 6.8 0 0 0 0 9.2M12.6 3.4a6.8 6.8 0 0 1 0 9.2"/>
   </svg>`,
 
+  // Reaction: a hollow (spent) particle handing off along an arrow to a fresh spark - "when its
+  // particles die, spawn here". The add-reaction button, a reaction row's badge, and the lit link on
+  // a source emitter's row.
+  reaction: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="3.6" cy="8" r="1.9"/>
+    <path d="M6.6 8h3.6M8.8 6.3 10.5 8 8.8 9.7"/>
+    <circle cx="13" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+    <path d="M13 4.6v.9M13 10.5v.9"/>
+  </svg>`,
+
   // Infinite: a lemniscate - the play event's "runs forever" toggle, matching the infinite marker's
   // own gradient.
   infinite: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

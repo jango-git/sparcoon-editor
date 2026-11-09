@@ -23,8 +23,8 @@ import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRen
 import { renderRegistry } from "../helpers/stdRegistry";
 
 /**
- * Pilot proving the two-compiler mechanism end to end on real (not fake) nodes - proves out the
- * baselineBuild mechanism on a couple of real node upgrades before it applies project-wide. Not
+ * The two-compiler `baselineBuild` mechanism end to end on real (not fake) node builds: the
+ * baseline compiler takes a node's GLSL ES 1.00 fallback, the standard one its primary build. Not
  * registered into the standard node library - these are compiler-plumbing fixtures, not a shipped
  * palette feature.
  */
@@ -63,7 +63,7 @@ class AlbedoStub extends FXRenderNode {
 }
 
 /**
- * Real (not fake) pilot node: the primary `build` is a genuine WebGL2-only integer hash (Ken
+ * Real (not fake) fixture node: the primary `build` is a genuine WebGL2-only integer hash (Ken
  * Perlin's classic `IntNoise`, needing bitwise int ops GLSL ES 1.00 has no operators for);
  * `baselineBuild` is a classic sin-based float hash ("fractal-cosine" noise), valid GLSL ES 1.00.
  */
@@ -122,7 +122,7 @@ function withHashNoise(): FXGraph<FXRenderNode> {
   );
 }
 
-describe("baselineBuild mechanism (pilot)", () => {
+describe("baselineBuild mechanism", () => {
   it("baseline (FXCompilerBaseline) uses the fractal-cosine fallback, not the int hash", () => {
     const shader = new FXCompilerBaseline().compile(withHashNoise(), FX_PARTICLE_TARGET);
     const body = shader.fragment.body.join("\n");

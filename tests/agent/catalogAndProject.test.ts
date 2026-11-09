@@ -101,16 +101,6 @@ describe("agent project", () => {
     expect(project.exportTypeScript()).toMatch(/class BoltSparks\b/);
     expect(() => project.setName(3 as never)).toThrow(/invalid_argument/);
   });
-
-  it("exports the TypeScript module", () => {
-    const state = createInitialState();
-    state.source = {
-      ...state.source,
-      scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_1", "Emitter")] },
-    };
-    const project = createProjectApi(replaceTarget(new Store(state, new SignalBus())));
-    expect(project.exportTypeScript()).toContain("FXEffect");
-  });
 });
 
 describe("agent status", () => {

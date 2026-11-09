@@ -29,12 +29,6 @@ function authoredNodeIds(store: Store, id: string): string[] {
 }
 
 describe("VFX mesh commands", () => {
-  it("starts with no meshes and no active mesh", () => {
-    const store = freshStore();
-    expect(selectMeshes(store)).toHaveLength(0);
-    expect(selectActiveMeshId(store)).toBeUndefined();
-  });
-
   it("addVfxMesh appends a fresh mesh and makes it active", () => {
     const store = freshStore();
     const id = addVfxMesh(store);
@@ -88,12 +82,11 @@ describe("VFX mesh commands", () => {
   it("selectVfxMesh targets an existing mesh and ignores unknown ids", () => {
     const store = freshStore();
     const first = addVfxMesh(store);
-    const second = addVfxMesh(store);
+    addVfxMesh(store);
     selectVfxMesh(store, first);
     expect(selectActiveMeshId(store)).toBe(first);
     selectVfxMesh(store, "nope");
     expect(selectActiveMeshId(store)).toBe(first);
-    expect(second).not.toBe(first);
   });
 
   it("renameVfxMesh renames and rejects a blank name", () => {

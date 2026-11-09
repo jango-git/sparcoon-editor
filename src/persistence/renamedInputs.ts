@@ -26,6 +26,14 @@ const RENAMED_OUTPUTS: Readonly<Record<string, Readonly<Record<string, string>>>
   "animated-texture": { uvPrevious: "uvFrame", uvCurrent: "uvNext" },
 };
 
+/**
+ * `table[key]` when `table` itself holds it. Every key read here comes from a stored file, so a
+ * plain index would hand back `Object.prototype` members for keys like `"constructor"`.
+ */
+function own<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
 /** A stored node's type, or `undefined` for one too damaged to have one (left as it is). */
 function typeOf(node: unknown): string | undefined {
   return isRecord(node) && typeof node["type"] === "string" ? node["type"] : undefined;
@@ -37,9 +45,9 @@ function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>)
   }
   const parameters: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(node.parameters)) {
-    const current = renames[key] ?? key;
+    const current = own(renames, key) ?? key;
     // A file that somehow holds both keys keeps the current one.
-    if (current !== key && current in node.parameters) {
+    if (current !== key && Object.hasOwn(node.parameters, current)) {
       continue;
     }
     parameters[current] = value;
@@ -52,11 +60,11 @@ function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>)
 export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
   const renamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
     const type = typeOf(node);
-    return type !== undefined ? RENAMED_INPUTS[type] : undefined;
+    return type !== undefined ? own(RENAMED_INPUTS, type) : undefined;
   };
   const outputRenamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
     const type = typeOf(node);
-    return type !== undefined ? RENAMED_OUTPUTS[type] : undefined;
+    return type !== undefined ? own(RENAMED_OUTPUTS, type) : undefined;
   };
   if (
     !Object.values(graph.nodes).some(
@@ -69,7 +77,8 @@ export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
   const renamedFrom = <T extends { readonly nodeId: string; readonly socketKey: string }>(
     from: T,
   ): T => {
-    const socketKey = outputRenamesOf(graph.nodes[from.nodeId])?.[from.socketKey];
+    const renames = outputRenamesOf(own(graph.nodes, from.nodeId));
+    const socketKey = renames === undefined ? undefined : own(renames, from.socketKey);
     return socketKey === undefined ? from : { ...from, socketKey };
   };
 
@@ -82,8 +91,9 @@ export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
     if (!isRecord(connection) || !isRecord(connection.to)) {
       return connection;
     }
+    const renames = renamesOf(own(graph.nodes, connection.to.nodeId));
     const socketKey =
-      renamesOf(graph.nodes[connection.to.nodeId])?.[connection.to.socketKey] ??
+      (renames === undefined ? undefined : own(renames, connection.to.socketKey)) ??
       connection.to.socketKey;
     const to =
       socketKey === connection.to.socketKey ? connection.to : { ...connection.to, socketKey };

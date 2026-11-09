@@ -55,16 +55,11 @@ describe("FXCompilerBaseline render golden - UV -> Texture -> Blend", () => {
     return compiler.compile(graph, FX_PARTICLE_TARGET);
   }
 
-  it("binds the albedo slot to a fragment local", () => {
+  it("binds the albedo slot to a local the fragment body declares", () => {
     const shader = compiled();
-    expect(shader.outputs["albedo"]).toBeDefined();
-    expect(shader.outputs["albedo"]).toMatch(/^\w+_\d+$/);
-  });
-
-  it("emits SSA locals into the fragment body", () => {
-    const shader = compiled();
-    expect(shader.fragment.body.length).toBeGreaterThan(0);
-    expect(shader.fragment.body.some((line) => /^\s*vec\d? \w+_\d+ = /.test(line))).toBe(true);
+    const local = shader.outputs["albedo"];
+    expect(local).toBeDefined();
+    expect(shader.fragment.body.some((line) => line.includes(`vec4 ${local} =`))).toBe(true);
   });
 
   it("computes a diamond producer exactly once (texture sampled once)", () => {
@@ -123,7 +118,7 @@ describe("FXCompilerBaseline render golden - cross-stage varyings", () => {
 
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
 
-    expect(shader.vertex.varyingDeclarations).toHaveLength(1);
+    expect(shader.varyings).toHaveLength(1);
   });
 });
 
@@ -150,10 +145,10 @@ class FragmentVaryingAlloc extends FXRenderNode {
   }
 }
 
-describe("compile-pipeline contract failures (audit-4 R3/R5)", () => {
+describe("compile-pipeline contract failures", () => {
   const compiler = new FXCompilerBaseline();
 
-  it("R3: a bound output the producer never emitted fails as typed output-not-produced", () => {
+  it("a bound output the producer never emitted fails as typed output-not-produced", () => {
     const graph = graphOf(
       { a: new UnfilledAlbedo() },
       [],
@@ -173,7 +168,7 @@ describe("compile-pipeline contract failures (audit-4 R3/R5)", () => {
     }
   });
 
-  it("R5: allocateVarying from a fragment node fails as varying-from-fragment-stage", () => {
+  it("allocateVarying from a fragment node fails as varying-from-fragment-stage", () => {
     const graph = graphOf(
       { a: new FragmentVaryingAlloc() },
       [],

@@ -14,6 +14,7 @@ import type {
   LiveApplyStatus,
   SourceState,
   TimelineEvent,
+  DeathReaction,
 } from "../model/editorState";
 import { resolveGraphOwner } from "../model/editorState";
 import {
@@ -75,6 +76,8 @@ export interface EmitterView extends AnimatedView {
   readonly events: readonly TimelineEvent[];
   /** The events play in the editor only; the export ships none (`timeline.setEventsExcluded`). */
   readonly eventsExcluded: boolean;
+  /** What it spawns at every death of another emitter's particles (`timeline.addBurstOnDeath`). */
+  readonly reactions: readonly DeathReaction[];
   /** Whether the emitter draws a trail - its `"trail"` graph exists (`scene.setTrail`). */
   readonly trail: boolean;
 }
@@ -237,6 +240,7 @@ export function sceneView(source: SourceState): SceneView {
       transform: transformView(emitter.transform),
       events: emitter.events,
       eventsExcluded: emitter.liveEvents === true,
+      reactions: emitter.reactions,
       trail: emitter.trailGraph !== undefined,
       ...animatedView(emitter),
     })),

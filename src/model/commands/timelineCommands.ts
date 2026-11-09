@@ -4,11 +4,15 @@
  */
 
 import type { FXKeyEase } from "sparcoon";
+import { canReact, deathSourceIds } from "../../domain/deathReactions";
+import { sameElements } from "../../util/arrays";
 import type {
   AnimationTrack,
+  DeathReaction,
   EmitterDoc,
   Keyframe,
   SourceState,
+  SpawnAction,
   TimelineEvent,
 } from "../editorState";
 import type { SceneEntity } from "../entity";
@@ -60,7 +64,8 @@ function commitEmitters(store: Store, emitters: readonly EmitterDoc[], live = fa
  * Replaces `entity`'s Timeline Value tracks via `update`, committing the result. `entity` is an
  * emitter or VFX mesh (the VFX group has no tracks, so it's a no-op); also a no-op for an unknown id.
  * `live: true` (an intermediate step of a scrub/drag control) commits through `Store.commitLive`
- * instead, so a whole drag gesture costs undo history exactly one entry, not one per step.
+ * instead, so a whole drag gesture costs undo history exactly one entry, not one per step. An
+ * `update` that changes nothing (the same tracks back) commits nothing.
  */
 function updateTracks(
   store: Store,
@@ -71,21 +76,31 @@ function updateTracks(
   const source = store.getSource();
   const scene = source.scene;
   if (entity.kind === "emitter") {
-    if (!scene.emitters.some((emitter) => emitter.id === entity.id)) {
+    const emitter = scene.emitters.find((candidate) => candidate.id === entity.id);
+    if (emitter === undefined) {
       return;
     }
-    const emitters = scene.emitters.map((emitter) =>
-      emitter.id === entity.id ? { ...emitter, tracks: update(emitter.tracks) } : emitter,
+    const tracks = update(emitter.tracks);
+    if (sameElements(emitter.tracks, tracks)) {
+      return;
+    }
+    const emitters = scene.emitters.map((candidate) =>
+      candidate === emitter ? { ...emitter, tracks } : candidate,
     );
     commitSource(store, { ...source, scene: { ...scene, emitters } }, live);
     return;
   }
   if (entity.kind === "vfxMesh") {
-    if (!scene.meshes.some((mesh) => mesh.id === entity.id)) {
+    const mesh = scene.meshes.find((candidate) => candidate.id === entity.id);
+    if (mesh === undefined) {
       return;
     }
-    const meshes = scene.meshes.map((mesh) =>
-      mesh.id === entity.id ? { ...mesh, tracks: update(mesh.tracks) } : mesh,
+    const tracks = update(mesh.tracks);
+    if (sameElements(mesh.tracks, tracks)) {
+      return;
+    }
+    const meshes = scene.meshes.map((candidate) =>
+      candidate === mesh ? { ...mesh, tracks } : candidate,
     );
     commitSource(store, { ...source, scene: { ...scene, meshes } }, live);
   }
@@ -219,7 +234,10 @@ function withoutLiveEvents({ liveEvents: _liveEvents, ...rest }: EmitterDoc): Em
   return rest;
 }
 
-/** Replaces emitter `id`'s events via `update`, committing the result. No-op for an unknown id. */
+/**
+ * Replaces emitter `id`'s events via `update`, committing the result. No-op for an unknown id, or
+ * an `update` that changes nothing.
+ */
 function updateEvents(
   store: Store,
   id: string,
@@ -227,14 +245,17 @@ function updateEvents(
   live = false,
 ): void {
   const { emitters } = store.getSource().scene;
-  if (!emitters.some((emitter) => emitter.id === id)) {
+  const emitter = emitters.find((candidate) => candidate.id === id);
+  if (emitter === undefined) {
+    return;
+  }
+  const events = update(emitter.events);
+  if (sameElements(emitter.events, events)) {
     return;
   }
   commitEmitters(
     store,
-    emitters.map((emitter) =>
-      emitter.id === id ? { ...emitter, events: update(emitter.events) } : emitter,
-    ),
+    emitters.map((candidate) => (candidate === emitter ? { ...emitter, events } : candidate)),
     live,
   );
 }
@@ -280,12 +301,32 @@ export function addPlayEvent(
   return event.id;
 }
 
-/** A partial edit of an event's numeric fields; only those valid for its kind are applied. */
-interface EventPatch {
-  readonly time?: number;
+/** A partial edit of a spawn action's numbers; only those its kind carries are applied. */
+export interface SpawnActionPatch {
   readonly count?: number;
   readonly rate?: number;
   readonly duration?: number;
+}
+
+/** A partial edit of an event (a play's duration 0 = forever); only the fields valid for its kind
+ *  are applied. */
+export interface EventPatch extends SpawnActionPatch {
+  readonly time?: number;
+}
+
+/** Merges `patch` onto `action`, clamping and keeping only the fields its kind carries. */
+function patchAction<T extends SpawnAction>(action: T, patch: SpawnActionPatch): T {
+  if (action.kind === "burst") {
+    return {
+      ...action,
+      count: patch.count !== undefined ? Math.max(0, Math.round(patch.count)) : action.count,
+    };
+  }
+  return {
+    ...action,
+    rate: patch.rate !== undefined ? Math.max(0, patch.rate) : action.rate,
+    duration: patch.duration !== undefined ? Math.max(0, patch.duration) : action.duration,
+  };
 }
 
 /** Applies `patch` to event `eventId` on emitter `id`, re-sorting by time. No-op if unknown. */
@@ -322,19 +363,139 @@ export function removeEvent(store: Store, id: string, eventId: string): void {
 /** Merges `patch` onto `event`, clamping and keeping only the fields its kind carries. */
 function patchEvent(event: TimelineEvent, patch: EventPatch): TimelineEvent {
   const time = patch.time !== undefined ? Math.max(0, patch.time) : event.time;
-  if (event.kind === "burst") {
-    return {
-      ...event,
-      time,
-      count: patch.count !== undefined ? Math.max(0, Math.round(patch.count)) : event.count,
-    };
+  return { ...patchAction(event, patch), time };
+}
+
+/**
+ * A partial edit of a death reaction: its source - another emitter it may react to (no cycle) -
+ * and its action's numbers (a play's duration above 0: a reaction never plays forever).
+ */
+export interface ReactionPatch extends SpawnActionPatch {
+  readonly source?: string;
+}
+
+/** The action a new event or reaction of `kind` carries until the author edits it. */
+export function defaultSpawnAction(kind: SpawnAction["kind"]): SpawnAction {
+  return kind === "burst"
+    ? { kind, count: DEFAULT_BURST_COUNT }
+    : { kind, rate: DEFAULT_PLAY_RATE, duration: DEFAULT_PLAY_DURATION };
+}
+
+/**
+ * Adds a death reaction on emitter `id`: `action` fired at every death of `sourceId`'s particles,
+ * clamped as {@link updateReaction} clamps it. Returns its id, or `undefined` when `id` may not
+ * react to `sourceId` (unknown, itself, or a cycle - see `canReact`).
+ */
+export function addReaction(
+  store: Store,
+  id: string,
+  sourceId: string,
+  action: SpawnAction = defaultSpawnAction("burst"),
+): string | undefined {
+  const source = store.getSource();
+  if (!canReact(source.scene.emitters, id, sourceId)) {
+    return undefined;
   }
-  return {
-    ...event,
-    time,
-    rate: patch.rate !== undefined ? Math.max(0, patch.rate) : event.rate,
-    duration: patch.duration !== undefined ? Math.max(0, patch.duration) : event.duration,
+  const reaction: DeathReaction = {
+    ...reactionAction(source, action, action),
+    id: nextIdentifier("reaction"),
+    source: sourceId,
   };
+  updateReactions(store, id, (reactions) => [...reactions, reaction]);
+  return reaction.id;
+}
+
+/** `action` with `patch` applied as a reaction takes it: a play's duration on the frame grid and
+ *  at least one frame long - a reaction has no play without end. */
+function reactionAction<T extends SpawnAction>(
+  source: SourceState,
+  action: T,
+  patch: SpawnActionPatch,
+): T {
+  return patchAction(action, {
+    ...patch,
+    ...(patch.duration !== undefined
+      ? {
+          duration: Math.max(1 / source.timeline.fps, snapDuration(source, patch.duration)),
+        }
+      : {}),
+  });
+}
+
+/**
+ * Applies `patch` to reaction `reactionId` on emitter `id`. A source it may not react to is left
+ * unchanged; a play's duration snaps to the frame grid and never drops below one frame (a reaction
+ * has no play without end). No-op if unknown.
+ */
+export function updateReaction(
+  store: Store,
+  id: string,
+  reactionId: string,
+  patch: ReactionPatch,
+  live = false,
+): void {
+  const source = store.getSource();
+  updateReactions(
+    store,
+    id,
+    (reactions) =>
+      reactions.map((reaction) => {
+        if (reaction.id !== reactionId) {
+          return reaction;
+        }
+        const next = reactionAction(source, reaction, patch);
+        return patch.source !== undefined &&
+          canReact(source.scene.emitters, id, patch.source, reactionId)
+          ? { ...next, source: patch.source }
+          : next;
+      }),
+    live,
+  );
+}
+
+/** Removes reaction `reactionId` from emitter `id`. No-op if nothing matches. */
+export function removeReaction(store: Store, id: string, reactionId: string): void {
+  updateReactions(store, id, (reactions) =>
+    reactions.filter((reaction) => reaction.id !== reactionId),
+  );
+}
+
+/**
+ * Replaces emitter `id`'s reactions via `update`, committing the result. Structural only when the
+ * set of death sources changes: that decides where an emitter simulates (`effectiveSpawnConfig`),
+ * so the preview must rebuild; any other reaction edit is a view edit, like an event's. No-op for
+ * an unknown id, or an `update` that changes nothing.
+ */
+function updateReactions(
+  store: Store,
+  id: string,
+  update: (reactions: readonly DeathReaction[]) => readonly DeathReaction[],
+  live = false,
+): void {
+  const source = store.getSource();
+  const emitter = source.scene.emitters.find((candidate) => candidate.id === id);
+  if (emitter === undefined) {
+    return;
+  }
+  const reactions = update(emitter.reactions);
+  if (sameElements(emitter.reactions, reactions)) {
+    return;
+  }
+  const emitters = source.scene.emitters.map((candidate) =>
+    candidate === emitter ? { ...emitter, reactions } : candidate,
+  );
+  const next = { ...source, scene: { ...source.scene, emitters } };
+  const before = deathSourceIds(source.scene.emitters);
+  const after = deathSourceIds(emitters);
+  const kind =
+    before.size === after.size && [...after].every((sourceId) => before.has(sourceId))
+      ? "view"
+      : "structural";
+  if (live) {
+    store.commitLive(next, kind);
+  } else {
+    store.commit(next, kind);
+  }
 }
 
 /** A retime of one timeline item (keyframe or event) to a new time `time`. */

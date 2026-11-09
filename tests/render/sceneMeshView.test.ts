@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import type { Mesh } from "three";
-import { BufferGeometry, PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
+import { afterEach, describe, expect, it } from "vitest";
+import type { LineBasicMaterial, LineSegments, Mesh } from "three";
+import { BufferGeometry } from "three";
 import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
 import { createTestState } from "../helpers/testDocument";
@@ -11,28 +11,13 @@ import {
   setTransformKeyframe,
   updateNodeParam,
 } from "../../src/model/commands";
-import { vfxMeshEntity } from "../../src/model/entity";
+import { emitterEntity, VFX_ENTITY, vfxMeshEntity } from "../../src/model/entity";
 import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
-import { SceneEmitters } from "../../src/render/sceneEmitters";
-
-// A VFX mesh is render-only (no behavior graph, no GPU simulation), so a shape stub covering
-// the only property ever read (capabilities.isWebGL2) is enough - matches this headless suite's
-// no-real-WebGL policy (tests/setup.ts).
-const STUB_RENDERER = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
+import type { SceneEmitters } from "../../src/render/sceneEmitters";
+import { createPreview, destroyPreviews } from "../helpers/previewScene";
 
 function harness(): { store: Store; emitters: SceneEmitters } {
-  const store = new Store(createTestState(), new SignalBus());
-  const scene = new Scene();
-  const camera = new PerspectiveCamera();
-  const emitters = new SceneEmitters(
-    scene,
-    () => new Texture(),
-    camera,
-    STUB_RENDERER,
-    "baseline",
-    () => 0,
-  );
-  return { store, emitters };
+  return { store: new Store(createTestState(), new SignalBus()), emitters: createPreview() };
 }
 
 /** Like {@link harness}, but with a caller-controlled mesh-geometry resolver (mutate `geometries`
@@ -42,21 +27,12 @@ function harnessWithMeshGeometries(): {
   emitters: SceneEmitters;
   geometries: Record<string, BufferGeometry>;
 } {
-  const store = new Store(createTestState(), new SignalBus());
-  const scene = new Scene();
-  const camera = new PerspectiveCamera();
   const geometries: Record<string, BufferGeometry> = {};
-  const emitters = new SceneEmitters(
-    scene,
-    () => new Texture(),
-    camera,
-    STUB_RENDERER,
-    "baseline",
-    () => 0,
-    () => geometries,
-  );
-  return { store, emitters, geometries };
+  const emitters = createPreview({ meshGeometries: () => geometries });
+  return { store: new Store(createTestState(), new SignalBus()), emitters, geometries };
 }
+
+afterEach(destroyPreviews);
 
 describe("SceneEmitters: VFX mesh views", () => {
   it("builds a Mesh Object3D for a mesh doc, resolvable by its entity", () => {
@@ -139,11 +115,22 @@ describe("SceneEmitters: VFX mesh views", () => {
     expect(emitters.entityObject(vfxMeshEntity(id))).toBeUndefined();
   });
 
-  it("selecting a mesh entity highlights only its marker (no throw, kind routed)", () => {
+  it("tints only the selected mesh's marker", () => {
     const { store, emitters } = harness();
     const id = addVfxMesh(store);
     emitters.sync(store.getSource().scene);
-    expect(() => emitters.setSelected(vfxMeshEntity(id))).not.toThrow();
+    const vfx = emitters.entityObject(VFX_ENTITY)!;
+    const tint = (name: string): number =>
+      ((vfx.getObjectByName(name) as LineSegments).material as LineBasicMaterial).color.getHex();
+    const idle = tint("EmitterGizmo");
+
+    emitters.setSelected(vfxMeshEntity(id));
+    expect(tint("MeshGizmo")).not.toBe(idle);
+    expect(tint("EmitterGizmo")).toBe(idle);
+    expect(tint("VfxGizmo")).toBe(idle);
+
+    emitters.setSelected(emitterEntity(store.getSource().scene.emitters[0].id));
+    expect(tint("MeshGizmo")).toBe(idle);
   });
 });
 

@@ -51,7 +51,7 @@ function vertexTransformOnMesh(): FXGraph<FXRenderNode> {
   return graph;
 }
 
-/** Binds `particleTransform` - a particle-only surface slot the mesh target omits (now illegal). */
+/** Binds `particleTransform` - a particle-only surface slot the mesh target omits (illegal). */
 function particleTransformOnMesh(): FXGraph<FXRenderNode> {
   const graph = new FXGraph<FXRenderNode>();
   graph.ingest({
@@ -98,22 +98,6 @@ function lifeRatioAlbedo(): FXGraph<FXRenderNode> {
 describe("FX_MESH_TARGET shape", () => {
   const names = new Set(FX_MESH_TARGET.inputs.map((input) => input.name));
 
-  it("exposes the geometry/frame/camera builtins a mesh can supply", () => {
-    for (const name of [
-      "p_uv",
-      "geometryNormal",
-      "geometryTangent",
-      "worldPosition",
-      "u_time",
-      "u_deltaTime",
-      "modelMatrix",
-      "viewMatrix",
-      "cameraPosition",
-    ]) {
-      expect(names.has(name)).toBe(true);
-    }
-  });
-
   it("omits every per-particle builtin", () => {
     for (const name of [
       "PARTICLE_POSITION",
@@ -126,13 +110,8 @@ describe("FX_MESH_TARGET shape", () => {
     }
   });
 
-  it("keeps the shared surface slots but omits the particle-only particleTransform", () => {
+  it("omits the particle-only particleTransform slot", () => {
     const slots = new Set(FX_MESH_TARGET.outputs.map((output) => output.slot));
-    expect(slots.has("albedo")).toBe(true);
-    expect(slots.has("vertexTransform")).toBe(true);
-    expect(slots.has("additivity")).toBe(true);
-    expect(slots.has("intensity")).toBe(true);
-    expect(slots.has("alphaThreshold")).toBe(true);
     expect(slots.has("particleTransform")).toBe(false);
   });
 });

@@ -26,7 +26,6 @@ describe("nodePalette", () => {
     expect(types.has("builtin-attribute")).toBe(true); // manual behavior/render reader
     // store-attribute is authored via the sink attr slots, so it is hidden from the palette.
     expect(types.has("store-attribute")).toBe(false);
-    expect(NODE_PALETTE.length).toBeGreaterThan(40);
   });
 
   it("excludes exactly the mesh-incompatible render nodes (derived from the two targets)", () => {

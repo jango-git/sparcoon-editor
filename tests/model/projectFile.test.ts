@@ -16,17 +16,23 @@ function sourceWithAsset(): SourceState {
 }
 
 describe("projectFile: serialize/deserialize round-trip", () => {
-  it("preserves the name and base64 assets", () => {
+  it("round-trips the whole document unchanged, its base64 assets included", () => {
     const source = sourceWithAsset();
     const restored = deserializeProject(serializeProject(source));
-    expect(restored?.name).toBe("my-effect");
-    expect(restored?.assets).toEqual(source.assets);
+    expect(restored).toEqual(source);
     expect(restored?.assets[0]?.dataUrl).toBe(PIXEL_DATA_URL);
   });
 
-  it("round-trips the whole document unchanged", () => {
-    const source = sourceWithAsset();
-    expect(deserializeProject(serializeProject(source))).toEqual(source);
+  it("loads a project saved before the loop setting existed as looping, and keeps an explicit off", () => {
+    const source = createInitialState().source;
+    const legacy = JSON.parse(serializeProject(source)) as {
+      source: { timeline: Record<string, unknown> };
+    };
+    delete legacy.source.timeline["loop"];
+    expect(deserializeProject(JSON.stringify(legacy))?.timeline.loop).toBe(true);
+
+    const once = { ...source, timeline: { ...source.timeline, loop: false } };
+    expect(deserializeProject(serializeProject(once))?.timeline.loop).toBe(false);
   });
 
   it("keeps an emitter's editor-only events flag, and leaves it off when absent", () => {
@@ -242,5 +248,70 @@ describe("projectFile: key curves", () => {
     const keys = deserializeProject(serializeProject(source))?.scene.emitters[0].tracks[0]?.keys;
     expect(keys?.[0]).toEqual({ id: "k1", time: 0, value: 0, ease: "inOut" });
     expect(keys?.[1]).toEqual({ id: "k2", time: 1, value: 1 });
+  });
+});
+
+describe("projectFile: corrupt library entries", () => {
+  /** `sourceWithAsset()` serialized, then its libraries replaced by `libraries` as raw JSON. */
+  function loadWithLibraries(libraries: Record<string, unknown>): SourceState | undefined {
+    const file = JSON.parse(serializeProject(sourceWithAsset())) as { source: object };
+    return deserializeProject(
+      JSON.stringify({ ...file, source: { ...file.source, ...libraries } }),
+    );
+  }
+
+  it("keeps a texture with its bytes and size, labelled by its name when unlabelled", () => {
+    const restored = loadWithLibraries({
+      assets: [
+        { name: "spark", dataUrl: PIXEL_DATA_URL, width: 1, height: 1 },
+        { name: "noSize", dataUrl: PIXEL_DATA_URL },
+        { dataUrl: PIXEL_DATA_URL, width: 1, height: 1 },
+        "junk",
+      ],
+    });
+    expect(restored?.assets).toEqual([
+      { name: "spark", label: "spark", dataUrl: PIXEL_DATA_URL, width: 1, height: 1 },
+    ]);
+  });
+
+  it("keeps an environment with its bytes and byte size", () => {
+    const restored = loadWithLibraries({
+      environments: [
+        { name: "studio", label: "studio.hdr", dataUrl: "data:,", byteSize: 3 },
+        { name: "unsized", dataUrl: "data:," },
+        7,
+      ],
+    });
+    expect(restored?.environments).toEqual([
+      { name: "studio", label: "studio.hdr", dataUrl: "data:,", byteSize: 3 },
+    ]);
+  });
+
+  it("keeps a mesh asset with baked geometry, zeroing what is not a finite number", () => {
+    const restored = loadWithLibraries({
+      meshAssets: [
+        {
+          name: "rock",
+          geometry: { position: [1, "x", true, 2], normal: [0, 1, 0], uv: "junk", index: [0] },
+        },
+        { name: "noGeometry", byteSize: 4 },
+        { geometry: { position: [] } },
+      ],
+    });
+    expect(restored?.meshAssets).toEqual([
+      {
+        name: "rock",
+        label: "rock",
+        geometry: { position: [1, 0, 0, 2], normal: [0, 1, 0], uv: [], index: [0] },
+        byteSize: 0,
+      },
+    ]);
+  });
+
+  it("reads a library that is not a list as empty", () => {
+    const restored = loadWithLibraries({ assets: {}, environments: "x", meshAssets: 3 });
+    expect(restored?.assets).toEqual([]);
+    expect(restored?.environments).toEqual([]);
+    expect(restored?.meshAssets).toEqual([]);
   });
 });

@@ -24,6 +24,10 @@ export class FXBehaviorNodeBuiltinAttribute extends FXBehaviorNode {
     FX_READABLE_CORE_BUILTINS,
   ).map(([name, builtin]) => ({ key: name, type: builtin.type }));
 
+  public override get targetReads(): readonly string[] {
+    return Object.values(FX_READABLE_CORE_BUILTINS).map((builtin) => builtin.targetInput);
+  }
+
   /** Palette metadata (category `attribute`; reads all four builtins, writes nothing). */
   public static describe(): FXNodeMeta {
     return BEHAVIOR_BUILTIN_ATTRIBUTE_META;

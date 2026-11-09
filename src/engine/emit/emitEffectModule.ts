@@ -13,6 +13,7 @@ import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
   renderArtifactBody,
+  renderArtifactDeclarations,
 } from "./artifactLiterals";
 
 /** Options for {@link emitEffectModule}. */
@@ -25,6 +26,9 @@ export interface FXEmitModuleOptions {
   /** Package specifier the emitted module imports types from. @defaultValue `"sparcoon"` */
   readonly importSpecifier?: string;
 }
+
+/** The module's export name for each tier's render artifact, in tier order. */
+const RENDER_EXPORT_NAMES = { baseline: "renderBaseline", standard: "renderStandard" } as const;
 
 /**
  * Turns a render + behavior graph into a ready-to-import ESM effect module (text). The runtime
@@ -65,14 +69,22 @@ export function emitEffectModule(
     lines.push(helper);
     lines.push("");
   }
-  lines.push(
-    `export const renderBaseline: FXRenderArtifact = ${renderArtifactBody(shaders.baseline, lightingIntrinsics, geometry, renderAttributes, renderMode)};`,
-  );
-  lines.push("");
-  lines.push(
-    `export const renderStandard: FXRenderArtifact = ${renderArtifactBody(shaders.standard, lightingIntrinsics, geometry, renderAttributes, renderMode)};`,
-  );
-  lines.push("");
+  for (const declaration of renderArtifactDeclarations(
+    (["baseline", "standard"] as const).map((tier) => ({
+      name: RENDER_EXPORT_NAMES[tier],
+      body: renderArtifactBody(
+        shaders[tier],
+        lightingIntrinsics,
+        geometry,
+        renderAttributes,
+        renderMode,
+      ),
+    })),
+    "export const",
+  )) {
+    lines.push(declaration);
+    lines.push("");
+  }
   lines.push(
     `export const behavior: FXBehaviorArtifact = ${behaviorArtifactBody(kernel, behaviorAttributes)};`,
   );

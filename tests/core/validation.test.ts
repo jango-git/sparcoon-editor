@@ -154,7 +154,11 @@ describe("validateGraph error codes", () => {
       [edge("a", "out", "b", "in"), edge("b", "out", "a", "in")],
       [bindAlbedo("b")],
     );
-    expect(hasCode(result, "cycle")).toBe(true);
+    const cycle = result.errors.find((error) => error.code === "cycle");
+    expect(cycle?.nodeId).toBeDefined();
+    // `params` feeds the localized message; it names the same node the baked message does.
+    expect(cycle?.params).toEqual({ nodeId: cycle?.nodeId });
+    expect(cycle?.message).toContain(`"${String(cycle?.nodeId)}"`);
   });
 
   it("unknown-output-slot: binding to a slot the target does not declare", () => {

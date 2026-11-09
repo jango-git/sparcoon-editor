@@ -7,7 +7,15 @@
 
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
 import { FXEmitter } from "sparcoon/editor";
-import type { FXApplyValues } from "sparcoon/editor";
+import type {
+  FXApplyValues,
+  FXDeathSource,
+  FXEmitterBurstOptions,
+  FXEmitterPlayOptions,
+  FXParticleDeath,
+  FXParticleDeathListener,
+  FXSpawnTarget,
+} from "sparcoon/editor";
 import type { FXBehaviorArtifact, FXParticleKernelArtifact, FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
@@ -112,16 +120,28 @@ function heldResult(hasTrail: boolean, statuses: HeldStatuses): GraphApplyResult
   };
 }
 
+// What burst/play return with no emitter built: never a scheduled handler.
+const NO_HANDLER = -1;
+
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export class EmitterView implements GraphApplier {
+/**
+ * One emitter's preview: its live graphs and the runtime emitter they build, rebuilt on a
+ * structural edit. A spawn target and a death source in its own right (what a death reaction is
+ * wired between, see SceneEmitters), so a link outlives every rebuild of either side.
+ */
+export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
   private readonly renderLive: FXLiveGraph<FXRenderNode, FXCompiledShader>;
   private readonly behaviorLive: FXLiveGraph<FXBehaviorNode, FXCompiledBehaviorBundle>;
   // The trail graph's live part, created when the emitter first has a trail and dropped with it.
   private liveTrail: EmitterTrail | undefined = undefined;
   private emitter: FXEmitter | undefined = undefined;
+  // Who listens to this view's particles' deaths, and the running emitter's subscription feeding
+  // them - re-made on every rebuild (see installEmitter).
+  private readonly deathListeners = new Set<FXParticleDeathListener>();
+  private detachDeaths: (() => void) | undefined = undefined;
 
   // Latest installed IR + the attribute set it was compiled over (captured on each install).
   private shader: FXCompiledShader | undefined = undefined;
@@ -434,6 +454,8 @@ export class EmitterView implements GraphApplier {
   public destroy(): void {
     this.marker.object.removeFromParent();
     this.marker.dispose();
+    this.deathListeners.clear();
+    this.detachDeaths = undefined;
     this.emitter?.destroy();
     this.emitter = undefined;
     this.artifacts = undefined;
@@ -474,15 +496,31 @@ export class EmitterView implements GraphApplier {
     }
   }
 
-  /** Queues a one-shot burst of `count` particles (fires on the next simulation step). */
-  public burst(count: number): void {
-    this.emitter?.burst(count);
+  /** Queues a burst on the running emitter (it lands on the next simulation step); a handler, or
+   *  -1 with no emitter built. */
+  public burst(count: number, options?: Partial<FXEmitterBurstOptions>): number {
+    return this.emitter?.burst(count, options) ?? NO_HANDLER;
   }
 
-  /** Starts a continuous emission of `rate` particles/second for `duration` seconds (0 = forever). */
-  public play(rate: number, duration: number): void {
-    // A 0 duration means an infinite play: omit it so the runtime defaults to Infinity.
-    this.emitter?.play(rate, duration > 0 ? { duration } : {});
+  /** Starts a continuous emission on the running emitter; a handler, or -1 with none built. */
+  public play(rate: number, options?: Partial<FXEmitterPlayOptions>): number {
+    return this.emitter?.play(rate, options) ?? NO_HANDLER;
+  }
+
+  /**
+   * Calls `listener` for each death of this view's particles - across rebuilds. Silent while the
+   * running emitter cannot report deaths (GPU-driven: a source is built on the CPU, see
+   * `effectiveSpawnConfig`, but a held graph error can keep an older GPU emitter running).
+   */
+  public onParticleDeath(listener: FXParticleDeathListener): () => void {
+    this.deathListeners.add(listener);
+    this.attachDeaths();
+    return (): void => {
+      if (this.deathListeners.delete(listener) && this.deathListeners.size === 0) {
+        this.detachDeaths?.();
+        this.detachDeaths = undefined;
+      }
+    };
   }
 
   /** Playback looped: cancels active emission, keeping live particles - a seamless loop. */
@@ -821,6 +859,25 @@ export class EmitterView implements GraphApplier {
     }
   }
 
+  // Feeds this view's death listeners from the running emitter, once, when there are any and it
+  // can report deaths.
+  private attachDeaths(): void {
+    if (
+      this.detachDeaths !== undefined ||
+      this.deathListeners.size === 0 ||
+      this.emitter?.reportsParticleDeaths !== true
+    ) {
+      return;
+    }
+    this.detachDeaths = this.emitter.onParticleDeath(this.forwardDeath);
+  }
+
+  private readonly forwardDeath = (death: FXParticleDeath): void => {
+    for (const listener of [...this.deathListeners]) {
+      listener(death);
+    }
+  };
+
   /** Replaces the running emitter with a fresh one for the new artifacts. May throw (see caller). */
   private installEmitter(
     artifacts: PreviewArtifacts,
@@ -853,8 +910,10 @@ export class EmitterView implements GraphApplier {
       ...(gpuKernel !== undefined ? { gpuKernel } : {}),
       ...(artifacts.trail !== undefined ? { trail: artifacts.trail.options } : {}),
     });
+    this.detachDeaths = undefined; // went with the old emitter
     this.emitter?.destroy();
     this.emitter = next;
+    this.attachDeaths();
     // A fresh emitter counts its overflow from zero.
     this.overflowAtReset = 0;
     this.parent.add(next);

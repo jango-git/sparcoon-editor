@@ -271,10 +271,17 @@ export const TIMELINE_VALUE_BEHAVIOR_META: FXNodeMeta = {
   cost: 0,
 };
 
+/** How a `texture` node treats UVs outside [0, 1] (see `FXRenderNodeTexture`). */
+export const TEXTURE_WRAP_MODES = ["clamp", "repeat", "mirror", "border"] as const;
+
+/** One of {@link TEXTURE_WRAP_MODES}. */
+export type FXTextureWrapMode = (typeof TEXTURE_WRAP_MODES)[number];
+
 /**
  * A named **texture** asset: samples an external sampler (bound by the host by slot name) at
  * the given UV into an rgba color. Texture loading is out of scope here. Render only.
  */
+
 export const TEXTURE_META: FXNodeMeta = {
   type: "texture",
   category: "color",
@@ -282,7 +289,9 @@ export const TEXTURE_META: FXNodeMeta = {
   stage: "fragment",
   inputs: [{ key: "uv", type: "vec2", default: { targetInput: "p_uv" } }],
   outputs: [{ key: "color", type: "vec4" }],
-  params: {},
+  params: {
+    wrap: { kind: "structural", type: "enum", options: TEXTURE_WRAP_MODES, default: "clamp" },
+  },
   reads: ["p_uv"],
   // Optional: with no texture picked the node samples nothing (transparent), so it stays valid.
   customParams: [{ key: "name", kind: "param-name", required: false }],

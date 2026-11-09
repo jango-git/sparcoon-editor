@@ -32,7 +32,9 @@ function renderGraph(): FXGraph<FXRenderNode> {
 
 const renderTarget = (inputType: FXValueType): FXTarget => ({
   name: "shared-name",
-  inputs: [{ name: "PARTICLE_AGE", type: inputType, stages: [VERTEX, FRAGMENT] }],
+  inputs: [
+    { name: "PARTICLE_AGE", type: inputType, stages: [VERTEX, FRAGMENT], rate: "primitive" },
+  ],
   outputs: [{ slot: "albedo", type: VEC4, stage: FRAGMENT, required: true }],
 });
 
@@ -75,7 +77,7 @@ describe("structural hash folds the target shape, not just its name", () => {
     expect(previewBehaviorHash(graph, kernelTarget(0))).toBe(a);
   });
 
-  it("behavior: same shape, different preamble -> different hash (P11.3)", () => {
+  it("behavior: same shape, different preamble -> different hash", () => {
     const graph = behaviorGraph();
     const withPreamble = (preamble?: readonly string[]): FXBehaviorTargets => {
       const base = kernelTarget(0).update;

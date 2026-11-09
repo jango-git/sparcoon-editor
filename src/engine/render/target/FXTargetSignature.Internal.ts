@@ -6,7 +6,7 @@ import type { FXTarget } from "./FXTarget";
  *  without renaming still forces a recompile instead of rebinding a stale artifact. */
 export function renderTargetSignature(target: FXTarget): string {
   const inputs = target.inputs
-    .map((input) => [input.name, input.type.id, [...input.stages].sort()])
+    .map((input) => [input.name, input.type.id, [...input.stages].sort(), input.rate])
     .sort(byJSON);
   const outputs = target.outputs
     .map((output) => [output.slot, output.type.id, output.stage, output.required])

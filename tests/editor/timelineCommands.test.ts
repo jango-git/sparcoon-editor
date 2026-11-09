@@ -97,6 +97,34 @@ describe("removeKeyframe / setKeyframeValue", () => {
   });
 });
 
+describe("setKeyframeEase", () => {
+  it("sets a key's curve, and setting linear drops the field instead of storing the default", () => {
+    const store = freshStore();
+    const entity = ent(emitterId(store));
+    const keyId = setKeyframe(store, entity, "size", 1, 4);
+
+    setKeyframeEase(store, entity, keyId, "in");
+    expect(tracks(store)[0].keys[0].ease).toBe("in");
+
+    setKeyframeEase(store, entity, keyId, "linear");
+    expect(tracks(store)[0].keys[0]).not.toHaveProperty("ease");
+  });
+
+  it("is a strict no-op for an unknown key id or entity: no edit, no undo step", () => {
+    const store = freshStore();
+    const entity = ent(emitterId(store));
+    setKeyframe(store, entity, "size", 1, 4);
+    const before = store.getSource();
+
+    setKeyframeEase(store, entity, "missing", "inOut");
+    removeKeyframe(store, entity, "missing");
+    setKeyframeEase(store, ent("no-such-emitter"), "missing", "inOut");
+    expect(store.getSource()).toBe(before);
+    store.undo(); // the one step there is: the key set above
+    expect(tracks(store)).toEqual([]);
+  });
+});
+
 describe("timeline events", () => {
   it("adds a burst sorted by time, clamps count, and returns its id", () => {
     const store = freshStore();
@@ -136,6 +164,19 @@ describe("timeline events", () => {
     const evId = addBurstEvent(store, id, 2, 1);
     removeEvent(store, id, evId);
     expect(events(store).some((e) => e.id === evId)).toBe(false);
+  });
+
+  it("is a strict no-op for an unknown event id or emitter: no edit, no undo step", () => {
+    const store = freshStore();
+    const id = emitterId(store);
+    const eventId = addBurstEvent(store, id, 2, 1);
+    const before = store.getSource();
+
+    removeEvent(store, id, "missing");
+    removeEvent(store, "no-such-emitter", eventId);
+    expect(store.getSource()).toBe(before);
+    store.undo(); // the one step there is: the burst added above
+    expect(events(store).some((event) => event.id === eventId)).toBe(false);
   });
 });
 

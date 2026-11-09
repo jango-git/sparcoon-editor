@@ -47,6 +47,7 @@ export type FXCompilerErrorCode =
   | "render-input-is-glsl-keyword"
   | "render-input-matches-generated-pattern"
   | "unknown-render-input-stage"
+  | "unknown-render-input-rate"
   | "unknown-render-output-stage"
   | "stage-direction-mismatch"
   | "unknown-render-stage"

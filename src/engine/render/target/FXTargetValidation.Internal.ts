@@ -8,6 +8,7 @@ import {
 } from "../../core/compiler/targetLint.Internal";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXTarget } from "./FXTarget";
+import { FX_INPUT_RATE_RANK } from "./FXTarget";
 
 /** GLSL ES keywords (plus `main`) that pass the identifier regex but produce a broken shader
  *  when printed as a read. Deliberately no blanket `gl_` ban: `gl_FragCoord` is a legitimate read. */
@@ -136,6 +137,13 @@ export function validateRenderTargetSemantics(target: FXTarget): FXCompilerError
         });
       }
     }
+    if (!Object.hasOwn(FX_INPUT_RATE_RANK, input.rate)) {
+      errors.push({
+        code: "unknown-render-input-rate",
+        message: `target "${target.name}" input "${input.name}" names unknown rate "${input.rate}"`,
+        params: { targetName: target.name, inputName: input.name, rate: input.rate },
+      });
+    }
   }
 
   const seenOutputs = new Set<string>();
@@ -194,6 +202,9 @@ export function renderTargetShapeErrors(target: unknown): FXCompilerError[] {
       }
       if (!Array.isArray(input["stages"])) {
         errors.push(shapeError(name, `${path}.stages`, "an array"));
+      }
+      if (typeof input["rate"] !== "string") {
+        errors.push(shapeError(name, `${path}.rate`, "a string"));
       }
     });
   }

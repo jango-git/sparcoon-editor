@@ -12,7 +12,6 @@ import {
 } from "../model/commands";
 import type { SourceState } from "../model/editorState";
 import type { Store } from "../model/store";
-import { deleteEnvironmentBlob } from "../persistence/environmentBlobStore";
 import { ingestFiles } from "../ui/assetIngestion";
 import { AgentError } from "./errors";
 import { assetsView, type AssetsView } from "./views";
@@ -137,9 +136,7 @@ export function createAssetsApi(store: Store): AssetsApi {
       } else if (kind === "mesh") {
         removeMeshAsset(store, name);
       } else {
-        // As the Content screen's row does: the HDRI bytes also live in IndexedDB.
         removeEnvironmentAsset(store, name);
-        void deleteEnvironmentBlob(name);
       }
     },
 

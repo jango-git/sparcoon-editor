@@ -45,7 +45,7 @@ describe("updateNodeParam: live edits", () => {
     expect(paramValue(store, "tv1")).toBe(1);
   });
 
-  it("without live, every call records its own history entry (today's existing behavior)", () => {
+  it("without live, every call records its own history entry", () => {
     const store = freshStore();
     addNode(store, "renderGraph", timelineValue("tv1", "size"));
 

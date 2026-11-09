@@ -8,7 +8,6 @@ import type { SourceState } from "../model/editorState";
 import type { Store } from "../model/store";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
-import { hydrateEnvironmentBlobs } from "./environmentBlobStore";
 
 /** The stores a document replace touches beyond the document itself. */
 export interface DocumentReplaceTarget {
@@ -18,16 +17,12 @@ export interface DocumentReplaceTarget {
 }
 
 /**
- * Stores the incoming HDRI blobs (so the next autosave keeps them), commits `source` as one
- * structural, undoable step, then resets the viewport's own persisted settings
+ * Commits `source` as one structural, undoable step (the next autosave stores its asset bytes like
+ * any other edit's - see localStore.ts), then resets the viewport's own persisted settings
  * (Lighting/Scene/Gizmo) to factory defaults - they live outside the document, so a document
  * replace alone would otherwise leave the previous project's studio setup and gizmo preferences.
  */
-export async function replaceDocument(
-  target: DocumentReplaceTarget,
-  source: SourceState,
-): Promise<void> {
-  await hydrateEnvironmentBlobs(source.environments);
+export function replaceDocument(target: DocumentReplaceTarget, source: SourceState): void {
   importProject(target.store, source);
   target.previewSettings.reset();
   target.gizmoSettings.reset();

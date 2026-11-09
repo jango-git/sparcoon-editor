@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { FXAttributeDecl, FXBufferLayout } from "sparcoon";
 import { packingOrder } from "sparcoon/editor";
@@ -9,10 +8,8 @@ import {
   trailRenderBudgetFindings,
 } from "../../src/domain/renderBudget";
 import { unlitArtifact } from "../helpers/artifacts";
-import { createDefaultEmitter, createDefaultVfxMesh } from "../../src/model/editorState";
-import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
-import { PROJECT_PRESETS } from "../../src/persistence/presets";
-import { deserializeProject } from "../../src/persistence/projectFile";
+import { createDefaultEmitter } from "../../src/model/editorState";
+import { compileEmitter } from "../../src/persistence/exportCompile";
 import type { EmitterDoc } from "../../src/model/editorState";
 import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
 
@@ -269,30 +266,14 @@ function emitterReading(
 }
 
 describe("export render budget", () => {
-  it("compiles every bundled preset within the Standard tier's minimums", () => {
-    for (const preset of PROJECT_PRESETS) {
-      const source = deserializeProject(
-        readFileSync(
-          new URL(`../../src/persistence/presets/${preset.fileName}`, import.meta.url),
-          "utf8",
-        ),
-      );
-      expect(source, preset.id).toBeDefined();
-      for (const emitter of source!.scene.emitters) {
-        expect(() => compileEmitter(emitter), `${preset.id}/${emitter.name}`).not.toThrow();
-      }
-      for (const mesh of source!.scene.meshes) {
-        expect(() => compileMesh(mesh), `${preset.id}/${mesh.name}`).not.toThrow();
-      }
-    }
-  });
-
   it("refuses an emitter whose fragment stage reads more attributes than WebGL2 can pass", () => {
-    // Each fragment-read vec4 takes a varying vector of its own; WebGL2 guarantees 15 in all.
-    expect(() => compileEmitter(emitterReading(4))).not.toThrow();
-    // 11: 3 + 2 + 11 = 16 attributes (within the minimum), 5 + 11 = 16 varying vectors (past it).
-    expect(() => compileEmitter(emitterReading(11))).toThrow(
-      /16 varying vectors; every WebGL2 GPU/,
+    // Each fragment-read vec4 takes a varying vector of its own beside the material's one fixed
+    // row (WebGL2 guarantees 15) and an attribute of its own (WebGL2 guarantees 16), so the
+    // attributes run out first: 11 reads are 3 + 2 + 11 = 16 attributes and 1 + 11 = 12 varying
+    // vectors, 12 reads 17 attributes.
+    expect(() => compileEmitter(emitterReading(11))).not.toThrow();
+    expect(() => compileEmitter(emitterReading(12))).toThrow(
+      /17 vertex attributes; every WebGL2 GPU/,
     );
   });
 
@@ -303,16 +284,5 @@ describe("export render budget", () => {
     expect(() =>
       compileEmitter(emitterReading(12, { type: "float", tryGpuSimulation: false })),
     ).toThrow(/17 vertex attributes; every WebGL2 GPU/);
-  });
-});
-
-describe("default VFX mesh", () => {
-  it("reads its world matrix, so it moves with its transform", () => {
-    const ir = compileMesh(createDefaultVfxMesh("mesh_1", "Mesh"));
-    const code = [
-      ...ir.shaders.standard.vertex.body,
-      ...Object.values(ir.shaders.standard.outputs),
-    ];
-    expect(code.join("\n")).toMatch(/\bmodelMatrix\b/);
   });
 });

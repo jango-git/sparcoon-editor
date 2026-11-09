@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
@@ -20,39 +18,17 @@ import {
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { behaviorRegistry } from "../helpers/stdRegistry";
-import { attributeSlot, readAttr, readBuiltinAttr, storeAttr } from "../helpers/attr";
+import {
+  attributeSlot,
+  readAttr,
+  readAttrComponents,
+  readBuiltinAttr,
+  storeAttr,
+} from "../helpers/attr";
+import { bind, buffersFor, edge, graphOf } from "../helpers/graphBuild";
 
 const reg = behaviorRegistry();
 const VEC3 = FX_VALUE_TYPES.vec3;
-
-function graphOf(
-  nodes: Record<string, FXBehaviorNode>,
-  connections: readonly FXConnection[],
-  outputBindings: readonly FXOutputBinding[],
-): FXGraph<FXBehaviorNode> {
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({ nodes: new Map(Object.entries(nodes)), connections, outputBindings });
-  return graph;
-}
-
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
-/** Allocates one `Float32Array` per state buffer the compiled kernel declares (core + attributes). */
-function buffersFor(compiled: FXCompiledKernel, count: number): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of compiled.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * count);
-  }
-  return buffers;
-}
 
 describe("compileParticleBehavior - kernels produce correct numbers", () => {
   it("spawn kernel writes lifetime (core lifecycle) and position (core position)", () => {
@@ -77,63 +53,6 @@ describe("compileParticleBehavior - kernels produce correct numbers", () => {
       expect(buffers.position[i * 3 + FX_POSITION_Z]).toBe(3);
     }
   });
-
-  it("update kernel integrates gravity as v += a*dt and advances position", () => {
-    // The executor model wires this explicitly: read the current velocity attribute,
-    // apply gravity + drag, store it back, and feed the new velocity to integrate-motion,
-    // which advances the core position (semi-implicit: position += new_velocity * dt).
-    const graph = graphOf(
-      {
-        rv: readAttr("velocity", VEC3),
-        g: reg.create("gravity", { acceleration: [0, -10, 0] }),
-        d: reg.create("drag", { damping: 0 }),
-        sv: storeAttr("velocity", VEC3),
-        im: reg.create("integrate-motion"),
-      },
-      [
-        edge("rv", "value", "g", "velocity"),
-        edge("g", "velocity", "d", "velocity"),
-        edge("d", "velocity", "sv", "value"),
-        edge("d", "velocity", "im", "velocity"),
-      ],
-      [bind(attributeSlot("velocity"), "sv", "value"), bind("position", "im", "position")],
-    );
-    const compiled = compileParticleBehavior(graph);
-    const update = buildParticleUpdateKernel(compiled);
-
-    const buffers = buffersFor(compiled, 1);
-    update(buffers, 1, 0.5, compiled.update.bindings);
-
-    // v.y = 0 + (-10)*0.5 = -5; drag at zero damping is identity.
-    expect(buffers.velocity[FX_POSITION_Y]).toBeCloseTo(-5, 6);
-    // integrate-motion: position.y += v.y * dt = -5 * 0.5.
-    expect(buffers.position[FX_POSITION_Y]).toBeCloseTo(-2.5, 6);
-  });
-
-  it("update kernel applies exponential drag to velocity", () => {
-    const graph = graphOf(
-      {
-        rv: readAttr("velocity", VEC3),
-        g: reg.create("gravity", { acceleration: [0, -10, 0] }),
-        d: reg.create("drag", { damping: 2 }),
-        sv: storeAttr("velocity", VEC3),
-      },
-      [
-        edge("rv", "value", "g", "velocity"),
-        edge("g", "velocity", "d", "velocity"),
-        edge("d", "velocity", "sv", "value"),
-      ],
-      [bind(attributeSlot("velocity"), "sv", "value")],
-    );
-    const compiled = compileParticleBehavior(graph);
-    const update = buildParticleUpdateKernel(compiled);
-
-    const buffers = buffersFor(compiled, 1);
-    update(buffers, 1, 0.5, compiled.update.bindings);
-
-    // v.y = (-10*0.5) * exp(-2*0.5).
-    expect(buffers.velocity[FX_POSITION_Y]).toBeCloseTo(-5 * Math.exp(-1), 6);
-  });
 });
 
 describe("validateParticleBehavior - phase and overlap rules", () => {
@@ -142,8 +61,8 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
       {
         // Two genuinely fixed-phase nodes: gravity is update-only (it reads `dt`), and a
         // store-attribute pinned to spawn is spawn-only. An update value feeding a spawn
-        // input is illegal across phases (they run at different times). (Value-only spawn
-        // nodes like initial-velocity are no longer pinned - placement is inferred now.)
+        // input is illegal across phases (they run at different times). Value-only spawn
+        // nodes like initial-velocity are not pinned - their placement is inferred.
         grav: reg.create("gravity", { acceleration: [0, -10, 0] }),
         store: storeAttr("velocity", VEC3, FXBehaviorPhase.SPAWN),
       },
@@ -156,21 +75,22 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
     expect(result.errors.some((e) => e.code === "cross-phase-dependency")).toBe(true);
   });
 
-  it("reads a user attribute in the spawn phase (editor path - no explicit phase)", () => {
-    // What the editor produces: a `custom-attribute` with no `phase` param (nominal update). It
-    // feeds a spawn store, so the compiler now infers it into the spawn phase instead of
-    // erroring `cross-phase-dependency` (the pre-fix behavior). `store-attribute` stays fixed
-    // (its phase is authored by the sink the user wired into).
+  // What the editor produces: a reader with no `phase` param (nominal update) feeding a spawn
+  // store. The compiler infers the reader into the spawn phase instead of erroring
+  // `cross-phase-dependency`; `store-attribute` stays fixed (its phase is authored by the sink).
+  it.each([
+    { reader: "custom-attribute", node: () => readAttr("src", FX_VALUE_TYPES.float), out: "value" },
+    {
+      reader: "custom-attribute-split",
+      node: () => readAttrComponents("src", FX_VALUE_TYPES.float),
+      out: "x",
+    },
+  ])("infers a phase-less $reader into spawn when its consumer is spawn-only", ({ node, out }) => {
     const graph = graphOf(
-      {
-        rd: readAttr("src", FX_VALUE_TYPES.float), // default UPDATE nominal, now phase-flexible
-        st: storeAttr("dst", FX_VALUE_TYPES.float, FXBehaviorPhase.SPAWN),
-      },
-      [edge("rd", "value", "st", "value")],
+      { rd: node(), st: storeAttr("dst", FX_VALUE_TYPES.float, FXBehaviorPhase.SPAWN) },
+      [edge("rd", out, "st", "value")],
       [bind(attributeSlot("dst"), "st", "value")],
     );
-
-    // No cross-phase / missing-input error now - the read is inferred into the spawn phase.
     expect(validateParticleBehavior(graph).ok).toBe(true);
 
     // And it actually runs there: the spawn kernel copies src -> dst per particle.

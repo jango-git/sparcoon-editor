@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  PerspectiveCamera,
-  Scene,
-  Texture,
-  type Mesh,
-  type ShaderMaterial,
-  type WebGLRenderer,
-} from "three";
+import type { Mesh, ShaderMaterial } from "three";
 import type { FXEmitter } from "sparcoon/editor";
+import { FXWorld } from "sparcoon";
 import { createEditApi } from "../../src/agent/editApi";
 import { parseGraphName, resolveGraph } from "../../src/agent/address.Internal";
 import { readStatus } from "../../src/agent/status.Internal";
@@ -51,22 +45,19 @@ import { Pipeline } from "../../src/model/pipeline";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { EmitterTrail } from "../../src/render/emitterTrail.Internal";
-import { SceneEmitters } from "../../src/render/sceneEmitters";
+import type { SceneEmitters } from "../../src/render/sceneEmitters";
+import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
 
 function setup(): { store: Store; emitters: SceneEmitters; emitterId: string } {
   const store = new Store(createTestState(), new SignalBus());
-  const renderer = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
-  const emitters = new SceneEmitters(
-    new Scene(),
-    () => new Texture(),
-    new PerspectiveCamera(),
-    renderer,
-    "baseline",
-    () => 0,
-  );
-  return { store, emitters, emitterId: store.getSource().scene.emitters[0].id };
+  return { store, emitters: createPreview(), emitterId: store.getSource().scene.emitters[0].id };
 }
+
+afterEach(() => {
+  destroyPreviews();
+  vi.restoreAllMocks();
+});
 
 function emitterDoc(store: Store): EmitterDoc {
   return store.getSource().scene.emitters[0];
@@ -338,7 +329,8 @@ describe("emitter trail: live preview", () => {
   it("builds the runtime trail, swaps it without a rebuild, and removes it", () => {
     const { store, emitters, emitterId } = setup();
     emitters.sync(store.getSource().scene);
-    emitters.burst(emitterId, 8);
+    emitters.spawn(emitterId, { kind: "burst", count: 8 });
+    FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
 
     setEmitterTrail(store, emitterId, true);
     const on = emitters.sync(store.getSource().scene);
@@ -421,7 +413,8 @@ describe("emitter trail: live preview", () => {
     const { store, emitters, emitterId } = setup();
     setEmitterTrail(store, emitterId, true);
     emitters.sync(store.getSource().scene);
-    emitters.burst(emitterId, 8);
+    emitters.spawn(emitterId, { kind: "burst", count: 8 });
+    FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
     const emitter = runtimeEmitter(emitters, emitterId);
     const before = runtimeTrail(emitter);
 
@@ -440,7 +433,8 @@ describe("emitter trail: live preview", () => {
     const { store, emitters, emitterId } = setup();
     setEmitterTrail(store, emitterId, true);
     emitters.sync(store.getSource().scene);
-    emitters.burst(emitterId, 8);
+    emitters.spawn(emitterId, { kind: "burst", count: 8 });
+    FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
     const emitter = runtimeEmitter(emitters, emitterId);
 
     for (const [key, value] of [
@@ -491,10 +485,11 @@ describe("emitter trail: export", () => {
     const { store, emitterId } = setup();
     setEmitterTrail(store, emitterId, true);
     const text = emitProjectModule(store.getSource());
+    const { frames, sampleInterval } = readTrailSinkConfig(emitterDoc(store).trailGraph!);
     expect(text).toContain("const trail0Baseline: FXRenderArtifact");
     expect(text).toContain("const trail0Standard: FXRenderArtifact");
-    expect(text).toMatch(
-      /trail: \{ render: \{ baseline: trail0Baseline, standard: trail0Standard \}, frames: 16, sampleInterval: 0\.03 \}/,
+    expect(text).toContain(
+      `trail: { render: { baseline: trail0Baseline, standard: trail0Standard }, frames: ${String(frames)}, sampleInterval: ${String(sampleInterval)} },`,
     );
   });
 
@@ -515,6 +510,26 @@ describe("emitter trail: export", () => {
       { nodeId: RENDER_SINK_ID, socketKey: "albedo" },
     );
     expect(emitProjectModule(store.getSource())).toContain('externalSlots: ["spark"]');
+  });
+
+  it("tapers the width along the trail from the same uv read that colours it", () => {
+    const { store, emitterId } = setup();
+    setEmitterTrail(store, emitterId, true);
+    const uv = addCatalogNode(store, "trailGraph", "uv", { x: 0, y: 0 }) ?? "";
+    const along = addCatalogNode(store, "trailGraph", "split", { x: 0, y: 0 }) ?? "";
+    const texture = addCatalogNode(store, "trailGraph", "texture", { x: 0, y: 0 }) ?? "";
+    const wire = (from: string, out: string, to: string, input: string): void =>
+      connectSockets(
+        store,
+        "trailGraph",
+        { nodeId: from, socketKey: out },
+        { nodeId: to, socketKey: input },
+      );
+    wire(uv, "uv", along, "v");
+    wire(along, "x", RENDER_SINK_ID, "width"); // vertex
+    wire(uv, "uv", texture, "uv"); // fragment
+    wire(texture, "color", RENDER_SINK_ID, "albedo");
+    expect(() => compileEmitter(emitterDoc(store))).not.toThrow();
   });
 
   it("refuses to export a trail whose material some WebGL2 GPU could not link", () => {

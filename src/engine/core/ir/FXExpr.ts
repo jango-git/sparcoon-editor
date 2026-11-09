@@ -56,6 +56,10 @@ export type FXExpr =
   /**
    * Escape hatch for code the IR can't express; `deps` substitute into `code` as `$0`, `$1`, ...
    * The author owns `type`/`language` - the mismatched-language backend throws rather than print it.
+   * `pure`: the code is a function of its `deps` alone (and of helpers its node emits) - no stage
+   * builtin, texture, derivative or impure call - so it varies exactly as its deps do and may be
+   * computed in any stage they are available in. Absent, the compiler keeps it where it was
+   * written.
    */
   | {
       readonly kind: "raw";
@@ -63,6 +67,7 @@ export type FXExpr =
       readonly language: "glsl" | "js";
       readonly code: string;
       readonly deps: readonly FXExpr[];
+      readonly pure?: true;
     };
 
 /** Binary operators. Arithmetic returns `T`; comparisons return `float` (0/1). */

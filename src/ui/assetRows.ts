@@ -5,7 +5,6 @@ import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { t } from "../i18n";
 import { removeEnvironmentAsset, removeMeshAsset, removeTextureAsset } from "../model/commands";
 import type { EnvironmentAsset, MeshAsset, TextureAsset } from "../model/editorState";
-import { deleteEnvironmentBlob } from "../persistence/environmentBlobStore";
 import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
 import { buildGeometryFromArrays } from "../render/meshGeometryBaking";
 import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
@@ -86,10 +85,7 @@ export function environmentRows(store: Store, onThumbnailReady: () => void): rea
       glyph: assetIcons.hdri,
       detail: formatBytes(asset.byteSize),
       download: () => downloadDataUrl(asset.label, asset.dataUrl),
-      remove: (): void => {
-        removeEnvironmentAsset(store, asset.name);
-        void deleteEnvironmentBlob(asset.name);
-      },
+      remove: (): void => removeEnvironmentAsset(store, asset.name),
     };
   });
 }

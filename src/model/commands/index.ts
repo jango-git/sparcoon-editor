@@ -77,11 +77,17 @@ export {
 export {
   addBurstEvent,
   addPlayEvent,
+  addReaction,
   DEFAULT_PLAY_DURATION,
+  defaultSpawnAction,
   moveEvents,
   moveTrackKeyframes,
+  type EventPatch,
+  type ReactionPatch,
+  type SpawnActionPatch,
   type TimelineMove,
   removeEvent,
+  removeReaction,
   removeKeyframe,
   setKeyframe,
   setKeyframeEase,
@@ -92,6 +98,7 @@ export {
   setTimelineFps,
   setTimelineLoop,
   updateEvent,
+  updateReaction,
 } from "./timelineCommands";
 export {
   clipboardItemTime,

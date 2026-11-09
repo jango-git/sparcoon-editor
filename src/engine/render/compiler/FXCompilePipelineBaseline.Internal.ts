@@ -16,17 +16,28 @@ import type { FXValueType } from "../../core/socket/FXValueType";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { coerceNumeric, createBuilders, ref } from "../../core/ir/FXExprBuilder";
 import type { FXExprBuilderApi } from "../../core/ir/FXExprBuilder";
-import { FX_FUNCTIONS, baselineSignaturesFrom } from "../../core/ir/FXFunctions.Internal";
+import {
+  FX_FUNCTIONS,
+  baselineSignaturesFrom,
+  isImpureFunction,
+} from "../../core/ir/FXFunctions.Internal";
 import { printGLSLBaseline } from "../../core/codegen/printGLSLBaseline.Internal";
+import { hoistToEarlyStage } from "../../core/codegen/hoist.Internal";
+import { classifyRates } from "../../core/codegen/rates.Internal";
+import type { FXRatedLocal } from "../../core/codegen/rates.Internal";
+import { refNamesIn } from "../../core/ir/visit.Internal";
 import { uniqueIdentifier } from "../../core/codegen/uniqueName.Internal";
 import type { FXSocketRef } from "../../core/socket/FXSocket";
 import { socketRefKey } from "../../core/socket/FXSocket";
 import type { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXTarget, FXTargetOutput } from "../target/FXTarget";
+import { FX_INPUT_RATE_RANK, renderRatePolicy } from "../target/FXTarget";
+import { crossingBudget } from "../target/FXParticleRenderTarget";
 import { renderTargetSignature } from "../target/FXTargetSignature.Internal";
 import type {
   FXCompiledShader,
+  FXCompiledStage,
   FXUniformDescriptor,
   FXUniformHandle,
   FXVarying,
@@ -181,8 +192,27 @@ export function validateStageDirection(
   return errors;
 }
 
+/** One SSA local as its node emitted it: kept as IR until {@link FXCompileState.finalize} decides
+ *  its final stage and prints it. `owner` is the emitting node, whose helpers follow the local. */
+interface FXStageLocal extends FXRatedLocal {
+  readonly type: FXValueType;
+  readonly owner: string | undefined;
+}
+
+/** What a target output slot reads: a local's name (or an opaque value's code), in its stage. */
+interface FXSlotValue {
+  readonly stage: FXShaderStage;
+  readonly value: string;
+}
+
+function addHelper(helpers: Map<string, string>, key: string, source: string): void {
+  if (!helpers.has(key)) {
+    helpers.set(key, source);
+  }
+}
+
 /** Mutable accumulator for one compilation (identifiers, uniforms, varyings, helpers, per-stage
- *  bodies). Nodes never see this directly - only through {@link FXNodeCompilerContext}. */
+ *  locals). Nodes never see this directly - only through {@link FXNodeCompilerContext}. */
 class FXCompileState {
   private counter = 0;
 
@@ -191,15 +221,13 @@ class FXCompileState {
   private readonly namedUniformTypes = new Map<string, string>();
   private readonly uniformDeclarations: string[] = [];
   private readonly varyingList: FXVarying[] = [];
-  private readonly vertexBody: string[] = [];
-  private readonly fragmentBody: string[] = [];
-  private readonly vertexHelpers = new Map<string, string>();
-  private readonly fragmentHelpers = new Map<string, string>();
-  /** Promotion cache: producer socket key -> the varying carrying it. */
-  private readonly varyingCache = new Map<string, string>();
-  /** The target inputs each stage's emitted code reads. */
-  private readonly vertexTargetReads = new Set<string>();
-  private readonly fragmentTargetReads = new Set<string>();
+  /** Each stage's locals as their nodes emitted them, until {@link finalize} places and prints them. */
+  private readonly locals: Record<FXShaderStage, FXStageLocal[]> = {
+    [FXShaderStage.VERTEX]: [],
+    [FXShaderStage.FRAGMENT]: [],
+  };
+  /** The helpers each node emitted, by key: they go wherever its locals end up. */
+  private readonly ownerHelpers = new Map<string, Map<string, string>>();
 
   /** Allocates a collision-free, GLSL-safe identifier from a hint. */
   public uniqueName(hint: string): string {
@@ -208,21 +236,17 @@ class FXCompileState {
     return name;
   }
 
-  public emit(stage: FXShaderStage, statement: string): void {
-    this.bodyFor(stage).push(statement);
+  /** Adds a local to a stage - where its node runs; {@link finalize} may still move it. */
+  public emitLocal(stage: FXShaderStage, local: FXStageLocal): void {
+    this.locals[stage].push(local);
   }
 
-  /** Records that code emitted into `stage` reads the target input `name`. */
-  public noteTargetRead(stage: FXShaderStage, name: string): void {
-    (stage === FXShaderStage.VERTEX ? this.vertexTargetReads : this.fragmentTargetReads).add(name);
-  }
-
-  /** Adds a helper function to a stage, deduplicated by `key`. */
-  public emitHelper(stage: FXShaderStage, key: string, source: string): void {
-    const helpers = this.helpersFor(stage);
-    if (!helpers.has(key)) {
-      helpers.set(key, source);
-    }
+  /** Adds a helper function a node uses, deduplicated by `key`: it is emitted into every stage
+   *  that ends up holding one of the node's locals. */
+  public emitHelper(owner: string, key: string, source: string): void {
+    const helpers = this.ownerHelpers.get(owner) ?? new Map<string, string>();
+    addHelper(helpers, key, source);
+    this.ownerHelpers.set(owner, helpers);
   }
 
   public allocateUniform(descriptor: FXUniformDescriptor): FXUniformHandle {
@@ -260,92 +284,120 @@ class FXCompileState {
   }
 
   /** Declares a vertex->fragment varying and returns its name. */
-  public allocateVarying(type: FXValueType, hint: string): string {
-    const name = this.uniqueName(`v_${hint}`);
-    this.varyingList.push({ name, type });
-    return name;
-  }
-
-  /** Routes a value across stages through a varying, reusing one already allocated for the same
-   *  producer. Only vertex->fragment is meaningful; same-stage returns the variable unchanged. */
-  public promote(
-    producerKey: string,
-    producerVariable: string,
+  public allocateVarying(
     type: FXValueType,
-    producerStage: FXShaderStage,
-    consumerStage: FXShaderStage,
+    hint: string,
+    interpolation: FXVarying["interpolation"] = "smooth",
   ): string {
-    if (producerStage === consumerStage) {
-      return producerVariable;
-    }
-    const cached = this.varyingCache.get(producerKey);
-    if (cached !== undefined) {
-      return cached;
-    }
-    if (!type.instantiable) {
-      // A non-instantiable (opaque) type - a `sampler2D` - cannot ride a varying:
-      // `varying sampler2D v_bridge;` is illegal GLSL. Type validation and
-      // `validateStageDirection` (direction only) both pass such an edge, so reject
-      // it here with a typed error the live layer folds into `invalid`.
-      throw new FXCompilerErrorException({
-        code: "opaque-type-crosses-stage",
-        message: `opaque type ${type.id} cannot cross shader stages through a varying`,
-        nodeId: producerKey.slice(0, producerKey.lastIndexOf(" ")),
-        params: { typeId: type.id },
-      });
-    }
-    const name = this.allocateVarying(type, "bridge");
-    this.emit(producerStage, `${name} = ${producerVariable};`);
-    this.varyingCache.set(producerKey, name);
+    const name = this.uniqueName(`v_${hint}`);
+    this.varyingList.push({ name, type, interpolation });
     return name;
   }
 
-  public assemble(outputs: Record<string, string>, hash: string): FXCompiledShader {
-    const varyingDeclarations = this.varyingList.map(
-      (varying) => `varying ${varying.type.glslTypeName} ${varying.name};`,
+  /**
+   * Places every local in its final stage and prints both. A fragment local whose value is the
+   * same at every fragment of a particle (see `renderRatePolicy`) moves to the vertex stage, so it
+   * is computed per vertex rather than per fragment, as far as this tier can carry the results
+   * between the stages (see `hoistToEarlyStage`). Then each vertex value the fragment stage reads -
+   * moved there or written there by its own node - crosses through one varying, marked `flat`
+   * when it is the same at all of a primitive's vertices: the runtime declares it `flat` where the
+   * context's GLSL has it, and this tier's GLSL ES 1.00 interpolates it back to itself (this tier
+   * has no integer types, which would need it).
+   */
+  public finalize(
+    target: FXTarget,
+    slots: ReadonlyMap<string, FXSlotValue>,
+    hash: string,
+  ): FXCompiledShader {
+    const vertexLocals = this.locals[FXShaderStage.VERTEX];
+    const fragmentLocals = this.locals[FXShaderStage.FRAGMENT];
+    const policy = renderRatePolicy(target, isImpureFunction);
+    const rates = classifyRates([...vertexLocals, ...fragmentLocals], policy);
+    const fragmentRoots = [...slots.values()]
+      .filter((slot) => slot.stage === FXShaderStage.FRAGMENT)
+      .map((slot) => slot.value);
+    const targetReads = (locals: readonly FXStageLocal[]): string[] =>
+      refNamesIn(
+        locals.map((local) => local.expr),
+        "targetInput",
+      );
+    const fits = crossingBudget(target, "baseline", targetReads(fragmentLocals));
+    const plan = hoistToEarlyStage(
+      { early: vertexLocals, late: fragmentLocals, lateRoots: fragmentRoots },
+      {
+        rates,
+        maxRate: FX_INPUT_RATE_RANK.primitive,
+        fits: (crossing, late) =>
+          fits(
+            crossing.map((local) => local.type),
+            targetReads(late),
+          ),
+      },
     );
+
+    const carried = new Map<string, string>();
+    const writes: string[] = [];
+    for (const local of plan.crossing) {
+      const flat = (rates.get(local.name) ?? policy.pinned) <= FX_INPUT_RATE_RANK.primitive;
+      const varying = this.allocateVarying(local.type, "bridge", flat ? "flat" : "smooth");
+      carried.set(local.name, varying);
+      writes.push(`${varying} = ${local.name};`);
+    }
+    const vertex = this.printStage(plan.early, new Map());
+    const fragment = this.printStage(plan.late, carried);
 
     const uniforms: Record<string, FXUniformHandle> = {};
     for (const [name, handle] of this.uniformsByName) {
       uniforms[name] = handle;
     }
+    const outputs: Record<string, string> = {};
+    for (const [slot, { stage, value }] of slots) {
+      outputs[slot] = stage === FXShaderStage.FRAGMENT ? (carried.get(value) ?? value) : value;
+    }
 
     return {
       uniforms,
       uniformDeclarations: this.uniformDeclarations,
-      vertex: {
-        varyingDeclarations,
-        helperFunctions: [...this.vertexHelpers.values()],
-        body: this.vertexBody,
-        targetReads: [...this.vertexTargetReads].sort(),
-      },
-      fragment: {
-        varyingDeclarations,
-        helperFunctions: [...this.fragmentHelpers.values()],
-        body: this.fragmentBody,
-        targetReads: [...this.fragmentTargetReads].sort(),
-      },
+      varyings: this.varyingList,
+      vertex: { ...vertex, body: [...vertex.body, ...writes] },
+      fragment,
       outputs,
       hash,
     };
   }
 
-  private bodyFor(stage: FXShaderStage): string[] {
-    switch (stage) {
-      case FXShaderStage.VERTEX:
-        return this.vertexBody;
-      case FXShaderStage.FRAGMENT:
-        return this.fragmentBody;
+  /** Prints `locals` as a stage's body, reading each local in `carried` through its varying -
+   *  with the helpers it pulls in and the target inputs it reads. */
+  private printStage(
+    locals: readonly FXStageLocal[],
+    carried: ReadonlyMap<string, string>,
+  ): FXCompiledStage {
+    const helpers = new Map<string, string>();
+    const targetReads = new Set<string>();
+    const body: string[] = [];
+    for (const local of locals) {
+      const owned = local.owner === undefined ? undefined : this.ownerHelpers.get(local.owner);
+      for (const [key, source] of owned ?? []) {
+        addHelper(helpers, key, source);
+      }
+      const printed = printGLSLBaseline(local.expr, FX_FUNCTIONS, (reference) => {
+        if (reference.ref === "targetInput") {
+          targetReads.add(reference.name);
+        }
+        return reference.ref === "local"
+          ? (carried.get(reference.name) ?? reference.name)
+          : reference.name;
+      });
+      for (const [key, source] of printed.helpers) {
+        addHelper(helpers, key, source);
+      }
+      body.push(`${local.type.glslTypeName} ${local.name} = ${printed.code};`);
     }
-  }
-
-  private helpersFor(stage: FXShaderStage): Map<string, string> {
-    switch (stage) {
-      case FXShaderStage.VERTEX:
-        return this.vertexHelpers;
-      case FXShaderStage.FRAGMENT:
-        return this.fragmentHelpers;
-    }
+    return {
+      helperFunctions: [...helpers.values()],
+      body,
+      targetReads: [...targetReads].sort(),
+    };
   }
 }
 
@@ -393,23 +445,30 @@ class FXNodeCompilerContext
       );
     }
 
-    const code = this.print(expression);
-
     const key = socketRefKey({ nodeId: this.nodeId, socketKey });
     if (socketType.instantiable) {
       const name = this.state.uniqueName(this.outputHint(socketKey));
-      this.state.emit(this.stage, `${socketType.glslTypeName} ${name} = ${code};`);
+      this.state.emitLocal(this.stage, {
+        name,
+        type: socketType,
+        expr: expression,
+        owner: this.nodeId,
+      });
       this.outputVariables.set(key, name);
     } else {
       // Opaque types (e.g. samplers) cannot be locals; pass the reference through.
-      this.outputVariables.set(key, code);
+      this.outputVariables.set(key, printGLSLBaseline(expression, FX_FUNCTIONS).code);
     }
   }
 
   public defineLocal(hint: string, expression: FXExpr): FXExpr {
-    const code = this.print(expression);
     const name = this.state.uniqueName(hint);
-    this.state.emit(this.stage, `${expression.type.glslTypeName} ${name} = ${code};`);
+    this.state.emitLocal(this.stage, {
+      name,
+      type: expression.type,
+      expr: expression,
+      owner: this.nodeId,
+    });
     return ref("local", name, expression.type);
   }
 
@@ -479,44 +538,29 @@ class FXNodeCompilerContext
   }
 
   public emitHelper(key: string, source: string): void {
-    this.state.emitHelper(this.stage, key, source);
+    this.state.emitHelper(this.nodeId, key, source);
   }
 
-  /** Brings a producer local into this node's stage (promoting vertex->fragment if needed). */
+  /** Reads a producer local - a vertex one read here in the fragment stage crosses through a
+   *  varying, which the compile state allocates when it places and prints the stages. */
   protected override materializeProducer(
     producerVariable: string,
     producerType: FXValueType,
     from: FXSocketRef,
   ): FXExpr {
-    const producerStage = this.stageOf(from.nodeId);
-    const variable =
-      producerStage === this.stage
-        ? producerVariable
-        : this.state.promote(
-            socketRefKey(from),
-            producerVariable,
-            producerType,
-            producerStage,
-            this.stage,
-          );
-    return ref("local", variable, producerType);
-  }
-
-  /**
-   * Prints `expression` for this node's stage: pulls in its helpers and records every target
-   * input it reads - at print time, so a read counts only once it is in the emitted code.
-   */
-  private print(expression: FXExpr): string {
-    const { code, helpers } = printGLSLBaseline(expression, FX_FUNCTIONS, (reference) => {
-      if (reference.ref === "targetInput") {
-        this.state.noteTargetRead(this.stage, reference.name);
-      }
-      return reference.name;
-    });
-    for (const [key, source] of helpers) {
-      this.state.emitHelper(this.stage, key, source);
+    if (!producerType.instantiable && this.stageOf(from.nodeId) !== this.stage) {
+      // A non-instantiable (opaque) type - a `sampler2D` - cannot ride a varying:
+      // `varying sampler2D v_bridge;` is illegal GLSL. Type validation and
+      // `validateStageDirection` (direction only) both pass such an edge, so reject
+      // it here with a typed error the live layer folds into `invalid`.
+      throw new FXCompilerErrorException({
+        code: "opaque-type-crosses-stage",
+        message: `opaque type ${producerType.id} cannot cross shader stages through a varying`,
+        nodeId: from.nodeId,
+        params: { typeId: producerType.id },
+      });
     }
-    return code;
+    return ref("local", producerVariable, producerType);
   }
 }
 
@@ -532,15 +576,13 @@ function coerceSlotOutput(
   if (fromType === undefined || fromType.id === toType.id) {
     return variable;
   }
-  const { code, helpers } = printGLSLBaseline(
-    coerceNumeric(ref("local", variable, fromType), toType),
-    FX_FUNCTIONS,
-  );
-  for (const [key, source] of helpers) {
-    state.emitHelper(stage, key, source);
-  }
   const name = state.uniqueName(`slot_${toType.glslTypeName}`);
-  state.emit(stage, `${toType.glslTypeName} ${name} = ${code};`);
+  state.emitLocal(stage, {
+    name,
+    type: toType,
+    expr: coerceNumeric(ref("local", variable, fromType), toType),
+    owner: undefined,
+  });
   return name;
 }
 
@@ -586,7 +628,7 @@ export function compileGraphBaseline(
   const targetOutputs = new Map<string, FXTargetOutput>(
     target.outputs.map((output): [string, FXTargetOutput] => [output.slot, output]),
   );
-  const outputs: Record<string, string> = {};
+  const slots = new Map<string, FXSlotValue>();
 
   for (const binding of graph.outputBindings) {
     const slotDefinition = targetOutputs.get(binding.slot);
@@ -621,26 +663,23 @@ export function compileGraphBaseline(
       producerOutput === undefined
         ? undefined
         : socketConcreteType(binding.from.nodeId, producerOutput, resolution.types);
-    // Bring the value into the slot's stage (a same-stage promote is a no-op), then
-    // adapt a mismatched numeric width to the slot's declared type.
-    const carried = state.promote(
-      socketRefKey(binding.from),
-      producerVariable,
-      producerType ?? slotDefinition.type,
-      stageOf(binding.from.nodeId),
-      slotDefinition.stage,
-    );
-    outputs[binding.slot] = coerceSlotOutput(
-      state,
-      slotDefinition.stage,
-      carried,
-      producerType,
-      slotDefinition.type,
-    );
+    // Adapt a mismatched numeric width to the slot's declared type, in the slot's stage (a
+    // vertex producer read by a fragment slot crosses when the state places the stages).
+    slots.set(binding.slot, {
+      stage: slotDefinition.stage,
+      value: coerceSlotOutput(
+        state,
+        slotDefinition.stage,
+        producerVariable,
+        producerType,
+        slotDefinition.type,
+      ),
+    });
   }
 
-  return state.assemble(
-    outputs,
+  return state.finalize(
+    target,
+    slots,
     structuralHash(
       graph,
       renderTargetSignature(target),

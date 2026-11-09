@@ -21,13 +21,6 @@ import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 import { attributeSlot } from "../helpers/attr";
 
 describe("FXGraphBuilder - deterministic ids + wiring", () => {
-  it("stamps the current snapshot version", () => {
-    const data = buildRenderGraph((b) => {
-      b.bind("albedo", b.add("constant", { type: "vec4", value: [1, 1, 1, 1] }).out("out"));
-    });
-    expect(data.version).toBe(FX_SNAPSHOT_VERSION);
-  });
-
   it("generates ids as `${type}#${index}` with a per-type counter", () => {
     const data = buildRenderGraph((b) => {
       b.add("constant", { type: "float", value: 1 });
@@ -50,12 +43,13 @@ describe("FXGraphBuilder - deterministic ids + wiring", () => {
     expect(build()).toEqual(build());
   });
 
-  it("records the inputs map as connections and bind() as output bindings", () => {
+  it("builds a current-version snapshot: inputs map as connections, bind() as output bindings", () => {
     const data = buildRenderGraph((b) => {
       const color = b.add("constant", { type: "vec4", value: [0.5, 0.5, 0.6, 1] });
       const clip = b.add("spherical-clip", { innerRadius: 0.2 }, { color: color.out("out") });
       b.bind("albedo", clip.out("color"));
     });
+    expect(data.version).toBe(FX_SNAPSHOT_VERSION);
     expect(data.connections).toEqual([
       {
         from: { nodeId: "constant#0", socketKey: "out" },
@@ -87,6 +81,16 @@ describe("FXGraphBuilder - deterministic ids + wiring", () => {
     expect(() => handle.pipe("spherical-clip")).toThrow(/without node metadata/);
     // Explicit sockets bypass the missing metadata.
     expect(() => handle.pipe("spherical-clip", {}, { from: "out", into: "color" })).not.toThrow();
+  });
+
+  it("pipe() rejects a type it has no metadata for, and a target that takes no input", () => {
+    buildRenderGraph((b) => {
+      const color = b.add("constant", { type: "vec4", value: [1, 1, 1, 1] });
+      expect(() => color.pipe("no-such-node")).toThrow(
+        /cannot infer the target input of "no-such-node#0" without node metadata/,
+      );
+      expect(() => color.pipe("time")).toThrow(/node "time#0" has no input to pipe into/);
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import type { FXExpr } from "../ir/FXExpr";
 import { childAt, childrenOf, withChildren } from "../ir/visit.Internal";
+import { classifyRates } from "./rates.Internal";
 
 /**
  * CSE over a phase's scalarized JS-backend locals (GLSL prints vectors directly and its own
@@ -164,47 +165,28 @@ export function commonSubexpressionElimination(
 
 /**
  * Splits `locals` into per-particle-invariant (hoistable out of the loop, computed once) and
- * variant, bottom-up: `raw` is conservatively variant (may be `Math.random()`); an impure call
- * (`isImpureCall`, currently only `rand`) is variant too and for the same reason - a zero-arg
- * impure call would otherwise vacuously pass "all children are invariant" (it has none) and get
- * wrongly hoisted to compute once for the whole burst instead of once per particle. Everything
- * else is invariant iff its children are. Order is preserved within each partition.
+ * variant - {@link classifyRates} at two ranks. A `raw` not marked `pure` is variant (it may be
+ * `Math.random()`); an impure call (`isImpureCall`, currently only `rand`) is variant too and for
+ * the same reason - a zero-arg impure call would otherwise vacuously pass "all children are
+ * invariant" (it has none) and get wrongly hoisted to compute once for the whole burst instead of
+ * once per particle. Everything else is invariant iff its children are. Order is preserved within
+ * each partition.
  */
 export function partitionByInvariance(
   locals: readonly FXScalarLocal[],
   isInvariantRef: (ref: Extract<FXExpr, { kind: "ref" }>) => boolean,
   isImpureCall: (fn: string) => boolean,
 ): { preLoop: FXScalarLocal[]; body: FXScalarLocal[] } {
-  const localInvariant = new Map<string, boolean>();
-  const isInvariant = (expression: FXExpr): boolean => {
-    switch (expression.kind) {
-      case "lit":
-        return true;
-      case "raw":
-        return false;
-      case "ref":
-        return expression.ref === "local"
-          ? (localInvariant.get(expression.name) ?? false)
-          : isInvariantRef(expression);
-      case "call":
-        return !isImpureCall(expression.fn) && childrenOf(expression).every(isInvariant);
-      // Invariant iff all children are. Enumerated (not `default`) so a new impure kind can't
-      // silently inherit this rule and get wrongly hoisted out of the per-particle loop.
-      case "bin":
-      case "un":
-      case "swizzle":
-      case "column":
-      case "construct":
-      case "select":
-        return childrenOf(expression).every(isInvariant);
-    }
-  };
+  const VARIANT = 1;
+  const rates = classifyRates(locals, {
+    rateOfRef: (ref) => (isInvariantRef(ref) ? 0 : VARIANT),
+    isImpureCall,
+    pinned: VARIANT,
+  });
   const preLoop: FXScalarLocal[] = [];
   const body: FXScalarLocal[] = [];
   for (const local of locals) {
-    const invariant = isInvariant(local.expr);
-    localInvariant.set(local.name, invariant);
-    (invariant ? preLoop : body).push(local);
+    (rates.get(local.name) === 0 ? preLoop : body).push(local);
   }
   return { preLoop, body };
 }

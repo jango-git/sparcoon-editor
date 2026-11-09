@@ -3,6 +3,7 @@ import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGrap
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
+import { FX_SNAPSHOT_VERSION } from "../../src/engine/core/live/FXSnapshotData";
 import type { FakeNode } from "../helpers/fakeNodes";
 import { makeRegistry, socket } from "../helpers/fakeNodes";
 
@@ -73,19 +74,82 @@ describe("FXGraphReconciler", () => {
     expect(removed.discarded).toContain(node);
   });
 
-  it("errors (without throwing) on a snapshot version newer than this build", () => {
-    const { graph, reconciler } = setup();
+  it("errors (without throwing) on a snapshot version newer than this build, mutating nothing", () => {
+    const { graph, reconciler, created } = setup();
+    reconciler.reconcile(graph, data({ n1: { type: "a" } }));
+    const resident = graph.getNode("n1");
     const bad = {
-      version: 3,
-      nodes: {},
+      version: FX_SNAPSHOT_VERSION + 1,
+      nodes: { n2: { type: "a" } },
       connections: [],
       outputBindings: [],
     } as unknown as FXGraphSnapshotData;
 
-    const result = reconciler.reconcile(graph, bad);
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]?.code).toBe("unsupported-snapshot-version");
-    expect(result.discarded).toHaveLength(0);
+    let result: ReturnType<typeof reconciler.reconcile> | undefined;
+    expect(() => {
+      result = reconciler.reconcile(graph, bad);
+    }).not.toThrow();
+    expect(result?.errors).toHaveLength(1);
+    expect(result?.errors[0]?.code).toBe("unsupported-snapshot-version");
+    expect(result?.discarded).toHaveLength(0);
+    expect(created).toHaveLength(1);
+    expect(graph.getNode("n1")).toBe(resident);
+    expect(graph.getNode("n2")).toBeUndefined();
+  });
+
+  it("leaves the graph untouched on a failed run and discards only the instances it minted", () => {
+    const { graph, reconciler } = setup();
+    reconciler.reconcile(graph, data({ n1: { type: "a" } }));
+    const resident = graph.getNode("n1");
+
+    const result = reconciler.reconcile(
+      graph,
+      data({ n1: { type: "a" }, n2: { type: "t1" }, x: { type: "no-such-node" } }),
+    );
+
+    expect(result.errors.map((error) => [error.code, error.nodeId])).toEqual([
+      ["unknown-node-type", "x"],
+    ]);
+    const minted = result.discarded;
+    expect(minted).toHaveLength(1);
+    expect(minted[0]?.type).toBe("t1");
+    expect(result.freshIds).toEqual([]);
+    expect(graph.getNode("n1")).toBe(resident);
+    expect(graph.getNode("n2")).toBeUndefined();
+  });
+
+  it("rewires connections and output bindings in place, keeping every instance", () => {
+    const { graph, reconciler } = setup();
+    const nodes = { s1: { type: "src" }, s2: { type: "src" }, k: { type: "keep" } };
+    reconciler.reconcile(
+      graph,
+      data(
+        nodes,
+        [{ from: { nodeId: "s1", socketKey: "out" }, to: { nodeId: "k", socketKey: "in" } }],
+        [{ slot: "albedo", from: { nodeId: "k", socketKey: "out" } }],
+      ),
+    );
+    const before = [...graph.nodes];
+
+    const result = reconciler.reconcile(
+      graph,
+      data(
+        nodes,
+        [{ from: { nodeId: "s2", socketKey: "out" }, to: { nodeId: "k", socketKey: "in" } }],
+        [{ slot: "emissive", from: { nodeId: "s1", socketKey: "out" } }],
+      ),
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.discarded).toEqual([]);
+    expect(result.freshIds).toEqual([]);
+    for (const [id, node] of before) {
+      expect(graph.getNode(id), id).toBe(node);
+    }
+    expect(graph.sourceOf({ nodeId: "k", socketKey: "in" })?.from.nodeId).toBe("s2");
+    expect(graph.outputBindings).toEqual([
+      { slot: "emissive", from: { nodeId: "s1", socketKey: "out" } },
+    ]);
   });
 
   it("keeps a node resident when it only loses its connections", () => {

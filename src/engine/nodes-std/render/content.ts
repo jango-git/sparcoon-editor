@@ -31,7 +31,7 @@ export const fxRotateUV = defineNode({
   build: ({ inputs, fn }) => ({
     // mat2(cos, sin, -sin, cos) is column-major for [[cos,-sin],[sin,cos]]; the mat2
     // constructor has no IR form, so it stays a raw GLSL expression.
-    uv: fn.raw(
+    uv: fn.pureRaw(
       VEC2,
       "glsl",
       "(mat2(cos($0), sin($0), -sin($0), cos($0)) * ($1 - 0.5) + 0.5)",
@@ -59,6 +59,48 @@ export const fxTileUV = defineNode({
   build: ({ inputs, fn }) => ({
     uv: fn.add(fn.mul(inputs["uv"], inputs["tiles"]), inputs["offset"]),
   }),
+});
+
+/**
+ * Flow-map UV drift: moves a texture's content along `flow` (a UV-space direction per fragment - a
+ * decoded flow texture, a noise field, a formula such as a swirl's tangent) without the endless
+ * stretch of a plain scroll. Two phases half a cycle apart each drift up to `strength` along the
+ * flow, `speed` cycles a second, and snap back; `blend` is `uvB`'s weight, 1 exactly when `uvA`
+ * snaps and 0 when `uvB` does, so a snap is never seen. Sample one texture at `uvA` and at `uvB`
+ * and mix the two by `blend`. `time` is the scene clock unless wired (a particle's age, say).
+ */
+export const fxFlowUV = defineNode({
+  type: "flow-uv",
+  domain: "render",
+  stage: "fragment",
+  category: "uv",
+  inputs: {
+    uv: { type: "vec2", default: { targetInput: "p_uv" } },
+    flow: { type: "vec2", value: [1, 0] },
+    time: { type: "float", default: { targetInput: "u_time" } },
+    speed: { type: "float", value: 1, step: 0.05 },
+    strength: { type: "float", value: 0.25, step: 0.01 },
+  },
+  outputs: {
+    uvA: { type: "vec2" },
+    uvB: { type: "vec2" },
+    blend: { type: "float" },
+  },
+  params: {},
+  // Both phases (mul + fract, add + fract: 4) + two drifted UVs (float mul + vec2 mul + vec2 sub:
+  // 5 each, 10) + the blend weight (mul + sub + abs: 3).
+  cost: 17,
+  build: ({ inputs, local, fn }) => {
+    const phaseA = local("fl_phase", fn.call("fract", fn.mul(inputs["time"], inputs["speed"])));
+    const phaseB = fn.call("fract", fn.add(phaseA, fn.lit(0.5)));
+    const drift = (phase: FXExpr): FXExpr =>
+      fn.sub(inputs["uv"], fn.mul(inputs["flow"], fn.mul(phase, inputs["strength"])));
+    return {
+      uvA: drift(phaseA),
+      uvB: drift(phaseB),
+      blend: fn.call("abs", fn.sub(fn.lit(1), fn.mul(fn.lit(2), phaseA))),
+    };
+  },
 });
 
 /**
@@ -100,7 +142,7 @@ const FLIPBOOK_FRAME_UV = `vec2 fxFlipbookFrameUV(vec2 uv, float frame, float co
 
 /** The sheet's frame count: `frames` when set (above 0), else every cell of the grid. */
 function sheetFrames(fn: FXExprBuilderApi, frames: FXExpr, columns: FXExpr, rows: FXExpr): FXExpr {
-  return fn.raw(FLOAT, "glsl", "($0 > 0.5 ? floor($0 + 0.5) : $1 * $2)", frames, columns, rows);
+  return fn.pureRaw(FLOAT, "glsl", "($0 > 0.5 ? floor($0 + 0.5) : $1 * $2)", frames, columns, rows);
 }
 
 /** The `frames` input both flipbook nodes share: how many cells the sheet uses, 0 = all of them. */
@@ -144,7 +186,7 @@ export const fxAnimatedTexture = defineNode({
     emitHelper("animated-texture-uv", FLIPBOOK_FRAME_UV);
     const frameInfo = local(
       "at_frame",
-      fn.raw(
+      fn.pureRaw(
         VEC3,
         "glsl",
         `${frameFunction}($0, $1)`,
@@ -154,7 +196,7 @@ export const fxAnimatedTexture = defineNode({
     );
     // frameInfo is $0: its .x (this frame) / .y (the next) channel feeds the frame index.
     const frameUV = (channel: "x" | "y"): FXExpr =>
-      fn.raw(
+      fn.pureRaw(
         VEC2,
         "glsl",
         `fxFlipbookFrameUV($1, $0.${channel}, $2, $3)`,
@@ -166,7 +208,7 @@ export const fxAnimatedTexture = defineNode({
     return {
       uvFrame: frameUV("x"),
       uvNext: frameUV("y"),
-      factor: fn.raw(FLOAT, "glsl", "$0.z", frameInfo),
+      factor: fn.pureRaw(FLOAT, "glsl", "$0.z", frameInfo),
     };
   },
 });
@@ -201,7 +243,7 @@ export const fxFlipbookFrame = defineNode({
       sheetFrames(fn, inputs["frames"], inputs["columns"], inputs["rows"]),
     );
     // Wrapped as the column is (see FLIPBOOK_FRAME_UV), not by `mod`, which may land on `total`
-    const cell = fn.raw(
+    const cell = fn.pureRaw(
       FLOAT,
       "glsl",
       "(floor($0) - $1 * floor((floor($0) + 0.5) / $1))",
@@ -209,7 +251,7 @@ export const fxFlipbookFrame = defineNode({
       total,
     );
     return {
-      uv: fn.raw(
+      uv: fn.pureRaw(
         VEC2,
         "glsl",
         "fxFlipbookFrameUV($0, $1, $2, $3)",
@@ -258,6 +300,7 @@ export const fxFresnel = defineNode({
 export const FX_RENDER_CONTENT_NODES: readonly FXNodeDefinition[] = [
   fxRotateUV,
   fxTileUV,
+  fxFlowUV,
   fxAnimatedTexture,
   fxFlipbookFrame,
   fxFresnel,

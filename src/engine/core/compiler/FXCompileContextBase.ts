@@ -88,7 +88,7 @@ export abstract class FXCompileContextBase<N extends FXGraphNode, V> {
 
   /**
    * Materializes a producer's stored output into a typed expression this node can read.
-   * `from` identifies the producer socket (a render stage-promote needs it).
+   * `from` identifies the producer socket (the render backend checks its stage against this node's).
    */
   protected abstract materializeProducer(
     stored: V,

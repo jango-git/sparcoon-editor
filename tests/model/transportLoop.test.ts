@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TransportStore } from "../../src/model/transport";
-import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
-import { createInitialState } from "../../src/model/editorState";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -40,16 +38,44 @@ describe("TransportStore loop", () => {
   });
 });
 
-describe("timeline loop persistence", () => {
-  it("loads a project saved before the setting existed as looping, and keeps an explicit off", () => {
-    const source = createInitialState().source;
-    const legacy = JSON.parse(serializeProject(source)) as {
-      source: { timeline: Record<string, unknown> };
-    };
-    delete legacy.source.timeline["loop"];
-    expect(deserializeProject(JSON.stringify(legacy))?.timeline.loop).toBe(true);
+describe("TransportStore seek, stop and restart", () => {
+  it("clamps a seek to the timeline, and notifies only when the playhead moves", () => {
+    const store = new TransportStore(() => 1);
+    const notified = vi.fn();
+    store.subscribe(notified);
+    store.seek(2);
+    expect(store.getTime()).toBe(1);
+    store.seek(5);
+    expect(notified).toHaveBeenCalledTimes(1);
+    store.seek(-1);
+    expect(store.getTime()).toBe(0);
+    expect(notified).toHaveBeenCalledTimes(2);
+  });
 
-    const once = { ...source, timeline: { ...source.timeline, loop: false } };
-    expect(deserializeProject(serializeProject(once))?.timeline.loop).toBe(false);
+  it("stops by pausing and rewinding, a no-op once stopped at the start", () => {
+    const { store, tick } = transport(true);
+    tick(400);
+    const notified = vi.fn();
+    store.subscribe(notified);
+    store.stop();
+    expect(store.isPlaying()).toBe(false);
+    expect(store.getTime()).toBe(0);
+    expect(notified).toHaveBeenCalledTimes(1);
+    store.stop();
+    expect(notified).toHaveBeenCalledTimes(1);
+  });
+
+  it("restarts from the start, keeping the play state", () => {
+    const { store, tick } = transport(true);
+    tick(400);
+    store.restart();
+    expect(store.getTime()).toBe(0);
+    expect(store.isPlaying()).toBe(true);
+
+    store.pause();
+    store.seek(0.5);
+    store.restart();
+    expect(store.getTime()).toBe(0);
+    expect(store.isPlaying()).toBe(false);
   });
 });

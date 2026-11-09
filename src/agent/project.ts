@@ -37,13 +37,14 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
   return {
     get: () => serializeProject(target.store.getSource()),
 
-    load: async (json): Promise<SceneView> => {
+    // Loading is synchronous; the agent API still returns a promise, rejecting rather than throwing.
+    load: (json): Promise<SceneView> => {
       const source = deserializeProject(json);
       if (source === undefined) {
-        throw new AgentError("invalid_argument", "Not a readable project file.");
+        return Promise.reject(new AgentError("invalid_argument", "Not a readable project file."));
       }
-      await replaceDocument(target, source);
-      return sceneView(target.store.getSource());
+      replaceDocument(target, source);
+      return Promise.resolve(sceneView(target.store.getSource()));
     },
 
     presets: () => PROJECT_PRESETS.map((preset) => preset.id),
@@ -53,7 +54,7 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
       if (preset === undefined) {
         throw new AgentError("not_found", `No preset "${id}".`);
       }
-      await replaceDocument(target, await loadPresetSource(preset));
+      replaceDocument(target, await loadPresetSource(preset));
       return sceneView(target.store.getSource());
     },
 

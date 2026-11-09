@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { deserializeProject } from "../../src/persistence/projectFile";
 import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
@@ -9,46 +9,27 @@ import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile
  * Node's `fetch` doesn't serve for `file://` URLs - so this reads the checked-in file directly
  * and runs it through the same parser, to catch a shape regression without touching the network path.
  */
+const PRESETS_DIRECTORY = new URL("../../src/persistence/presets/", import.meta.url);
+
 function readBundledPreset(fileName: string): string {
-  return readFileSync(
-    new URL(`../../src/persistence/presets/${fileName}`, import.meta.url),
-    "utf8",
-  );
+  return readFileSync(new URL(fileName, PRESETS_DIRECTORY), "utf8");
 }
 
 describe("bundled project presets", () => {
-  it("lists Empty first, then Sparks, then the showcase effects", () => {
-    expect(PROJECT_PRESETS.map((preset) => preset.id)).toEqual([
-      "empty",
-      "sparks",
-      "campfire",
-      "lightning-crack",
-      "portal",
-      "shield",
-      "fireworks",
-      "fireflies",
-      "destruction",
-    ]);
+  it("lists Empty first (the start-over option), then Sparks, ahead of the showcase effects", () => {
+    // The only ordering contract: the menu opens with Empty and Sparks; the showcase order is free.
     expect(PROJECT_PRESETS[0]).toBe(EMPTY_PRESET);
+    expect(PROJECT_PRESETS[1]).toBe(SPARKS_PRESET);
+  });
+
+  it("lists every bundled preset JSON exactly once", () => {
+    const bundled = readdirSync(PRESETS_DIRECTORY).filter((name) => name.endsWith(".json"));
+    expect(PROJECT_PRESETS.map((preset) => preset.fileName).sort()).toEqual(bundled.sort());
   });
 
   it("every preset has a unique id", () => {
     const ids = PROJECT_PRESETS.map((preset) => preset.id);
     expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("the Sparks preset's bundled JSON parses to a valid document", () => {
-    const source = deserializeProject(readBundledPreset(SPARKS_PRESET.fileName));
-    expect(source).toBeDefined();
-    expect(source?.name).toBe("Sparks");
-    expect(source?.scene.emitters.length).toBeGreaterThan(0);
-  });
-
-  it("the Empty preset's bundled JSON parses to a valid document", () => {
-    const source = deserializeProject(readBundledPreset(EMPTY_PRESET.fileName));
-    expect(source).toBeDefined();
-    expect(source?.name).toBe("Empty");
-    expect(source?.scene.emitters.length).toBeGreaterThan(0);
   });
 
   it("every bundled preset's JSON parses to a document with something in it", () => {

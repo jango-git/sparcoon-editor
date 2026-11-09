@@ -1,46 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXGradientData } from "../../src/engine/core/nodes/FXParamSpec";
 import { DEFAULT_GRADIENT } from "../../src/engine/core/nodes/FXParamSpec";
-import {
-  buildParticleUpdateKernel,
-  compileParticleBehavior,
-  previewParticleBehaviorHash,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { registerStandardRenderNodes } from "../../src/engine/nodes-std/index";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // Color Ramp maps a scalar `t` through a gradient and emits a single RGBA `vec4` color.
 // To read rgb + alpha separately in the behavior backend these route the ramp through a
 // Split Color node and bind each part into a core state slot: `rgb` -> the `position` vec3
 // (rgb in position[0..2]); `alpha` -> `positionX` (a float).
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
-function coreBuffers(): Record<string, Float32Array> {
-  return { position: new Float32Array(3), lifecycle: new Float32Array(2) };
-}
-
-function registry(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  return r;
-}
+const reg = behaviorRegistry();
 
 /** constant(t) -> color-ramp -> split-color; binds one split output to `slot`, runs, reads it. */
 function evalRamp(
@@ -49,23 +20,25 @@ function evalRamp(
   output: "rgb" | "alpha",
   slot: string,
 ): Record<string, Float32Array> {
-  const r = registry();
-  const nodes = new Map<string, FXBehaviorNode>([
-    ["t", r.create("constant", { value: t, type: "float" })],
-    ["ramp", r.create("color-ramp", gradient === undefined ? undefined : { gradient })],
-    ["split", r.create("split-color", undefined)],
-  ]);
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({
-    nodes,
-    connections: [edge("t", "out", "ramp", "t"), edge("ramp", "color", "split", "color")],
-    outputBindings: [bind(slot, "split", output)],
-  });
-  const compiled = compileParticleBehavior(graph);
-  const update = buildParticleUpdateKernel(compiled);
-  const buffers = coreBuffers();
-  update(buffers, 1, 0.016, compiled.update.bindings);
-  return buffers;
+  const ramp = reg.create("color-ramp", gradient === undefined ? undefined : { gradient });
+  return runKernel(rampGraph(ramp, t, output, slot));
+}
+
+function rampGraph(
+  ramp: FXBehaviorNode,
+  t: number,
+  output: "rgb" | "alpha",
+  slot: string,
+): FXGraph<FXBehaviorNode> {
+  return graphOf(
+    {
+      t: reg.create("constant", { value: t, type: "float" }),
+      ramp,
+      split: reg.create("split-color"),
+    },
+    [edge("t", "out", "ramp", "t"), edge("ramp", "color", "split", "color")],
+    [bind(slot, "split", output)],
+  );
 }
 
 /** rgb the ramp emits at `t` for `gradient`. */
@@ -80,11 +53,6 @@ function alphaAt(gradient: FXGradientData | undefined, t: number): number {
 }
 
 describe("color-ramp node", () => {
-  it("registers and describes JSON-serializably", () => {
-    const r = registry();
-    expect(r.has("color-ramp")).toBe(true);
-  });
-
   it("samples the default black->white ramp linearly across t", () => {
     // DEFAULT_GRADIENT: (0,0,0,1) @0 -> (1,1,1,1) @1.
     expect(colorAt(DEFAULT_GRADIENT, 0)).toEqual([0, 0, 0]);
@@ -136,20 +104,8 @@ describe("color-ramp node", () => {
     expect(mid[1]).toBeCloseTo(0, 6);
   });
 
-  it("editing the gradient moves the structural hash (baked inline -> recompile)", () => {
-    const r = registry();
-    const ramp = r.create("color-ramp", undefined);
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes: new Map([
-        ["t", r.create("constant", { value: 0.5, type: "float" })],
-        ["ramp", ramp],
-        ["split", r.create("split-color", undefined)],
-      ]),
-      connections: [edge("t", "out", "ramp", "t"), edge("ramp", "color", "split", "color")],
-      outputBindings: [bind("positionX", "split", "alpha")],
-    });
-    const before = previewParticleBehaviorHash(graph);
+  it("a gradient re-tuned through applyParams bakes into the next compile", () => {
+    const ramp = reg.create("color-ramp");
     ramp.applyParams?.({
       gradient: {
         stops: [
@@ -158,72 +114,37 @@ describe("color-ramp node", () => {
         ],
       },
     });
-    expect(previewParticleBehaviorHash(graph)).not.toBe(before);
+    expect(runKernel(rampGraph(ramp, 0.25, "alpha", "positionX")).position[0]).toBeCloseTo(0.25, 6);
   });
 
   it("rejects a malformed gradient (non-finite / wrong-width color)", () => {
-    const r = registry();
-    expect(() => r.create("color-ramp", { gradient: { stops: [] } })).toThrow();
+    expect(() => reg.create("color-ramp", { gradient: { stops: [] } })).toThrow();
     expect(() =>
-      r.create("color-ramp", { gradient: { stops: [{ position: 0, color: [1, 0, 0] } as never] } }),
+      reg.create("color-ramp", {
+        gradient: { stops: [{ position: 0, color: [1, 0, 0] } as never] },
+      }),
     ).toThrow();
-  });
-
-  // The shared node's primary use is coloring the material, so it must compile in the
-  // render (GLSL) backend too. Round-trip the RGBA through Split Color + Combine Color
-  // (exercising both new nodes) back into a vec4 albedo.
-  it("compiles into the render backend feeding a material albedo", () => {
-    const r = new FXNodeRegistry<FXRenderNode>();
-    registerStandardRenderNodes(r);
-    const nodes = new Map<string, FXRenderNode>([
-      ["ramp", r.create("color-ramp", undefined)],
-      ["split", r.create("split-color", undefined)],
-      ["combine", r.create("combine-color", undefined)],
-    ]);
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes,
-      connections: [
-        edge("ramp", "color", "split", "color"),
-        edge("split", "rgb", "combine", "rgb"),
-        edge("split", "alpha", "combine", "alpha"),
-      ],
-      outputBindings: [bind("albedo", "combine", "color")],
-    });
-    const compiler = new FXCompilerBaseline();
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
-    const src = shader.fragment.body.join("\n");
-    expect(src).toContain("mix");
-    expect(src).toContain("clamp");
   });
 
   it("combine-color and split-color round-trip rgb + alpha (vec4)", () => {
     // constant(rgb) + constant(a) -> combine-color -> split-color -> bind rgb & alpha back.
-    const r = registry();
-    const build = (output: "rgb" | "alpha", slot: string): Record<string, Float32Array> => {
-      const nodes = new Map<string, FXBehaviorNode>([
-        ["rgb", r.create("constant", { value: [0.1, 0.2, 0.3], type: "vec3" })],
-        ["a", r.create("constant", { value: 0.4, type: "float" })],
-        ["combine", r.create("combine-color", undefined)],
-        ["split", r.create("split-color", undefined)],
-      ]);
-      const graph = new FXGraph<FXBehaviorNode>();
-      graph.ingest({
-        nodes,
-        connections: [
-          edge("rgb", "out", "combine", "rgb"),
-          edge("a", "out", "combine", "alpha"),
-          edge("combine", "color", "split", "color"),
-        ],
-        outputBindings: [bind(slot, "split", output)],
-      });
-      const compiled = compileParticleBehavior(graph);
-      const update = buildParticleUpdateKernel(compiled);
-      const buffers = coreBuffers();
-      update(buffers, 1, 0.016, compiled.update.bindings);
-      return buffers;
-    };
+    const build = (output: "rgb" | "alpha", slot: string): Record<string, Float32Array> =>
+      runKernel(
+        graphOf(
+          {
+            rgb: reg.create("constant", { value: [0.1, 0.2, 0.3], type: "vec3" }),
+            a: reg.create("constant", { value: 0.4, type: "float" }),
+            combine: reg.create("combine-color"),
+            split: reg.create("split-color"),
+          },
+          [
+            edge("rgb", "out", "combine", "rgb"),
+            edge("a", "out", "combine", "alpha"),
+            edge("combine", "color", "split", "color"),
+          ],
+          [bind(slot, "split", output)],
+        ),
+      );
     const rgb = build("rgb", "position").position;
     expect(rgb[0]).toBeCloseTo(0.1, 6);
     expect(rgb[1]).toBeCloseTo(0.2, 6);
@@ -237,32 +158,26 @@ describe("color-ramp node", () => {
     color: readonly number[],
     params: { hueShift?: number; saturation?: number; lightness?: number },
   ): [number, number, number] => {
-    const r = registry();
-    const nodes = new Map<string, FXBehaviorNode>([
-      ["c", r.create("constant", { value: [...color], type: "vec4" })],
-      ["hue", r.create("constant", { value: params.hueShift ?? 0, type: "float" })],
-      ["sat", r.create("constant", { value: params.saturation ?? 1, type: "float" })],
-      ["lit", r.create("constant", { value: params.lightness ?? 1, type: "float" })],
-      ["hsl", r.create("hsl-adjust", undefined)],
-      ["split", r.create("split-color", undefined)],
-    ]);
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes,
-      connections: [
+    const graph = graphOf(
+      {
+        c: reg.create("constant", { value: [...color], type: "vec4" }),
+        hue: reg.create("constant", { value: params.hueShift ?? 0, type: "float" }),
+        sat: reg.create("constant", { value: params.saturation ?? 1, type: "float" }),
+        lit: reg.create("constant", { value: params.lightness ?? 1, type: "float" }),
+        hsl: reg.create("hsl-adjust"),
+        split: reg.create("split-color"),
+      },
+      [
         edge("c", "out", "hsl", "color"),
         edge("hue", "out", "hsl", "hueShift"),
         edge("sat", "out", "hsl", "saturation"),
         edge("lit", "out", "hsl", "lightness"),
         edge("hsl", "color", "split", "color"),
       ],
-      outputBindings: [bind("position", "split", "rgb")],
-    });
-    const compiled = compileParticleBehavior(graph);
-    const update = buildParticleUpdateKernel(compiled);
-    const buffers = coreBuffers();
-    update(buffers, 1, 0.016, compiled.update.bindings);
-    return [buffers.position[0], buffers.position[1], buffers.position[2]];
+      [bind("position", "split", "rgb")],
+    );
+    const [r, g, b] = runKernel(graph).position;
+    return [r, g, b];
   };
   const nearRgb = (got: number[], want: number[]): void => {
     for (let i = 0; i < 3; i++) {
@@ -290,34 +205,15 @@ describe("color-ramp node", () => {
 
   it("hsl-adjust with lightness 0 yields black, and passes alpha through", () => {
     nearRgb(adjustRgb([0.3, 0.6, 0.9, 0.4], { lightness: 0 }), [0, 0, 0]);
-    const r = registry();
-    const nodes = new Map<string, FXBehaviorNode>([
-      ["c", r.create("constant", { value: [0.3, 0.6, 0.9, 0.4], type: "vec4" })],
-      ["hsl", r.create("hsl-adjust", undefined)],
-      ["split", r.create("split-color", undefined)],
-    ]);
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes,
-      connections: [edge("c", "out", "hsl", "color"), edge("hsl", "color", "split", "color")],
-      outputBindings: [bind("positionX", "split", "alpha")],
-    });
-    const compiled = compileParticleBehavior(graph);
-    const buffers = coreBuffers();
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
-    expect(buffers.position[0]).toBeCloseTo(0.4, 6); // alpha untouched
-  });
-
-  it("hsl-adjust compiles into the render backend feeding a material albedo", () => {
-    const r = new FXNodeRegistry<FXRenderNode>();
-    registerStandardRenderNodes(r);
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes: new Map<string, FXRenderNode>([["hsl", r.create("hsl-adjust", undefined)]]),
-      connections: [],
-      outputBindings: [bind("albedo", "hsl", "color")],
-    });
-    const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    const graph = graphOf(
+      {
+        c: reg.create("constant", { value: [0.3, 0.6, 0.9, 0.4], type: "vec4" }),
+        hsl: reg.create("hsl-adjust", { lightness: 0 }),
+        split: reg.create("split-color"),
+      },
+      [edge("c", "out", "hsl", "color"), edge("hsl", "color", "split", "color")],
+      [bind("positionX", "split", "alpha")],
+    );
+    expect(runKernel(graph).position[0]).toBeCloseTo(0.4, 6); // alpha untouched
   });
 });

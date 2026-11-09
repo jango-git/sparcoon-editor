@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXConnection } from "../../src/engine/core/FXGraph";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
-  compileParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FXEmitter } from "sparcoon/editor";
-import { FX_POSITION_Y } from "sparcoon";
-import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
-import { attributeSlot, readAttr, readAttrRender, storeAttr } from "../helpers/attr";
+import { behaviorRegistry } from "../helpers/stdRegistry";
+import { attributeSlot, readAttrRender, storeAttr } from "../helpers/attr";
+import { edge } from "../helpers/graphBuild";
+import {
+  expectPlumeBehaviorLayoutMatchesKernel,
+  expectPlumeLaunchesAndSimulates,
+  expectPlumeRenderMatchesDirectCompile,
+  expectPlumeSimulatesLikeDirectCompile,
+  plumeGraphs,
+} from "../helpers/plumeGraphs";
 import {
   compileToArtifacts,
   collectValues,
@@ -25,88 +22,10 @@ import {
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
-/** The same deterministic gravity plume as the emitEffectModule golden test. */
-function plumeGraphs(): { render: FXGraph<FXRenderNode>; behavior: FXGraph<FXBehaviorNode> } {
-  const rr = renderRegistry();
-  const render = new FXGraph<FXRenderNode>();
-  render.ingest({
-    nodes: new Map([["c", rr.create("constant", { type: "vec4", value: [0.6, 0.6, 0.7, 1] })]]),
-    connections: [],
-    outputBindings: [{ slot: "albedo", from: { nodeId: "c", socketKey: "out" } }],
-  });
-
-  const br = behaviorRegistry();
-  const behavior = new FXGraph<FXBehaviorNode>();
-  behavior.ingest({
-    nodes: new Map<string, FXBehaviorNode>([
-      ["life", br.create("lifetime", { min: 2, max: 2 })],
-      ["pos", br.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] })],
-      ["iv", br.create("initial-velocity", { direction: [0, 1, 0], speed: [1, 1] })],
-      ["svs", storeAttr("velocity", VEC3, FXBehaviorPhase.SPAWN)],
-      ["rv", readAttr("velocity", VEC3)],
-      ["g", br.create("gravity", { acceleration: [0, -9.8, 0] })],
-      ["svu", storeAttr("velocity", VEC3)],
-      ["im", br.create("integrate-motion")],
-    ]),
-    connections: [
-      edge("iv", "velocity", "svs", "value"),
-      edge("rv", "value", "g", "velocity"),
-      edge("g", "velocity", "svu", "value"),
-      edge("g", "velocity", "im", "velocity"),
-    ],
-    outputBindings: [
-      { slot: "lifetime", from: { nodeId: "life", socketKey: "value" } },
-      { slot: "position", from: { nodeId: "pos", socketKey: "position" } },
-      { slot: attributeSlot("velocity"), from: { nodeId: "svs", socketKey: "value" } },
-      { slot: attributeSlot("velocity"), from: { nodeId: "svu", socketKey: "value" } },
-      { slot: "position", from: { nodeId: "im", socketKey: "position" } },
-    ],
-  });
-
-  return { render, behavior };
-}
-
-const COUNT = 3;
-const DT = 0.016;
-
-function buffersFor(kernel: FXCompiledKernel, count: number): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of kernel.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * count);
-  }
-  return buffers;
-}
-
-/** The minimal shape `meshOf` needs from `FXEmitter`'s private `mesh` field - reading it this way,
- *  instead of importing the runtime's internal `FXInstancedParticle` type, keeps the test off the
- *  package boundary's non-public surface. */
-interface ParticleMesh {
-  readonly propertyBuffers: Record<string, { readonly array: Float32Array }>;
-}
-
-function meshOf(emitter: FXEmitter): ParticleMesh {
-  return (emitter as unknown as { mesh: ParticleMesh }).mesh;
-}
-
 describe("compileToArtifacts", () => {
   it("the render artifact matches a direct compile", () => {
     const { render, behavior } = plumeGraphs();
-    const shader = new FXCompilerBaseline().compile(render, buildParticleTarget([]));
-    const artifact = compileToArtifacts(render, behavior).render;
-
-    expect(artifact.lightingIntrinsics).toEqual([]);
-    expect(artifact.uniformDeclarations).toEqual(shader.uniformDeclarations);
-    expect(artifact.vertex.body).toEqual(shader.vertex.body);
-    expect(artifact.fragment.body).toEqual(shader.fragment.body);
-    expect(artifact.outputs).toEqual(shader.outputs);
-    expect(artifact.attributeReads).toEqual([]);
+    expectPlumeRenderMatchesDirectCompile(compileToArtifacts(render, behavior).render, render);
   });
 
   it("threads renderMode into the render artifact options and the rebuild hash", () => {
@@ -126,56 +45,18 @@ describe("compileToArtifacts", () => {
 
   it("the behavior artifact carries the same buffer layout + written set", () => {
     const { render, behavior } = plumeGraphs();
-    const kernel = compileParticleBehavior(behavior);
-    const artifact = compileToArtifacts(render, behavior).behavior;
-
-    expect(artifact.buffers).toEqual(kernel.update.buffers);
-    expect(artifact.updateWrittenBuffers).toEqual(kernel.update.writtenBuffers);
-    expect(artifact.spawnWrittenBuffers).toEqual(kernel.spawn?.writtenBuffers);
-    expect(artifact.attributeWrites).toEqual([{ name: "velocity", components: 3 }]);
+    expectPlumeBehaviorLayoutMatchesKernel(compileToArtifacts(render, behavior).behavior, behavior);
   });
 
   it("spawn/update simulate identically to a direct compile (equivalence)", () => {
     const { render, behavior } = plumeGraphs();
-    const kernel = compileParticleBehavior(behavior);
-    const directSpawn = buildParticleSpawnKernel(kernel);
-    const directUpdate = buildParticleUpdateKernel(kernel);
-
-    const direct = buffersFor(kernel, COUNT);
-    directSpawn(direct, 0, COUNT, kernel.spawn?.bindings ?? {});
-    directUpdate(direct, COUNT, DT, kernel.update.bindings);
-
-    const artifact = compileToArtifacts(render, behavior).behavior;
-    const viaArtifact = buffersFor(kernel, COUNT);
-    artifact.spawn?.(viaArtifact, 0, COUNT, artifact.bindings);
-    artifact.update(viaArtifact, COUNT, DT, artifact.bindings);
-
-    for (const name of Object.keys(direct)) {
-      expect([...viaArtifact[name]], name).toEqual([...direct[name]]);
-    }
-    expect(viaArtifact.position.some((v) => v !== 0)).toBe(true);
-    expect(viaArtifact.velocity.some((v) => v !== 0)).toBe(true);
+    expectPlumeSimulatesLikeDirectCompile(compileToArtifacts(render, behavior).behavior, behavior);
   });
 
   it("launches through FXEmitter.fromArtifacts and simulates", () => {
     const { render, behavior } = plumeGraphs();
-    const { render: renderArtifact, behavior: behaviorArtifact } = compileToArtifacts(
-      render,
-      behavior,
-    );
-
-    const emitter = FXEmitter.fromArtifacts(renderArtifact, behaviorArtifact);
-    try {
-      emitter.burst(4);
-      expect(emitter.particleCount).toBe(4);
-      expect(meshOf(emitter).propertyBuffers.position.array[FX_POSITION_Y]).toBe(0);
-
-      emitter.prewarm(0.2);
-      expect(emitter.particleCount).toBe(4);
-      expect(meshOf(emitter).propertyBuffers.position.array[FX_POSITION_Y]).not.toBe(0);
-    } finally {
-      emitter.destroy();
-    }
+    const artifacts = compileToArtifacts(render, behavior);
+    expectPlumeLaunchesAndSimulates(artifacts.render, artifacts.behavior);
   });
 
   it("collectValues projects the same slots the artifact declares (rebind channel)", () => {

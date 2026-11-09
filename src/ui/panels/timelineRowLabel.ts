@@ -24,10 +24,16 @@ import { actionIcons, icon, timelineIcons, viewportIcons } from "../icons";
 /** Clicks needed to confirm a row remove: three, so a stray click never deletes an object. */
 const REMOVE_CLICKS = 3;
 
-/** Actions offered on an emitter row's label (adding a spawn event at the playhead). */
+/** Actions offered on an emitter row's label (adding a spawn event at the playhead, or a death
+ *  reaction from a menu anchored on the button). */
 export interface RowEventActions {
   readonly addBurst: () => void;
   readonly addPlay: () => void;
+  readonly addReaction: (anchor: HTMLElement) => void;
+  /** The names of the emitters reacting to this one's particles' deaths, in scene order. */
+  readonly triggers: readonly string[];
+  /** Goes to the first of them (the link shown while {@link triggers} is not empty). */
+  readonly showTriggers: () => void;
 }
 
 /** A small object-kind badge shown before an entity's name in its timeline row. */
@@ -92,6 +98,32 @@ function buildLiveEventsToggle(live: boolean, onToggle: () => void): HTMLElement
   return button;
 }
 
+/** Adds a death reaction: opens the menu of what this emitter may react to, under the button. */
+function buildAddReactionButton(addReaction: (anchor: HTMLElement) => void): HTMLElement {
+  const button = rowActionButton(
+    timelineIcons.reaction,
+    t("timeline.addReaction"),
+    t("timeline.addReactionTip"),
+    () => addReaction(button),
+  );
+  return button;
+}
+
+/**
+ * The link on a death source's row: lit and shown at rest (like the live toggle), naming who
+ * reacts to its particles' deaths; a click goes there.
+ */
+function buildTriggersLink(triggers: readonly string[], show: () => void): HTMLElement {
+  const button = rowActionButton(
+    timelineIcons.reaction,
+    t("timeline.triggers"),
+    t("timeline.triggersTip", { targets: triggers.join(", ") }),
+    show,
+  );
+  button.classList.add("is-linked");
+  return button;
+}
+
 /** A small square-bordered row-action button (add burst / play / key) with a title+description tip. */
 export function rowActionButton(
   glyph: string,
@@ -136,8 +168,14 @@ function buildRowLabel(config: RowLabelConfig): HTMLElement {
         t("timeline.addPlayTip"),
         config.eventActions.addPlay,
       ),
+      buildAddReactionButton(config.eventActions.addReaction),
       buildLiveEventsToggle(config.eventActions.live, config.eventActions.toggleLive),
     );
+    if (config.eventActions.triggers.length > 0) {
+      children.push(
+        buildTriggersLink(config.eventActions.triggers, config.eventActions.showTriggers),
+      );
+    }
   }
   // The mute eye sits right before Remove, always visible (unlike the hover-only row actions), so
   // hidden objects read at a glance even on a resting timeline.

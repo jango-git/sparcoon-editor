@@ -6,6 +6,7 @@
 import {
   DEFAULT_PLAY_DURATION,
   moveTrackKeyframes,
+  removeReaction,
   moveTransformKeyframes,
   removeEvent,
   removeKeyframe,
@@ -15,13 +16,18 @@ import {
   setTransformKeyframeEase,
   setTransformKeyframeValue,
   updateEvent,
+  updateReaction,
+  type SpawnActionPatch,
 } from "../../model/commands";
+import { reactionSourceCandidates } from "../../domain/deathReactions";
+import type { DeathReaction, EmitterDoc, SpawnAction } from "../../model/editorState";
 import { t } from "../../i18n";
 import { frameOf, timeOfFrame } from "../../model/frames";
 import type { Store } from "../../model/store";
 import { clearChildren } from "../dom";
 import {
   channelValueEditor,
+  dropdownField,
   durationField,
   easeField,
   inspectorField,
@@ -104,39 +110,13 @@ function renderEventInspector(ref: ItemRef, ctx: InspectorContext): void {
       (frame) => updateEvent(store, emitterId, ref.id, { time: timeOfFrame(frame, fps()) }, true),
     ),
   );
-  if (event.kind === "burst") {
-    inspector.append(
-      inspectorField(
-        t("field.count"),
-        event.count,
-        { min: 0, step: 1, precision: 0 },
-        (count) => updateEvent(store, emitterId, ref.id, { count }),
-        t("timeline.countTip"),
-        (count) => updateEvent(store, emitterId, ref.id, { count }, true),
-      ),
-    );
-  } else {
-    inspector.append(
-      inspectorField(
-        t("field.rate"),
-        event.rate,
-        { min: 0, step: 0.1 },
-        (rate) => updateEvent(store, emitterId, ref.id, { rate }),
-        t("timeline.rateTip"),
-        (rate) => updateEvent(store, emitterId, ref.id, { rate }, true),
-      ),
-      durationField(
-        event.duration,
-        (durationValue) => updateEvent(store, emitterId, ref.id, { duration: durationValue }),
-        () =>
-          updateEvent(store, emitterId, ref.id, {
-            duration: event.duration <= 0 ? DEFAULT_PLAY_DURATION : 0,
-          }),
-        t("timeline.durationTip"),
-        (durationValue) => updateEvent(store, emitterId, ref.id, { duration: durationValue }, true),
-      ),
-    );
-  }
+  inspector.append(
+    ...spawnActionFields(
+      event,
+      (patch, live) => updateEvent(store, emitterId, ref.id, patch, live),
+      true,
+    ),
+  );
   inspector.append(
     inspectorRemove(() => removeEvent(store, emitterId, ref.id), t("timeline.removeItemTip")),
   );
@@ -228,6 +208,94 @@ function renderTransformKeyframeInspector(ref: ItemRef, ctx: InspectorContext): 
     inspectorRemove(
       () => removeTransformKeyframe(store, ref.entity, ref.id),
       t("timeline.removeItemTip"),
+    ),
+  );
+}
+
+/** A partial edit of a spawn action, previewed live (no history entry) or committed. */
+type SpawnActionCommit = (patch: SpawnActionPatch, live: boolean) => void;
+
+/**
+ * The fields of a spawn action - an event's or a reaction's: the burst count, or the play rate and
+ * duration. Only an event's play may run forever (`allowInfinite`); a reaction's lasts at least a
+ * frame.
+ */
+function spawnActionFields(
+  action: SpawnAction,
+  commit: SpawnActionCommit,
+  allowInfinite: boolean,
+): HTMLElement[] {
+  if (action.kind === "burst") {
+    return [
+      inspectorField(
+        t("field.count"),
+        action.count,
+        { min: 0, step: 1, precision: 0 },
+        (count) => commit({ count }, false),
+        t("timeline.countTip"),
+        (count) => commit({ count }, true),
+      ),
+    ];
+  }
+  const rate = inspectorField(
+    t("field.rate"),
+    action.rate,
+    { min: 0, step: 0.1 },
+    (value) => commit({ rate: value }, false),
+    t("timeline.rateTip"),
+    (value) => commit({ rate: value }, true),
+  );
+  const duration = allowInfinite
+    ? durationField(
+        action.duration,
+        (value) => commit({ duration: value }, false),
+        () => commit({ duration: action.duration <= 0 ? DEFAULT_PLAY_DURATION : 0 }, false),
+        t("timeline.durationTip"),
+        (value) => commit({ duration: value }, true),
+      )
+    : inspectorField(
+        t("field.duration"),
+        action.duration,
+        { min: 0, step: 0.1 },
+        (value) => commit({ duration: value }, false),
+        t("timeline.reactionDurationTip"),
+        (value) => commit({ duration: value }, true),
+      );
+  return [rate, duration];
+}
+
+/**
+ * The inspector for one death reaction of `target` (picked from its timeline sub-row, not the time
+ * selection): what it reacts to - any emitter that closes no cycle - and its action.
+ */
+export function renderReactionInspector(
+  inspector: HTMLElement,
+  store: Store,
+  target: EmitterDoc,
+  reaction: DeathReaction,
+): void {
+  clearChildren(inspector);
+  const emitters = store.getSource().scene.emitters;
+  inspector.append(
+    inspectorTitle(t(reaction.kind === "burst" ? "timeline.burstOnDeath" : "timeline.playOnDeath")),
+    dropdownField(
+      t("timeline.reactionSource"),
+      reactionSourceCandidates(emitters, target.id, reaction.id).map((emitter) => ({
+        value: emitter.id,
+        label: emitter.name,
+      })),
+      reaction.source,
+      (source) => updateReaction(store, target.id, reaction.id, { source }),
+      t("timeline.reactionSourceTip"),
+    ),
+    ...spawnActionFields(
+      reaction,
+      (patch, live) => updateReaction(store, target.id, reaction.id, patch, live),
+      false,
+    ),
+    inspectorRemove(
+      () => removeReaction(store, target.id, reaction.id),
+      t("timeline.removeReactionTip"),
     ),
   );
 }

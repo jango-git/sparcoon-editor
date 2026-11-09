@@ -1,7 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
   buildParticleSpawnKernel,
@@ -9,44 +6,16 @@ import {
   compileParticleBehavior,
   validateParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 import { attributeSlot, readAttrComponents, storeAttr } from "../helpers/attr";
+import { bind, buffersFor, edge, graphOf } from "../helpers/graphBuild";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 const FLOAT = FX_VALUE_TYPES.float;
 
 const reg = behaviorRegistry();
-
-function graphOf(
-  nodes: Record<string, FXBehaviorNode>,
-  connections: readonly FXConnection[],
-  outputBindings: readonly FXOutputBinding[],
-): FXGraph<FXBehaviorNode> {
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({ nodes: new Map(Object.entries(nodes)), connections, outputBindings });
-  return graph;
-}
-
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
-function buffersFor(compiled: FXCompiledKernel, count: number): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of compiled.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * count);
-  }
-  return buffers;
-}
 
 describe("custom-attribute-split behavior node", () => {
   it("declares its attribute request and cache key like custom-attribute", () => {
@@ -125,24 +94,5 @@ describe("custom-attribute-split behavior node", () => {
     buffers["seed"][0] = 0.7;
     buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBeCloseTo(0.7, 6);
-  });
-
-  it("reads a user attribute in the spawn phase when its consumer is spawn-only (editor path)", () => {
-    // Mirrors custom-attribute's own inference test: no explicit phase on the reader, but a
-    // spawn-only consumer pulls it into spawn instead of erroring cross-phase-dependency.
-    const graph = graphOf(
-      {
-        rd: readAttrComponents("src", FLOAT), // default UPDATE nominal, phase-flexible
-        st: storeAttr("dst", FLOAT, FXBehaviorPhase.SPAWN),
-      },
-      [edge("rd", "x", "st", "value")],
-      [bind(attributeSlot("dst"), "st", "value")],
-    );
-    expect(validateParticleBehavior(graph).ok).toBe(true);
-    const compiled = compileParticleBehavior(graph);
-    const buffers = buffersFor(compiled, 1);
-    buffers["src"][0] = 42;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
-    expect(buffers["dst"][0]).toBe(42);
   });
 });

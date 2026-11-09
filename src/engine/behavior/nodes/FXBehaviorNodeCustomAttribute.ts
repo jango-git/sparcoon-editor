@@ -58,6 +58,10 @@ export class FXBehaviorNodeCustomAttribute extends FXBehaviorNode {
     this.outputs = [{ key: "value", type: this.valueType }];
   }
 
+  public override get targetReads(): readonly string[] {
+    return [this.targetInput];
+  }
+
   /** Palette metadata (category `attribute`; reads a named attribute, writes nothing). */
   public static describe(): FXNodeMeta {
     return BEHAVIOR_CUSTOM_ATTRIBUTE_META;

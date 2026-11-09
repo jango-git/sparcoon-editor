@@ -1,37 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
-import {
-  registerStandardBehaviorNodes,
-  registerStandardRenderNodes,
-} from "../../src/engine/nodes-std/index";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
+import { fullBehaviorRegistry, fullRenderRegistry } from "../helpers/stdRegistry";
 
 // The whole point of the registrars: a host merges FX_MANUAL_NODE_METAS into its palette
-// and registers these - no hand-written per-type factory map (M3). None of the surviving
+// and registers these - no hand-written per-type factory map. None of the surviving
 // manual render nodes own a `three` resource (custom-attribute reads a varying,
 // builtin-attribute reads a target input directly, timeline-value is a value uniform,
 // texture binds an external sampler by name), so they register with no host resolver.
-function renderReg(): FXNodeRegistry<FXRenderNode> {
-  const r = new FXNodeRegistry<FXRenderNode>();
-  registerStandardRenderNodes(r);
-  registerManualRenderNodes(r);
-  return r;
-}
-
-function behaviorReg(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  registerManualBehaviorNodes(r);
-  return r;
-}
-
-describe("manual node factory registrars (M3)", () => {
+describe("manual node factory registrars", () => {
   it("registers the manual nodes with no host resolver", () => {
-    const render = renderReg();
+    const render = fullRenderRegistry();
     for (const type of [
       "custom-attribute",
       "custom-attribute-split",
@@ -41,7 +19,7 @@ describe("manual node factory registrars (M3)", () => {
     ]) {
       expect(render.has(type)).toBe(true);
     }
-    const behavior = behaviorReg();
+    const behavior = fullBehaviorRegistry();
     for (const type of [
       "custom-attribute",
       "custom-attribute-split",
@@ -57,29 +35,29 @@ describe("manual node factory registrars (M3)", () => {
     const metaByType = new Map(FX_MANUAL_NODE_METAS.map((m) => [m.type, m]));
     // custom-attribute (render) and store-attribute (behavior) declare name as a required
     // attribute-name customParam; the factory must reject a missing name.
-    const render = renderReg();
-    const behavior = behaviorReg();
+    const render = fullRenderRegistry();
+    const behavior = fullBehaviorRegistry();
     for (const type of ["custom-attribute", "store-attribute"]) {
       const meta = metaByType.get(type);
       const custom = meta?.customParams?.find((c) => c.kind === "attribute-name");
       expect(custom?.required).toBe(true);
-      const reg =
+      const create = (): unknown =>
         type === "custom-attribute"
-          ? render
-          : (behavior as unknown as FXNodeRegistry<FXRenderNode>);
-      expect(() => reg.create(type, { name: "bad-name", type: "vec4" })).toThrow();
+          ? render.create(type, { name: "bad-name", type: "vec4" })
+          : behavior.create(type, { name: "bad-name", type: "vec4" });
+      expect(create).toThrow();
     }
   });
 });
 
-describe("custom-attribute factory strictness (audit-4 N5)", () => {
+describe("custom-attribute factory strictness", () => {
   it("rejects a missing name rather than minting an fx_undefined buffer", () => {
-    const reg = renderReg();
+    const reg = fullRenderRegistry();
     expect(() => reg.create("custom-attribute", { type: "vec4" })).toThrow();
   });
 
   it("rejects a malformed stage rather than silently coercing to fragment", () => {
-    const reg = renderReg();
+    const reg = fullRenderRegistry();
     expect(() =>
       reg.create("custom-attribute", { name: "tint", type: "vec4", stage: "Vertex" }),
     ).toThrow();
@@ -89,7 +67,7 @@ describe("custom-attribute factory strictness (audit-4 N5)", () => {
   });
 
   it("accepts the documented stages (and an absent stage defaults to fragment)", () => {
-    const reg = renderReg();
+    const reg = fullRenderRegistry();
     expect(() =>
       reg.create("custom-attribute", { name: "tint", type: "vec4", stage: "vertex" }),
     ).not.toThrow();
@@ -100,9 +78,9 @@ describe("custom-attribute factory strictness (audit-4 N5)", () => {
   });
 });
 
-describe("behavior manual-node phase strictness (audit-4 N5)", () => {
+describe("behavior manual-node phase strictness", () => {
   it("rejects a malformed phase rather than silently defaulting", () => {
-    const reg = behaviorReg();
+    const reg = fullBehaviorRegistry();
     for (const type of ["store-attribute", "custom-attribute"]) {
       expect(() => reg.create(type, { name: "tint", type: "vec4", phase: "Spawn" })).toThrow();
       expect(() => reg.create(type, { name: "tint", type: "vec4", phase: 42 })).toThrow();
@@ -110,7 +88,7 @@ describe("behavior manual-node phase strictness (audit-4 N5)", () => {
   });
 
   it("accepts the documented phases (and an absent phase keeps the per-node default)", () => {
-    const reg = behaviorReg();
+    const reg = fullBehaviorRegistry();
     for (const type of ["store-attribute", "custom-attribute"]) {
       expect(() => reg.create(type, { name: "tint", type: "vec4", phase: "spawn" })).not.toThrow();
       expect(() => reg.create(type, { name: "tint", type: "vec4", phase: "update" })).not.toThrow();
@@ -121,9 +99,9 @@ describe("behavior manual-node phase strictness (audit-4 N5)", () => {
 
 describe("builtin-attribute factory (no params, no attribute-name customParam)", () => {
   it("creates successfully with no parameters at all, on both backends", () => {
-    expect(() => renderReg().create("builtin-attribute", {})).not.toThrow();
-    expect(() => renderReg().create("builtin-attribute", undefined)).not.toThrow();
-    expect(() => behaviorReg().create("builtin-attribute", {})).not.toThrow();
+    expect(() => fullRenderRegistry().create("builtin-attribute", {})).not.toThrow();
+    expect(() => fullRenderRegistry().create("builtin-attribute", undefined)).not.toThrow();
+    expect(() => fullBehaviorRegistry().create("builtin-attribute", {})).not.toThrow();
   });
 
   it("declares no attribute-name customParam - it is never driven by a name picker", () => {

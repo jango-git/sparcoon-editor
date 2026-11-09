@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
@@ -12,6 +11,7 @@ import {
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
+import { bind, edge, graphOf } from "../helpers/graphBuild";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
@@ -23,17 +23,6 @@ const OFF_VELOCITY_Y = 1;
 const VEC3 = FX_VALUE_TYPES.vec3;
 const velocityTargets = buildParticleBehaviorTargets([{ name: "velocity", type: VEC3 }]);
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
 /** Fresh per-particle state buffers (one particle) for the velocity-attribute targets. */
 function freshBuffers(): Record<string, Float32Array> {
   return {
@@ -44,7 +33,7 @@ function freshBuffers(): Record<string, Float32Array> {
 }
 
 // A behavior node authored purely declaratively: `v += acceleration * dt`. Its velocity
-// input defaults to a zero vector (velocity is no longer a target builtin).
+// input defaults to a zero vector (velocity is a user attribute, not a target builtin).
 const gravityDef = defineNode({
   type: "test-gravity",
   domain: "behavior",
@@ -74,17 +63,11 @@ const colorDef = defineNode({
 
 /** custom-attribute(velocity) -> node -> store-attribute(velocity), bound to `attr:velocity`. */
 function velocityGraph(node: FXBehaviorNode): FXGraph<FXBehaviorNode> {
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({
-    nodes: new Map([
-      ["rv", readAttr("velocity", VEC3)],
-      ["g", node],
-      ["sv", storeAttr("velocity", VEC3)],
-    ]),
-    connections: [edge("rv", "value", "g", "velocity"), edge("g", "velocity", "sv", "value")],
-    outputBindings: [bind(attributeSlot("velocity"), "sv", "value")],
-  });
-  return graph;
+  return graphOf(
+    { rv: readAttr("velocity", VEC3), g: node, sv: storeAttr("velocity", VEC3) },
+    [edge("rv", "value", "g", "velocity"), edge("g", "velocity", "sv", "value")],
+    [bind(attributeSlot("velocity"), "sv", "value")],
+  );
 }
 
 describe("defineNode - behavior backend", () => {
@@ -128,12 +111,7 @@ describe("defineNode - behavior backend", () => {
 describe("defineNode - render backend", () => {
   it("compiles a vec4 value param into one uniform bound to albedo", () => {
     const node = colorDef.createInstance("render") as unknown as FXRenderNode;
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes: new Map([["c", node]]),
-      connections: [],
-      outputBindings: [bind("albedo", "c", "color")],
-    });
+    const graph = graphOf({ c: node }, [], [bind("albedo", "c", "color")]);
 
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
     expect(shader.outputs["albedo"]).toBeDefined();
@@ -177,9 +155,8 @@ describe("defineNode - structural params & metadata", () => {
     expect(node.cacheKey?.()).not.toBe(base); // structural edit does
   });
 
-  it("describe() is JSON-serializable and carries the schema", () => {
+  it("describe() carries the param and input schema", () => {
     const meta = opDef.describe();
-    expect(() => JSON.stringify(meta)).not.toThrow();
     expect(meta.type).toBe("test-op");
     expect(meta.domain).toBe("shared");
     expect(meta.params["op"]).toEqual({
@@ -201,8 +178,8 @@ describe("defineNode - structural params & metadata", () => {
   });
 });
 
-describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
-  it("C4: a required input with a default validates when unconnected", () => {
+describe("defineNode - descriptor-contract guards", () => {
+  it("a required input with a default validates when unconnected", () => {
     const def = defineNode({
       type: "test-c4",
       domain: "render",
@@ -215,19 +192,14 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
       build: ({ inputs }) => ({ out: inputs["tint"] }),
     });
     const node = def.createInstance("render") as unknown as FXRenderNode;
-    const graph = new FXGraph<FXRenderNode>();
-    graph.ingest({
-      nodes: new Map([["n", node]]),
-      connections: [],
-      outputBindings: [bind("albedo", "n", "out")],
-    });
+    const graph = graphOf({ n: node }, [], [bind("albedo", "n", "out")]);
     const result = new FXCompilerBaseline().validate(graph, FX_PARTICLE_TARGET);
-    // Without C4 the dropped default made this a spurious missing-required-input.
+    // The default satisfies the required input, so no missing-required-input is raised.
     expect(result.errors.some((error) => error.code === "missing-required-input")).toBe(false);
     expect(result.ok).toBe(true);
   });
 
-  it("C5: rejects a socket key that is not an identifier", () => {
+  it("rejects a socket key that is not an identifier", () => {
     expect(() =>
       defineNode({
         type: "test-c5-socket",
@@ -242,7 +214,7 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
     ).toThrow(/socket key/);
   });
 
-  it("C5: cacheKey is delimiter-safe for enum options containing ':' or '='", () => {
+  it("cacheKey is delimiter-safe for enum options containing ':' or '='", () => {
     const def = defineNode({
       type: "test-c5-key",
       domain: "shared",
@@ -261,11 +233,11 @@ describe("defineNode - descriptor-contract guards (audit-4 C4/C5/N7)", () => {
     const n2 = def.createInstance("behavior");
     n2.applyParams?.({ a: "x", b: "q" });
     expect(n1.cacheKey?.()).not.toBe(n2.cacheKey?.());
-    // JSON-encoded parts: a value's ':'/'=' can no longer bleed into the join.
+    // JSON-encoded parts: a value's ':'/'=' cannot bleed into the join.
     expect(() => JSON.parse(n1.cacheKey?.() ?? "")).not.toThrow();
   });
 
-  it("N7: rejects a vecN value param whose default width mismatches the type", () => {
+  it("rejects a vecN value param whose default width mismatches the type", () => {
     expect(() =>
       defineNode({
         type: "test-n7",

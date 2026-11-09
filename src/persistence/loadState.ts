@@ -13,6 +13,7 @@ import {
   RENDER_SINK_ID,
   type RenderHost,
 } from "../domain/nodePalette";
+import { withValidReactions } from "../domain/deathReactions";
 import { ensureSinks } from "../domain/sinks";
 import {
   seedIdentifierCounterFromRawSource,
@@ -24,6 +25,7 @@ import {
   DEFAULT_EMITTER_SETTINGS,
   DEFAULT_TIMELINE,
   type AnimationTrack,
+  type DeathReaction,
   type EditorState,
   type EmitterDoc,
   type EmitterSettings,
@@ -32,6 +34,7 @@ import {
   type MeshAsset,
   type PaletteSwatch,
   type SourceState,
+  type SpawnAction,
   type TextureAsset,
   type TimelineEvent,
   type TimelineState,
@@ -49,8 +52,7 @@ import {
 } from "../model/transform";
 import { asKeyEase } from "sparcoon/editor";
 import { asFiniteNumber, asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
-import { getEnvironmentBlob, putEnvironmentBlob } from "./environmentBlobStore";
-import { loadSource } from "./localStore";
+import { hydrateSource, loadSource } from "./localStore";
 import { migrateRenamedInputs } from "./renamedInputs";
 
 /** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
@@ -71,38 +73,13 @@ async function restoreSource(): Promise<SourceState | undefined> {
     // id (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
     seedIdentifierCounterFromRawSource(raw);
     const normalized = normalizeSource(raw);
-    return normalized === undefined ? undefined : await hydrateEnvironments(normalized);
+    return normalized === undefined ? undefined : await hydrateSource(normalized);
   } catch (error) {
     // Belt-and-suspenders: normalize defaults every field, but an unforeseen shape must still
     // start fresh rather than brick the editor.
     console.warn("Discarding an unreadable saved document; starting fresh", error);
     return undefined;
   }
-}
-
-/**
- * Refills each HDRI's `dataUrl` (stripped from localStorage - see `localStore.ts`) from IndexedDB.
- * A document saved before HDRI bytes moved to IndexedDB still carries its full `dataUrl` here
- * (normalizeEnvironments read it straight off the old localStorage entry); that legacy value is
- * migrated into IndexedDB now; so it survives the next save's strip instead of being silently lost.
- * A blob missing from both (storage cleared) leaves the asset's `dataUrl` empty; the environment
- * registry just fails its decode.
- */
-async function hydrateEnvironments(source: SourceState): Promise<SourceState> {
-  if (source.environments.length === 0) {
-    return source;
-  }
-  const environments = await Promise.all(
-    source.environments.map(async (asset) => {
-      if (asset.dataUrl !== "") {
-        void putEnvironmentBlob(asset.name, asset.dataUrl);
-        return asset;
-      }
-      const dataUrl = await getEnvironmentBlob(asset.name);
-      return dataUrl === undefined ? asset : { ...asset, dataUrl };
-    }),
-  );
-  return { ...source, environments };
 }
 
 /** Guarantees a persisted graph's structural containers so a missing/non-object field can't crash
@@ -143,9 +120,12 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
     return undefined;
   }
   const rawEmitters = Array.isArray(scene["emitters"]) ? scene["emitters"] : [];
-  const emitters = rawEmitters
-    .map(normalizeEmitter)
-    .filter((emitter): emitter is EmitterDoc => emitter !== undefined);
+  // Reactions last, across the whole scene: a source must survive, and none may close a cycle.
+  const emitters = withValidReactions(
+    rawEmitters
+      .map(normalizeEmitter)
+      .filter((emitter): emitter is EmitterDoc => emitter !== undefined),
+  );
   const meshes = normalizeMeshes(scene["meshes"]);
   // An effect may be meshes only, but not nothing at all.
   if (emitters.length === 0 && meshes.length === 0) {
@@ -390,6 +370,7 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     settings: normalizeSettings(value["settings"]),
     tracks: normalizeTracks(value["tracks"]),
     events: normalizeEvents(value["events"]),
+    reactions: normalizeReactions(value["reactions"]),
     transform: normalizeTransform(value["transform"]),
     transformTracks: normalizeTransformTracks(value["transformTracks"]),
     liveChannels: normalizeLiveChannels(value["liveChannels"]),
@@ -531,26 +512,54 @@ function normalizeEvents(raw: unknown): readonly TimelineEvent[] {
       continue;
     }
     const time = value["time"];
-    if (!isFiniteNumber(time)) {
-      continue;
-    }
-    if (value["kind"] === "burst" && isFiniteNumber(value["count"])) {
-      events.push({ id: value["id"], kind: "burst", time, count: value["count"] });
-    } else if (
-      value["kind"] === "play" &&
-      isFiniteNumber(value["rate"]) &&
-      isFiniteNumber(value["duration"])
-    ) {
-      events.push({
-        id: value["id"],
-        kind: "play",
-        time,
-        rate: value["rate"],
-        duration: value["duration"],
-      });
+    const action = normalizeSpawnAction(value);
+    if (isFiniteNumber(time) && action !== undefined) {
+      events.push({ ...action, id: value["id"], time });
     }
   }
   return events.sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Keeps only well-formed persisted death reactions (a corrupt one is dropped, not fatal - and so is
+ * a play without end, which no reaction may be). Whether each source exists, and cycles, are
+ * checked across the scene ({@link withValidReactions}).
+ */
+function normalizeReactions(raw: unknown): readonly DeathReaction[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const reactions: DeathReaction[] = [];
+  for (const value of raw) {
+    if (!isRecord(value) || typeof value["id"] !== "string") {
+      continue;
+    }
+    const source = value["source"];
+    const action = normalizeSpawnAction(value);
+    if (
+      typeof source === "string" &&
+      action !== undefined &&
+      (action.kind === "burst" || action.duration > 0)
+    ) {
+      reactions.push({ ...action, id: value["id"], source });
+    }
+  }
+  return reactions;
+}
+
+/** The spawn action a persisted event or reaction carries, if well-formed. */
+function normalizeSpawnAction(value: Record<string, unknown>): SpawnAction | undefined {
+  if (value["kind"] === "burst" && isFiniteNumber(value["count"])) {
+    return { kind: "burst", count: value["count"] };
+  }
+  if (
+    value["kind"] === "play" &&
+    isFiniteNumber(value["rate"]) &&
+    isFiniteNumber(value["duration"])
+  ) {
+    return { kind: "play", rate: value["rate"], duration: value["duration"] };
+  }
+  return undefined;
 }
 
 /**

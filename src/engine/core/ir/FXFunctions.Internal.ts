@@ -763,6 +763,12 @@ function buildFunctions(): Map<string, FXFunctionDef> {
 /** The canonical, backend-neutral function registry. */
 export const FX_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = buildFunctions();
 
+/** Whether `fn` is one of {@link FX_FUNCTIONS}' impure functions (`rand`), which no pass may share
+ *  or move. */
+export function isImpureFunction(fn: string): boolean {
+  return FX_FUNCTIONS.get(fn)?.impure === true;
+}
+
 /**
  * Extracts the call-signature registry from a function-definition map, for `createBuilders` to
  * bind a backend's `call` against - each backend derives its own map from its own function set.

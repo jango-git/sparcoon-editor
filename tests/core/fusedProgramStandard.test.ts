@@ -96,11 +96,17 @@ describe("fused transform-feedback program assembly", () => {
       attribute("velocity", "vec3"),
     ];
     const program = compileMotionGraph(attributes);
-    // First-fit decreasing into vec4 bins, ties by name: the vec3s lifecycle, position, tint and
-    // velocity open a bin each, offset and uv2 share one, and alpha fills the first bin with room
-    // left - lifecycle's: [lifecycle, alpha], [position], [tint], [velocity], [offset, uv2].
-    const expected = ["lifecycle", "alpha", "position", "tint", "velocity", "offset", "uv2"];
-    expect(program.buffers.map((buffer) => buffer.name)).toEqual(expected);
+    const expected = program.buffers.map((buffer) => buffer.name);
+    // Every declared attribute plus the two builtin buffers gets a field.
+    expect([...expected].sort()).toEqual([
+      "alpha",
+      "lifecycle",
+      "offset",
+      "position",
+      "tint",
+      "uv2",
+      "velocity",
+    ]);
     // The runtime's own order, not a copy of it: the same as packingOrder over the same set.
     expect(
       packingOrder(

@@ -4,40 +4,24 @@ import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
 
 describe("Store: undo/redo re-announce the original commit kind", () => {
-  it("emits sourceViewChanged (not structural) when undoing/redoing a view commit", () => {
+  it.each([
+    { kind: "view", signal: "sourceViewChanged", other: "sourceStructureChanged" },
+    { kind: "structural", signal: "sourceStructureChanged", other: "sourceViewChanged" },
+  ] as const)("re-emits $signal, never $other, for a $kind commit", ({ kind, signal, other }) => {
     const signals = new SignalBus();
     const store = new Store(createInitialState(), signals);
-    let structural = 0;
-    let view = 0;
-    signals.on("sourceStructureChanged", () => structural++);
-    signals.on("sourceViewChanged", () => view++);
+    let announced = 0;
+    let crossed = 0;
+    signals.on(signal, () => announced++);
+    signals.on(other, () => crossed++);
 
-    store.commit(store.getSource(), "view");
-    expect(view).toBe(1);
-    expect(structural).toBe(0);
-
+    store.commit(store.getSource(), kind);
+    expect(announced).toBe(1);
     store.undo();
-    expect(view).toBe(2);
-    expect(structural).toBe(0);
-
+    expect(announced).toBe(2);
     store.redo();
-    expect(view).toBe(3);
-    expect(structural).toBe(0);
-  });
-
-  it("still emits sourceStructureChanged when undoing/redoing a structural commit", () => {
-    const signals = new SignalBus();
-    const store = new Store(createInitialState(), signals);
-    let structural = 0;
-    let view = 0;
-    signals.on("sourceStructureChanged", () => structural++);
-    signals.on("sourceViewChanged", () => view++);
-
-    store.commit(store.getSource(), "structural");
-    store.undo();
-    store.redo();
-    expect(structural).toBe(3);
-    expect(view).toBe(0);
+    expect(announced).toBe(3);
+    expect(crossed).toBe(0);
   });
 });
 

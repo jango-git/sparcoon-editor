@@ -16,13 +16,14 @@ import {
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
 import { FakeBackend, FakeNode, socket } from "../helpers/fakeNodes";
+import { CHAIN_PAIR, CHAIN_SINGLE } from "../helpers/liveSnapshots";
 
-// P6.4 - no input to `FXLiveGraph.apply` may crash the editor. Each of the four
-// throw-classes reconcile can raise (unknown node type, unmigratable snapshot
-// version, a bad param of an existing node, a malformed attribute name) must come
-// back as a structured `invalid` with a code (and `nodeId` where it applies), the
-// last good artifact must survive, and the very next valid snapshot must fully
-// restore the graph via `recompiled`.
+// No input to `FXLiveGraph.apply` may crash the editor. Each of the throw-classes
+// reconcile can raise (unknown node type, a bad param of an existing node, a malformed
+// attribute name) must come back as a structured `invalid` with a code (and `nodeId`
+// where it applies), the last good artifact must survive, and the very next valid
+// snapshot must fully restore the graph via `recompiled`. The unsupported-snapshot-version
+// code is pinned at the reconciler (reconciler.test.ts); here it joins the recovery sweep.
 
 /** Registry with a plain `chain` node and an `attribute` node that validates its name. */
 function makeRegistry(): { registry: FXNodeRegistry<FakeNode>; created: FakeNode[] } {
@@ -45,12 +46,7 @@ function makeRegistry(): { registry: FXNodeRegistry<FakeNode>; created: FakeNode
 }
 
 /** A valid single-node graph that installs an artifact. */
-const VALID: FXGraphSnapshotData = {
-  version: 2,
-  nodes: { a: { type: "chain" } },
-  connections: [],
-  outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
-};
+const VALID = CHAIN_SINGLE;
 
 let backend: FakeBackend;
 let live: FXLiveGraph<FakeNode>;
@@ -99,14 +95,6 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
       },
       "unknown-node-type",
       "x",
-    );
-  });
-
-  it("unmigratable snapshot version -> invalid `unsupported-snapshot-version`", () => {
-    expectHeldInvalid(
-      // Deliberately malformed: a version the migrator does not know.
-      { ...VALID, version: 99 } as unknown as FXGraphSnapshotData,
-      "unsupported-snapshot-version",
     );
   });
 
@@ -195,7 +183,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     ).toBe("recompiled");
   });
 
-  it("throwing buildTarget factory -> invalid `validate-failed`, no throw (P11.2)", () => {
+  it("throwing buildTarget factory -> invalid `validate-failed`, no throw", () => {
     const registry = new FXNodeRegistry<FXRenderNode>();
     registerStandardRenderNodes(registry);
     const renderLive = new FXLiveGraph(
@@ -225,7 +213,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(result?.errors[0]?.message).toContain("boom");
   });
 
-  it("structurally malformed render target literal -> invalid `malformed-target-shape`, no throw (P11.2)", () => {
+  it("structurally malformed render target literal -> invalid `malformed-target-shape`, no throw", () => {
     const registry = new FXNodeRegistry<FXRenderNode>();
     registerStandardRenderNodes(registry);
     // A hand-authored host target literal with no `inputs` and a junk output type.
@@ -260,7 +248,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(result?.errors.some((error) => error.message.includes("inputs"))).toBe(true);
   });
 
-  it("structurally malformed kernel target literal -> invalid `malformed-target-shape`, no throw (P11.2)", () => {
+  it("structurally malformed kernel target literal -> invalid `malformed-target-shape`, no throw", () => {
     const registry = new FXNodeRegistry<FXBehaviorNode>();
     registerStandardBehaviorNodes(registry);
     // A hand-authored host target literal with a string stride and a junk input.
@@ -299,7 +287,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(result?.errors.some((error) => error.message.includes("stride"))).toBe(true);
   });
 
-  it("throwing third-party syncLiveValues -> invalid `rebind-failed`, artifact held (P11.2)", () => {
+  it("throwing third-party syncLiveValues -> invalid `rebind-failed`, artifact held", () => {
     const registry = new FXNodeRegistry<FakeNode>();
     registry.register("sync-boom", () => {
       const node = new FakeNode({ type: "sync-boom", outputs: [socket("out")] });
@@ -331,7 +319,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(boomLive.artifact).toBe(held);
   });
 
-  it("throwing third-party destroy is swallowed and never re-run (P11.2)", () => {
+  it("throwing third-party destroy is swallowed and never re-run", () => {
     const registry = new FXNodeRegistry<FakeNode>();
     const made: FakeNode[] = [];
     registry.register("chain", () => {
@@ -367,12 +355,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     const boomNode = made.find((node) => node.type === "destroy-boom");
 
     // Removing `d` recompiles; the flush destroys it, and its throw is swallowed.
-    const without: FXGraphSnapshotData = {
-      version: 2,
-      nodes: { a: { type: "chain" } },
-      connections: [],
-      outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
-    };
+    const without = CHAIN_SINGLE;
     expect(() => boomLive.apply(without)).not.toThrow();
     expect(boomNode?.destroyCount).toBe(1);
 
@@ -382,7 +365,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(boomNode?.destroyCount).toBe(1);
   });
 
-  it("throwing prepare() still delivers discarded to pendingDestroy (P11.2, L6)", () => {
+  it("throwing prepare() still delivers discarded to pendingDestroy", () => {
     const registry = new FXNodeRegistry<FakeNode>();
     const made: FakeNode[] = [];
     registry.register("chain", () => {
@@ -428,7 +411,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     expect(original.destroyCount).toBe(1);
   });
 
-  it("a 200k-node chain validates and hashes without a RangeError (P11.2)", () => {
+  it("a 20k-node chain validates and hashes without a RangeError", () => {
     const registry = new FXNodeRegistry<FakeNode>();
     registry.register(
       "chain",
@@ -436,7 +419,9 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     );
     const deepLive = new FXLiveGraph(new FXGraphReconciler(registry), new FakeBackend());
 
-    const count = 200_000;
+    // A naive recursive DFS already overflows the default worker stack near 10k frames, so
+    // 20k keeps the iterative-traversal guard meaningful at a fraction of the runtime.
+    const count = 20_000;
     const nodes: Record<string, { type: string }> = {};
     const connections = [];
     for (let i = 0; i < count; i += 1) {
@@ -462,10 +447,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
       result = deepLive.apply(deep);
     }).not.toThrow();
     expect(result?.status).toBe("recompiled");
-    // Building + applying 200k nodes is inherently a few seconds of CPU; the assertion
-    // is that it *completes* (no RangeError), so give it headroom past the 5s default
-    // rather than flaking when the parallel suite starves this worker.
-  }, 30_000);
+  });
 
   it("recovers fully on the next valid snapshot after every bad class", () => {
     const bad: FXGraphSnapshotData[] = [
@@ -488,14 +470,7 @@ describe("FXLiveGraph.apply never throws (P6)", () => {
     for (const data of bad) {
       expect(live.apply(data).status).toBe("invalid");
       // A structurally-changed valid snapshot recompiles and reinstalls.
-      const recovered = live.apply({
-        version: 2,
-        nodes: { a: { type: "chain" }, b: { type: "chain" } },
-        connections: [
-          { from: { nodeId: "b", socketKey: "out" }, to: { nodeId: "a", socketKey: "in" } },
-        ],
-        outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
-      });
+      const recovered = live.apply(CHAIN_PAIR);
       expect(recovered.status).toBe("recompiled");
       expect(live.artifact).toBeDefined();
       // Back to the baseline for the next iteration.

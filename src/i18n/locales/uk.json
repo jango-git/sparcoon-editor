@@ -168,7 +168,7 @@
     "durationTip": "Загальна тривалість таймлайна, у секундах."
   },
   "timeline": {
-    "selectHint": "Оберіть ключ або подію",
+    "selectHint": "Оберіть ключ, подію або реакцію",
     "selected": "Вибрано: {count}",
     "remove": "Видалити",
     "frameTip": "Кадр, на якому розташований елемент.",
@@ -217,7 +217,23 @@
     "playTooltip": "Відтворення · {t}с · {rate}/с · {duration}с",
     "playInfiniteTooltip": "Відтворення · {t}с · {rate}/с · безмежно",
     "keyframeTooltip": "{track} · кадр {frame} · {value}",
-    "transformKeyTooltip": "{channel} · кадр {frame} · {value}"
+    "transformKeyTooltip": "{channel} · кадр {frame} · {value}",
+    "addReaction": "Додати реакцію",
+    "addReactionTip": "Народжувати на цьому емітері там, де вмирають частинки іншого емітера.",
+    "addBurstOnDeath": "Спалах при смерті {source}",
+    "addPlayOnDeath": "Відтворення при смерті {source}",
+    "noReactionSource": "Немає на що реагувати",
+    "burstOnDeath": "Спалах при смерті",
+    "playOnDeath": "Відтворення при смерті",
+    "burstOnDeathTooltip": "Коли вмирає частинка {source}: спалах {count} у цій точці, через кадр.",
+    "playOnDeathTooltip": "Коли вмирає частинка {source}: {rate}/с протягом {duration} с у цій точці, через кадр.",
+    "reactionSource": "Джерело",
+    "reactionSourceTip": "Емітер, смерть частинок якого запускає реакцію. Він рахується на CPU: смерть частинок видно лише там. Емітер не може реагувати сам на себе або замкнути реакції в цикл.",
+    "reactionDurationTip": "Скільки триває випромінювання після кожної смерті, у секундах (не менше кадру).",
+    "removeReactionTip": "Видалити цю реакцію.",
+    "triggers": "Запускає при смерті",
+    "triggersTip": "Смерть його частинок народжує на: {targets}. Натисніть, щоб перейти до реакції.",
+    "goToSource": "Перейти до {source}: виділити емітер, смерть частинок якого запускає реакцію."
   },
   "content": {
     "title": "КОНТЕНТ",

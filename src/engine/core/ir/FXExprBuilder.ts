@@ -493,7 +493,7 @@ export function toInt(expr: FXExpr): FXExpr {
       typeId: expr.type.id,
     });
   }
-  return raw(FX_VALUE_TYPES.int, "glsl", "int($0)", expr);
+  return pureRaw(FX_VALUE_TYPES.int, "glsl", "int($0)", expr);
 }
 
 /** Explicit `int -> float` cast (GLSL `float(x)`) - the inverse of {@link toInt}. */
@@ -503,7 +503,7 @@ export function toFloat(expr: FXExpr): FXExpr {
       typeId: expr.type.id,
     });
   }
-  return raw(FX_VALUE_TYPES.float, "glsl", "float($0)", expr);
+  return pureRaw(FX_VALUE_TYPES.float, "glsl", "float($0)", expr);
 }
 
 /** Branchless select: `cond ? a : b`. `cond` is float; `a`/`b` share a type. */
@@ -536,6 +536,20 @@ export function raw(
   ...dependencies: FXExpr[]
 ): FXExpr {
   return { kind: "raw", type, language, code, deps: dependencies.slice() };
+}
+
+/**
+ * {@link raw} for code that is a function of its `deps` alone (see the IR's `raw.pure`): a cast,
+ * a helper call, arithmetic the IR has no form for - never a stage builtin, a texture fetch, a
+ * derivative or an impure call. The compiler may then compute it in any stage its deps reach.
+ */
+export function pureRaw(
+  type: FXValueType,
+  language: "glsl" | "js",
+  code: string,
+  ...dependencies: FXExpr[]
+): FXExpr {
+  return { kind: "raw", type, language, code, deps: dependencies.slice(), pure: true };
 }
 
 /** One overload of a registry function: exact argument types -> result type. */
@@ -572,6 +586,7 @@ const pureExprBuilders = {
   toFloat,
   select,
   raw,
+  pureRaw,
 };
 
 /**

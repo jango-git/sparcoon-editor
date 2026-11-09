@@ -64,7 +64,7 @@ export const fxBlend = defineNode({
             return vec4(rgb, a);
           }`,
         );
-        return { color: fn.raw(VEC4, "glsl", "fxBlendNormal($0, $1)", base, blend) };
+        return { color: fn.pureRaw(VEC4, "glsl", "fxBlendNormal($0, $1)", base, blend) };
       case "add":
         return { color: fn.add(base, blend) };
       case "multiply":
@@ -112,7 +112,7 @@ export const fxSphericalClip = defineNode({
         return vec4(1.0, 1.0, 1.0, 1.0 - smoothstep(innerRadius, 0.5, distanceToCenter));
       }`,
     );
-    const clip = fn.raw(
+    const clip = fn.pureRaw(
       VEC4,
       "glsl",
       "fxApplySphericalClip($0, $1)",
@@ -193,7 +193,7 @@ export const fxLightnessBlendingMask = defineNode({
         return smoothstep(edge0, max(edge1, edge0 + 1e-4), brightness);
       }`,
     );
-    const mask = fn.raw(
+    const mask = fn.pureRaw(
       FLOAT,
       "glsl",
       "fxLightnessBlendingMask($0, $1, $2)",
@@ -223,7 +223,7 @@ function tangentToWorldNormal(
   fn: FXExprBuilderApi,
 ): FXExpr {
   emitHelper(TANGENT_TO_WORLD_KEY, TANGENT_TO_WORLD_SOURCE);
-  return fn.raw(
+  return fn.pureRaw(
     VEC3,
     "glsl",
     "fxTangentToWorldNormal($0, $1, $2)",
@@ -273,7 +273,12 @@ export const fxSphericalNormal = defineNode({
         return normalize(vec3(centeredUV, sqrt(max(0.0, 1.0 - dot(centeredUV, centeredUV)))));
       }`,
     );
-    const tangentNormal = fn.raw(VEC3, "glsl", "fxComputeSphericalNormal($0)", target.read("p_uv"));
+    const tangentNormal = fn.pureRaw(
+      VEC3,
+      "glsl",
+      "fxComputeSphericalNormal($0)",
+      target.read("p_uv"),
+    );
     return { normal: tangentToWorldNormal(tangentNormal, target, emitHelper, fn) };
   },
 });
@@ -308,7 +313,7 @@ export const fxNormalMap = defineNode({
         return n;
       }`,
     );
-    const tangentNormal = fn.raw(
+    const tangentNormal = fn.pureRaw(
       VEC3,
       "glsl",
       "fxUnpackNormal($0, $1)",

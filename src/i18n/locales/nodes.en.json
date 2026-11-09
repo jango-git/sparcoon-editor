@@ -735,6 +735,39 @@
     },
     "searchTags": ["explosion", "explode", "burst", "rocket", "spark", "blast", "cone"]
   },
+  "flow-uv": {
+    "description": "Drifts UVs along a flow direction in two crossfaded phases, without endless stretching. Sample a texture at UV A and UV B and mix them by Blend.",
+    "inputs": {
+      "flow": {
+        "label": "Flow"
+      },
+      "speed": {
+        "label": "Speed"
+      },
+      "strength": {
+        "label": "Strength"
+      },
+      "time": {
+        "label": "Time"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Flow UV",
+    "outputs": {
+      "blend": {
+        "label": "Blend"
+      },
+      "uvA": {
+        "label": "UV A"
+      },
+      "uvB": {
+        "label": "UV B"
+      }
+    },
+    "searchTags": ["flowmap", "flow map", "scroll", "distort", "water", "lava"]
+  },
   "fresnel": {
     "description": "A camera-correct rim/edge factor derived from a world-space surface normal.",
     "inputs": {
@@ -1795,7 +1828,7 @@
     "searchTags": ["world position", "fragment", "point"]
   },
   "texture": {
-    "description": "Samples a named texture asset at the given UV (defaulting to the particle UV); the sampler is an external uniform bound by the host.",
+    "description": "Samples a named texture asset at the given UV (defaulting to the particle UV); the sampler is an external uniform bound by the host. Wrap sets what happens outside UV 0..1: Clamp stretches the edge pixels, Repeat tiles, Mirror tiles flipping every other tile, Border is transparent.",
     "inputs": {
       "uv": {
         "label": "UV"
@@ -1807,8 +1840,12 @@
         "label": "Color"
       }
     },
-    "params": {},
-    "searchTags": ["sampler", "image", "map", "texture"]
+    "params": {
+      "wrap": {
+        "label": "Wrap"
+      }
+    },
+    "searchTags": ["sampler", "image", "map", "texture", "wrap", "tile", "repeat", "mirror"]
   },
   "tile-uv": {
     "description": "Tiles and offsets UVs.",

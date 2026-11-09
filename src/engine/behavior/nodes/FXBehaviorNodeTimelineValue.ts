@@ -41,6 +41,11 @@ export class FXBehaviorNodeTimelineValue extends FXBehaviorNode {
     this.parameter = new FXTimelineValueState(name, type, value);
   }
 
+  /** Reads no target input: its value is a live binding, not a builtin. */
+  public override get targetReads(): readonly string[] {
+    return [];
+  }
+
   public static describe(): FXNodeMeta {
     return TIMELINE_VALUE_BEHAVIOR_META;
   }

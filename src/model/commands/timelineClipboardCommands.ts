@@ -68,9 +68,6 @@ export function pasteTimelineItems(
   items: readonly ClipboardTimelineItem[],
   timeOffset: number,
 ): readonly PastedTimelineItem[] {
-  if (items.length === 0) {
-    return [];
-  }
   const source = store.getSource();
   const scene: PasteScene = { ...source.scene };
   const pasted: PastedTimelineItem[] = [];
@@ -157,6 +154,9 @@ export function pasteTimelineItems(
     pasted.push({ entity, kind: "event", id });
   }
 
-  store.commit({ ...source, scene: { ...source.scene, ...scene } }, "view");
+  // Every item may have been dropped (its entity gone, a key aimed at the VFX group): no edit then.
+  if (pasted.length > 0) {
+    store.commit({ ...source, scene: { ...source.scene, ...scene } }, "view");
+  }
   return pasted;
 }

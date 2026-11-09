@@ -44,16 +44,25 @@ describe("node-text dictionary completeness (nodes.en.json)", () => {
     ...RESERVED_TYPES,
   ];
 
-  for (const { type, domain } of cases) {
-    it(`${type} (${domain}) has a non-empty label and description`, () => {
+  it("gives every registered node type a non-empty label and description", () => {
+    // One aggregated list, so a single run names every type that is missing text and why.
+    const problems = cases.flatMap(({ type, domain }) => {
       const entry = NODE_TEXT_EN[type];
-      expect(entry, `no nodes.en.json entry for "${type}"`).toBeDefined();
-      expect((entry?.label ?? "").length).toBeGreaterThan(0);
-      const description = descriptionFor(entry, domain);
-      expect(description, `no description for "${type}" in domain "${domain}"`).toBeDefined();
-      expect((description ?? "").length).toBeGreaterThan(0);
+      if (entry === undefined) {
+        return [`${type} (${domain}): no nodes.en.json entry`];
+      }
+      const found: string[] = [];
+      if ((entry.label ?? "").length === 0) {
+        found.push(`${type} (${domain}): empty label`);
+      }
+      if ((descriptionFor(entry, domain) ?? "").length === 0) {
+        found.push(`${type} (${domain}): no description for this domain`);
+      }
+      return found;
     });
-  }
+    expect(cases.length).toBeGreaterThan(RESERVED_TYPES.length);
+    expect(problems).toEqual([]);
+  });
 
   it(`${ROUTE_TYPE} has a non-empty label (no description - it has no help tooltip)`, () => {
     const entry = NODE_TEXT_EN[ROUTE_TYPE];

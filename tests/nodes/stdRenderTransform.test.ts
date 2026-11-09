@@ -1,63 +1,44 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardRenderNodes } from "../../src/engine/nodes-std/index";
-import { FX_RENDER_TRANSFORM_NODES } from "../../src/engine/nodes-std/render/transform";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { bind, edge, graphOf } from "../helpers/graphBuild";
+import { renderRegistry } from "../helpers/stdRegistry";
 
 // The transform nodes produce the two mat4 render slots. A billboard is `look-at-camera`
 // feeding `particleTransform` (directly or through `compose-transform`), so these graphs
 // prove the camera-facing rotation and the PRS compose land in the vertex program.
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-function registry(): FXNodeRegistry<FXRenderNode> {
-  const r = new FXNodeRegistry<FXRenderNode>();
-  registerStandardRenderNodes(r);
-  return r;
-}
-function graphOf(
-  nodes: Map<string, FXRenderNode>,
-  connections: readonly FXConnection[],
-  out: readonly FXOutputBinding[],
+const reg = renderRegistry();
+const compiler = new FXCompilerBaseline();
+
+/** `rotation` (a mat3 producer) -> compose-transform -> particleTransform, white albedo. */
+function billboardGraph(
+  rotation: FXRenderNode,
+  compose: Record<string, unknown> = { position: [0, 0, 0], scale: [1, 1, 1] },
 ): FXGraph<FXRenderNode> {
-  const graph = new FXGraph<FXRenderNode>();
-  graph.ingest({ nodes, connections, outputBindings: out });
-  return graph;
+  return graphOf(
+    {
+      look: rotation,
+      compose: reg.create("compose-transform", compose),
+      col: reg.create("constant", { type: "color", value: [1, 1, 1, 1] }),
+    },
+    [edge("look", "out", "compose", "rotation")],
+    [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
+  );
+}
+
+function vertexOf(graph: FXGraph<FXRenderNode>): string {
+  return compiler.compile(graph, FX_PARTICLE_TARGET).vertex.body.join("\n");
 }
 
 describe("standard render transform nodes", () => {
-  const compiler = new FXCompilerBaseline();
-
-  it("registers both definitions and describes serializably", () => {
-    const r = registry();
-    for (const def of FX_RENDER_TRANSFORM_NODES) {
-      expect(r.has(def.type)).toBe(true);
-      expect(() => JSON.stringify(def.describe())).not.toThrow();
-    }
-  });
-
   it("look-at-camera -> compose-transform drives a camera-facing particleTransform (vertex)", () => {
-    const r = registry();
-    const graph = graphOf(
-      new Map([
-        ["look", r.create("look-at-camera", { roll: 0 })],
-        ["compose", r.create("compose-transform", { position: [0, 0, 0], scale: [2, 2, 1] })],
-        ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      [edge("look", "out", "compose", "rotation")],
-      [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
-    );
+    const graph = billboardGraph(reg.create("look-at-camera", { roll: 0 }), {
+      position: [0, 0, 0],
+      scale: [2, 2, 1],
+    });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
     const vertex = shader.vertex.body.join("\n");
     // The whole chain lands in the vertex stage (particleTransform is a vertex slot).
@@ -69,102 +50,71 @@ describe("standard render transform nodes", () => {
   });
 
   it("compose-transform with an unwired rotation still compiles (identity default)", () => {
-    const r = registry();
     const graph = graphOf(
-      new Map([
-        ["compose", r.create("compose-transform", { position: [1, 0, 0], scale: [1, 1, 1] })],
-        ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
+      {
+        compose: reg.create("compose-transform", { position: [1, 0, 0], scale: [1, 1, 1] }),
+        col: reg.create("constant", { type: "color", value: [1, 1, 1, 1] }),
+      },
       [],
       [bind("vertexTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["vertexTransform"]).toBeDefined();
+    expect(compiler.compile(graph, FX_PARTICLE_TARGET).outputs["vertexTransform"]).toBeDefined();
   });
 
   it.each(["x", "y", "z"] as const)(
     "look-at-camera locked to axis %s compiles a cylindrical (cross-product) basis",
     (axis) => {
-      const r = registry();
-      const graph = graphOf(
-        new Map([
-          ["look", r.create("look-at-camera", { roll: 0, axis })],
-          ["compose", r.create("compose-transform", { position: [0, 0, 0], scale: [1, 1, 1] })],
-          ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-        ]),
-        [edge("look", "out", "compose", "rotation")],
-        [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
-      );
-      const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-      const vertex = shader.vertex.body.join("\n").toLowerCase();
-      expect(vertex).toContain("cross");
-      expect(vertex).toContain("normalize");
+      const vertex = vertexOf(billboardGraph(reg.create("look-at-camera", { roll: 0, axis })));
+      expect(vertex.toLowerCase()).toContain("cross");
+      expect(vertex.toLowerCase()).toContain("normalize");
     },
   );
 
-  it("look-at-camera locked to an axis with cameraModel: point reads PARTICLE_POSITION/cameraPosition instead of viewMatrix", () => {
-    const r = registry();
-    const graph = graphOf(
-      new Map([
-        ["look", r.create("look-at-camera", { roll: 0, axis: "y", cameraModel: "point" })],
-        ["compose", r.create("compose-transform", { position: [0, 0, 0], scale: [1, 1, 1] })],
-        ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      [edge("look", "out", "compose", "rotation")],
-      [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
-    );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
-    expect(vertex).toContain("cameraPosition");
-    expect(vertex).toContain("PARTICLE_POSITION");
-    // Particle position is already world space by convention - no modelMatrix conversion.
-    expect(vertex).not.toContain("modelMatrix");
-    expect(vertex).not.toContain("viewMatrix");
-  });
-
   it('look-at-camera axis "all" ignores cameraModel (no fixed axis to build a per-particle direction against)', () => {
-    const r = registry();
-    const graph = graphOf(
-      new Map([
-        ["look", r.create("look-at-camera", { roll: 0, cameraModel: "point" })],
-        ["compose", r.create("compose-transform", { position: [0, 0, 0], scale: [1, 1, 1] })],
-        ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      [edge("look", "out", "compose", "rotation")],
-      [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
+    const vertex = vertexOf(
+      billboardGraph(reg.create("look-at-camera", { roll: 0, cameraModel: "point" })),
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
     expect(vertex).toContain("viewMatrix");
     expect(vertex).not.toContain("cameraPosition");
   });
 
   it('look-at-camera defaults to axis "all" (the unconstrained billboard, no cross product)', () => {
-    const r = registry();
-    const graph = graphOf(
-      new Map([
-        ["look", r.create("look-at-camera", { roll: 0 })],
-        ["compose", r.create("compose-transform", { position: [0, 0, 0], scale: [1, 1, 1] })],
-        ["col", r.create("constant", { type: "color", value: [1, 1, 1, 1] })],
-      ]),
-      [edge("look", "out", "compose", "rotation")],
-      [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
-    );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n").toLowerCase();
-    expect(vertex).not.toContain("cross");
+    const vertex = vertexOf(billboardGraph(reg.create("look-at-camera", { roll: 0 })));
+    expect(vertex.toLowerCase()).not.toContain("cross");
   });
 
-  it("rejects look-at-camera driving a fragment slot (viewMatrix is vertex-only)", () => {
-    const r = registry();
-    // Feed look-at's mat3 nowhere legal in fragment: bind albedo requires vec4, but we can at
-    // least assert viewMatrix stays out of the fragment program in the valid case above.
-    // Here we simply ensure the node cannot be read as albedo (type mismatch guards it).
+  it("look-at-camera feeding a fragment shading normal is computed per vertex", () => {
+    // viewMatrix is readable in both stages, so a fragment consumer may place the basis there -
+    // but it reads only the camera, the same at every fragment, so it is computed per vertex and
+    // its result carried across instead.
     const graph = graphOf(
-      new Map([["look", r.create("look-at-camera", { roll: 0 })]]),
-      [],
-      [bind("albedo", "look", "out")],
+      {
+        look: reg.create("look-at-camera"),
+        td: reg.create("transform-direction", { v: [0, 0, 1] }),
+        lit: reg.create("lambert-shading"),
+      },
+      [edge("look", "out", "td", "m"), edge("td", "out", "lit", "normal")],
+      [bind("albedo", "lit", "color")],
     );
-    expect(() => compiler.compile(graph, FX_PARTICLE_TARGET)).toThrow();
+    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    expect(shader.vertex.body.join("\n")).toContain("viewMatrix");
+    expect(shader.fragment.body.join("\n")).not.toContain("viewMatrix");
+    expect(shader.fragment.body.join("\n")).toContain("fxLambertShade");
+  });
+});
+
+describe('camera-facing rotations with cameraModel: "point"', () => {
+  // A point camera aims each particle at the camera position instead of sharing the view
+  // forward, so the rotation reads the particle position and cameraPosition, not viewMatrix.
+  it.each([
+    ["look-at-camera", { roll: 0, axis: "y", cameraModel: "point" }],
+    ["align-to-velocity", { velocity: [1, 0, 0], cameraModel: "point" }],
+  ] as const)("%s reads PARTICLE_POSITION/cameraPosition instead of viewMatrix", (type, params) => {
+    const vertex = vertexOf(billboardGraph(reg.create(type, params)));
+    expect(vertex).toContain("cameraPosition");
+    expect(vertex).toContain("PARTICLE_POSITION");
+    // Particle position is already world space by convention - no modelMatrix conversion.
+    expect(vertex).not.toContain("modelMatrix");
+    expect(vertex).not.toContain("viewMatrix");
   });
 });

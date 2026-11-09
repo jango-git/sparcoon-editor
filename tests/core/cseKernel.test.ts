@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
@@ -10,6 +8,7 @@ import {
   compileBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // The behavior kernel runs a whole-phase CSE pass before printing (see cse.Internal.ts): a
 // subtree shared across scalarized components is emitted once. These assert the two things
@@ -30,12 +29,6 @@ function edge(fromNode: string, fromKey: string, toNode: string, toKey: string):
     to: { nodeId: toNode, socketKey: toKey },
   };
 }
-function registry(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  return r;
-}
-
 function spawnPhase(
   nodes: Map<string, FXBehaviorNode>,
   connections: readonly FXConnection[],
@@ -57,7 +50,7 @@ function occurrences(haystack: string, needle: string): number {
 
 describe("behavior kernel CSE", () => {
   it("emits a shared subexpression once, and hoists it when invariant (normalize's length)", () => {
-    const r = registry();
+    const r = behaviorRegistry();
     // normalize([3,4,0]) shares one `sqrt(x*x+y*y+z*z)` across x/y/z; being constant it is also
     // particle-invariant, so it hoists out of the loop entirely.
     const compiled = spawnPhase(
@@ -85,8 +78,8 @@ describe("behavior kernel CSE", () => {
     expect(buffers.position[2]).toBeCloseTo(0, 5);
   });
 
-  it("never merges Math.random() (three independent axes stay three draws)", () => {
-    const r = registry();
+  it("never merges Math.random(): three independent axes stay three draws", () => {
+    const r = behaviorRegistry();
     // A filled spawn-box draws one independent random per axis; CSE must keep all three.
     const compiled = spawnPhase(
       new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
@@ -94,18 +87,8 @@ describe("behavior kernel CSE", () => {
       "box",
       "position",
     );
-    const body = compiled.spawn!.body.join("\n");
-    expect(occurrences(body, "Math.random()")).toBe(3);
-  });
+    expect(occurrences(compiled.spawn!.body.join("\n"), "Math.random()")).toBe(3);
 
-  it("preserves per-particle decorrelation numerically after CSE", () => {
-    const r = registry();
-    const compiled = spawnPhase(
-      new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
-      [],
-      "box",
-      "position",
-    );
     const spawn = buildParticleSpawnKernel(compiled);
     // If the three draws had merged, x==y==z every particle. Across samples they must differ.
     let anyAxisDiffers = false;

@@ -168,7 +168,7 @@
     "durationTip": "Total length of the timeline, in seconds."
   },
   "timeline": {
-    "selectHint": "Select a keyframe or event",
+    "selectHint": "Select a keyframe, event or reaction",
     "selected": "{count} selected",
     "remove": "Remove",
     "frameTip": "The frame this item sits on.",
@@ -217,7 +217,23 @@
     "playTooltip": "Play · {t}s · {rate}/s · {duration}s",
     "playInfiniteTooltip": "Play · {t}s · {rate}/s · infinite",
     "keyframeTooltip": "{track} · frame {frame} · {value}",
-    "transformKeyTooltip": "{channel} · frame {frame} · {value}"
+    "transformKeyTooltip": "{channel} · frame {frame} · {value}",
+    "addReaction": "Add reaction",
+    "addReactionTip": "Spawn on this emitter wherever another emitter's particles die.",
+    "addBurstOnDeath": "Burst on death of {source}",
+    "addPlayOnDeath": "Play on death of {source}",
+    "noReactionSource": "No emitter to react to",
+    "burstOnDeath": "Burst on death",
+    "playOnDeath": "Play on death",
+    "burstOnDeathTooltip": "When a particle of {source} dies: burst {count} there, one frame later.",
+    "playOnDeathTooltip": "When a particle of {source} dies: play {rate}/s for {duration}s there, one frame later.",
+    "reactionSource": "Source",
+    "reactionSourceTip": "The emitter whose particles' deaths fire this. It then simulates on the CPU - only the CPU sees particles die. An emitter cannot react to itself, nor close a loop of reactions.",
+    "reactionDurationTip": "How long the emission lasts after each death, in seconds (at least one frame).",
+    "removeReactionTip": "Delete this reaction.",
+    "triggers": "Triggers on death",
+    "triggersTip": "Its particles' deaths spawn on: {targets}. Click to go to the reaction.",
+    "goToSource": "Go to {source}: select the emitter whose particles' deaths fire this."
   },
   "content": {
     "title": "CONTENT",

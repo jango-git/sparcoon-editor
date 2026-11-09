@@ -33,12 +33,13 @@ export interface FXUniformHandle {
 export interface FXVarying {
   readonly name: string;
   readonly type: FXValueType;
+  /** `flat` marks a value the same at all of a primitive's vertices, or an integer, which cannot
+   *  interpolate - the runtime's `FXVaryingDecl.interpolation`, the same on every tier. */
+  readonly interpolation: "smooth" | "flat";
 }
 
 /** Per-stage accumulation of generated GLSL. */
 export interface FXCompiledStage {
-  /** `varying <type> <name>;` declarations. */
-  readonly varyingDeclarations: readonly string[];
   /** Deduplicated helper function definitions, in emission order. */
   readonly helperFunctions: readonly string[];
   /** Ordered statements to splice into this stage's main body. */
@@ -54,6 +55,8 @@ export interface FXCompiledShader {
   readonly uniforms: Readonly<Record<string, FXUniformHandle>>;
   /** `uniform <type> <name>;` declarations shared by both stages. */
   readonly uniformDeclarations: readonly string[];
+  /** What the vertex stage carries to the fragment stage, declared in both. */
+  readonly varyings: readonly FXVarying[];
   readonly vertex: FXCompiledStage;
   readonly fragment: FXCompiledStage;
   /** GLSL expression bound to each target output slot (e.g. `"albedo"` -> the final `vec4`

@@ -61,11 +61,12 @@ export const fxLifeRatio = defineNode({
   }),
 });
 
-/** The interpolated particle UV (`p_uv`) as a first-class vec2 source. */
+/** The interpolated particle UV (`p_uv`) as a first-class vec2 source: fragment-only on a particle,
+ *  either stage on a trail (a `width` tapering along it). */
 export const fxUV = defineNode({
   type: "uv",
   domain: "render",
-  stage: "fragment",
+  stage: "param",
   category: "uv",
   inputs: {},
   outputs: { uv: { type: "vec2" } },

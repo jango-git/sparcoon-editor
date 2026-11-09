@@ -67,6 +67,7 @@ import {
   timelineValueConflicts,
   toArtifactGeometrySource,
   type RenderMode,
+  type SpawnSinkConfig,
 } from "../domain/nodePalette";
 import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
 import { emitterGraphs, type EmitterDoc, type VfxMeshDoc } from "../model/editorState";
@@ -228,7 +229,15 @@ function compileTrail(
   };
 }
 
-export function compileEmitter(emitter: EmitterDoc): EmitterIR {
+/**
+ * Compiles one emitter for the export. `spawnConfig` is how it runs - the export passes
+ * `effectiveSpawnConfig` (a death source is never offered the GPU); defaults to what its spawn node
+ * asks for, for an emitter compiled on its own.
+ */
+export function compileEmitter(
+  emitter: EmitterDoc,
+  spawnConfig: SpawnSinkConfig = readSpawnSinkConfig(emitter.behaviorGraph),
+): EmitterIR {
   // A Timeline Value declared at two types or with two defaults across the emitter's graphs.
   const [declarationConflict] = timelineValueConflicts(emitterGraphs(emitter));
   if (declarationConflict !== undefined) {
@@ -237,7 +246,6 @@ export function compileEmitter(emitter: EmitterDoc): EmitterIR {
   const renderGraph = buildRenderGraph(emitter.renderGraph);
   const behaviorGraph = buildBehaviorGraph(emitter.behaviorGraph);
   const config = readRenderSinkConfig(emitter.renderGraph);
-  const spawnConfig = readSpawnSinkConfig(emitter.behaviorGraph);
 
   const renderAttributes = collectAttributeRequests(renderGraph).requests;
   const behaviorAttributes = collectAttributeRequests(behaviorGraph).requests;

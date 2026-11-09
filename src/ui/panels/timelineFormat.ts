@@ -4,7 +4,7 @@
  */
 
 import { t } from "../../i18n";
-import type { TimelineEvent } from "../../model/editorState";
+import type { DeathReaction, TimelineEvent } from "../../model/editorState";
 import type { TransformChannel } from "../../model/transform";
 import { clamp } from "../primitives/math";
 import { channelToDisplay } from "./transformChannel";
@@ -57,6 +57,21 @@ export function describeEvent(event: TimelineEvent): string {
     t: trimNumber(event.time),
     rate: trimNumber(event.rate),
     duration: trimNumber(event.duration),
+  });
+}
+
+/** A death reaction's tooltip: what it spawns at each death of `sourceName`'s particles. */
+export function describeReaction(reaction: DeathReaction, sourceName: string): string {
+  if (reaction.kind === "burst") {
+    return t("timeline.burstOnDeathTooltip", {
+      source: sourceName,
+      count: String(reaction.count),
+    });
+  }
+  return t("timeline.playOnDeathTooltip", {
+    source: sourceName,
+    rate: trimNumber(reaction.rate),
+    duration: trimNumber(reaction.duration),
   });
 }
 

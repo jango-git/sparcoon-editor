@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import {
-  registerStandardRenderNodes,
-  registerStandardBehaviorNodes,
-} from "../../src/engine/nodes-std/index";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
@@ -17,23 +10,9 @@ import {
   compileParticleBehavior,
   previewParticleBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { bind } from "../helpers/graphBuild";
+import { fullBehaviorRegistry, fullRenderRegistry } from "../helpers/stdRegistry";
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-
-function renderRegistry(): FXNodeRegistry<FXRenderNode> {
-  const r = new FXNodeRegistry<FXRenderNode>();
-  registerStandardRenderNodes(r);
-  registerManualRenderNodes(r);
-  return r;
-}
-function behaviorRegistry(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  registerManualBehaviorNodes(r);
-  return r;
-}
 function renderGraph(
   nodes: Map<string, FXRenderNode>,
   out: readonly FXOutputBinding[],
@@ -48,7 +27,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   const compiler = new FXCompilerBaseline();
 
   it("timeline-value (render) allocates a uniform at the stable slot with the default value", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     const a = r.create("timeline-value", { name: "intensity", type: "vec4", value: [1, 0, 0, 1] });
     const shader = compiler.compile(
       renderGraph(new Map([["a", a]]), [bind("albedo", "a", "out")]),
@@ -60,7 +39,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("two same-named timeline-values share one uniform (dedup); different types clash", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     const a = r.create("timeline-value", { name: "tint", type: "vec4", value: [1, 1, 1, 1] });
     const b = r.create("timeline-value", { name: "tint", type: "vec4", value: [1, 1, 1, 1] });
     // Both feed distinct inputs of a blend node but name the same asset -> one shared uniform.
@@ -106,7 +85,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("editing a timeline-value's default rebinds (hash stable); renaming recompiles", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     const a = r.create("timeline-value", { name: "power", type: "float", value: 1 });
     const compose = r.create("compose-transform", {});
     const graph = renderGraph(
@@ -134,7 +113,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("texture declares an external sampler and samples it at uv", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     const t = r.create("texture", { name: "mask" });
     const shader = compiler.compile(
       renderGraph(new Map([["t", t]]), [bind("albedo", "t", "color")]),
@@ -147,7 +126,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("texture with no chosen asset compiles to transparent, allocating no sampler", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     // An unset (and an empty-string) name is the quiescent default, not an error.
     for (const name of [undefined, ""]) {
       const t = r.create("texture", { name });
@@ -161,7 +140,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("timeline-value (behavior) captures a live binding whose value reaches the buffer", () => {
-    const r = behaviorRegistry();
+    const r = fullBehaviorRegistry();
     const a = r.create("timeline-value", { name: "speed", type: "float", value: 7 });
     const graph = new FXGraph<FXBehaviorNode>();
     graph.ingest({
@@ -179,7 +158,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("timeline-value (behavior) scalarizes a vector into per-component bindings", () => {
-    const r = behaviorRegistry();
+    const r = fullBehaviorRegistry();
     const a = r.create("timeline-value", { name: "wind", type: "vec3", value: [1, 2, 3] });
     const graph = new FXGraph<FXBehaviorNode>();
     graph.ingest({
@@ -194,7 +173,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("editing a behavior timeline-value's default rebinds (hash stable)", () => {
-    const r = behaviorRegistry();
+    const r = fullBehaviorRegistry();
     const a = r.create("timeline-value", { name: "speed", type: "float", value: 1 });
     const graph = new FXGraph<FXBehaviorNode>();
     graph.ingest({
@@ -208,7 +187,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
   });
 
   it("a fresh (unnamed) timeline-value is rejected as a bad param", () => {
-    const r = renderRegistry();
+    const r = fullRenderRegistry();
     expect(() => r.create("timeline-value", { type: "float", value: 0 })).toThrow();
   });
 });

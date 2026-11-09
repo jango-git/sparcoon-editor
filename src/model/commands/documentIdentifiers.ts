@@ -42,6 +42,7 @@ function collectSourceIds(source: SourceState): readonly string[] {
   for (const emitter of source.scene.emitters) {
     ids.push(emitter.id);
     ids.push(...emitter.events.map((event) => event.id));
+    ids.push(...emitter.reactions.map((reaction) => reaction.id));
     ids.push(...emitter.tracks.flatMap((track) => track.keys.map((key) => key.id)));
     ids.push(...transformTrackKeyIds(emitter.transformTracks));
     for (const graph of emitterGraphs(emitter)) {

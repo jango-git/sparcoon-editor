@@ -51,7 +51,10 @@ export function registerManualRenderNodes(registry: FXNodeRegistry<FXRenderNode>
         (params?.["value"] as number | readonly number[] | undefined) ?? 0,
       ),
   );
-  registry.register("texture", (params) => new FXRenderNodeTexture(params?.["name"]));
+  registry.register(
+    "texture",
+    (params) => new FXRenderNodeTexture(params?.["name"], params?.["wrap"]),
+  );
 }
 
 /** Whitelists the `custom-attribute`(-components) stage param, rejecting a malformed value

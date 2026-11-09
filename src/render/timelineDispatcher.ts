@@ -129,11 +129,7 @@ export class TimelineDispatcher {
         if (event.time < from || event.time >= to) {
           continue;
         }
-        if (event.kind === "burst") {
-          this.emitters.burst(emitter.id, event.count);
-        } else {
-          this.emitters.play(emitter.id, event.rate, event.duration);
-        }
+        this.emitters.spawn(emitter.id, event);
       }
     }
   }

@@ -167,6 +167,9 @@
   "unknown-render-input-stage": {
     "message": "target \"{targetName}\" input \"{inputName}\" names unknown stage \"{stage}\""
   },
+  "unknown-render-input-rate": {
+    "message": "target \"{targetName}\" input \"{inputName}\" names unknown rate \"{rate}\""
+  },
   "unknown-render-output-stage": {
     "message": "target \"{targetName}\" output \"{outputSlot}\" names unknown stage \"{stage}\""
   },

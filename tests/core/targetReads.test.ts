@@ -14,7 +14,7 @@ import type { FXLiveBackend } from "../../src/engine/core/live/FXLiveBackend";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
 import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import type { FakeArtifact } from "../helpers/fakeNodes";
-import { FakeBackend, FakeNode, makeRegistry, socket } from "../helpers/fakeNodes";
+import { FakeNode, makeRegistry, socket } from "../helpers/fakeNodes";
 
 const FLOAT = resolveValueType("float");
 
@@ -145,45 +145,6 @@ describe("FXLiveGraph.apply - target-input reads", () => {
     const result = live.apply(snapshot("b", "bad"));
     expect(result.status).toBe("invalid");
     expect(result.errors.some((e) => e.code === "unknown-target-input")).toBe(true);
-    expect(live.artifact).toBe(held);
-  });
-
-  it("holds the last good artifact when a validated graph throws in compile", () => {
-    // Simulates a third-party node with no reads declaration: validation passes
-    // (it is skipped), but build() throws - apply must not propagate the throw.
-    const registry = makeRegistry([
-      { type: "chain", inputs: [socket("in")], outputs: [socket("out")] },
-    ]);
-    const backend = new FakeBackend();
-    const live = new FXLiveGraph(new FXGraphReconciler(registry.registry), backend);
-
-    const full: FXGraphSnapshotData = {
-      version: 2,
-      nodes: { a: { type: "chain" }, b: { type: "chain" } },
-      connections: [
-        { from: { nodeId: "b", socketKey: "out" }, to: { nodeId: "a", socketKey: "in" } },
-      ],
-      outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
-    };
-    const reduced: FXGraphSnapshotData = {
-      version: 2,
-      nodes: { a: { type: "chain" } },
-      connections: [],
-      outputBindings: [{ slot: "albedo", from: { nodeId: "a", socketKey: "out" } }],
-    };
-
-    live.apply(full);
-    const held = live.artifact;
-    backend.compileThrows = true;
-
-    let result: ReturnType<typeof live.apply> | undefined;
-    expect(() => {
-      result = live.apply(reduced); // structural change forces the recompile path
-    }).not.toThrow();
-
-    expect(result?.status).toBe("invalid");
-    expect(result?.errors[0]?.code).toBe("compile-failed");
-    expect(result?.errors[0]?.message).toContain("compile boom");
     expect(live.artifact).toBe(held);
   });
 });

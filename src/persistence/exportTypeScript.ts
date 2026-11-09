@@ -9,11 +9,13 @@
  * not part of the export).
  */
 
+import { effectiveSpawnConfig } from "../domain/deathReactions";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
   gpuKernelArtifactBody,
   renderArtifactBody,
+  renderArtifactDeclarations,
 } from "../engine/emit/artifactLiterals";
 import type { FXGeometrySource } from "sparcoon";
 import type { SourceState } from "../model/editorState";
@@ -71,9 +73,11 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     names: RenderArtifactNames,
     body: (tier: keyof RenderArtifactNames) => string,
   ): void => {
-    for (const tier of RENDER_TIERS) {
-      artifactBlocks.push(`const ${names[tier]}: FXRenderArtifact = ${body(tier)};`);
-    }
+    artifactBlocks.push(
+      ...renderArtifactDeclarations(
+        RENDER_TIERS.map((tier) => ({ name: names[tier], body: body(tier) })),
+      ),
+    );
   };
 
   const collectGeometryName = (geometry: FXGeometrySource): void => {
@@ -82,8 +86,9 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     }
   };
 
+  const emitterIndex = new Map(source.scene.emitters.map((emitter, index) => [emitter.id, index]));
   source.scene.emitters.forEach((emitter, index) => {
-    const ir = compileEmitter(emitter);
+    const ir = compileEmitter(emitter, effectiveSpawnConfig(emitter, source.scene));
     for (const helper of collectBehaviorHelpers(ir.kernel)) {
       for (const name of helperImportNames(helper)) {
         helperNames.add(name);
@@ -138,7 +143,16 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
     emitterSpecs.push(
-      emitterSpecLiteral(emitter, renderNames, behaviorName, ir, slots, gpuKernelName, trailNames),
+      emitterSpecLiteral(
+        emitter,
+        renderNames,
+        behaviorName,
+        ir,
+        slots,
+        emitterIndex,
+        gpuKernelName,
+        trailNames,
+      ),
     );
   });
 

@@ -6,9 +6,11 @@
 
 import type {
   AnimationTrack,
+  DeathReaction,
   EmitterDoc,
   Keyframe,
   SourceState,
+  SpawnAction,
   TimelineEvent,
   VfxMeshDoc,
 } from "../model/editorState";
@@ -92,20 +94,30 @@ export function needsLiveGetter(entity: LiveEntity): boolean {
  * `Map.set` overwrites) while the generated types claim both are addressable. Fail loudly instead.
  */
 export function assertUniqueLiveNames(entities: readonly LiveEntity[], kind: string): void {
-  const seen = new Set<string>();
+  const named = new Set<string>();
+  const clashing = new Set<string>();
   for (const entity of entities) {
-    if (!needsLiveGetter(entity) && entity.liveParams.length === 0) {
-      continue;
-    }
-    if (seen.has(entity.name)) {
-      throw new Error(
-        `exportTypeScript: two ${kind}s are both named ${JSON.stringify(entity.name)} and at ` +
-          "least one has a fake (live) track or live events - rename one so getEmitter/getMesh/" +
-          "setEmitterParam/setMeshParam can address them unambiguously.",
-      );
-    }
-    seen.add(entity.name);
+    (named.has(entity.name) ? clashing : named).add(entity.name);
   }
+  // Every same-named entity counts: one live among them is enough for a lookup to land on another.
+  const addressed = entities.find(
+    (entity) =>
+      clashing.has(entity.name) && (needsLiveGetter(entity) || entity.liveParams.length > 0),
+  );
+  if (addressed !== undefined) {
+    throw new Error(
+      `exportTypeScript: two ${kind}s are both named ${JSON.stringify(addressed.name)} and at ` +
+        "least one has a fake (live) track or live events - rename one so getEmitter/getMesh/" +
+        "setEmitterParam/setMeshParam can address them unambiguously.",
+    );
+  }
+}
+
+/** A spawn action as the runtime's `FXSpawnAction` reads it - only the fields its kind carries. */
+function actionLiteral(action: SpawnAction): SpawnAction {
+  return action.kind === "burst"
+    ? { kind: "burst", count: action.count }
+    : { kind: "play", rate: action.rate, duration: action.duration };
 }
 
 /** The spawn events as the runtime reads them; none when `liveEvents` leaves spawning to the host. */
@@ -113,12 +125,27 @@ export function eventsLiteral(events: readonly TimelineEvent[], liveEvents?: tru
   if (liveEvents === true) {
     return "[]";
   }
+  return JSON.stringify(events.map((event) => ({ ...actionLiteral(event), time: event.time })));
+}
+
+/**
+ * The death reactions as the runtime reads them, each source by its index in the exported emitter
+ * list (`emitterIndex`, by emitter id) - the export keeps every emitter, in scene order.
+ */
+export function reactionsLiteral(
+  reactions: readonly DeathReaction[],
+  emitterIndex: ReadonlyMap<string, number>,
+): string {
   return JSON.stringify(
-    events.map((event) =>
-      event.kind === "burst"
-        ? { kind: "burst", time: event.time, count: event.count }
-        : { kind: "play", time: event.time, rate: event.rate, duration: event.duration },
-    ),
+    reactions.map((reaction) => {
+      const source = emitterIndex.get(reaction.source);
+      if (source === undefined) {
+        throw new Error(
+          `exportTypeScript: a reaction's source "${reaction.source}" is not exported`,
+        );
+      }
+      return { ...actionLiteral(reaction), source };
+    }),
   );
 }
 
@@ -135,6 +162,7 @@ export function emitterSpecLiteral(
   behaviorName: string,
   ir: EmitterIR,
   slots: readonly string[],
+  emitterIndex: ReadonlyMap<string, number>,
   gpuKernelName?: string,
   trailNames?: RenderArtifactNames,
 ): string {
@@ -172,6 +200,10 @@ export function emitterSpecLiteral(
     `      transformTracks: ${transformTracksLiteral(emitter.transformTracks, emitter.liveChannels)},`,
     `      tracks: ${tracksLiteral(emitter.tracks, emitter.liveParams)},`,
     `      events: ${eventsLiteral(emitter.events, emitter.liveEvents)},`,
+    // Omitted when the emitter reacts to nothing, like the optional fields above.
+    ...(emitter.reactions.length > 0
+      ? [`      reactions: ${reactionsLiteral(emitter.reactions, emitterIndex)},`]
+      : []),
     `      liveChannels: ${JSON.stringify(emitter.liveChannels)},`,
     `      liveParams: ${JSON.stringify(emitter.liveParams)},`,
     "    }",

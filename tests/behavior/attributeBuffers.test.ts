@@ -21,28 +21,16 @@ import {
   buildParticleBehaviorTargets,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC3 = FX_VALUE_TYPES.vec3;
 
 const reg = behaviorRegistry();
-
-function graphOf(
-  nodes: Record<string, FXBehaviorNode>,
-  connections: readonly {
-    from: { nodeId: string; socketKey: string };
-    to: { nodeId: string; socketKey: string };
-  }[],
-  outputBindings: readonly { slot: string; from: { nodeId: string; socketKey: string } }[],
-): FXGraph<FXBehaviorNode> {
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({ nodes: new Map(Object.entries(nodes)), connections, outputBindings });
-  return graph;
-}
 
 /** Fresh core buffers (position vec3 + lifecycle vec3) for `count` particles. */
 function coreBuffers(count: number): { position: Float32Array; lifecycle: Float32Array } {
@@ -61,16 +49,8 @@ describe("behavior attribute buffers", () => {
         seedVal: reg.create("constant", { value: 0.7, phase: "spawn" }),
         store,
       },
-      [
-        {
-          from: { nodeId: "seedVal", socketKey: "out" },
-          to: { nodeId: "store", socketKey: "value" },
-        },
-      ],
-      [
-        { slot: "lifetime", from: { nodeId: "life", socketKey: "out" } },
-        { slot: attributeSlot("seed"), from: { nodeId: "store", socketKey: "value" } },
-      ],
+      [edge("seedVal", "out", "store", "value")],
+      [bind("lifetime", "life", "out"), bind(attributeSlot("seed"), "store", "value")],
     );
 
     const targets = buildParticleBehaviorTargets([{ name: "seed", type: FLOAT }]);
@@ -93,13 +73,8 @@ describe("behavior attribute buffers", () => {
         tintVal: reg.create("constant", { type: "vec3", value: [0.1, 0.2, 0.3], phase: "spawn" }),
         store,
       },
-      [
-        {
-          from: { nodeId: "tintVal", socketKey: "out" },
-          to: { nodeId: "store", socketKey: "value" },
-        },
-      ],
-      [{ slot: attributeSlot("tint"), from: { nodeId: "store", socketKey: "value" } }],
+      [edge("tintVal", "out", "store", "value")],
+      [bind(attributeSlot("tint"), "store", "value")],
     );
 
     const targets = buildParticleBehaviorTargets([{ name: "tint", type: VEC3 }]);
@@ -118,8 +93,8 @@ describe("behavior attribute buffers", () => {
     const store = new FXBehaviorNodeStoreAttribute("energy", FLOAT, FXBehaviorPhase.UPDATE);
     const graph = graphOf(
       { e: reg.create("constant", { value: 0.5, phase: "update" }), store },
-      [{ from: { nodeId: "e", socketKey: "out" }, to: { nodeId: "store", socketKey: "value" } }],
-      [{ slot: attributeSlot("energy"), from: { nodeId: "store", socketKey: "value" } }],
+      [edge("e", "out", "store", "value")],
+      [bind(attributeSlot("energy"), "store", "value")],
     );
 
     const targets = buildParticleBehaviorTargets([{ name: "energy", type: FLOAT }]);
@@ -133,17 +108,22 @@ describe("behavior attribute buffers", () => {
 });
 
 describe("buildParticleBehaviorTargets naming + layout", () => {
-  it("names the empty target set plainly and salts with a canonical attribute suffix", () => {
-    expect(buildParticleBehaviorTargets([]).spawn.name).toBe("particle-behavior-spawn");
-
-    const attrs: FXAttributeRequest[] = [
-      { name: "tint", type: VEC3 },
-      { name: "seed", type: FLOAT },
-    ];
-    const targets = buildParticleBehaviorTargets(attrs);
-    // Sorted by name -> order-independent salt.
-    expect(targets.spawn.name).toBe("particle-behavior-spawn+seed:float+tint:vec3");
-    expect(targets.update.name).toBe("particle-behavior-update+seed:float+tint:vec3");
+  it("salts the target names with the attribute set, independent of declaration order", () => {
+    const tint: FXAttributeRequest = { name: "tint", type: VEC3 };
+    const seed: FXAttributeRequest = { name: "seed", type: FLOAT };
+    const names = (attrs: FXAttributeRequest[]): [string, string] => {
+      const targets = buildParticleBehaviorTargets(attrs);
+      return [targets.spawn.name, targets.update.name];
+    };
+    // The name salts the structural hash, so the attribute set (names and types) must move it...
+    expect(names([tint, seed])).not.toEqual(names([]));
+    expect(names([tint, seed])).not.toEqual(names([tint]));
+    expect(names([{ name: "tint", type: FLOAT }])).not.toEqual(names([tint]));
+    // ...while declaration order must not.
+    expect(names([tint, seed])).toEqual(names([seed, tint]));
+    // Spawn and update stay distinct targets.
+    const [spawn, update] = names([tint, seed]);
+    expect(spawn).not.toBe(update);
   });
 
   it("exposes the core buffers, an attr buffer, an ATTR input and an attr slot in both phases", () => {
@@ -176,23 +156,15 @@ const seedStoreGraph = (): FXGraph<FXBehaviorNode> =>
       seedVal: reg.create("constant", { value: 0.5, phase: "spawn" }),
       store: new FXBehaviorNodeStoreAttribute("seed", FLOAT, FXBehaviorPhase.SPAWN),
     },
-    [
-      {
-        from: { nodeId: "seedVal", socketKey: "out" },
-        to: { nodeId: "store", socketKey: "value" },
-      },
-    ],
-    [
-      { slot: "lifetime", from: { nodeId: "life", socketKey: "out" } },
-      { slot: attributeSlot("seed"), from: { nodeId: "store", socketKey: "value" } },
-    ],
+    [edge("seedVal", "out", "store", "value")],
+    [bind("lifetime", "life", "out"), bind(attributeSlot("seed"), "store", "value")],
   );
 
 const coreOnlyGraph = (): FXGraph<FXBehaviorNode> =>
   graphOf(
     { life: reg.create("constant", { value: 3, phase: "spawn" }) },
     [],
-    [{ slot: "lifetime", from: { nodeId: "life", socketKey: "out" } }],
+    [bind("lifetime", "life", "out")],
   );
 
 describe("compiled kernel exposes its attribute buffer set", () => {

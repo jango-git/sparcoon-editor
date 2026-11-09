@@ -30,7 +30,6 @@ import { serializeGraph } from "../domain/serialize";
 import {
   GraphKind,
   readRenderSinkConfig,
-  readSpawnSinkConfig,
   readTrailSinkConfig,
   timelineValueConflicts,
 } from "../domain/nodePalette";
@@ -39,8 +38,11 @@ import {
   type EmitterDoc,
   type LiveApplyStatus,
   type SceneModel,
+  type SpawnAction,
   type VfxMeshDoc,
 } from "../model/editorState";
+import { effectiveSpawnConfig } from "../domain/deathReactions";
+import { connectDeathReaction, fireSpawnAction } from "sparcoon/editor";
 import { entityKey, VFX_ENTITY, type SceneEntity } from "../model/entity";
 import { authoredGraphs, type GraphName } from "../model/graphSlots";
 import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
@@ -89,6 +91,8 @@ export class SceneEmitters implements SceneApplier {
   // Entities hand-posed while the caret is parked; applySceneTransforms holds these at base
   // (ignoring tracks) until the dispatcher clears the set on the next frame entry. Keyed by entityKey.
   private readonly manualPoses = new Set<string>();
+  // The death reactions as wired between views, re-made on every sync (cheap: a listener each).
+  private reactionLinks: (() => void)[] = [];
 
   constructor(
     scene: Scene,
@@ -122,7 +126,7 @@ export class SceneEmitters implements SceneApplier {
     let active: SceneApplyResult | undefined = undefined;
     let first: SceneApplyResult | undefined = undefined;
     for (const emitter of scene.emitters) {
-      const result = this.applyEmitter(emitter);
+      const result = this.applyEmitter(emitter, scene);
       first ??= result;
       if (emitter.id === scene.activeEmitterId) {
         active = result;
@@ -141,6 +145,7 @@ export class SceneEmitters implements SceneApplier {
         recompiled = true;
       }
     }
+    this.wireReactions(scene);
     // Re-assert every entity's pose after the (re)build so a structural edit never resets it.
     this.applySceneTransforms(scene, this.currentTime());
     this.highlightSelected();
@@ -154,6 +159,7 @@ export class SceneEmitters implements SceneApplier {
   }
 
   public destroy(): void {
+    this.unwireReactions();
     for (const view of this.views.values()) {
       view.destroy();
     }
@@ -289,14 +295,31 @@ export class SceneEmitters implements SceneApplier {
     return best?.entity;
   }
 
-  /** Queues a burst on emitter `id`'s view (the timeline dispatcher's `burst` event). No-op if absent. */
-  public burst(id: string, count: number): void {
-    this.views.get(id)?.burst(count);
+  /** Fires `action` on emitter `id`'s view (a timeline event crossing the playhead), the way the
+   *  runtime's `FXEffect` does. No-op if absent. */
+  public spawn(id: string, action: SpawnAction): void {
+    const view = this.views.get(id);
+    if (view !== undefined) {
+      fireSpawnAction(view, action);
+    }
   }
 
-  /** Starts a timed emission on emitter `id`'s view (the timeline dispatcher's `play` event). No-op if absent. */
-  public play(id: string, rate: number, duration: number): void {
-    this.views.get(id)?.play(rate, duration);
+  /**
+   * Links every death reaction of `scene` between the views, as the runtime's `FXEffect` does
+   * between its emitters. Part of every sync; also on its own after a view edit, which changes a
+   * reaction's numbers without a rebuild. The views survive rebuilds, so the links do too.
+   */
+  public wireReactions(scene: SceneModel): void {
+    this.unwireReactions();
+    for (const emitter of scene.emitters) {
+      const target = this.views.get(emitter.id);
+      for (const reaction of emitter.reactions) {
+        const source = this.views.get(reaction.source);
+        if (target !== undefined && source !== undefined) {
+          this.reactionLinks.push(connectDeathReaction(source, target, reaction));
+        }
+      }
+    }
   }
 
   /** Total alive particle count across every unmuted emitter in the scene (for the viewport
@@ -397,8 +420,15 @@ export class SceneEmitters implements SceneApplier {
     return removed;
   }
 
+  private unwireReactions(): void {
+    for (const disconnect of this.reactionLinks) {
+      disconnect();
+    }
+    this.reactionLinks = [];
+  }
+
   /** Serializes one emitter's graphs and drives its view, creating it on first sight. */
-  private applyEmitter(emitter: EmitterDoc): SceneApplyResult {
+  private applyEmitter(emitter: EmitterDoc, scene: SceneModel): SceneApplyResult {
     let view = this.views.get(emitter.id);
     if (view === undefined) {
       view = new EmitterView(
@@ -448,7 +478,8 @@ export class SceneEmitters implements SceneApplier {
       renderSnapshot,
       behaviorSnapshot,
       readRenderSinkConfig(emitter.renderGraph),
-      readSpawnSinkConfig(emitter.behaviorGraph),
+      // A death source simulates on the CPU whatever its spawn node asks (deathReactions.ts).
+      effectiveSpawnConfig(emitter, scene),
       emitter.behaviorGraph.attributes,
       trail,
     );

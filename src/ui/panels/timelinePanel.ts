@@ -7,10 +7,13 @@ import { t } from "../../i18n";
 import {
   addBurstEvent,
   addPlayEvent,
+  addReaction,
   clipboardItemTime,
+  defaultSpawnAction,
   pasteTimelineItems,
   removeEvent,
   removeKeyframe,
+  removeReaction,
   removeTransformKeyframe,
   setKeyframe,
   setLiveChannel,
@@ -23,6 +26,7 @@ import {
   canRemoveObject,
   emitterGraphs,
   projectDisplayName,
+  type DeathReaction,
   type EmitterDoc,
   type VfxDoc,
   type VfxMeshDoc,
@@ -40,9 +44,10 @@ import type { TransformChannel, TransformTrack } from "../../model/transform";
 import { TRANSFORM_CHANNELS } from "../../model/transform";
 import { sampleTrack } from "../../model/trackSampling";
 import { isTimelineValueType } from "../../domain/nodePalette";
+import { reactingEmitters, reactionSourceCandidates } from "../../domain/deathReactions";
 import type { EditorGraph } from "../../domain/graphModel";
 import { isKeyframeValue } from "../../domain/graphModel";
-import { openContextMenu } from "../components/contextMenu";
+import { openContextMenu, type ContextMenuItem } from "../components/contextMenu";
 import { beginPointerDrag } from "../primitives/drag";
 import { fractionAcross } from "../primitives/geometry";
 import { clamp } from "../primitives/math";
@@ -61,14 +66,20 @@ import { buildLabel, buildMeshLabel } from "./timelineRowLabel";
 import { beginPlayheadScrub } from "./timelineScrub";
 import { beginItemDrag, type ItemDragContext } from "./timelineItemDrag";
 import { beginMarquee, type MarqueeContext } from "./timelineMarquee";
-import { renderTimelineInspector, type InspectorContext } from "./timelineInspector";
+import {
+  renderReactionInspector,
+  renderTimelineInspector,
+  type InspectorContext,
+} from "./timelineInspector";
 import {
   appendSummaryKeys,
   buildChannelLabel,
   buildEntityLabel,
   buildTrackLabel,
+  buildReactionLabel,
   eventMarkers,
   keyframeMarkers,
+  reactionBand,
   transformKeyMarkers,
 } from "./timelineRows";
 import {
@@ -87,6 +98,10 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   let markers: Marker[] = [];
   let refByKey = new Map<string, ItemRef>();
   let clipboard: readonly ClipboardTimelineItem[] = [];
+  // The death reaction picked for the inspector (from its sub-row's label). Not a timeline item -
+  // it has no time - so it lives beside the item selection: picking one clears the other.
+  let pickedReaction: { readonly emitterId: string; readonly reactionId: string } | undefined;
+  let reactionLabels: { readonly reactionId: string; readonly element: HTMLElement }[] = [];
 
   const duration = (): number => store.getSource().timeline.duration;
   const fps = (): number => store.getSource().timeline.fps;
@@ -133,8 +148,16 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   // drag / marquee controllers (through their contexts) and the panel's own selection edits.
   const inspectorContext: InspectorContext = { inspector, store, fps, removeSelected };
   const refresh = (): void => {
+    if (selection.size > 0) {
+      pickedReaction = undefined;
+    }
     applySelectionStyles();
-    renderTimelineInspector(selection, refByKey, inspectorContext);
+    const picked = resolvePickedReaction();
+    if (picked !== undefined) {
+      renderReactionInspector(inspector, store, picked.emitter, picked.reaction);
+    } else {
+      renderTimelineInspector(selection, refByKey, inspectorContext);
+    }
   };
   const dragContext: ItemDragContext = {
     element,
@@ -161,6 +184,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   rows.addEventListener("pointerdown", (event) => {
     if (event.target === rows) {
       selection.clear();
+      pickedReaction = undefined;
       refresh();
     }
   });
@@ -169,6 +193,9 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   // and no field is being typed into (the router's shared editable guard).
   const deleteSelection = (): void => {
     if (selection.size === 0) {
+      if (pickedReaction !== undefined) {
+        removeReaction(store, pickedReaction.emitterId, pickedReaction.reactionId);
+      }
       return;
     }
     removeSelected();
@@ -213,6 +240,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   function render(): void {
     clearChildren(rows);
     markers = [];
+    reactionLabels = [];
     // Recolor the caret while the timeline is infinite (an infinite play exists, task 2).
     playhead.classList.toggle("timeline__playhead--infinite", transport.isInfinite());
     const total = duration();
@@ -334,9 +362,23 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     total: number,
   ): HTMLElement[] {
     const entity = emitterEntity(emitter.id);
+    const emitters = store.getSource().scene.emitters;
+    const reacting = reactingEmitters(emitters, emitter.id);
     const label = buildLabel(store, emitter, removable, () => selectEntity(entity), {
       addBurst: () => addBurstEvent(store, emitter.id, transport.getTime()),
       addPlay: () => addPlayEvent(store, emitter.id, transport.getTime()),
+      addReaction: (anchor) => {
+        const rect = anchor.getBoundingClientRect();
+        openContextMenu(rect.left, rect.bottom, reactionMenuItems(emitter));
+      },
+      triggers: reacting.map((target) => target.name),
+      showTriggers: () => {
+        const [target] = reacting;
+        const reaction = target?.reactions.find((candidate) => candidate.source === emitter.id);
+        if (target !== undefined && reaction !== undefined) {
+          pickReaction(target.id, reaction.id);
+        }
+      },
     });
     const eventLane = buildLane(
       total,
@@ -351,6 +393,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
             label: t("timeline.addPlay"),
             run: (): string => addPlayEvent(store, emitter.id, time),
           },
+          ...reactionMenuItems(emitter),
         ]),
     );
     // The header lane also mirrors every keyframe from the emitter's sub-rows, so its
@@ -361,7 +404,8 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
       eventLane,
     ]);
 
-    const output: HTMLElement[] = [header];
+    // Its death reactions show collapsed too: with its events, they are what makes it spawn.
+    const output: HTMLElement[] = [header, ...buildReactionRows(emitter, total)];
     if (!active) {
       return output; // collapsed: only the header shows
     }
@@ -382,6 +426,73 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
       output.push(buildTimelineValueRow(entity, row, emitter.liveParams, graphs, total));
     }
     return output;
+  }
+
+  /** One sub-row per death reaction of `emitter`: its label, and a lane armed end to end. */
+  function buildReactionRows(emitter: EmitterDoc, total: number): HTMLElement[] {
+    const entity = emitterEntity(emitter.id);
+    const names = new Map(selectEmitters(store).map((candidate) => [candidate.id, candidate.name]));
+    return emitter.reactions.map((reaction) => {
+      const label = buildReactionLabel(
+        reaction,
+        names.get(reaction.source) ?? reaction.source,
+        pickedReaction?.reactionId === reaction.id,
+        () => pickReaction(emitter.id, reaction.id),
+        () => selectEntity(emitterEntity(reaction.source)),
+      );
+      reactionLabels.push({ reactionId: reaction.id, element: label });
+      const lane = buildLane(total, []);
+      lane.append(reactionBand(reaction));
+      return createElement(
+        "div",
+        { className: `${trackRowClass(entity)} timeline-row--reaction` },
+        [label, lane],
+      );
+    });
+  }
+
+  /** "Burst / Play on death of <source>" for every emitter `emitter` may react to. */
+  function reactionMenuItems(emitter: EmitterDoc): ContextMenuItem[] {
+    const sources = reactionSourceCandidates(store.getSource().scene.emitters, emitter.id);
+    if (sources.length === 0) {
+      return [{ label: t("timeline.noReactionSource"), run: (): void => undefined }];
+    }
+    return sources.flatMap((source) =>
+      (["burst", "play"] as const).map((kind) => ({
+        label: t(kind === "burst" ? "timeline.addBurstOnDeath" : "timeline.addPlayOnDeath", {
+          source: source.name,
+        }),
+        run: (): void => {
+          const id = addReaction(store, emitter.id, source.id, defaultSpawnAction(kind));
+          if (id !== undefined) {
+            pickReaction(emitter.id, id);
+          }
+        },
+      })),
+    );
+  }
+
+  /** Picks reaction `reactionId` of emitter `emitterId` for the inspector, selecting the emitter. */
+  function pickReaction(emitterId: string, reactionId: string): void {
+    selection.clear();
+    pickedReaction = { emitterId, reactionId };
+    selectEntity(emitterEntity(emitterId));
+    refresh();
+  }
+
+  /** The picked reaction and its emitter while both still exist; forgets a stale pick. */
+  function resolvePickedReaction(): { emitter: EmitterDoc; reaction: DeathReaction } | undefined {
+    if (pickedReaction === undefined) {
+      return undefined;
+    }
+    const { emitterId, reactionId } = pickedReaction;
+    const emitter = selectEmitters(store).find((candidate) => candidate.id === emitterId);
+    const reaction = emitter?.reactions.find((candidate) => candidate.id === reactionId);
+    if (emitter === undefined || reaction === undefined) {
+      pickedReaction = undefined;
+      return undefined;
+    }
+    return { emitter, reaction };
   }
 
   /** One VFX mesh's rows: header (empty lane - a mesh has no spawn events) plus, while active, transform and Timeline Value sub-rows. */
@@ -593,6 +704,9 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   function applySelectionStyles(): void {
     for (const marker of markers) {
       marker.element.classList.toggle("is-selected", selection.has(selectionKey(marker.ref)));
+    }
+    for (const { reactionId, element: label } of reactionLabels) {
+      label.classList.toggle("is-picked", pickedReaction?.reactionId === reactionId);
     }
   }
 

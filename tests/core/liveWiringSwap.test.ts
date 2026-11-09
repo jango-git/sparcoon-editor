@@ -5,7 +5,7 @@ import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotD
 import type { FakeNode } from "../helpers/fakeNodes";
 import { FakeBackend, makeRegistry, socket } from "../helpers/fakeNodes";
 
-// audit-4 L2 - the structural hash is content-addressed, so swapping the roles of two
+// The structural hash is content-addressed, so swapping the roles of two
 // structurally identical nodes (values live in uniforms, outside the hash) leaves the
 // hash, the id-set and the freshness all unchanged. Without an id-sensitive wiring
 // fingerprint the gate rebinds and keeps the OLD wiring while the editor shows the new
@@ -26,7 +26,7 @@ beforeEach(() => {
   live = new FXLiveGraph(new FXGraphReconciler(registry), backend);
 });
 
-describe("role swap of two identical output producers (audit-4 L2)", () => {
+describe("role swap of two identical output producers", () => {
   const BOUND: FXGraphSnapshotData = {
     version: 2,
     nodes: { c1: { type: "src" }, c2: { type: "src" } },
@@ -66,7 +66,7 @@ describe("role swap of two identical output producers (audit-4 L2)", () => {
   });
 });
 
-describe("role swap of two identical producers across one node's inputs (audit-4 L2)", () => {
+describe("role swap of two identical producers across one node's inputs", () => {
   const FED: FXGraphSnapshotData = {
     version: 2,
     nodes: { p1: { type: "src" }, p2: { type: "src" }, n: { type: "sink" } },

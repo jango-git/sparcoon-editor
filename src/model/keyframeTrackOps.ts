@@ -6,6 +6,7 @@
 import type { FXKeyEase } from "sparcoon";
 import type { Keyframe, SourceState } from "./editorState";
 import { snapTimeToFrame } from "./frames";
+import { sameElements } from "../util/arrays";
 
 /** Two keyframe times within this many seconds are the same key (a re-bake replaces it). */
 export const KEY_EPSILON = 1e-3;
@@ -41,10 +42,13 @@ interface KeyedTrack {
   readonly keys: readonly Keyframe[];
 }
 
-/** Rebuilds a track with new keys, carrying its discriminator through verbatim. */
+/**
+ * Rebuilds a track with new keys, carrying its discriminator through verbatim - or `track` itself
+ * when the keys are its own, so an edit matching no key leaves the tracks as they were.
+ */
 function withKeys<T extends KeyedTrack>(track: T, keys: readonly Keyframe[]): T {
   // The spread copies the discriminator; TS can't prove the result still fits an open `T`.
-  return { ...track, keys };
+  return sameElements(track.keys, keys) ? track : { ...track, keys };
 }
 
 /** Removes key `keyId` from every track, dropping any track left with no keys. */

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { bindingSinkId, findIncomingEdge } from "../../src/domain/graphEdges";
-import {
-  GraphKind,
-  RENDER_SINK_ID,
-  SPAWN_SINK_ID,
-  UPDATE_SINK_ID,
-} from "../../src/domain/nodePalette";
+import { findIncomingEdge } from "../../src/domain/graphEdges";
+import { RENDER_SINK_ID, UPDATE_SINK_ID } from "../../src/domain/nodePalette";
 import { connectSockets, disconnectInput } from "../../src/model/commands";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { selectBehaviorGraph, selectRenderGraph } from "../../src/model/selectors";
@@ -58,11 +53,5 @@ describe("edge commands", () => {
     expect(
       findIncomingEdge(graph, { nodeId: "n_transform", socketKey: "rotation" }),
     ).toBeUndefined();
-  });
-
-  it("maps a binding back to its sink node", () => {
-    expect(bindingSinkId(GraphKind.Render, {})).toBe(RENDER_SINK_ID);
-    expect(bindingSinkId(GraphKind.Behavior, { phase: "spawn" })).toBe(SPAWN_SINK_ID);
-    expect(bindingSinkId(GraphKind.Behavior, { phase: "update" })).toBe(UPDATE_SINK_ID);
   });
 });

@@ -168,7 +168,7 @@
     "durationTip": "Общая длительность таймлайна, в секундах."
   },
   "timeline": {
-    "selectHint": "Выберите ключ или событие",
+    "selectHint": "Выберите ключ, событие или реакцию",
     "selected": "Выбрано: {count}",
     "remove": "Удалить",
     "frameTip": "Кадр, на котором находится элемент.",
@@ -217,7 +217,23 @@
     "playTooltip": "Проигрывание · {t}с · {rate}/с · {duration}с",
     "playInfiniteTooltip": "Проигрывание · {t}с · {rate}/с · бесконечно",
     "keyframeTooltip": "{track} · кадр {frame} · {value}",
-    "transformKeyTooltip": "{channel} · кадр {frame} · {value}"
+    "transformKeyTooltip": "{channel} · кадр {frame} · {value}",
+    "addReaction": "Добавить реакцию",
+    "addReactionTip": "Рождать на этом эмиттере там, где умирают частицы другого эмиттера.",
+    "addBurstOnDeath": "Всплеск при смерти {source}",
+    "addPlayOnDeath": "Проигрывание при смерти {source}",
+    "noReactionSource": "Не на что реагировать",
+    "burstOnDeath": "Всплеск при смерти",
+    "playOnDeath": "Проигрывание при смерти",
+    "burstOnDeathTooltip": "Когда умирает частица {source}: всплеск {count} в этой точке, через кадр.",
+    "playOnDeathTooltip": "Когда умирает частица {source}: {rate}/с в течение {duration} с в этой точке, через кадр.",
+    "reactionSource": "Источник",
+    "reactionSourceTip": "Эмиттер, смерть частиц которого запускает реакцию. Он считается на CPU: смерть частиц видна только там. Эмиттер не может реагировать сам на себя или замкнуть реакции в цикл.",
+    "reactionDurationTip": "Сколько длится испускание после каждой смерти, в секундах (не меньше кадра).",
+    "removeReactionTip": "Удалить эту реакцию.",
+    "triggers": "Запускает при смерти",
+    "triggersTip": "Смерть его частиц рождает на: {targets}. Нажмите, чтобы перейти к реакции.",
+    "goToSource": "Перейти к {source}: выделить эмиттер, смерть частиц которого запускает реакцию."
   },
   "content": {
     "title": "КОНТЕНТ",

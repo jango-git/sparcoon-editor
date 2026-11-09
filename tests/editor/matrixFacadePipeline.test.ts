@@ -92,18 +92,19 @@ describe("combine/split matrix facades: editor -> serialize -> engine compile", 
       outputBindings: [{ slot: "albedo", from: { nodeId: "lit", socketKey: "color" } }],
     };
 
-    const snapshot = serializeGraph(graph, GraphKind.Render);
-    expect(snapshot.nodes["cm"].type).toBe("combine-mat3");
-    expect(snapshot.nodes["sp"].type).toBe("split-mat3");
-
     const shader = new FXCompilerBaseline().compile(
-      reconstructRender(snapshot),
+      reconstructRender(serializeGraph(graph, GraphKind.Render)),
       FX_PARTICLE_TARGET,
     );
     expect(shader.outputs["albedo"]).toBeDefined();
-    // The column extraction printed as native GLSL matrix indexing somewhere in the pipeline.
-    const source = shader.vertex.body.join("\n") + shader.fragment.body.join("\n");
-    expect(source).toContain(")[");
+    // The combine assembles a native mat3, the split reads its column 0 by GLSL matrix indexing,
+    // and that column is the normal the lighting node shades with.
+    const source = [...shader.vertex.body, ...shader.fragment.body].join("\n");
+    const matrix = /\bmat3 (\w+) = mat3\(/.exec(source)?.[1];
+    expect(matrix).toBeDefined();
+    const column = new RegExp(`\\bvec3 (\\w+) = \\(${matrix}\\)\\[0\\];`).exec(source)?.[1];
+    expect(column).toBeDefined();
+    expect(source).toMatch(new RegExp(`\\bfxLambertShade\\(\\w+, ${column}\\)`));
   });
 
   it("runs a behavior graph combine(mat3) -> split -> position and gets the right column", () => {
@@ -119,11 +120,10 @@ describe("combine/split matrix facades: editor -> serialize -> engine compile", 
       ],
     };
 
-    const snapshot = serializeGraph(graph, GraphKind.Behavior);
-    expect(snapshot.nodes["cm"].type).toBe("combine-mat3");
-    expect(snapshot.nodes["sp"].type).toBe("split-mat3");
-
-    const compiled = compileBehavior(reconstructBehavior(snapshot), buildParticleBehaviorTargets());
+    const compiled = compileBehavior(
+      reconstructBehavior(serializeGraph(graph, GraphKind.Behavior)),
+      buildParticleBehaviorTargets(),
+    );
     const spawn = buildParticleSpawnKernel(compiled);
     const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
     spawn(buffers, 0, 1, compiled.spawn!.bindings);

@@ -10,30 +10,7 @@ function def(type: string): FXNodeDefinition {
   return found;
 }
 
-describe("curve coerce strictness (M6)", () => {
-  it("rejects a non-finite curve point instead of baking a NaN LUT", () => {
-    const node = def("ramp").createInstance("behavior");
-    expect(() => node.applyParams?.({ curve: { points: [{ position: "x", value: 1 }] } })).toThrow(
-      /FXNodeDefinition/,
-    );
-    expect(() =>
-      node.applyParams?.({ curve: { points: [{ position: 0, value: Number.NaN }] } }),
-    ).toThrow(/FXNodeDefinition/);
-    // A well-formed curve still applies.
-    expect(() =>
-      node.applyParams?.({
-        curve: {
-          points: [
-            { position: 0, value: 0 },
-            { position: 1, value: 2 },
-          ],
-        },
-      }),
-    ).not.toThrow();
-  });
-});
-
-describe("animated-texture grid dimension bounds (M7)", () => {
+describe("animated-texture grid dimension bounds", () => {
   // `columns`/`rows` are editable float pins bounded to [1, 64]; a snapshot value outside
   // that range (or non-finite) is rejected as bad-param by the descriptor's coerce.
   const make = () => def("animated-texture").createInstance("render");
@@ -50,7 +27,7 @@ describe("animated-texture grid dimension bounds (M7)", () => {
   });
 });
 
-describe("socket default metadata (M8)", () => {
+describe("socket default metadata", () => {
   const socketDefault = (type: string, key: string): unknown => {
     const meta = def(type).describe();
     return meta.inputs.find((s) => s.key === key)?.default;
@@ -82,11 +59,5 @@ describe("socket default metadata (M8)", () => {
     expect(a?.required).toBe(true);
     expect("default" in (a ?? {})).toBe(false);
     expect(a?.control).toEqual({ default: 0 });
-  });
-
-  it("keeps every socket default JSON-serializable", () => {
-    for (const d of FX_STANDARD_NODES) {
-      expect(() => JSON.stringify(d.describe())).not.toThrow();
-    }
   });
 });

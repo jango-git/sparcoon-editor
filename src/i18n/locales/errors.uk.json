@@ -167,6 +167,9 @@
   "unknown-render-input-stage": {
     "message": "таргет \"{targetName}\" вхід \"{inputName}\" називає невідому стадію \"{stage}\""
   },
+  "unknown-render-input-rate": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" називає невідому частоту \"{rate}\""
+  },
   "unknown-render-output-stage": {
     "message": "таргет \"{targetName}\" вихід \"{outputSlot}\" називає невідому стадію \"{stage}\""
   },

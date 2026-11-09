@@ -76,6 +76,56 @@ describe("pasteFragment command", () => {
     expect(selectRenderGraph(store).connections).toHaveLength(edgesBefore);
   });
 
+  it("drops an edge whose source was not part of the fragment (incoming connection)", () => {
+    const store = new Store(createInitialState(), new SignalBus());
+    const fragment: GraphFragment = {
+      nodes: [node("b", "binary-op", 0, 0)],
+      connections: [
+        {
+          id: "c",
+          from: { nodeId: "outside", socketKey: "out" },
+          to: { nodeId: "b", socketKey: "a" },
+        },
+      ],
+      comments: [],
+    };
+
+    const edgesBefore = selectRenderGraph(store).connections;
+    const { nodeIds } = pasteFragment(store, "renderGraph", fragment, { x: 0, y: 0 });
+
+    expect(nodeIds).toHaveLength(1);
+    expect(selectRenderGraph(store).connections).toEqual(edgesBefore);
+  });
+
+  it("pastes the fragment's comments with fresh ids, offset like the nodes", () => {
+    const store = new Store(createInitialState(), new SignalBus());
+    const fragment: GraphFragment = {
+      nodes: [node("a", "constant", 10, 10)],
+      connections: [],
+      comments: [
+        {
+          id: "comment_x",
+          text: "Forces",
+          position: { x: 0, y: 0 },
+          size: { width: 96, height: 72 },
+        },
+      ],
+    };
+
+    const { commentIds } = pasteFragment(store, "renderGraph", fragment, { x: 48, y: 24 });
+
+    expect(commentIds).toHaveLength(1);
+    expect(commentIds[0]).not.toBe("comment_x");
+    expect(selectRenderGraph(store).comments).toEqual([
+      {
+        id: commentIds[0],
+        text: "Forces",
+        position: { x: 48, y: 24 },
+        size: { width: 96, height: 72 },
+      },
+    ]);
+  });
+
   it("gives pasted ids that never collide with a freshly minted id", () => {
     const store = new Store(createInitialState(), new SignalBus());
     const fragment: GraphFragment = {

@@ -94,7 +94,14 @@ export function removeEmitter(store: Store, id: string): void {
   if (index === -1) {
     return;
   }
-  const emitters = scene.emitters.filter((emitter) => emitter.id !== id);
+  // Reactions to its particles' deaths go with it.
+  const emitters = scene.emitters
+    .filter((emitter) => emitter.id !== id)
+    .map((emitter) =>
+      emitter.reactions.some((reaction) => reaction.source === id)
+        ? { ...emitter, reactions: emitter.reactions.filter((r) => r.source !== id) }
+        : emitter,
+    );
   const activeEmitterId =
     scene.activeEmitterId === id ? (emitters[index - 1] ?? emitters[0])?.id : scene.activeEmitterId;
   const next = { ...scene, emitters, activeEmitterId };

@@ -103,8 +103,8 @@ export const FX_MODEL_MATRIX_INPUT = "modelMatrix";
 /**
  * The emitter's world-space linear/angular velocity, readable in both phases via the same
  * synthesized-input mechanism as {@link FX_MODEL_MATRIX_INPUT}. Never derived from
- * `PARTICLE_POSITION` (emitter-local) - a graph combining them with local math must convert
- * spaces itself.
+ * `PARTICLE_POSITION`, which declares no space - a graph that keeps positions relative to the
+ * emitter must convert this velocity itself.
  */
 export const FX_OBJECT_VELOCITY_INPUT = "objectVelocity";
 export const FX_OBJECT_ANGULAR_VELOCITY_INPUT = "objectAngularVelocity";

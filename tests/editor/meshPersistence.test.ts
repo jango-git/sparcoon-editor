@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
+import { isSink } from "../../src/domain/sinks";
 
 const loadSourceMock = vi.fn<() => unknown>();
 vi.mock("../../src/persistence/localStore", () => ({
   loadSource: (): unknown => loadSourceMock(),
   saveSource: (): void => undefined,
+  hydrateSource: (source: unknown): Promise<unknown> => Promise.resolve(source),
 }));
 
 // Imported after the mock so loadInitialState picks up the mocked loadSource.
@@ -59,8 +62,8 @@ describe("VFX mesh persistence normalization", () => {
     expect(scene.meshes[0].id).toBe("mesh_7");
     expect(scene.meshes[0].name).toBe("Shield");
     expect(scene.meshes[0].transform.position).toEqual([1, 0, 0]);
-    // A mesh always carries its render sink after normalization.
-    expect(scene.meshes[0].renderGraph.outputBindings.length).toBeGreaterThanOrEqual(0);
+    // Normalization seeds the surface sink a persisted mesh graph omits.
+    expect(isSink(scene.meshes[0].renderGraph.nodes[RENDER_SINK_ID])).toBe(true);
     expect(scene.activeMeshId).toBe("mesh_7");
     // The persisted graph-owner kind survives because its mesh survives.
     expect(scene.activeGraphKind).toBe("vfxMesh");

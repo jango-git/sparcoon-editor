@@ -1,50 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createInitialState, type TimelineEvent } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
-import { Store } from "../../src/model/store";
-import { TransportStore } from "../../src/model/transport";
-import type { SceneEmitters } from "../../src/render/sceneEmitters";
-import { TimelineDispatcher } from "../../src/render/timelineDispatcher";
+import type { SpawnAction, TimelineEvent } from "../../src/model/editorState";
+import { dispatcherHarness, stubAnimationFrames } from "../helpers/timelineDispatcher";
 
-/** The 5 s starter timeline, its one emitter carrying `events`, and a log of what the views got. */
+/** The dispatcher over `events`, with a log of what the views got. */
 function harness(events: readonly TimelineEvent[]) {
-  const state = createInitialState();
-  const [emitter] = state.source.scene.emitters;
-  state.source = {
-    ...state.source,
-    scene: { ...state.source.scene, emitters: [{ ...emitter, events }] },
-  };
-  const store = new Store(state, new SignalBus());
-  const transport = new TransportStore(() => store.getSource().timeline.duration);
+  const { transport, views, tick } = dispatcherHarness(events);
   const log: string[] = [];
-  const emitters = {
-    // Rounded: while playing, poses sample the raw caret time (a lap wrap leaves float noise).
-    applySceneTransforms: vi.fn((_scene: unknown, time: number) =>
-      log.push(`pose ${String(Number(time.toFixed(6)))}`),
-    ),
-    driveParamValues: vi.fn(),
-    driveMeshParamValues: vi.fn(),
-    clearManualPoses: vi.fn(),
-    resetAll: vi.fn(() => log.push("reset")),
-    loopAll: vi.fn(() => log.push("loop")),
-    burst: vi.fn((_id: string, count: number) => log.push(`burst ${count}`)),
-    play: vi.fn(),
-  } as unknown as SceneEmitters;
-  new TimelineDispatcher(store, transport, emitters, () => store.getSource().timeline.duration);
-  // Playback is driven by animation frames; step them by hand.
-  const tick = (timestamp: number): void =>
-    (transport as unknown as { tick(timestamp: number): void }).tick(timestamp);
+  // Rounded: while playing, poses sample the raw caret time (a lap wrap leaves float noise).
+  views.applySceneTransforms.mockImplementation((_scene: unknown, time: number) =>
+    log.push(`pose ${String(Number(time.toFixed(6)))}`),
+  );
+  views.resetAll.mockImplementation(() => log.push("reset"));
+  views.loopAll.mockImplementation(() => log.push("loop"));
+  views.spawn.mockImplementation((_id: string, action: SpawnAction) =>
+    log.push(action.kind === "burst" ? `burst ${String(action.count)}` : "play"),
+  );
   return { transport, log, tick };
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function stubAnimationFrames(): void {
-  vi.stubGlobal("requestAnimationFrame", () => 1);
-  vi.stubGlobal("cancelAnimationFrame", () => undefined);
-}
 
 describe("TimelineDispatcher: loop and order", () => {
   it("poses the frame before firing its bursts", () => {

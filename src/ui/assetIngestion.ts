@@ -7,7 +7,6 @@ import { Mesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { addEnvironmentAsset, addMeshAsset, addTextureAsset } from "../model/commands";
 import type { MeshAsset } from "../model/editorState";
-import { putEnvironmentBlob } from "../persistence/environmentBlobStore";
 import { bakeGeometryArrays } from "../render/meshGeometryBaking";
 import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
 import type { Store } from "../model/store";
@@ -63,9 +62,6 @@ async function ingestEnvironment(file: File, store: Store): Promise<void> {
   const dataUrl = await readDataUrl(file);
   const existing = selectEnvironmentAssets(store).map((asset) => asset.name);
   const name = uniqueAssetName(file.name, existing);
-  // The live document keeps `dataUrl` in memory for this session, but only IndexedDB persists it
-  // across reload - autosave strips it before writing to localStorage (see localStore.ts).
-  await putEnvironmentBlob(name, dataUrl);
   addEnvironmentAsset(store, { name, label: file.name, dataUrl, byteSize: file.size });
 }
 

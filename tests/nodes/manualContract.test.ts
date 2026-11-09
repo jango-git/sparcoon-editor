@@ -4,14 +4,10 @@ import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
 import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
 import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
-import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import {
-  attributeSlot,
-  buildParticleBehaviorTargets,
-} from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
 import type {
   FXNodeCategory,
@@ -34,7 +30,8 @@ import {
   buildParticleTarget,
   FX_PARTICLE_TARGET,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { behaviorRegistry } from "../helpers/stdRegistry";
+import { bind, edge, graphOf } from "../helpers/graphBuild";
+import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 const VEC4 = FX_VALUE_TYPES.vec4;
 
@@ -50,13 +47,6 @@ const CATEGORIES: readonly FXNodeCategory[] = [
   "over-life",
   "attribute",
 ];
-
-function edge(from: string, fromKey: string, to: string, toKey: string): FXConnection {
-  return { from: { nodeId: from, socketKey: fromKey }, to: { nodeId: to, socketKey: toKey } };
-}
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
 
 /** Wraps a node's `build` to record every `readTargetInput`, then runs `compile`. */
 function recordReads(node: FXGraphNode, compile: () => void): string[] {
@@ -82,57 +72,94 @@ function recordReads(node: FXGraphNode, compile: () => void): string[] {
   return actual;
 }
 
-/** A manual node under test: how to build it, compile it, and its declared class reads. */
+/** A manual node under test: how to compile it, and its declared class reads. */
 interface ManualCase {
+  readonly domain: "render" | "behavior";
   readonly type: string;
   readonly node: FXGraphNode;
   readonly compile: () => void;
-  readonly declaredReads: readonly string[];
 }
 
+const renderReg = renderRegistry();
+const behaviorReg = behaviorRegistry();
+
+/** `node` as `n` beside a white albedo `c`, compiled on the render baseline compiler. */
 function renderCase(
-  type: string,
   node: FXRenderNode,
-  extra: readonly FXRenderNode[],
-  connections: readonly FXConnection[],
   outputBindings: readonly FXOutputBinding[],
   target = FX_PARTICLE_TARGET,
 ): ManualCase {
-  const graph = new FXGraph<FXRenderNode>();
-  const nodes = new Map<string, FXRenderNode>([["n", node]]);
-  extra.forEach((e, i) => nodes.set(`x${i.toString()}`, e));
-  graph.ingest({ nodes, connections, outputBindings });
+  const white = renderReg.create("constant", { type: "color", value: [1, 1, 1, 1] });
+  const graph = graphOf({ n: node, c: white }, [], [bind("albedo", "c", "out"), ...outputBindings]);
   return {
-    type,
+    domain: "render",
+    type: node.type,
     node,
-    declaredReads: node.targetReads ?? [],
     compile: () => {
       new FXCompilerBaseline().compile(graph, target);
     },
   };
 }
 
-function manualCases(): ManualCase[] {
-  // custom-attribute: reads the (name-dependent) p_fx_tint varying.
-  const readAttr = renderCase(
-    "custom-attribute",
-    new FXRenderNodeCustomAttribute("tint", VEC4),
-    [],
-    [],
-    [bind("albedo", "n", "value")],
-    buildParticleTarget([{ name: "tint", type: VEC4 }]),
-  );
-  // builtin-attribute: reads all four PARTICLE_* target inputs unconditionally, regardless
-  // of which output actually feeds a binding.
-  const readBuiltin = renderCase(
-    "builtin-attribute",
-    new FXRenderNodeBuiltinAttribute(),
-    [],
-    [],
-    [bind("albedo", "n", "age")],
-  );
+/** `node` as `n` (plus `extra` nodes), compiled on the JS behavior backend. */
+function behaviorCase(
+  node: FXBehaviorNode,
+  outputBindings: readonly FXOutputBinding[],
+  extra: Readonly<Record<string, FXBehaviorNode>> = {},
+  connections: readonly FXConnection[] = [],
+): ManualCase {
+  const graph = graphOf({ n: node, ...extra }, connections, outputBindings);
+  return {
+    domain: "behavior",
+    type: node.type,
+    node,
+    compile: () => {
+      compileParticleBehavior(graph);
+    },
+  };
+}
 
-  return [readAttr, readBuiltin];
+/** One compiling graph per manual node class (see {@link MANUAL_CLASSES}). */
+function manualCases(): ManualCase[] {
+  const VEC3 = FX_VALUE_TYPES.vec3;
+  const FLOAT = FX_VALUE_TYPES.float;
+  return [
+    // custom-attribute: reads the (name-dependent) p_fx_tint varying.
+    renderCase(
+      new FXRenderNodeCustomAttribute("tint", VEC4),
+      [bind("intensity", "n", "value")],
+      buildParticleTarget([{ name: "tint", type: VEC4 }]),
+    ),
+    renderCase(
+      new FXRenderNodeCustomAttributeSplit("tint", VEC4),
+      [bind("alphaThreshold", "n", "x")],
+      buildParticleTarget([{ name: "tint", type: VEC4 }]),
+    ),
+    // builtin-attribute: reads all four PARTICLE_* target inputs unconditionally, regardless
+    // of which output actually feeds a binding.
+    renderCase(new FXRenderNodeBuiltinAttribute(), [bind("alphaThreshold", "n", "age")]),
+    renderCase(new FXRenderNodeTimelineValue("power", FLOAT, 1), [
+      bind("alphaThreshold", "n", "out"),
+    ]),
+    // texture: samples at its uv default, the particle UV builtin.
+    renderCase(new FXRenderNodeTexture("tex"), [bind("intensity", "n", "color")]),
+    behaviorCase(new FXBehaviorNodeCustomAttribute("velocity", VEC3), [
+      bind("position", "n", "value"),
+    ]),
+    behaviorCase(new FXBehaviorNodeCustomAttributeSplit("velocity", VEC3), [
+      bind("positionX", "n", "x"),
+    ]),
+    behaviorCase(new FXBehaviorNodeBuiltinAttribute(), [bind("positionX", "n", "age")]),
+    behaviorCase(
+      new FXBehaviorNodeStoreAttribute("tint", VEC4, FXBehaviorPhase.SPAWN),
+      [bind(attributeSlot("tint"), "n", "value")],
+      { v: behaviorReg.create("constant", { type: "vec4", value: [1, 0, 0, 1], phase: "spawn" }) },
+      [edge("v", "out", "n", "value")],
+    ),
+    behaviorCase(new FXBehaviorNodeTimelineValue("power", FLOAT, 1), [
+      bind("positionX", "n", "out"),
+    ]),
+  ];
 }
 
 const CASES = manualCases();
@@ -145,8 +172,8 @@ const METAS_BY_KEY = new Map<string, FXNodeMeta>(FX_MANUAL_NODE_METAS.map((m) =>
  * The hand-written (editor-owned) manual node classes - the ones carrying a `three`
  * resource, an `attributeRequest`, or a gradient, so they are not `defineNode`
  * descriptors. Each exposes a static `describe()`; a new such class added without a meta
- * trips the single-source contract below (M9). (Discovered by explicit import now that
- * the runtime `sparcoon` entry no longer re-exports the editor node classes.)
+ * trips the single-source contract below. The classes are imported explicitly: the runtime
+ * `sparcoon` entry does not re-export the editor node classes.
  */
 const MANUAL_CLASSES: { describe(): FXNodeMeta }[] = [
   FXRenderNodeCustomAttribute,
@@ -192,31 +219,42 @@ describe("manual node palette metadata", () => {
 });
 
 describe("manual node anti-rot: actual reads are a subset of declared/described reads", () => {
+  it("covers every manual node class", () => {
+    const covered = CASES.map((testCase) => metaKey(testCase)).sort();
+    expect(covered).toEqual(MANUAL_CLASSES.map((cls) => metaKey(cls.describe())).sort());
+  });
+
   for (const testCase of CASES) {
-    it(`${testCase.type} declares every target input its build() reads`, () => {
+    it(`${testCase.domain}:${testCase.type} reads only what it declares and describes`, () => {
+      // Every manual node declares its reads, so validation checks it before compile.
+      const declared = testCase.node.targetReads ?? [];
+      expect(testCase.node.targetReads).toBeDefined();
+      const meta = METAS_BY_KEY.get(metaKey(testCase));
+      expect(meta).toBeDefined();
+      const described = meta?.reads === "dynamic" ? undefined : meta?.reads;
       const actual = recordReads(testCase.node, testCase.compile);
       // The harness must have actually run build() and hit the reads (not vacuous).
-      if (testCase.declaredReads.length > 0) {
+      if (declared.length > 0) {
         expect(actual.length).toBeGreaterThan(0);
       }
-      // Every actual read is in the class's declared targetReads.
+      // The declared reads cover every actual read, and the palette meta's reads (unless
+      // "dynamic") cover both.
       for (const name of actual) {
-        expect(testCase.declaredReads).toContain(name);
+        expect(declared).toContain(name);
+        if (described !== undefined) {
+          expect(described).toContain(name);
+        }
       }
-      // And the palette meta's reads cover the declared set (unless "dynamic"). All
-      // CASES are render-domain manual nodes.
-      const meta = METAS_BY_KEY.get(`render:${testCase.type}`);
-      expect(meta).toBeDefined();
-      if (meta !== undefined && meta.reads !== "dynamic") {
-        for (const name of testCase.declaredReads) {
-          expect(meta.reads).toContain(name);
+      for (const name of declared) {
+        if (described !== undefined) {
+          expect(described).toContain(name);
         }
       }
     });
   }
 });
 
-describe("manual node meta matches the instantiated class's sockets (M9 anti-drift)", () => {
+describe("manual node meta matches the instantiated class's sockets", () => {
   const FLOAT = FX_VALUE_TYPES.float;
   // Class socket type -> the meta's string form (`"T"` for a generic socket, else the type name).
   const metaType = (type: FXSocketType): string => (isGenericType(type) ? "T" : type.glslTypeName);
@@ -292,26 +330,4 @@ describe("manual node meta matches the instantiated class's sockets (M9 anti-dri
       compareSockets(classSockets(node.outputs), metaSockets(meta.outputs));
     });
   }
-});
-
-describe("store-attribute anti-rot (behavior)", () => {
-  it("reads nothing and its meta agrees", () => {
-    const store = new FXBehaviorNodeStoreAttribute("tint", VEC4, FXBehaviorPhase.SPAWN);
-    const reg = behaviorRegistry();
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes: new Map<string, FXBehaviorNode>([
-        ["v", reg.create("constant", { type: "vec4", value: [1, 0, 0, 1], phase: "spawn" })],
-        ["s", store],
-      ]),
-      connections: [edge("v", "out", "s", "value")],
-      outputBindings: [bind(attributeSlot("tint"), "s", "value")],
-    });
-    const actual = recordReads(store, () => {
-      compileBehavior(graph, buildParticleBehaviorTargets([{ name: "tint", type: VEC4 }]));
-    });
-    expect(actual).toEqual([]);
-    expect((store.targetReads ?? []).length).toBe(0);
-    expect(METAS_BY_KEY.get("behavior:store-attribute")?.reads).toEqual([]);
-  });
 });

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
-import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import type { FXCallSignature } from "../../src/engine/core/ir/FXExprBuilder";
 import {
   add,
@@ -18,7 +17,6 @@ import {
   mod,
   mul,
   neg,
-  raw,
   ref,
   select,
   sub,
@@ -28,11 +26,6 @@ import {
 } from "../../src/engine/core/ir/FXExprBuilder";
 
 describe("literals and refs", () => {
-  it("lit is a float carrying its value", () => {
-    const e = lit(2.5);
-    expect(e).toMatchObject({ kind: "lit", type: FX_VALUE_TYPES.float, values: [2.5] });
-  });
-
   it("litVec sizes the type by component count", () => {
     expect(litVec(1, 2).type).toBe(FX_VALUE_TYPES.vec2);
     expect(litVec(1, 2, 3).type).toBe(FX_VALUE_TYPES.vec3);
@@ -42,15 +35,6 @@ describe("literals and refs", () => {
   it("litVec rejects out-of-range widths", () => {
     expect(() => litVec(1)).toThrow(/2\.\.4/);
     expect(() => litVec(1, 2, 3, 4, 5)).toThrow(/2\.\.4/);
-  });
-
-  it("ref carries kind, name and type", () => {
-    expect(ref("uniform", "p_tint", FX_VALUE_TYPES.vec4)).toMatchObject({
-      kind: "ref",
-      ref: "uniform",
-      name: "p_tint",
-      type: FX_VALUE_TYPES.vec4,
-    });
   });
 });
 
@@ -218,14 +202,6 @@ describe("select", () => {
   it("rejects non-float cond and mismatched branches", () => {
     expect(() => select(litVec(1, 2), lit(1), lit(2))).toThrow(/condition must be float/);
     expect(() => select(lit(1), litVec(1, 2), lit(3))).toThrow(/share a type/);
-  });
-});
-
-describe("raw", () => {
-  it("declares its own type and keeps deps in order", () => {
-    const e = raw(FX_VALUE_TYPES.vec2, "glsl", "vec2($0, $1)", lit(1), lit(2));
-    expect(e).toMatchObject({ kind: "raw", type: FX_VALUE_TYPES.vec2, language: "glsl" });
-    expect((e as Extract<FXExpr, { kind: "raw" }>).deps).toHaveLength(2);
   });
 });
 

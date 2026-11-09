@@ -28,9 +28,8 @@ describe("render placement inference", () => {
     });
     const target = buildParticleTarget([]);
 
-    // Old model: a flexible constant defaulted to fragment, so the one feeding the vertex
-    // transform slot errored (a fragment value cannot flow into a vertex slot). Placement
-    // inference puts the constant (through compose-transform) in vertex instead - no error.
+    // A fragment value cannot flow into a vertex slot; placement inference puts the constant
+    // feeding the transform slot (through compose-transform) in vertex, so the graph validates.
     expect(new FXCompilerBaseline().validate(graph, target).ok).toBe(true);
 
     const shader = new FXCompilerBaseline().compile(graph, target);

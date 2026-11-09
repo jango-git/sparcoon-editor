@@ -1,4 +1,4 @@
-import type { FXExpr } from "./FXExpr";
+import type { FXExpr, FXRefKind } from "./FXExpr";
 
 /**
  * Structural traversal of the {@link FXExpr} IR: the per-kind child map that CSE, target-signature
@@ -69,4 +69,24 @@ export function childAt(children: readonly FXExpr[], index: number): FXExpr {
     );
   }
   return child;
+}
+
+/** Adds the name of every `kind` ref `expr` reads to `into`, and returns it. */
+export function refNames(expr: FXExpr, kind: FXRefKind, into: Set<string>): Set<string> {
+  if (expr.kind === "ref" && expr.ref === kind) {
+    into.add(expr.name);
+  }
+  for (const child of childrenOf(expr)) {
+    refNames(child, kind, into);
+  }
+  return into;
+}
+
+/** The names of every `kind` ref `exprs` read, each once. */
+export function refNamesIn(exprs: Iterable<FXExpr>, kind: FXRefKind): string[] {
+  const names = new Set<string>();
+  for (const expr of exprs) {
+    refNames(expr, kind, names);
+  }
+  return [...names];
 }

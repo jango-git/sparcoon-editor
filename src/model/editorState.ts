@@ -7,7 +7,7 @@
  *   recomputed by the pipeline on every structural edit.
  */
 
-import type { FXKeyEase } from "sparcoon";
+import type { FXKeyEase, FXSpawnAction } from "sparcoon";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type {
@@ -59,28 +59,48 @@ export interface AnimationTrack {
 }
 
 /**
- * A timeline **spawn event** on one emitter, fired as the playhead crosses `time`. `burst`
- * spawns `count` particles at once; `play` emits at `rate` particles/second for `duration`
- * seconds. Events carry an `id` so they can be retimed and edited in place, and are the only
- * thing that makes an emitter spawn - a fresh emitter is idle until an event fires.
+ * What makes an emitter spawn, whatever triggers it: the runtime's own `FXSpawnAction` - `burst`
+ * spawns `count` particles at once; `play` emits at `rate` particles/second for `duration` seconds
+ * (`0` = without end - timeline events only).
  */
-export interface BurstEvent {
+export type SpawnAction = FXSpawnAction;
+export type BurstAction = Extract<SpawnAction, { readonly kind: "burst" }>;
+export type PlayAction = Extract<SpawnAction, { readonly kind: "play" }>;
+
+/**
+ * A timeline **spawn event** on one emitter: its action, fired as the playhead crosses `time`.
+ * Events carry an `id` so they can be retimed and edited in place.
+ */
+export interface BurstEvent extends BurstAction {
   readonly id: string;
-  readonly kind: "burst";
   readonly time: number;
-  readonly count: number;
 }
 
-export interface PlayEvent {
+export interface PlayEvent extends PlayAction {
   readonly id: string;
-  readonly kind: "play";
   readonly time: number;
-  readonly rate: number;
-  /** Emission length in seconds. */
-  readonly duration: number;
 }
 
 export type TimelineEvent = BurstEvent | PlayEvent;
+
+/**
+ * A **death reaction** on one emitter: its action, fired at every death of the `source` emitter's
+ * particles, from where the particle died (the runtime's `connectDeathReaction`). Not on the time
+ * axis. A play here always has a finite duration, and the reactions of a scene never form a cycle
+ * (see domain/deathReactions.ts).
+ */
+export interface BurstReaction extends BurstAction {
+  readonly id: string;
+  /** The id of the emitter whose particles' deaths fire it. */
+  readonly source: string;
+}
+
+export interface PlayReaction extends PlayAction {
+  readonly id: string;
+  readonly source: string;
+}
+
+export type DeathReaction = BurstReaction | PlayReaction;
 
 /**
  * One emitter object in the scene. Each emitter owns its **own** pair of authored
@@ -103,6 +123,11 @@ export interface EmitterDoc {
   readonly tracks: readonly AnimationTrack[];
   /** This emitter's timeline spawn events (burst / play), sorted by time; the timeline drives them. */
   readonly events: readonly TimelineEvent[];
+  /**
+   * What this emitter spawns when other emitters' particles die. With {@link events}, the only
+   * things that make an emitter spawn - a fresh emitter is idle until one fires.
+   */
+  readonly reactions: readonly DeathReaction[];
   /** The emitter's local transform (relative to the VFX group), edited by the preview gizmo. */
   readonly transform: Transform;
   /** Keyframes animating this emitter's transform channels (position / rotation / scale). */
@@ -490,6 +515,7 @@ export function createDefaultEmitter(id: string, name: string): EmitterDoc {
     tracks: [],
     // One default burst so a fresh document still shows particles the moment the timeline plays.
     events: [{ id: "event_1", kind: "burst", time: 0, count: 32 }],
+    reactions: [],
     transform: IDENTITY_TRANSFORM,
     transformTracks: [],
     liveChannels: [],
@@ -535,6 +561,7 @@ export function createEmptyEmitter(id: string, name: string): EmitterDoc {
     settings: DEFAULT_EMITTER_SETTINGS,
     tracks: [],
     events: [],
+    reactions: [],
     transform: IDENTITY_TRANSFORM,
     transformTracks: [],
     liveChannels: [],

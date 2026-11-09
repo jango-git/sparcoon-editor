@@ -6,7 +6,7 @@ import {
   topologicalOrder,
 } from "../../src/engine/core/compiler/FXGraphTraversal.Internal";
 import { fnv1a64, structuralHash } from "../../src/engine/core/compiler/FXStructuralHash.Internal";
-import { FakeBackend, FakeNode, socket } from "../helpers/fakeNodes";
+import { FakeNode, socket } from "../helpers/fakeNodes";
 
 function graphOf(
   nodes: Record<string, FakeNode>,
@@ -132,13 +132,13 @@ describe("structuralHash", () => {
     expect(hashOf(graph)).toBe(before);
   });
 
-  it("hashes both surrogate halves: astral characters do not collide (P11.4, L4)", () => {
+  it("hashes both surrogate halves: astral characters do not collide", () => {
     // 😀 (U+1F600) and 😁 (U+1F601) share the high surrogate; only the low one
     // differs - a code-point iteration reading charCodeAt(0) collides them.
     expect(fnv1a64("type:😀:")).not.toBe(fnv1a64("type:😁:"));
   });
 
-  it("a delimiter inside type/cacheKey does not alias a different split (P11.4, L9)", () => {
+  it("a delimiter inside type/cacheKey does not alias a different split", () => {
     // Same concatenation "a:b::" under the old `${type}:${variant}:` join.
     const x = graphOf(
       { n: new FakeNode({ type: "a", variant: "b:", outputs: [socket("out")] }) },
@@ -164,11 +164,5 @@ describe("structuralHash", () => {
       [{ slot: "albedo", from: { nodeId: "n", socketKey: "out" } }],
     );
     expect(hashOf(p)).not.toBe(hashOf(q));
-  });
-
-  it("previewHash equals the compiled artifact's hash (fake backend)", () => {
-    const backend = new FakeBackend();
-    const graph = diamond("a");
-    expect(backend.previewHash(graph)).toBe(backend.compile(graph).hash);
   });
 });

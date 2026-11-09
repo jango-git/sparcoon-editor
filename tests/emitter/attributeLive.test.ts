@@ -97,7 +97,7 @@ const behaviorWithOffset: FXGraphSnapshotData = {
 // `bad-param-stage` for an illegal stage spelling) - a silent no-op under a green `rebound` would
 // drift editor state from the runtime. This exercises the (editor-owned, still-present) live
 // reconcile gate directly, not the emitter.
-describe("structural params of manual nodes under a stable id (P13.5 / audit-3 R5)", () => {
+describe("structural params of manual nodes under a stable id", () => {
   const readSnapshot = (type: string, stage = "vertex"): FXGraphSnapshotData => ({
     version: 2,
     nodes: {

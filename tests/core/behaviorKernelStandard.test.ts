@@ -1,33 +1,22 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import type { FXConnection } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
 import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import {
+  FX_PARTICLE_INDEX_INPUT,
+  buildParticleBehaviorTargets,
+} from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { jsOnlyBehaviorGraph, singleNodeBehaviorGraph } from "../helpers/behaviorTestGraphs";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // The standard-tier (GLSL) behavior pipeline is a sibling of the JS one (FXParticleBehaviorKernel.
 // Internal.ts) with no scalarize/CSE pass - GLSL handles vectors natively. These are smoke tests
 // over the compiled GLSL text/writes, the same style as tests/core/cseKernel.test.ts, since a real
 // GLSL compiler is not available in this headless container.
-
-function bind(
-  slot: string,
-  nodeId: string,
-  socketKey: string,
-  phase: FXBehaviorPhase,
-): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey }, phase };
-}
-function registry(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  return r;
-}
 
 function spawnPhase(
   nodes: Map<string, FXBehaviorNode>,
@@ -39,7 +28,9 @@ function spawnPhase(
   graph.ingest({
     nodes,
     connections,
-    outputBindings: [bind("position", terminal, socketKey, FXBehaviorPhase.SPAWN)],
+    outputBindings: [
+      { slot: "position", from: { nodeId: terminal, socketKey }, phase: FXBehaviorPhase.SPAWN },
+    ],
   });
   return compileBehaviorStandard(graph, buildParticleBehaviorTargets());
 }
@@ -50,7 +41,7 @@ function occurrences(haystack: string, needle: string): number {
 
 describe("standard-tier behavior kernel", () => {
   it("compiles a spawn-box into GLSL writing three independent fxNextRandom() draws", () => {
-    const r = registry();
+    const r = behaviorRegistry();
     const compiled = spawnPhase(
       new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
       [],
@@ -68,19 +59,11 @@ describe("standard-tier behavior kernel", () => {
   });
 
   it("resolves dt to the synthesized uniform, not the bare JS identifier", () => {
-    const r = registry();
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes: new Map([["dt", r.create("delta-time", {})]]),
-      connections: [],
-      outputBindings: [
-        {
-          slot: "position",
-          from: { nodeId: "dt", socketKey: "out" },
-          phase: FXBehaviorPhase.UPDATE,
-        },
-      ],
-    });
+    const graph = singleNodeBehaviorGraph(
+      behaviorRegistry().create("delta-time", {}),
+      "position",
+      FXBehaviorPhase.UPDATE,
+    );
     const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets());
     // The synthesized dt/emitter-transform uniforms are always declared by the assembler,
     // regardless of whether a given graph reads them - the compile step here only needs to
@@ -89,58 +72,44 @@ describe("standard-tier behavior kernel", () => {
   });
 
   it("resolves PARTICLE_INDEX to gl_VertexID", () => {
-    const r = registry();
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes: new Map([["idx", r.create("read-state", { builtin: "PARTICLE_AGE" })]]),
-      connections: [],
-      outputBindings: [
-        {
-          slot: "lifetime",
-          from: { nodeId: "idx", socketKey: "out" },
-          phase: FXBehaviorPhase.SPAWN,
-        },
-      ],
+    const particleIndex = defineNode({
+      type: "test-particle-index",
+      domain: "behavior",
+      phase: "spawn",
+      category: "source",
+      inputs: {},
+      outputs: { out: { type: "float" } },
+      params: {},
+      cost: 0,
+      reads: [FX_PARTICLE_INDEX_INPUT],
+      build: ({ fn, target }) => ({ out: fn.toFloat(target.read(FX_PARTICLE_INDEX_INPUT)) }),
     });
+    const graph = singleNodeBehaviorGraph(
+      behaviorRegistry(particleIndex).create(particleIndex.type, {}),
+      "lifetime",
+      FXBehaviorPhase.SPAWN,
+    );
+    const body = compileBehaviorStandard(graph, buildParticleBehaviorTargets()).spawn!.body;
+    expect(body.join("\n")).toContain("gl_VertexID");
+  });
+
+  it("resolves PARTICLE_AGE to a swizzle of the native lifecycle attribute", () => {
+    const graph = singleNodeBehaviorGraph(
+      behaviorRegistry().create("read-state", { builtin: "PARTICLE_AGE" }),
+      "lifetime",
+      FXBehaviorPhase.SPAWN,
+    );
     const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets());
     // PARTICLE_AGE (offset 0 of the 2-wide lifecycle buffer) swizzles off the native attribute.
     expect(compiled.spawn!.body.join("\n")).toContain("in_lifecycle.x");
   });
 
   it("throws a clean, catchable build-time error for a JS-only function - never broken GLSL", () => {
-    // sampleLut is explicitly JS-only (FXBehaviorFunctions.Internal.ts) with no standard node
-    // calling it, so this test authors a minimal fixture directly; the per-emitter GPU fallback
-    // relies on this compile step throwing cleanly rather than failing later at shader link time.
-    const jsOnlyNode = defineNode({
-      type: "test-js-only-lut-sample",
-      domain: "behavior",
-      phase: "spawn",
-      phaseFlexible: true,
-      category: "source",
-      inputs: {},
-      outputs: { out: { type: "float" } },
-      params: {},
-      cost: 1,
-      build: ({ fn }) => ({ out: fn.call("sampleLut", fn.lit(0), fn.lit(0)) }),
-    });
-    const r = new FXNodeRegistry<FXBehaviorNode>();
-    registerStandardBehaviorNodes(r);
-    r.register(
-      jsOnlyNode.type,
-      (parameters) =>
-        jsOnlyNode.createInstance("behavior", parameters) as unknown as FXBehaviorNode,
-    );
-
-    const nodes = new Map([["lut", r.create("test-js-only-lut-sample", {})]]);
-    const graph = new FXGraph<FXBehaviorNode>();
-    graph.ingest({
-      nodes,
-      connections: [],
-      outputBindings: [bind("lifetime", "lut", "out", FXBehaviorPhase.SPAWN)],
-    });
-
-    // The JS backend has no trouble with it at all - confirms the test graph is otherwise valid
-    // and the GLSL failure below is specifically about portability, not a malformed fixture.
+    // The per-emitter GPU fallback relies on this compile step throwing cleanly rather than
+    // failing later at shader link time.
+    const graph = jsOnlyBehaviorGraph();
+    // The JS backend has no trouble with it at all - confirms the fixture is otherwise valid
+    // and the GLSL failure below is specifically about portability, not a malformed graph.
     expect(() => compileBehavior(graph, buildParticleBehaviorTargets())).not.toThrow();
     expect(() => compileBehaviorStandard(graph, buildParticleBehaviorTargets())).toThrow(
       /unknown function "sampleLut"/,

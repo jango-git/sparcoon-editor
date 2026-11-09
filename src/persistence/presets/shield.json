@@ -110,6 +110,7 @@
                 "id": "node_273",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tGlow"
                 },
                 "position": {
@@ -663,6 +664,7 @@
               "count": 1
             }
           ],
+          "reactions": [],
           "transform": {
             "position": [0, 0, 0],
             "rotation": [0, 0, 0, 1],
@@ -689,8 +691,8 @@
                   "y": 96
                 }
               },
-              "node_333": {
-                "id": "node_333",
+              "node_334": {
+                "id": "node_334",
                 "type": "custom-attribute",
                 "parameters": {
                   "type": "vec3",
@@ -701,8 +703,8 @@
                   "y": 72
                 }
               },
-              "node_334": {
-                "id": "node_334",
+              "node_335": {
+                "id": "node_335",
                 "type": "align-to-velocity",
                 "parameters": {
                   "axis": "y",
@@ -715,8 +717,8 @@
                   "y": 264
                 }
               },
-              "node_336": {
-                "id": "node_336",
+              "node_337": {
+                "id": "node_337",
                 "type": "length",
                 "parameters": {},
                 "position": {
@@ -724,8 +726,8 @@
                   "y": 456
                 }
               },
-              "node_338": {
-                "id": "node_338",
+              "node_339": {
+                "id": "node_339",
                 "type": "remap",
                 "parameters": {
                   "inMin": 0,
@@ -738,8 +740,8 @@
                   "y": 648
                 }
               },
-              "node_340": {
-                "id": "node_340",
+              "node_341": {
+                "id": "node_341",
                 "type": "combine",
                 "parameters": {
                   "type": "vec3",
@@ -751,8 +753,8 @@
                   "y": 840
                 }
               },
-              "node_342": {
-                "id": "node_342",
+              "node_343": {
+                "id": "node_343",
                 "type": "compose-transform",
                 "parameters": {},
                 "position": {
@@ -760,8 +762,8 @@
                   "y": 1032
                 }
               },
-              "node_343": {
-                "id": "node_343",
+              "node_344": {
+                "id": "node_344",
                 "type": "builtin-attribute",
                 "parameters": {},
                 "position": {
@@ -769,8 +771,8 @@
                   "y": 1224
                 }
               },
-              "node_344": {
-                "id": "node_344",
+              "node_345": {
+                "id": "node_345",
                 "type": "world-matrix",
                 "parameters": {},
                 "position": {
@@ -778,8 +780,8 @@
                   "y": 1416
                 }
               },
-              "node_345": {
-                "id": "node_345",
+              "node_346": {
+                "id": "node_346",
                 "type": "transform-point",
                 "parameters": {},
                 "position": {
@@ -787,8 +789,8 @@
                   "y": 1608
                 }
               },
-              "node_348": {
-                "id": "node_348",
+              "node_349": {
+                "id": "node_349",
                 "type": "binary-op",
                 "parameters": {
                   "op": "subtract"
@@ -798,8 +800,8 @@
                   "y": 1800
                 }
               },
-              "node_354": {
-                "id": "node_354",
+              "node_355": {
+                "id": "node_355",
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
@@ -807,8 +809,8 @@
                   "y": 1992
                 }
               },
-              "node_355": {
-                "id": "node_355",
+              "node_356": {
+                "id": "node_356",
                 "type": "color-ramp",
                 "parameters": {
                   "gradient": {
@@ -833,10 +835,11 @@
                   "y": 2184
                 }
               },
-              "node_357": {
-                "id": "node_357",
+              "node_358": {
+                "id": "node_358",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tGlow"
                 },
                 "position": {
@@ -844,8 +847,8 @@
                   "y": 2376
                 }
               },
-              "node_358": {
-                "id": "node_358",
+              "node_359": {
+                "id": "node_359",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply"
@@ -855,8 +858,8 @@
                   "y": 2568
                 }
               },
-              "node_361": {
-                "id": "node_361",
+              "node_362": {
+                "id": "node_362",
                 "type": "constant",
                 "parameters": {
                   "type": "float",
@@ -867,8 +870,8 @@
                   "y": 2760
                 }
               },
-              "node_362": {
-                "id": "node_362",
+              "node_363": {
+                "id": "node_363",
                 "type": "mix",
                 "parameters": {},
                 "position": {
@@ -876,8 +879,8 @@
                   "y": 2952
                 }
               },
-              "node_363": {
-                "id": "node_363",
+              "node_364": {
+                "id": "node_364",
                 "type": "constant",
                 "parameters": {
                   "type": "color",
@@ -888,8 +891,8 @@
                   "y": 3144
                 }
               },
-              "node_367": {
-                "id": "node_367",
+              "node_368": {
+                "id": "node_368",
                 "type": "constant",
                 "parameters": {
                   "type": "float",
@@ -903,189 +906,189 @@
             },
             "connections": [
               {
-                "id": "conn_335",
+                "id": "conn_336",
                 "from": {
-                  "nodeId": "node_333",
+                  "nodeId": "node_334",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "node_334",
+                  "nodeId": "node_335",
                   "socketKey": "velocity"
                 }
               },
               {
-                "id": "conn_337",
+                "id": "conn_338",
                 "from": {
-                  "nodeId": "node_333",
+                  "nodeId": "node_334",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "node_336",
+                  "nodeId": "node_337",
                   "socketKey": "v"
                 }
               },
               {
-                "id": "conn_339",
+                "id": "conn_340",
                 "from": {
-                  "nodeId": "node_336",
+                  "nodeId": "node_337",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_338",
+                  "nodeId": "node_339",
                   "socketKey": "x"
                 }
               },
               {
-                "id": "conn_341",
+                "id": "conn_342",
                 "from": {
-                  "nodeId": "node_338",
+                  "nodeId": "node_339",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_340",
+                  "nodeId": "node_341",
                   "socketKey": "y"
-                }
-              },
-              {
-                "id": "conn_346",
-                "from": {
-                  "nodeId": "node_344",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_345",
-                  "socketKey": "m"
                 }
               },
               {
                 "id": "conn_347",
                 "from": {
-                  "nodeId": "node_343",
-                  "socketKey": "position"
-                },
-                "to": {
-                  "nodeId": "node_345",
-                  "socketKey": "p"
-                }
-              },
-              {
-                "id": "conn_349",
-                "from": {
                   "nodeId": "node_345",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_348",
-                  "socketKey": "a"
+                  "nodeId": "node_346",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_348",
+                "from": {
+                  "nodeId": "node_344",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_346",
+                  "socketKey": "p"
                 }
               },
               {
                 "id": "conn_350",
                 "from": {
-                  "nodeId": "node_343",
-                  "socketKey": "position"
+                  "nodeId": "node_346",
+                  "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_348",
-                  "socketKey": "b"
+                  "nodeId": "node_349",
+                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_351",
                 "from": {
-                  "nodeId": "node_348",
-                  "socketKey": "out"
+                  "nodeId": "node_344",
+                  "socketKey": "position"
                 },
                 "to": {
-                  "nodeId": "node_342",
-                  "socketKey": "position"
+                  "nodeId": "node_349",
+                  "socketKey": "b"
                 }
               },
               {
                 "id": "conn_352",
                 "from": {
-                  "nodeId": "node_334",
+                  "nodeId": "node_349",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_342",
-                  "socketKey": "rotation"
+                  "nodeId": "node_343",
+                  "socketKey": "position"
                 }
               },
               {
                 "id": "conn_353",
                 "from": {
-                  "nodeId": "node_340",
+                  "nodeId": "node_335",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_342",
+                  "nodeId": "node_343",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_354",
+                "from": {
+                  "nodeId": "node_341",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_343",
                   "socketKey": "scale"
                 }
               },
               {
-                "id": "conn_356",
+                "id": "conn_357",
                 "from": {
-                  "nodeId": "node_354",
+                  "nodeId": "node_355",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_355",
+                  "nodeId": "node_356",
                   "socketKey": "t"
-                }
-              },
-              {
-                "id": "conn_359",
-                "from": {
-                  "nodeId": "node_357",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "node_358",
-                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_360",
                 "from": {
-                  "nodeId": "node_355",
+                  "nodeId": "node_358",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "node_358",
-                  "socketKey": "b"
+                  "nodeId": "node_359",
+                  "socketKey": "a"
                 }
               },
               {
-                "id": "conn_364",
+                "id": "conn_361",
                 "from": {
-                  "nodeId": "node_363",
-                  "socketKey": "out"
+                  "nodeId": "node_356",
+                  "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "node_362",
-                  "socketKey": "a"
+                  "nodeId": "node_359",
+                  "socketKey": "b"
                 }
               },
               {
                 "id": "conn_365",
                 "from": {
-                  "nodeId": "node_358",
+                  "nodeId": "node_364",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_362",
-                  "socketKey": "b"
+                  "nodeId": "node_363",
+                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_366",
                 "from": {
-                  "nodeId": "node_361",
+                  "nodeId": "node_359",
                   "socketKey": "out"
                 },
                 "to": {
+                  "nodeId": "node_363",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_367",
+                "from": {
                   "nodeId": "node_362",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_363",
                   "socketKey": "t"
                 }
               }
@@ -1094,21 +1097,21 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "node_342",
+                  "nodeId": "node_343",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "node_362",
+                  "nodeId": "node_363",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "additivity",
                 "from": {
-                  "nodeId": "node_367",
+                  "nodeId": "node_368",
                   "socketKey": "out"
                 }
               }
@@ -1138,32 +1141,6 @@
               },
               "node_308": {
                 "id": "node_308",
-                "type": "timeline-value",
-                "parameters": {
-                  "type": "vec3",
-                  "value": [0, 2, 0],
-                  "name": "hit"
-                },
-                "position": {
-                  "x": 168,
-                  "y": 72
-                }
-              },
-              "node_309": {
-                "id": "node_309",
-                "type": "timeline-value",
-                "parameters": {
-                  "type": "vec3",
-                  "value": [0, 1, 0],
-                  "name": "away"
-                },
-                "position": {
-                  "x": 168,
-                  "y": 264
-                }
-              },
-              "node_310": {
-                "id": "node_310",
                 "type": "spawn-sphere",
                 "parameters": {
                   "surfaceOnly": false,
@@ -1172,14 +1149,33 @@
                 },
                 "position": {
                   "x": 168,
+                  "y": 72
+                }
+              },
+              "node_309": {
+                "id": "node_309",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_310": {
+                "id": "node_310",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
                   "y": 456
                 }
               },
-              "node_311": {
-                "id": "node_311",
-                "type": "binary-op",
+              "node_313": {
+                "id": "node_313",
+                "type": "lifetime",
                 "parameters": {
-                  "op": "add"
+                  "min": 0.3,
+                  "max": 0.75
                 },
                 "position": {
                   "x": 168,
@@ -1188,18 +1184,17 @@
               },
               "node_314": {
                 "id": "node_314",
-                "type": "lifetime",
+                "type": "unary-op",
                 "parameters": {
-                  "min": 0.3,
-                  "max": 0.75
+                  "op": "normalize"
                 },
                 "position": {
                   "x": 168,
                   "y": 840
                 }
               },
-              "node_315": {
-                "id": "node_315",
+              "node_316": {
+                "id": "node_316",
                 "type": "firework",
                 "parameters": {
                   "strength": 5,
@@ -1210,8 +1205,8 @@
                   "y": 1032
                 }
               },
-              "node_317": {
-                "id": "node_317",
+              "node_318": {
+                "id": "node_318",
                 "type": "custom-attribute",
                 "parameters": {
                   "type": "vec3",
@@ -1222,8 +1217,8 @@
                   "y": 1224
                 }
               },
-              "node_318": {
-                "id": "node_318",
+              "node_319": {
+                "id": "node_319",
                 "type": "delta-time",
                 "parameters": {},
                 "position": {
@@ -1231,8 +1226,8 @@
                   "y": 1416
                 }
               },
-              "node_319": {
-                "id": "node_319",
+              "node_320": {
+                "id": "node_320",
                 "type": "gravity",
                 "parameters": {
                   "acceleration": [0, -9.81, 0]
@@ -1242,8 +1237,8 @@
                   "y": 1608
                 }
               },
-              "node_322": {
-                "id": "node_322",
+              "node_323": {
+                "id": "node_323",
                 "type": "drag",
                 "parameters": {
                   "damping": 1.5
@@ -1253,8 +1248,8 @@
                   "y": 1800
                 }
               },
-              "node_325": {
-                "id": "node_325",
+              "node_326": {
+                "id": "node_326",
                 "type": "builtin-attribute",
                 "parameters": {},
                 "position": {
@@ -1262,8 +1257,8 @@
                   "y": 1992
                 }
               },
-              "node_326": {
-                "id": "node_326",
+              "node_327": {
+                "id": "node_327",
                 "type": "plane-collision",
                 "parameters": {
                   "point": [0, 0, 0],
@@ -1277,8 +1272,8 @@
                   "y": 2184
                 }
               },
-              "node_329": {
-                "id": "node_329",
+              "node_330": {
+                "id": "node_330",
                 "type": "add-scaled-vector",
                 "parameters": {},
                 "position": {
@@ -1289,134 +1284,145 @@
             },
             "connections": [
               {
-                "id": "conn_312",
+                "id": "conn_311",
                 "from": {
                   "nodeId": "node_310",
-                  "socketKey": "position"
-                },
-                "to": {
-                  "nodeId": "node_311",
-                  "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_313",
-                "from": {
-                  "nodeId": "node_308",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_311",
-                  "socketKey": "b"
+                  "nodeId": "node_309",
+                  "socketKey": "m"
                 }
               },
               {
-                "id": "conn_316",
+                "id": "conn_312",
+                "from": {
+                  "nodeId": "node_308",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_309",
+                  "socketKey": "p"
+                }
+              },
+              {
+                "id": "conn_315",
                 "from": {
                   "nodeId": "node_309",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_315",
-                  "socketKey": "axis"
+                  "nodeId": "node_314",
+                  "socketKey": "x"
                 }
               },
               {
-                "id": "conn_320",
+                "id": "conn_317",
                 "from": {
-                  "nodeId": "node_317",
-                  "socketKey": "value"
+                  "nodeId": "node_314",
+                  "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_319",
-                  "socketKey": "velocity"
+                  "nodeId": "node_316",
+                  "socketKey": "axis"
                 }
               },
               {
                 "id": "conn_321",
                 "from": {
                   "nodeId": "node_318",
-                  "socketKey": "out"
+                  "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "node_319",
-                  "socketKey": "dt"
+                  "nodeId": "node_320",
+                  "socketKey": "velocity"
                 }
               },
               {
-                "id": "conn_323",
+                "id": "conn_322",
                 "from": {
                   "nodeId": "node_319",
-                  "socketKey": "velocity"
+                  "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_322",
-                  "socketKey": "velocity"
+                  "nodeId": "node_320",
+                  "socketKey": "dt"
                 }
               },
               {
                 "id": "conn_324",
                 "from": {
-                  "nodeId": "node_318",
-                  "socketKey": "out"
+                  "nodeId": "node_320",
+                  "socketKey": "velocity"
                 },
                 "to": {
-                  "nodeId": "node_322",
-                  "socketKey": "dt"
+                  "nodeId": "node_323",
+                  "socketKey": "velocity"
                 }
               },
               {
-                "id": "conn_327",
+                "id": "conn_325",
                 "from": {
-                  "nodeId": "node_322",
-                  "socketKey": "velocity"
+                  "nodeId": "node_319",
+                  "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_326",
-                  "socketKey": "velocity"
+                  "nodeId": "node_323",
+                  "socketKey": "dt"
                 }
               },
               {
                 "id": "conn_328",
                 "from": {
-                  "nodeId": "node_325",
-                  "socketKey": "position"
+                  "nodeId": "node_323",
+                  "socketKey": "velocity"
                 },
                 "to": {
-                  "nodeId": "node_326",
-                  "socketKey": "position"
+                  "nodeId": "node_327",
+                  "socketKey": "velocity"
                 }
               },
               {
-                "id": "conn_330",
+                "id": "conn_329",
                 "from": {
-                  "nodeId": "node_325",
+                  "nodeId": "node_326",
                   "socketKey": "position"
                 },
                 "to": {
-                  "nodeId": "node_329",
-                  "socketKey": "a"
+                  "nodeId": "node_327",
+                  "socketKey": "position"
                 }
               },
               {
                 "id": "conn_331",
                 "from": {
                   "nodeId": "node_326",
-                  "socketKey": "velocity"
+                  "socketKey": "position"
                 },
                 "to": {
-                  "nodeId": "node_329",
-                  "socketKey": "b"
+                  "nodeId": "node_330",
+                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_332",
                 "from": {
-                  "nodeId": "node_318",
+                  "nodeId": "node_327",
+                  "socketKey": "velocity"
+                },
+                "to": {
+                  "nodeId": "node_330",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_333",
+                "from": {
+                  "nodeId": "node_319",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_329",
+                  "nodeId": "node_330",
                   "socketKey": "scale"
                 }
               }
@@ -1425,7 +1431,7 @@
               {
                 "slot": "position",
                 "from": {
-                  "nodeId": "node_311",
+                  "nodeId": "node_309",
                   "socketKey": "out"
                 },
                 "phase": "spawn"
@@ -1433,7 +1439,7 @@
               {
                 "slot": "lifetime",
                 "from": {
-                  "nodeId": "node_314",
+                  "nodeId": "node_313",
                   "socketKey": "value"
                 },
                 "phase": "spawn"
@@ -1441,7 +1447,7 @@
               {
                 "slot": "attr:velocity",
                 "from": {
-                  "nodeId": "node_315",
+                  "nodeId": "node_316",
                   "socketKey": "velocity"
                 },
                 "phase": "spawn"
@@ -1449,7 +1455,7 @@
               {
                 "slot": "attr:velocity",
                 "from": {
-                  "nodeId": "node_326",
+                  "nodeId": "node_327",
                   "socketKey": "velocity"
                 },
                 "phase": "update"
@@ -1457,7 +1463,7 @@
               {
                 "slot": "position",
                 "from": {
-                  "nodeId": "node_329",
+                  "nodeId": "node_330",
                   "socketKey": "out"
                 },
                 "phase": "update"
@@ -1474,98 +1480,14 @@
           "settings": {
             "spawnRate": 20
           },
-          "tracks": [
+          "tracks": [],
+          "events": [],
+          "reactions": [
             {
-              "name": "hit",
-              "keys": [
-                {
-                  "id": "key_368",
-                  "time": 0.8,
-                  "value": [1.1027603556575882, 0.902258472810754, 1.4035131799278393]
-                },
-                {
-                  "id": "key_369",
-                  "time": 1.9,
-                  "value": [-1.3039832325809249, 0.7021448175435748, 1.3441057935834149]
-                },
-                {
-                  "id": "key_370",
-                  "time": 2.9,
-                  "value": [0.20177330892212733, 1.7150731258380822, 1.0088665446106366]
-                },
-                {
-                  "id": "key_371",
-                  "time": 4.1,
-                  "value": [-0.600330272499803, 0.5002752270831692, 1.8410128356660624]
-                },
-                {
-                  "id": "key_372",
-                  "time": 5,
-                  "value": [1.5996800959680115, 0.5998800359880042, 1.0397920623792074]
-                }
-              ]
-            },
-            {
-              "name": "away",
-              "keys": [
-                {
-                  "id": "key_373",
-                  "time": 0.8,
-                  "value": [0.5513801778287941, 0.451129236405377, 0.7017565899639197]
-                },
-                {
-                  "id": "key_374",
-                  "time": 1.9,
-                  "value": [-0.6519916162904624, 0.3510724087717874, 0.6720528967917074]
-                },
-                {
-                  "id": "key_375",
-                  "time": 2.9,
-                  "value": [0.10088665446106367, 0.8575365629190411, 0.5044332723053183]
-                },
-                {
-                  "id": "key_376",
-                  "time": 4.1,
-                  "value": [-0.3001651362499015, 0.2501376135415846, 0.9205064178330312]
-                },
-                {
-                  "id": "key_377",
-                  "time": 5,
-                  "value": [0.7998400479840058, 0.2999400179940021, 0.5198960311896037]
-                }
-              ]
-            }
-          ],
-          "events": [
-            {
-              "id": "event_378",
               "kind": "burst",
-              "time": 0.8,
-              "count": 40
-            },
-            {
-              "id": "event_379",
-              "kind": "burst",
-              "time": 1.9,
-              "count": 40
-            },
-            {
-              "id": "event_380",
-              "kind": "burst",
-              "time": 2.9,
-              "count": 40
-            },
-            {
-              "id": "event_381",
-              "kind": "burst",
-              "time": 4.1,
-              "count": 40
-            },
-            {
-              "id": "event_382",
-              "kind": "burst",
-              "time": 5,
-              "count": 40
+              "count": 40,
+              "id": "reaction_369",
+              "source": "emitter_237"
             }
           ],
           "transform": {
@@ -1578,7 +1500,7 @@
           "liveParams": []
         },
         {
-          "id": "emitter_383",
+          "id": "emitter_370",
           "name": "Flash",
           "renderGraph": {
             "nodes": {
@@ -1594,8 +1516,8 @@
                   "y": 96
                 }
               },
-              "node_394": {
-                "id": "node_394",
+              "node_385": {
+                "id": "node_385",
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
@@ -1603,8 +1525,8 @@
                   "y": 72
                 }
               },
-              "node_395": {
-                "id": "node_395",
+              "node_386": {
+                "id": "node_386",
                 "type": "ramp",
                 "parameters": {
                   "curve": {
@@ -1632,8 +1554,8 @@
                   "y": 264
                 }
               },
-              "node_397": {
-                "id": "node_397",
+              "node_388": {
+                "id": "node_388",
                 "type": "combine",
                 "parameters": {
                   "type": "vec3",
@@ -1644,8 +1566,8 @@
                   "y": 456
                 }
               },
-              "node_400": {
-                "id": "node_400",
+              "node_391": {
+                "id": "node_391",
                 "type": "compose-transform",
                 "parameters": {},
                 "position": {
@@ -1653,8 +1575,8 @@
                   "y": 648
                 }
               },
-              "node_401": {
-                "id": "node_401",
+              "node_392": {
+                "id": "node_392",
                 "type": "builtin-attribute",
                 "parameters": {},
                 "position": {
@@ -1662,8 +1584,8 @@
                   "y": 840
                 }
               },
-              "node_402": {
-                "id": "node_402",
+              "node_393": {
+                "id": "node_393",
                 "type": "world-matrix",
                 "parameters": {},
                 "position": {
@@ -1671,8 +1593,8 @@
                   "y": 1032
                 }
               },
-              "node_403": {
-                "id": "node_403",
+              "node_394": {
+                "id": "node_394",
                 "type": "transform-point",
                 "parameters": {},
                 "position": {
@@ -1680,8 +1602,8 @@
                   "y": 1224
                 }
               },
-              "node_406": {
-                "id": "node_406",
+              "node_397": {
+                "id": "node_397",
                 "type": "binary-op",
                 "parameters": {
                   "op": "subtract"
@@ -1691,8 +1613,8 @@
                   "y": 1416
                 }
               },
-              "node_410": {
-                "id": "node_410",
+              "node_401": {
+                "id": "node_401",
                 "type": "look-at-camera",
                 "parameters": {
                   "axis": "all",
@@ -1703,8 +1625,8 @@
                   "y": 1608
                 }
               },
-              "node_413": {
-                "id": "node_413",
+              "node_404": {
+                "id": "node_404",
                 "type": "color-ramp",
                 "parameters": {
                   "gradient": {
@@ -1729,8 +1651,8 @@
                   "y": 1800
                 }
               },
-              "node_415": {
-                "id": "node_415",
+              "node_406": {
+                "id": "node_406",
                 "type": "ramp",
                 "parameters": {
                   "curve": {
@@ -1758,10 +1680,11 @@
                   "y": 1992
                 }
               },
-              "node_417": {
-                "id": "node_417",
+              "node_408": {
+                "id": "node_408",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tGlow"
                 },
                 "position": {
@@ -1769,8 +1692,8 @@
                   "y": 2184
                 }
               },
-              "node_418": {
-                "id": "node_418",
+              "node_409": {
+                "id": "node_409",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply"
@@ -1780,8 +1703,8 @@
                   "y": 2376
                 }
               },
-              "node_421": {
-                "id": "node_421",
+              "node_412": {
+                "id": "node_412",
                 "type": "mix",
                 "parameters": {},
                 "position": {
@@ -1789,8 +1712,8 @@
                   "y": 2568
                 }
               },
-              "node_422": {
-                "id": "node_422",
+              "node_413": {
+                "id": "node_413",
                 "type": "constant",
                 "parameters": {
                   "type": "color",
@@ -1801,8 +1724,8 @@
                   "y": 2760
                 }
               },
-              "node_426": {
-                "id": "node_426",
+              "node_417": {
+                "id": "node_417",
                 "type": "constant",
                 "parameters": {
                   "type": "float",
@@ -1816,189 +1739,189 @@
             },
             "connections": [
               {
-                "id": "conn_396",
+                "id": "conn_387",
                 "from": {
-                  "nodeId": "node_394",
+                  "nodeId": "node_385",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_395",
+                  "nodeId": "node_386",
                   "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_389",
+                "from": {
+                  "nodeId": "node_386",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_388",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_390",
+                "from": {
+                  "nodeId": "node_386",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_388",
+                  "socketKey": "y"
+                }
+              },
+              {
+                "id": "conn_395",
+                "from": {
+                  "nodeId": "node_393",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_394",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_396",
+                "from": {
+                  "nodeId": "node_392",
+                  "socketKey": "position"
+                },
+                "to": {
+                  "nodeId": "node_394",
+                  "socketKey": "p"
                 }
               },
               {
                 "id": "conn_398",
                 "from": {
-                  "nodeId": "node_395",
+                  "nodeId": "node_394",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_397",
-                  "socketKey": "x"
+                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_399",
                 "from": {
-                  "nodeId": "node_395",
-                  "socketKey": "out"
+                  "nodeId": "node_392",
+                  "socketKey": "position"
                 },
                 "to": {
                   "nodeId": "node_397",
-                  "socketKey": "y"
+                  "socketKey": "b"
                 }
               },
               {
-                "id": "conn_404",
+                "id": "conn_400",
                 "from": {
-                  "nodeId": "node_402",
+                  "nodeId": "node_397",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_403",
-                  "socketKey": "m"
+                  "nodeId": "node_391",
+                  "socketKey": "position"
+                }
+              },
+              {
+                "id": "conn_402",
+                "from": {
+                  "nodeId": "node_401",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_391",
+                  "socketKey": "rotation"
+                }
+              },
+              {
+                "id": "conn_403",
+                "from": {
+                  "nodeId": "node_388",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_391",
+                  "socketKey": "scale"
                 }
               },
               {
                 "id": "conn_405",
                 "from": {
-                  "nodeId": "node_401",
-                  "socketKey": "position"
+                  "nodeId": "node_385",
+                  "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_403",
-                  "socketKey": "p"
+                  "nodeId": "node_404",
+                  "socketKey": "t"
                 }
               },
               {
                 "id": "conn_407",
                 "from": {
-                  "nodeId": "node_403",
+                  "nodeId": "node_385",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_406",
+                  "socketKey": "t"
+                }
+              },
+              {
+                "id": "conn_410",
+                "from": {
+                  "nodeId": "node_408",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "node_409",
                   "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_408",
-                "from": {
-                  "nodeId": "node_401",
-                  "socketKey": "position"
-                },
-                "to": {
-                  "nodeId": "node_406",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_409",
-                "from": {
-                  "nodeId": "node_406",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_400",
-                  "socketKey": "position"
                 }
               },
               {
                 "id": "conn_411",
                 "from": {
-                  "nodeId": "node_410",
-                  "socketKey": "out"
+                  "nodeId": "node_404",
+                  "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "node_400",
-                  "socketKey": "rotation"
-                }
-              },
-              {
-                "id": "conn_412",
-                "from": {
-                  "nodeId": "node_397",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_400",
-                  "socketKey": "scale"
+                  "nodeId": "node_409",
+                  "socketKey": "b"
                 }
               },
               {
                 "id": "conn_414",
                 "from": {
-                  "nodeId": "node_394",
+                  "nodeId": "node_413",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_413",
-                  "socketKey": "t"
+                  "nodeId": "node_412",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_415",
+                "from": {
+                  "nodeId": "node_409",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_412",
+                  "socketKey": "b"
                 }
               },
               {
                 "id": "conn_416",
                 "from": {
-                  "nodeId": "node_394",
+                  "nodeId": "node_406",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_415",
-                  "socketKey": "t"
-                }
-              },
-              {
-                "id": "conn_419",
-                "from": {
-                  "nodeId": "node_417",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "node_418",
-                  "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_420",
-                "from": {
-                  "nodeId": "node_413",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "node_418",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_423",
-                "from": {
-                  "nodeId": "node_422",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_421",
-                  "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_424",
-                "from": {
-                  "nodeId": "node_418",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_421",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_425",
-                "from": {
-                  "nodeId": "node_415",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_421",
+                  "nodeId": "node_412",
                   "socketKey": "t"
                 }
               }
@@ -2007,21 +1930,21 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "node_400",
+                  "nodeId": "node_391",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "node_421",
+                  "nodeId": "node_412",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "additivity",
                 "from": {
-                  "nodeId": "node_426",
+                  "nodeId": "node_417",
                   "socketKey": "out"
                 }
               }
@@ -2049,21 +1972,38 @@
                   "y": 264
                 }
               },
-              "node_391": {
-                "id": "node_391",
-                "type": "timeline-value",
+              "node_378": {
+                "id": "node_378",
+                "type": "constant",
                 "parameters": {
                   "type": "vec3",
-                  "value": [0, 2, 0],
-                  "name": "hit"
+                  "value": [0, 0, 0]
                 },
                 "position": {
                   "x": 168,
                   "y": 72
                 }
               },
-              "node_392": {
-                "id": "node_392",
+              "node_379": {
+                "id": "node_379",
+                "type": "transform-point",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 264
+                }
+              },
+              "node_380": {
+                "id": "node_380",
+                "type": "world-matrix",
+                "parameters": {},
+                "position": {
+                  "x": 168,
+                  "y": 456
+                }
+              },
+              "node_383": {
+                "id": "node_383",
                 "type": "lifetime",
                 "parameters": {
                   "min": 0.28,
@@ -2071,25 +2011,48 @@
                 },
                 "position": {
                   "x": 168,
-                  "y": 264
+                  "y": 648
                 }
               },
-              "node_393": {
-                "id": "node_393",
+              "node_384": {
+                "id": "node_384",
                 "type": "random",
                 "parameters": {},
                 "position": {
                   "x": 168,
-                  "y": 456
+                  "y": 840
                 }
               }
             },
-            "connections": [],
+            "connections": [
+              {
+                "id": "conn_381",
+                "from": {
+                  "nodeId": "node_380",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_379",
+                  "socketKey": "m"
+                }
+              },
+              {
+                "id": "conn_382",
+                "from": {
+                  "nodeId": "node_378",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_379",
+                  "socketKey": "p"
+                }
+              }
+            ],
             "outputBindings": [
               {
                 "slot": "position",
                 "from": {
-                  "nodeId": "node_391",
+                  "nodeId": "node_379",
                   "socketKey": "out"
                 },
                 "phase": "spawn"
@@ -2097,7 +2060,7 @@
               {
                 "slot": "lifetime",
                 "from": {
-                  "nodeId": "node_392",
+                  "nodeId": "node_383",
                   "socketKey": "value"
                 },
                 "phase": "spawn"
@@ -2105,7 +2068,7 @@
               {
                 "slot": "attr:seed",
                 "from": {
-                  "nodeId": "node_393",
+                  "nodeId": "node_384",
                   "socketKey": "out"
                 },
                 "phase": "spawn"
@@ -2122,68 +2085,14 @@
           "settings": {
             "spawnRate": 20
           },
-          "tracks": [
+          "tracks": [],
+          "events": [],
+          "reactions": [
             {
-              "name": "hit",
-              "keys": [
-                {
-                  "id": "key_427",
-                  "time": 0.8,
-                  "value": [1.1027603556575882, 0.902258472810754, 1.4035131799278393]
-                },
-                {
-                  "id": "key_428",
-                  "time": 1.9,
-                  "value": [-1.3039832325809249, 0.7021448175435748, 1.3441057935834149]
-                },
-                {
-                  "id": "key_429",
-                  "time": 2.9,
-                  "value": [0.20177330892212733, 1.7150731258380822, 1.0088665446106366]
-                },
-                {
-                  "id": "key_430",
-                  "time": 4.1,
-                  "value": [-0.600330272499803, 0.5002752270831692, 1.8410128356660624]
-                },
-                {
-                  "id": "key_431",
-                  "time": 5,
-                  "value": [1.5996800959680115, 0.5998800359880042, 1.0397920623792074]
-                }
-              ]
-            }
-          ],
-          "events": [
-            {
-              "id": "event_432",
               "kind": "burst",
-              "time": 0.8,
-              "count": 1
-            },
-            {
-              "id": "event_433",
-              "kind": "burst",
-              "time": 1.9,
-              "count": 1
-            },
-            {
-              "id": "event_434",
-              "kind": "burst",
-              "time": 2.9,
-              "count": 1
-            },
-            {
-              "id": "event_435",
-              "kind": "burst",
-              "time": 4.1,
-              "count": 1
-            },
-            {
-              "id": "event_436",
-              "kind": "burst",
-              "time": 5,
-              "count": 1
+              "count": 1,
+              "id": "reaction_418",
+              "source": "emitter_237"
             }
           ],
           "transform": {
@@ -2196,7 +2105,7 @@
           "liveParams": []
         }
       ],
-      "activeEmitterId": "emitter_383",
+      "activeEmitterId": "emitter_370",
       "meshes": [
         {
           "id": "mesh_6",
@@ -2330,6 +2239,7 @@
                 "id": "node_28",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tHex"
                 },
                 "position": {
@@ -2396,6 +2306,7 @@
                 "id": "node_41",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tHex"
                 },
                 "position": {
@@ -2462,6 +2373,7 @@
                 "id": "node_54",
                 "type": "texture",
                 "parameters": {
+                  "wrap": "clamp",
                   "name": "tHex"
                 },
                 "position": {
@@ -4708,12 +4620,12 @@
           "liveParams": []
         },
         {
-          "id": "mesh_437",
+          "id": "mesh_419",
           "name": "GroundRing",
           "renderGraph": {
             "nodes": {
-              "node_439": {
-                "id": "node_439",
+              "node_421": {
+                "id": "node_421",
                 "type": "world-matrix",
                 "parameters": {},
                 "position": {
@@ -4733,8 +4645,8 @@
                   "y": 96
                 }
               },
-              "node_440": {
-                "id": "node_440",
+              "node_422": {
+                "id": "node_422",
                 "type": "uv",
                 "parameters": {},
                 "position": {
@@ -4742,8 +4654,8 @@
                   "y": 504
                 }
               },
-              "node_441": {
-                "id": "node_441",
+              "node_423": {
+                "id": "node_423",
                 "type": "binary-op",
                 "parameters": {
                   "op": "subtract"
@@ -4753,8 +4665,8 @@
                   "y": 696
                 }
               },
-              "node_443": {
-                "id": "node_443",
+              "node_425": {
+                "id": "node_425",
                 "type": "constant",
                 "parameters": {
                   "type": "vec2",
@@ -4765,8 +4677,8 @@
                   "y": 888
                 }
               },
-              "node_445": {
-                "id": "node_445",
+              "node_427": {
+                "id": "node_427",
                 "type": "length",
                 "parameters": {},
                 "position": {
@@ -4774,8 +4686,8 @@
                   "y": 1080
                 }
               },
-              "node_447": {
-                "id": "node_447",
+              "node_429": {
+                "id": "node_429",
                 "type": "binary-op",
                 "parameters": {
                   "op": "subtract",
@@ -4786,8 +4698,8 @@
                   "y": 1272
                 }
               },
-              "node_449": {
-                "id": "node_449",
+              "node_431": {
+                "id": "node_431",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply",
@@ -4798,8 +4710,8 @@
                   "y": 1464
                 }
               },
-              "node_451": {
-                "id": "node_451",
+              "node_433": {
+                "id": "node_433",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply"
@@ -4809,8 +4721,8 @@
                   "y": 1656
                 }
               },
-              "node_454": {
-                "id": "node_454",
+              "node_436": {
+                "id": "node_436",
                 "type": "unary-op",
                 "parameters": {
                   "op": "negate"
@@ -4820,8 +4732,8 @@
                   "y": 1848
                 }
               },
-              "node_456": {
-                "id": "node_456",
+              "node_438": {
+                "id": "node_438",
                 "type": "unary-op",
                 "parameters": {
                   "op": "exp"
@@ -4831,8 +4743,8 @@
                   "y": 2040
                 }
               },
-              "node_458": {
-                "id": "node_458",
+              "node_440": {
+                "id": "node_440",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply",
@@ -4843,8 +4755,8 @@
                   "y": 2232
                 }
               },
-              "node_460": {
-                "id": "node_460",
+              "node_442": {
+                "id": "node_442",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply"
@@ -4854,8 +4766,8 @@
                   "y": 2424
                 }
               },
-              "node_463": {
-                "id": "node_463",
+              "node_445": {
+                "id": "node_445",
                 "type": "unary-op",
                 "parameters": {
                   "op": "negate"
@@ -4865,8 +4777,8 @@
                   "y": 2616
                 }
               },
-              "node_465": {
-                "id": "node_465",
+              "node_447": {
+                "id": "node_447",
                 "type": "unary-op",
                 "parameters": {
                   "op": "exp"
@@ -4876,8 +4788,8 @@
                   "y": 2808
                 }
               },
-              "node_467": {
-                "id": "node_467",
+              "node_449": {
+                "id": "node_449",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply",
@@ -4888,8 +4800,8 @@
                   "y": 3000
                 }
               },
-              "node_469": {
-                "id": "node_469",
+              "node_451": {
+                "id": "node_451",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply",
@@ -4900,8 +4812,8 @@
                   "y": 3192
                 }
               },
-              "node_471": {
-                "id": "node_471",
+              "node_453": {
+                "id": "node_453",
                 "type": "binary-op",
                 "parameters": {
                   "op": "add"
@@ -4911,8 +4823,8 @@
                   "y": 3384
                 }
               },
-              "node_474": {
-                "id": "node_474",
+              "node_456": {
+                "id": "node_456",
                 "type": "smoothstep",
                 "parameters": {
                   "edge0": 0.4,
@@ -4923,8 +4835,8 @@
                   "y": 3576
                 }
               },
-              "node_476": {
-                "id": "node_476",
+              "node_458": {
+                "id": "node_458",
                 "type": "unary-op",
                 "parameters": {
                   "op": "one-minus"
@@ -4934,8 +4846,8 @@
                   "y": 3768
                 }
               },
-              "node_478": {
-                "id": "node_478",
+              "node_460": {
+                "id": "node_460",
                 "type": "binary-op",
                 "parameters": {
                   "op": "multiply"
@@ -4945,8 +4857,8 @@
                   "y": 3960
                 }
               },
-              "node_481": {
-                "id": "node_481",
+              "node_463": {
+                "id": "node_463",
                 "type": "combine-color",
                 "parameters": {},
                 "position": {
@@ -4954,8 +4866,8 @@
                   "y": 4152
                 }
               },
-              "node_482": {
-                "id": "node_482",
+              "node_464": {
+                "id": "node_464",
                 "type": "constant",
                 "parameters": {
                   "type": "vec3",
@@ -4966,8 +4878,8 @@
                   "y": 4344
                 }
               },
-              "node_483": {
-                "id": "node_483",
+              "node_465": {
+                "id": "node_465",
                 "type": "mix",
                 "parameters": {},
                 "position": {
@@ -4975,8 +4887,8 @@
                   "y": 4536
                 }
               },
-              "node_484": {
-                "id": "node_484",
+              "node_466": {
+                "id": "node_466",
                 "type": "constant",
                 "parameters": {
                   "type": "vec3",
@@ -4987,8 +4899,8 @@
                   "y": 4728
                 }
               },
-              "node_489": {
-                "id": "node_489",
+              "node_471": {
+                "id": "node_471",
                 "type": "clamp",
                 "parameters": {
                   "lo": 0,
@@ -4999,8 +4911,8 @@
                   "y": 4920
                 }
               },
-              "node_492": {
-                "id": "node_492",
+              "node_474": {
+                "id": "node_474",
                 "type": "constant",
                 "parameters": {
                   "type": "float",
@@ -5014,36 +4926,146 @@
             },
             "connections": [
               {
-                "id": "conn_442",
+                "id": "conn_424",
                 "from": {
-                  "nodeId": "node_440",
+                  "nodeId": "node_422",
                   "socketKey": "uv"
                 },
                 "to": {
-                  "nodeId": "node_441",
+                  "nodeId": "node_423",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_426",
+                "from": {
+                  "nodeId": "node_425",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_423",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_428",
+                "from": {
+                  "nodeId": "node_423",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_427",
+                  "socketKey": "v"
+                }
+              },
+              {
+                "id": "conn_430",
+                "from": {
+                  "nodeId": "node_427",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_429",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_432",
+                "from": {
+                  "nodeId": "node_429",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_431",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_434",
+                "from": {
+                  "nodeId": "node_431",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_433",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_435",
+                "from": {
+                  "nodeId": "node_431",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_433",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_437",
+                "from": {
+                  "nodeId": "node_433",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_436",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_439",
+                "from": {
+                  "nodeId": "node_436",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_438",
+                  "socketKey": "x"
+                }
+              },
+              {
+                "id": "conn_441",
+                "from": {
+                  "nodeId": "node_429",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_440",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_443",
+                "from": {
+                  "nodeId": "node_440",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_442",
                   "socketKey": "a"
                 }
               },
               {
                 "id": "conn_444",
                 "from": {
-                  "nodeId": "node_443",
+                  "nodeId": "node_440",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_441",
+                  "nodeId": "node_442",
                   "socketKey": "b"
                 }
               },
               {
                 "id": "conn_446",
                 "from": {
-                  "nodeId": "node_441",
+                  "nodeId": "node_442",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_445",
-                  "socketKey": "v"
+                  "socketKey": "x"
                 }
               },
               {
@@ -5054,13 +5076,13 @@
                 },
                 "to": {
                   "nodeId": "node_447",
-                  "socketKey": "a"
+                  "socketKey": "x"
                 }
               },
               {
                 "id": "conn_450",
                 "from": {
-                  "nodeId": "node_447",
+                  "nodeId": "node_438",
                   "socketKey": "out"
                 },
                 "to": {
@@ -5071,7 +5093,7 @@
               {
                 "id": "conn_452",
                 "from": {
-                  "nodeId": "node_449",
+                  "nodeId": "node_447",
                   "socketKey": "out"
                 },
                 "to": {
@@ -5080,14 +5102,14 @@
                 }
               },
               {
-                "id": "conn_453",
+                "id": "conn_454",
                 "from": {
                   "nodeId": "node_449",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_451",
-                  "socketKey": "b"
+                  "nodeId": "node_453",
+                  "socketKey": "a"
                 }
               },
               {
@@ -5097,14 +5119,14 @@
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_454",
-                  "socketKey": "x"
+                  "nodeId": "node_453",
+                  "socketKey": "b"
                 }
               },
               {
                 "id": "conn_457",
                 "from": {
-                  "nodeId": "node_454",
+                  "nodeId": "node_427",
                   "socketKey": "out"
                 },
                 "to": {
@@ -5115,18 +5137,18 @@
               {
                 "id": "conn_459",
                 "from": {
-                  "nodeId": "node_447",
+                  "nodeId": "node_456",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_458",
-                  "socketKey": "a"
+                  "socketKey": "x"
                 }
               },
               {
                 "id": "conn_461",
                 "from": {
-                  "nodeId": "node_458",
+                  "nodeId": "node_453",
                   "socketKey": "out"
                 },
                 "to": {
@@ -5146,36 +5168,36 @@
                 }
               },
               {
-                "id": "conn_464",
+                "id": "conn_467",
                 "from": {
-                  "nodeId": "node_460",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_463",
-                  "socketKey": "x"
-                }
-              },
-              {
-                "id": "conn_466",
-                "from": {
-                  "nodeId": "node_463",
+                  "nodeId": "node_466",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_465",
-                  "socketKey": "x"
+                  "socketKey": "a"
                 }
               },
               {
                 "id": "conn_468",
                 "from": {
-                  "nodeId": "node_456",
+                  "nodeId": "node_464",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_467",
-                  "socketKey": "a"
+                  "nodeId": "node_465",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_469",
+                "from": {
+                  "nodeId": "node_460",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_465",
+                  "socketKey": "t"
                 }
               },
               {
@@ -5185,139 +5207,29 @@
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_469",
-                  "socketKey": "a"
+                  "nodeId": "node_463",
+                  "socketKey": "rgb"
                 }
               },
               {
                 "id": "conn_472",
                 "from": {
-                  "nodeId": "node_467",
+                  "nodeId": "node_460",
                   "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_471",
-                  "socketKey": "a"
+                  "socketKey": "x"
                 }
               },
               {
                 "id": "conn_473",
                 "from": {
-                  "nodeId": "node_469",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_471",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_475",
-                "from": {
-                  "nodeId": "node_445",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_474",
-                  "socketKey": "x"
-                }
-              },
-              {
-                "id": "conn_477",
-                "from": {
-                  "nodeId": "node_474",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_476",
-                  "socketKey": "x"
-                }
-              },
-              {
-                "id": "conn_479",
-                "from": {
                   "nodeId": "node_471",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_478",
-                  "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_480",
-                "from": {
-                  "nodeId": "node_476",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_478",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_485",
-                "from": {
-                  "nodeId": "node_484",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_483",
-                  "socketKey": "a"
-                }
-              },
-              {
-                "id": "conn_486",
-                "from": {
-                  "nodeId": "node_482",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_483",
-                  "socketKey": "b"
-                }
-              },
-              {
-                "id": "conn_487",
-                "from": {
-                  "nodeId": "node_478",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_483",
-                  "socketKey": "t"
-                }
-              },
-              {
-                "id": "conn_488",
-                "from": {
-                  "nodeId": "node_483",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_481",
-                  "socketKey": "rgb"
-                }
-              },
-              {
-                "id": "conn_490",
-                "from": {
-                  "nodeId": "node_478",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_489",
-                  "socketKey": "x"
-                }
-              },
-              {
-                "id": "conn_491",
-                "from": {
-                  "nodeId": "node_489",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_481",
+                  "nodeId": "node_463",
                   "socketKey": "alpha"
                 }
               }
@@ -5326,21 +5238,21 @@
               {
                 "slot": "vertexTransform",
                 "from": {
-                  "nodeId": "node_439",
+                  "nodeId": "node_421",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "node_481",
+                  "nodeId": "node_463",
                   "socketKey": "color"
                 }
               },
               {
                 "slot": "additivity",
                 "from": {
-                  "nodeId": "node_492",
+                  "nodeId": "node_474",
                   "socketKey": "out"
                 }
               }
@@ -5359,7 +5271,7 @@
           "liveParams": []
         }
       ],
-      "activeMeshId": "mesh_437",
+      "activeMeshId": "mesh_419",
       "activeGraphKind": "vfxMesh"
     },
     "assets": [

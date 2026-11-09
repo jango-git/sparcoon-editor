@@ -7,8 +7,7 @@ import { renderRegistry } from "../helpers/stdRegistry";
 
 /**
  * The render `delta-time` source reads the host builtin `u_deltaTime` (a target input the
- * host provides). Preserves the u_deltaTime plumbing coverage from the removed material-splice
- * test, now asserted on the compiled shader IR directly (the string the material used to splice).
+ * host provides), asserted on the compiled shader IR directly.
  */
 function deltaGraph(): FXGraph<FXRenderNode> {
   const rr = renderRegistry();

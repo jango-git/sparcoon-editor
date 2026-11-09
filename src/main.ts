@@ -227,6 +227,8 @@ async function bootstrap(): Promise<void> {
   signals.on("sourceStructureChanged", applyActiveEnvironment);
   // A view-only transform edit (gizmo commit / inspector field / transform keyframe) never
   // recompiles, so it doesn't run the pipeline - re-pose the scene directly at the caret.
+  // A reaction's numbers are a view edit (no rebuild); its links carry them, so they follow it.
+  signals.on("sourceViewChanged", () => sceneEmitters.wireReactions(store.getSource().scene));
   signals.on("sourceViewChanged", () =>
     sceneEmitters.applySceneTransforms(store.getSource().scene, poseTime()),
   );

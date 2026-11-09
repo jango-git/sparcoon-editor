@@ -12,6 +12,7 @@ import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManua
 import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
 import { serializeGraph } from "../../src/domain/serialize";
+import { RENDER_SINK_ID, SPAWN_SINK_ID, UPDATE_SINK_ID } from "../../src/domain/nodePalette";
 import { isSink } from "../../src/domain/sinks";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 
@@ -57,6 +58,10 @@ describe("createInitialState", () => {
   it("is genuinely blank - only the mandatory sink nodes, no starter content", () => {
     const { source } = createInitialState();
     const [emitter] = source.scene.emitters;
+    expect(Object.keys(emitter.renderGraph.nodes)).toEqual([RENDER_SINK_ID]);
+    expect(Object.keys(emitter.behaviorGraph.nodes).sort()).toEqual(
+      [SPAWN_SINK_ID, UPDATE_SINK_ID].sort(),
+    );
     expect(Object.values(emitter.renderGraph.nodes).every(isSink)).toBe(true);
     expect(Object.values(emitter.behaviorGraph.nodes).every(isSink)).toBe(true);
     expect(emitter.events).toEqual([]);

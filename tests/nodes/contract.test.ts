@@ -20,26 +20,21 @@ import {
   previewParticleBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
+import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
+import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { collectAttributeRequests } from "../../src/engine/core/compiler/collectAttributeRequests";
 import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
 import type { FXTarget } from "../../src/engine/render/target/FXTarget";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
+import { bind, edge } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 const VEC4 = FX_VALUE_TYPES.vec4;
-
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
 
 function backendOf(def: FXNodeDefinition): "render" | "behavior" {
   return def.domain === "render" ? "render" : "behavior";
@@ -220,6 +215,7 @@ interface BehaviorHarness {
   node: FXBehaviorNode;
   hash: () => string;
   compile: () => FXCompiledKernel;
+  compileStandard: () => void;
 }
 
 function behaviorHarness(
@@ -265,6 +261,10 @@ function behaviorHarness(
     node,
     hash: () => previewParticleBehaviorHash(graph),
     compile: () => compileParticleBehavior(graph),
+    compileStandard: () => {
+      const targets = buildParticleBehaviorTargets(collectAttributeRequests(graph).requests);
+      compileBehaviorStandard(graph, targets);
+    },
   };
 }
 
@@ -274,6 +274,7 @@ interface RenderHarness {
   target: FXTarget;
   hash: () => string;
   compile: () => ReturnType<FXCompilerBaseline["compile"]>;
+  compileStandard: () => void;
 }
 
 function renderHarness(
@@ -322,6 +323,9 @@ function renderHarness(
     target,
     hash: () => compiler.previewHash(graph, target),
     compile: () => compiler.compile(graph, target),
+    compileStandard: () => {
+      new FXCompilerStandard().compile(graph, target);
+    },
   };
 }
 
@@ -403,7 +407,7 @@ describe("standard node contract", () => {
         });
       }
 
-      it("stage/phase meta agree with domain (M4/M5)", () => {
+      it("stage/phase meta agree with domain", () => {
         const meta = def.describe();
         // A render/shared node carries a stage; a behavior/shared node carries a
         // phase - the editor's mechanical filter for an update-only / vertex target.
@@ -497,12 +501,25 @@ describe("standard node contract", () => {
             expect(() => renderHarness(def).compile()).not.toThrow();
           }
         });
+
+        if (def.domain === "shared") {
+          it("compiles in a minimal valid render graph too", () => {
+            const harness = renderHarness(def);
+            expect(() => harness.compile()).not.toThrow();
+            expect(() => harness.compileStandard()).not.toThrow();
+          });
+        }
+
+        it("compiles in a minimal valid graph on the standard (GLSL ES 3.00) tier", () => {
+          const harness = backend === "behavior" ? behaviorHarness(def) : renderHarness(def);
+          expect(() => harness.compileStandard()).not.toThrow();
+        });
       }
 
       // Every enum/valueType OPTION must compile or be rejected with a typed,
       // node-attributed error - never a bare crash. This catches enumxtype gaps the
       // meta advertises but the IR lacks (`binary-op:atan2` on a vector, `unary-op:
-      // normalize` on a float) and a `blend` mode with no implementation (M4). Shared
+      // normalize` on a float) and a `blend` mode with no implementation. Shared
       // generic nodes route through the render harness (it adapts any output width);
       // the T cartesian is the small bindable subset {float, vec3}.
       {
@@ -545,11 +562,9 @@ describe("standard node contract", () => {
         }
       }
 
-      // Editable inputs (the "value on the pin") bake as inline literals - variant A - so
-      // editing one MUST move the cacheKey and recompile. This is the counterpart of the
-      // structural-param contract above, and replaces the old uniform-backed value param
-      // (which rebound in place); uniforms/bindings are now the exclusive domain of param
-      // nodes (+ curve LUTs, which still rebind through the `value`/`curve` param above).
+      // Editable inputs (the "value on the pin") bake as inline literals, so editing one MUST
+      // move the cacheKey and recompile - the counterpart of the structural-param contract
+      // above. Uniforms/bindings belong to param nodes alone.
       for (const socket of def.describe().inputs) {
         if (socket.control === undefined) {
           continue;

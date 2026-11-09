@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import {
-  buildParticleUpdateKernel,
-  compileParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type { FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
@@ -15,58 +7,27 @@ import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
 import { ref } from "../../src/engine/core/ir/FXExprBuilder";
 import { call } from "../helpers/exprCall";
+import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
-function bind(slot: string, nodeId: string, socketKey: string): FXOutputBinding {
-  return { slot, from: { nodeId, socketKey } };
-}
-
-function edge(fromNode: string, fromKey: string, toNode: string, toKey: string): FXConnection {
-  return {
-    from: { nodeId: fromNode, socketKey: fromKey },
-    to: { nodeId: toNode, socketKey: toKey },
-  };
-}
-
-function coreBuffers(): Record<string, Float32Array> {
-  return { position: new Float32Array(3), lifecycle: Float32Array.from([0, 1]) };
-}
-
-function registry(): FXNodeRegistry<FXBehaviorNode> {
-  const r = new FXNodeRegistry<FXBehaviorNode>();
-  registerStandardBehaviorNodes(r);
-  return r;
-}
+const reg = behaviorRegistry();
 
 /**
  * constant(position vecN) -> noise(params) -> positionX; runs the update kernel (the JS
  * backend, so this exercises the scalarizer + jsHelper end-to-end) and returns the sampled scalar.
  */
 function evalNoise(position: readonly number[], params: Record<string, unknown> = {}): number {
-  const r = registry();
   const type = position.length === 1 ? "float" : position.length === 2 ? "vec2" : "vec3";
   const value = type === "float" ? position[0] : position;
-  const nodes = new Map<string, FXBehaviorNode>([
-    ["p", r.create("constant", { value, type })],
-    ["n", r.create("noise", params)],
-  ]);
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({
-    nodes,
-    connections: [edge("p", "out", "n", "p")],
-    outputBindings: [bind("positionX", "n", "out")],
-  });
-  const compiled = compileParticleBehavior(graph);
-  const update = buildParticleUpdateKernel(compiled);
-  const buffers = coreBuffers();
-  update(buffers, 1, 0.016, compiled.update.bindings);
-  return buffers.position[0];
+  const graph = graphOf(
+    { p: reg.create("constant", { value, type }), n: reg.create("noise", params) },
+    [edge("p", "out", "n", "p")],
+    [bind("positionX", "n", "out")],
+  );
+  return runKernel(graph).position[0];
 }
 
-describe("noise node - registration & IR shape", () => {
-  it("registers the noise node", () => {
-    expect(registry().has("noise")).toBe(true);
-  });
-
+describe("noise node - IR shape", () => {
   it("scalarizes noise(vec2) into a single scalar fxNoise2 call", () => {
     const expr = call("noise", ref("local", "v", FX_VALUE_TYPES.vec2));
     const components = scalarize(expr);
@@ -104,16 +65,17 @@ describe("noise node - registration & IR shape", () => {
 });
 
 describe("noise node - CPU (behavior) numerics", () => {
-  it("is deterministic at the origin, and repeatable across calls", () => {
-    // Value noise (unlike simplex) does not vanish at a lattice point - the smoothing weight is
-    // 0 there, so the result collapses to the exact raw corner hash instead.
-    expect(evalNoise([0, 0])).toBe(evalNoise([0, 0]));
-    expect(evalNoise([0, 0, 0])).toBe(evalNoise([0, 0, 0]));
-  });
-
-  it("is deterministic for a given coordinate", () => {
-    expect(evalNoise([1.3, -2.1])).toBe(evalNoise([1.3, -2.1]));
-    expect(evalNoise([1.3, -2.1, 0.7])).toBe(evalNoise([1.3, -2.1, 0.7]));
+  it("is deterministic for a given coordinate, lattice points included", () => {
+    // At a lattice point (the origin) the smoothing weight is 0, so value noise collapses to the
+    // raw corner hash - still a fixed value.
+    for (const p of [
+      [0, 0],
+      [0, 0, 0],
+      [1.3, -2.1],
+      [1.3, -2.1, 0.7],
+    ]) {
+      expect(evalNoise(p)).toBe(evalNoise(p));
+    }
   });
 
   it("stays within [-1, 1] for a sweep of samples", () => {
@@ -168,37 +130,24 @@ describe("noise node - CPU (behavior) numerics", () => {
  * components (length 2 for a vec2 input, 3 for a vec3 input).
  */
 function evalCurl(position: readonly number[], params: Record<string, unknown> = {}): number[] {
-  const r = registry();
   const type = position.length === 2 ? "vec2" : "vec3";
-  const nodes = new Map<string, FXBehaviorNode>([
-    ["p", r.create("constant", { value: position, type })],
-    ["c", r.create("curl-noise", params)],
-    ["s", r.create("split", undefined)],
-  ]);
   const bindings: FXOutputBinding[] = [bind("positionX", "s", "x"), bind("positionY", "s", "y")];
   if (position.length === 3) {
     bindings.push(bind("positionZ", "s", "z"));
   }
-  const graph = new FXGraph<FXBehaviorNode>();
-  graph.ingest({
-    nodes,
-    connections: [edge("p", "out", "c", "p"), edge("c", "out", "s", "v")],
-    outputBindings: bindings,
-  });
-  const compiled = compileParticleBehavior(graph);
-  const update = buildParticleUpdateKernel(compiled);
-  const buffers = coreBuffers();
-  update(buffers, 1, 0.016, compiled.update.bindings);
-  return position.length === 2
-    ? [buffers.position[0], buffers.position[1]]
-    : [buffers.position[0], buffers.position[1], buffers.position[2]];
+  const graph = graphOf(
+    {
+      p: reg.create("constant", { value: position, type }),
+      c: reg.create("curl-noise", params),
+      s: reg.create("split"),
+    },
+    [edge("p", "out", "c", "p"), edge("c", "out", "s", "v")],
+    bindings,
+  );
+  return [...runKernel(graph).position.subarray(0, position.length)];
 }
 
 describe("curl-noise node", () => {
-  it("registers the curl-noise node", () => {
-    expect(registry().has("curl-noise")).toBe(true);
-  });
-
   it("outputs a vector matching the input width (vec2 -> 2, vec3 -> 3)", () => {
     expect(evalCurl([0.5, 1.5])).toHaveLength(2);
     expect(evalCurl([0.5, 1.5, -0.7])).toHaveLength(3);

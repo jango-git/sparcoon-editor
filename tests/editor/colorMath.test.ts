@@ -96,11 +96,31 @@ describe("HSL <-> RGB", () => {
     }
   });
 
-  it("agrees with HSV on the same greyscale/primary colors", () => {
-    // Grey has no hue/saturation in either model.
-    const [, s, l] = rgbToHsl(0.4, 0.4, 0.4);
-    expect(s).toBe(0);
-    expect(l).toBeCloseTo(0.4, 6);
+  it("agrees with HSV on hue and on the standard HSL<->HSV relation, greys and primaries included", () => {
+    for (const [r, g, b] of [
+      [0.4, 0.4, 0.4], // grey: no hue/saturation in either model
+      [1, 0, 0],
+      [0, 0.5, 0],
+      [0.2, 0.6, 0.9],
+      [0.9, 0.3, 0.5],
+    ] as const) {
+      const [hslHue, hslSaturation, lightness] = rgbToHsl(r, g, b);
+      const [hsvHue, hsvSaturation, value] = rgbToHsv(r, g, b);
+      const label = `rgb(${r}, ${g}, ${b})`;
+      expect(hslHue, label).toBeCloseTo(hsvHue, 4);
+      // V = L + S_l * min(L, 1 - L); S_v = 2 * (1 - L / V) (0 for black).
+      expect(value, label).toBeCloseTo(
+        lightness + hslSaturation * Math.min(lightness, 1 - lightness),
+        6,
+      );
+      expect(hsvSaturation, label).toBeCloseTo(value === 0 ? 0 : 2 * (1 - lightness / value), 6);
+      // Both models decode back to the same color.
+      const viaHsl = hslToRgb(hslHue, hslSaturation, lightness);
+      const viaHsv = hsvToRgb(hsvHue, hsvSaturation, value);
+      for (let channel = 0; channel < 3; channel++) {
+        expect(viaHsl[channel], label).toBeCloseTo(viaHsv[channel], 6);
+      }
+    }
   });
 });
 

@@ -28,8 +28,8 @@ const VEC3 = FX_VALUE_TYPES.vec3;
 const reg = behaviorRegistry();
 
 /**
- * A constant(0.5) bound to the `progress` slot - the graph the deleted apply tests fed the
- * live gate. Only the target under test is malformed, so the graph itself always compiles.
+ * A constant(0.5) bound to the `progress` slot. Only the target under test is malformed, so the
+ * graph itself always compiles.
  */
 function constantProgressGraph(): FXGraph<FXBehaviorNode> {
   const graph = new FXGraph<FXBehaviorNode>();
@@ -60,8 +60,13 @@ function baseTarget(): FXKernelTarget {
 }
 
 /** Runs the shape lint through the real validation entrypoint (empty graph). */
+function lintTargets(targets: FXBehaviorTargets): ReturnType<typeof validateBehavior> {
+  return validateBehavior(new FXGraph<FXBehaviorNode>(), targets);
+}
+
+/** {@link lintTargets} for an update-only target. */
 function lint(update: FXKernelTarget): ReturnType<typeof validateBehavior> {
-  return validateBehavior(new FXGraph<FXBehaviorNode>(), { update });
+  return lintTargets({ update });
 }
 
 /** True if some error matches `code` with `substr` in its message. */
@@ -145,7 +150,7 @@ describe("validateKernelTarget (behavior target shape lint)", () => {
     expect(hasError(result, "target-offset-out-of-bounds", "integration")).toBe(true);
   });
 
-  it("flags a duplicate offset within one output slot (B3)", () => {
+  it("flags a duplicate offset within one output slot", () => {
     const target = baseTarget();
     // vec3 tint with offsets [1, 1, 2]: component x overwrites y silently.
     const result = lint({
@@ -159,7 +164,7 @@ describe("validateKernelTarget (behavior target shape lint)", () => {
     expect(hasError(result, "duplicate-output-offset-write", "more than once")).toBe(true);
   });
 
-  it("flags two integration steps writing the same offset (B3)", () => {
+  it("flags two integration steps writing the same offset", () => {
     const target = baseTarget();
     const result = lint({
       ...target,
@@ -174,7 +179,7 @@ describe("validateKernelTarget (behavior target shape lint)", () => {
   });
 });
 
-describe("validateKernelTarget v2 - numeric and identifier strictness (P12)", () => {
+describe("validateKernelTarget - numeric and identifier strictness", () => {
   /** One editor typo per case: [label, broken update target, message fragment, expected code]. */
   const badTargets: readonly [string, FXKernelTarget, string, FXCompilerErrorCode][] = (() => {
     const base = baseTarget();
@@ -341,9 +346,8 @@ describe("validateKernelTarget v2 - numeric and identifier strictness (P12)", ()
   }
 
   it("each broken target validates as invalid without throwing (never a silent compile)", () => {
-    // A real constant->progress graph (the snapshot the deleted live gate drove): only the
-    // target is malformed, so validation must collect its own typed error rather than
-    // throw or compile a broken kernel.
+    // A real constant->progress graph: only the target is malformed, so validation must collect
+    // its own typed error rather than throw or compile a kernel that fails on the first frame.
     const graph = constantProgressGraph();
     for (const [label, target, , code] of badTargets) {
       let result: ReturnType<typeof validateBehavior> | undefined;
@@ -359,7 +363,7 @@ describe("validateKernelTarget v2 - numeric and identifier strictness (P12)", ()
   });
 });
 
-describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P12)", () => {
+describe("validateKernelTarget - phase awareness and the spawn/update pair", () => {
   /** A minimal well-formed spawn/update pair over one shared buffer. */
   function pair(): { spawn: FXKernelTarget; update: FXKernelTarget } {
     const spawn: FXKernelTarget = {
@@ -372,18 +376,14 @@ describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P
     return { spawn, update };
   }
 
-  function lintPair(targets: FXBehaviorTargets): ReturnType<typeof validateBehavior> {
-    return validateBehavior(new FXGraph<FXBehaviorNode>(), targets);
-  }
-
   it("passes a well-formed pair", () => {
-    expect(lintPair(pair()).ok).toBe(true);
+    expect(lintTargets(pair()).ok).toBe(true);
   });
 
-  it("T1: a spawn integration reading dt is invalid at validate (not a frame-time ReferenceError)", () => {
+  it("a spawn integration reading dt is invalid at validate (not a frame-time ReferenceError)", () => {
     const targets = pair();
     // The editor copies the update target's Euler integration into its spawn target.
-    const result = lintPair({
+    const result = lintTargets({
       ...targets,
       spawn: {
         ...targets.spawn,
@@ -405,7 +405,7 @@ describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P
 
   it("a spawn target declaring a dt input is invalid", () => {
     const targets = pair();
-    const result = lintPair({
+    const result = lintTargets({
       ...targets,
       spawn: { ...targets.spawn, inputs: [...targets.spawn.inputs, { name: "dt", type: FLOAT }] },
     });
@@ -415,7 +415,7 @@ describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P
 
   it("a buffer with different strides in spawn and update is invalid", () => {
     const targets = pair();
-    const result = lintPair({
+    const result = lintTargets({
       ...targets,
       spawn: {
         ...targets.spawn,
@@ -432,7 +432,7 @@ describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P
 
   it("a buffer declared only in the spawn target is invalid (the host allocates from update)", () => {
     const targets = pair();
-    const result = lintPair({
+    const result = lintTargets({
       ...targets,
       spawn: {
         ...targets.spawn,
@@ -444,31 +444,27 @@ describe("validateKernelTarget v2 - phase awareness and the spawn/update pair (P
   });
 });
 
-describe("kernel-target lint regression - legitimate targets stay green (P12)", () => {
+describe("kernel-target lint - legitimate targets stay valid", () => {
   it("accepts the built-in particle pair (with and without attributes)", () => {
-    expect(lintPair(buildParticleBehaviorTargets())).toBe(true);
+    expect(lintTargets(buildParticleBehaviorTargets()).ok).toBe(true);
     expect(
-      lintPair(buildParticleBehaviorTargets([{ name: "glow", type: FX_VALUE_TYPES.vec3 }])),
+      lintTargets(buildParticleBehaviorTargets([{ name: "glow", type: FX_VALUE_TYPES.vec3 }])).ok,
     ).toBe(true);
   });
 
-  it("accepts the value-target helper (doc section 6 shape)", () => {
+  it("accepts the update-only value-target helper", () => {
     expect(
-      lintPair(
+      lintTargets(
         buildValueBehaviorTarget([
           { name: "progress", type: FLOAT },
           { name: "tint", type: VEC3 },
         ]),
-      ),
+      ).ok,
     ).toBe(true);
   });
-
-  function lintPair(targets: FXBehaviorTargets): boolean {
-    return validateBehavior(new FXGraph<FXBehaviorNode>(), targets).ok;
-  }
 });
 
-describe("compile and validate surfaces carry typed errors (T10)", () => {
+describe("compile and validate surfaces carry typed errors", () => {
   it("compileBehavior over an invalid target throws FXCompilerErrorException with a code", () => {
     let caught: unknown;
     try {
@@ -487,7 +483,7 @@ describe("compile and validate surfaces carry typed errors (T10)", () => {
     }
   });
 
-  it("the live validate surface merges an attribute-collection conflict precisely (B4)", () => {
+  it("the live validate surface merges an attribute-collection conflict precisely", () => {
     // Two store-attribute nodes claim the name "tint" at conflicting types. The live
     // backend's validate merges collectAttributeRequests' errors, so the mismatch surfaces
     // as its precise attribute-type-conflict instead of resurfacing downstream as a confusing
@@ -510,24 +506,5 @@ describe("compile and validate surfaces carry typed errors (T10)", () => {
     );
     expect(result.ok).toBe(false);
     expect(result.errors.some((error) => error.code === "attribute-type-conflict")).toBe(true);
-  });
-});
-
-describe("a malformed kernel target validated against a real graph", () => {
-  it("reports invalid with an undeclared-target-buffer error (never compiles a broken kernel)", () => {
-    // A single typo: the `progress` slot points at a buffer that does not exist. The
-    // constant->progress graph itself compiles, so the target is the only fault; validation
-    // must collect its own typed error rather than compile a kernel that ReferenceErrors on
-    // the first frame.
-    const graph = constantProgressGraph();
-    const target: FXKernelTarget = {
-      ...baseTarget(),
-      outputs: [{ slot: "progress", type: FLOAT, required: false, buffer: "typo", offsets: [0] }],
-    };
-    const result = validateBehavior(graph, { update: target });
-    expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.code === "undeclared-target-buffer")).toBe(true);
-    // removed: the post-invalid safe no-op tick exercised deleted FXSimulation.live
-    // kernel-install orchestration, which has no validateBehavior equivalent.
   });
 });

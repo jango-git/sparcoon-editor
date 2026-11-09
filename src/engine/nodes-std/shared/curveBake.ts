@@ -10,8 +10,9 @@ import { DEFAULT_CURVE } from "../../core/nodes/FXParamSpec";
  */
 
 /**
- * Hard cap on baked curve knots: adaptive placement stops splitting once it hits this many, so
- * the emitted `mix` chain never exceeds `CURVE_MAX_POINTS - 1` segments - a shader-cost ceiling.
+ * Cap on adaptive subdivision - a shader-cost ceiling: placement stops splitting once the curve has
+ * this many knots, so the `mix` chain stays within `CURVE_MAX_POINTS - 1` segments. The curve's own
+ * anchors are never dropped, so a curve authored with more anchors bakes to one knot per anchor.
  */
 const CURVE_MAX_POINTS = 32;
 
@@ -102,8 +103,8 @@ interface FXCurveKnot {
 /**
  * Chooses where to sample the smoothed curve, adaptively. Every anchor is a mandatory knot (so a
  * `sharp` corner is reproduced exactly), then it greedily splits the segment with the worst
- * linear-reconstruction error at its midpoint until every segment is within `epsilon` or
- * {@link CURVE_MAX_POINTS} is spent - a straight line collapses to a single segment.
+ * linear-reconstruction error at its midpoint until every segment is within `epsilon` or the curve
+ * has `maxPoints` knots (anchors included) - a straight line collapses to a single segment.
  */
 function adaptiveCurveKnots(
   anchors: readonly FXCurveAnchor[],

@@ -1,12 +1,18 @@
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
-import { particleReadsOf } from "../render/target/FXParticleRenderTarget";
+import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
   FXKernelBindingHandle,
 } from "../behavior/FXCompiledKernel";
-import type { FXGeometrySource, FXRenderMode, FXShaderStageSource } from "sparcoon";
+import type {
+  FXFragmentStageSource,
+  FXGeometrySource,
+  FXRenderMode,
+  FXShaderStageSource,
+  FXVaryingDecl,
+} from "sparcoon";
 import {
   assembleKernelBody,
   SPAWN_LOOP_HEADER,
@@ -35,20 +41,34 @@ export function attributeDecls(attributes: readonly FXAttributeRequest[]): strin
  */
 export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
   return {
-    varyingDeclarations: [...stage.varyingDeclarations],
     helperFunctions: [...stage.helperFunctions],
     body: [...stage.body],
     particleReads: particleReadsOf(stage.targetReads),
   };
 }
 
-function stageLiteral(stage: FXCompiledStage): string {
-  const source = stageSource(stage);
+/** The runtime's {@link FXVaryingDecl}s for what a compiled shader carries between its stages.
+ *  Shared with {@link assembleArtifacts}'s in-memory assembler, like {@link stageSource}. */
+export function varyingDecls(shader: FXCompiledShader): FXVaryingDecl[] {
+  return shader.varyings.map((varying) => ({
+    name: varying.name,
+    type: varying.type.glslTypeName,
+    interpolation: varying.interpolation,
+  }));
+}
+
+/** {@link stageSource} for the fragment stage, which also records what it reads of the surface frame. */
+export function fragmentStageSource(stage: FXCompiledStage): FXFragmentStageSource {
+  return { ...stageSource(stage), surfaceReads: surfaceReadsOf(stage.targetReads) };
+}
+
+function stageLiteral(source: FXShaderStageSource | FXFragmentStageSource): string {
+  const surface =
+    "surfaceReads" in source ? `, surfaceReads: ${JSON.stringify(source.surfaceReads)}` : "";
   return (
-    `{ varyingDeclarations: ${JSON.stringify(source.varyingDeclarations)}, ` +
-    `helperFunctions: ${JSON.stringify(source.helperFunctions)}, ` +
+    `{ helperFunctions: ${JSON.stringify(source.helperFunctions)}, ` +
     `body: ${JSON.stringify(source.body)}, ` +
-    `particleReads: ${JSON.stringify(source.particleReads)} }`
+    `particleReads: ${JSON.stringify(source.particleReads)}${surface} }`
   );
 }
 
@@ -112,6 +132,26 @@ function uniformsLiteral(shader: FXCompiledShader): string {
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`;
 }
 
+/**
+ * One `<keyword> <name>: FXRenderArtifact = <body>;` declaration per GLSL tier, in tier order. A
+ * tier whose artifact literal is word for word an earlier tier's - the compilers agree whenever a
+ * graph uses nothing only one tier has - names that one instead of repeating it: the module
+ * carries each distinct artifact once, and the tiers share it at runtime.
+ */
+export function renderArtifactDeclarations(
+  declarations: readonly { readonly name: string; readonly body: string }[],
+  keyword: "const" | "export const" = "const",
+): string[] {
+  const firstNamed = new Map<string, string>();
+  return declarations.map(({ name, body }) => {
+    const earlier = firstNamed.get(body);
+    if (earlier === undefined) {
+      firstNamed.set(body, name);
+    }
+    return `${keyword} ${name}: FXRenderArtifact = ${earlier ?? body};`;
+  });
+}
+
 /** The `FXRenderArtifact` object literal (bare `{ ... }`, for `const <name>: FXRenderArtifact = <body>;`). */
 export function renderArtifactBody(
   shader: FXCompiledShader,
@@ -126,8 +166,9 @@ export function renderArtifactBody(
     `  geometry: ${JSON.stringify(geometry)},`,
     `  options: { renderMode: ${JSON.stringify(renderMode)} },`,
     `  uniformDeclarations: ${JSON.stringify(shader.uniformDeclarations)},`,
-    `  vertex: ${stageLiteral(shader.vertex)},`,
-    `  fragment: ${stageLiteral(shader.fragment)},`,
+    `  varyings: ${JSON.stringify(varyingDecls(shader))},`,
+    `  vertex: ${stageLiteral(stageSource(shader.vertex))},`,
+    `  fragment: ${stageLiteral(fragmentStageSource(shader.fragment))},`,
     `  outputs: ${JSON.stringify(shader.outputs)},`,
     `  uniforms: ${uniformsLiteral(shader)},`,
     `  attributeReads: ${attributeDecls(attributes)},`,

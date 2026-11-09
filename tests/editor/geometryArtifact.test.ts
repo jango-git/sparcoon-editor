@@ -6,6 +6,7 @@ import type { FXGeometryPrimitive, FXGeometrySource } from "sparcoon";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
 import { emitEffectModule } from "../../src/engine/emit/emitEffectModule";
+import { evaluateEffectModule } from "../helpers/effectModule";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 function primitive(primitive: FXGeometryPrimitive): FXGeometrySource {
@@ -70,10 +71,12 @@ describe("render artifact geometry", () => {
     expect(plane).not.toBe(box);
   });
 
-  it("serializes geometry into the emitted ESM module", () => {
+  it("carries the requested primitive on both render tiers of the emitted module", () => {
     const { render, behavior } = graphs();
-    expect(emitEffectModule(render, behavior, { geometry: primitive("sphere") })).toContain(
-      'geometry: {"type":"primitive","primitive":"sphere"}',
+    const module = evaluateEffectModule(
+      emitEffectModule(render, behavior, { geometry: primitive("sphere") }),
     );
+    expect(module.renderBaseline.geometry).toEqual(primitive("sphere"));
+    expect(module.renderStandard.geometry).toEqual(primitive("sphere"));
   });
 });

@@ -3,19 +3,17 @@ import { meshTransformWarnings } from "../../src/domain/meshDiagnostics";
 import { serializeGraph } from "../../src/domain/serialize";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardRenderNodes } from "../../src/engine/nodes-std/index";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import type { EditorGraph } from "../../src/domain/graphModel";
 import { createDefaultVfxMesh } from "../../src/model/editorState";
+import { fullRenderRegistry } from "../helpers/stdRegistry";
 
 function liveGraph(editorGraph: EditorGraph): FXGraph<FXRenderNode> {
-  const registry = new FXNodeRegistry<FXRenderNode>();
-  registerStandardRenderNodes(registry);
-  registerManualRenderNodes(registry);
   const graph = new FXGraph<FXRenderNode>();
-  const result = new FXGraphReconciler(registry).reconcile(graph, serializeGraph(editorGraph));
+  const result = new FXGraphReconciler(fullRenderRegistry()).reconcile(
+    graph,
+    serializeGraph(editorGraph),
+  );
   expect(result.errors).toEqual([]);
   return graph;
 }

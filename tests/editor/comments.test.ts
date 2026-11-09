@@ -83,6 +83,42 @@ describe("comment commands", () => {
     expect(graph.nodes[nodeId].position).toEqual({ x: 140, y: 140 });
   });
 
+  it("moveCommentGroup moves only the nodes it is handed, leaving a node outside the comment put", () => {
+    const store = freshStore();
+    const inside = addCatalogNode(store, "renderGraph", "constant", { x: 40, y: 40 })!;
+    const outside = addCatalogNode(store, "renderGraph", "constant", { x: 400, y: 400 })!;
+    const commentId = addComment(store, "renderGraph", { x: 0, y: 0 }, { width: 200, height: 200 });
+
+    moveCommentGroup(
+      store,
+      "renderGraph",
+      [{ id: commentId, position: { x: 100, y: 100 } }],
+      [
+        { nodeId: inside, position: { x: 140, y: 140 } },
+        { nodeId: "no-such-node", position: { x: 0, y: 0 } },
+      ],
+    );
+
+    const graph = selectRenderGraph(store);
+    expect(graph.nodes[inside].position).toEqual({ x: 140, y: 140 });
+    expect(graph.nodes[outside].position).toEqual({ x: 400, y: 400 });
+    expect(graph.nodes["no-such-node"]).toBeUndefined();
+  });
+
+  it("removing a comment keeps the nodes it enclosed", () => {
+    const store = freshStore();
+    const nodeId = addCatalogNode(store, "renderGraph", "constant", { x: 40, y: 40 })!;
+    const commentId = addComment(store, "renderGraph", { x: 0, y: 0 }, { width: 200, height: 200 });
+    const nodesBefore = selectRenderGraph(store).nodes;
+
+    removeComment(store, "renderGraph", commentId);
+
+    const graph = selectRenderGraph(store);
+    expect(graph.comments).toEqual([]);
+    expect(graph.nodes).toEqual(nodesBefore);
+    expect(graph.nodes[nodeId].position).toEqual({ x: 40, y: 40 });
+  });
+
   it("comments never reach the compiled snapshot", () => {
     const store = freshStore();
     const before = serializeGraph(selectRenderGraph(store));

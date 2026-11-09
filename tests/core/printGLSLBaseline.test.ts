@@ -88,7 +88,7 @@ describe("calls", () => {
     expect(glsl(call("saturate", v))).toBe("clamp(v, 0.0, 1.0)");
   });
 
-  it("round prints as floor(x + 0.5) (GLSL ES 1.00 has no round; N2)", () => {
+  it("round prints as floor(x + 0.5) (GLSL ES 1.00 has no round)", () => {
     expect(glsl(call("round", lit(2.4)))).toBe("floor(2.4 + 0.5)");
   });
 
@@ -139,7 +139,7 @@ describe("swizzle, construct, raw", () => {
   });
 });
 
-describe("glslFloat (T11)", () => {
+describe("glslFloat", () => {
   it("prints plain numbers with a decimal point", () => {
     expect(glslFloat(1)).toBe("1.0");
     expect(glslFloat(1.5)).toBe("1.5");

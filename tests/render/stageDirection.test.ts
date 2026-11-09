@@ -183,8 +183,8 @@ describe("render stage-direction validation", () => {
 
   it("rejects a custom node whose stage is outside the enum (uniform-junk chain)", () => {
     // Both nodes share the same junk stage, so the pairwise equality checks
-    // short-circuit; without the membership gate this used to reach the compile
-    // pipeline and die on an internal `undefined.push`.
+    // short-circuit; the stage-membership gate is what keeps it out of the compile
+    // pipeline (where it would die on an internal `undefined.push`).
     const junk = "geometry" as FXShaderStage;
     const src = new SourceVec3("junk-src", junk);
     const pass = new PassVec3("junk-pass", junk);
