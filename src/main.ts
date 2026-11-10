@@ -354,8 +354,9 @@ async function bootstrap(): Promise<void> {
     arrangeGraph: shell.arrangeGraph,
   });
 
-  // Initial derive: seed the texture caches, then run the source through the library once.
+  // Initial derive: seed the texture and mesh caches, then run the source through the library once.
   textures.sync(store.getSource().assets);
+  meshGeometries.sync(store.getSource().meshAssets);
   environments.sync(store.getSource().environments);
   pipeline.recomputeNow();
 }

@@ -23888,7 +23888,7 @@
                   "name": "seed"
                 },
                 "position": {
-                  "x": -2160,
+                  "x": -2040,
                   "y": 336
                 }
               },
@@ -23897,8 +23897,8 @@
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
-                  "x": -2664,
-                  "y": -120
+                  "x": -2808,
+                  "y": -96
                 }
               },
               "node_1085": {
@@ -23950,7 +23950,7 @@
                   }
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 408
                 }
               },
@@ -23964,7 +23964,7 @@
                   "outMax": 1.25
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 672
                 }
               },
@@ -23975,7 +23975,7 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 504
                 }
               },
@@ -24022,8 +24022,8 @@
                   "outMax": 0.6
                 },
                 "position": {
-                  "x": -2448,
-                  "y": -120
+                  "x": -2592,
+                  "y": -96
                 }
               },
               "node_1106": {
@@ -24035,8 +24035,8 @@
                   "rows": 8
                 },
                 "position": {
-                  "x": -2160,
-                  "y": -144
+                  "x": -2328,
+                  "y": -120
                 }
               },
               "node_1108": {
@@ -24047,8 +24047,8 @@
                   "name": "tSmoke"
                 },
                 "position": {
-                  "x": -1752,
-                  "y": -144
+                  "x": -2040,
+                  "y": -120
                 }
               },
               "node_1110": {
@@ -24056,8 +24056,8 @@
                 "type": "split-color",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
-                  "y": -96
+                  "x": -1680,
+                  "y": -120
                 }
               },
               "node_1112": {
@@ -24068,8 +24068,8 @@
                   "value": [0.55, 0.5, 0.45]
                 },
                 "position": {
-                  "x": -1344,
-                  "y": -192
+                  "x": -1248,
+                  "y": -144
                 }
               },
               "node_1113": {
@@ -24113,8 +24113,8 @@
                   }
                 },
                 "position": {
-                  "x": -1344,
-                  "y": 0
+                  "x": -1680,
+                  "y": -24
                 }
               },
               "node_1118": {
@@ -24124,8 +24124,8 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -864,
-                  "y": -24
+                  "x": -1248,
+                  "y": -48
                 }
               },
               "node_1121": {
@@ -24191,7 +24191,7 @@
                   "value": 2.2
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 312
                 }
               },
@@ -24217,179 +24217,192 @@
                   "y": 168
                 }
               },
-              "route_8535": {
-                "id": "route_8535",
-                "type": "$route",
-                "parameters": {},
+              "node_9393": {
+                "id": "node_9393",
+                "type": "depth-fade",
+                "parameters": {
+                  "distance": 0.5
+                },
                 "position": {
-                  "x": -2448,
-                  "y": 96
+                  "x": -1248,
+                  "y": 72
                 }
               },
-              "route_8537": {
-                "id": "route_8537",
-                "type": "$route",
-                "parameters": {},
+              "node_9394": {
+                "id": "node_9394",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
                 "position": {
-                  "x": -1872,
-                  "y": 360
+                  "x": -864,
+                  "y": -24
                 }
               },
-              "route_8539": {
-                "id": "route_8539",
+              "route_9398": {
+                "id": "route_9398",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1992,
-                  "y": 96
+                  "x": -2592,
+                  "y": 240
                 }
               },
-              "route_8541": {
-                "id": "route_8541",
+              "route_9400": {
+                "id": "route_9400",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1872,
-                  "y": 432
-                }
-              },
-              "route_8543": {
-                "id": "route_8543",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1464,
-                  "y": 360
-                }
-              },
-              "route_8545": {
-                "id": "route_8545",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1344,
-                  "y": 408
-                }
-              },
-              "route_8547": {
-                "id": "route_8547",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1464,
-                  "y": 96
-                }
-              },
-              "route_8549": {
-                "id": "route_8549",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1344,
-                  "y": 264
-                }
-              },
-              "route_8551": {
-                "id": "route_8551",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1464,
-                  "y": 432
-                }
-              },
-              "route_8553": {
-                "id": "route_8553",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1464,
+                  "x": -1776,
                   "y": 696
                 }
               },
-              "route_8555": {
-                "id": "route_8555",
+              "route_9402": {
+                "id": "route_9402",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
-                  "y": -120
+                  "x": -1800,
+                  "y": 240
                 }
               },
-              "route_8557": {
-                "id": "route_8557",
+              "route_9404": {
+                "id": "route_9404",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1104,
-                  "y": 264
+                  "x": -1368,
+                  "y": 360
                 }
               },
-              "route_8559": {
-                "id": "route_8559",
+              "route_9406": {
+                "id": "route_9406",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -984,
-                  "y": 120
+                  "x": -1248,
+                  "y": 408
                 }
               },
-              "route_8561": {
-                "id": "route_8561",
+              "route_9408": {
+                "id": "route_9408",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -984,
-                  "y": 528
+                  "x": -1488,
+                  "y": 240
                 }
               },
-              "route_8563": {
-                "id": "route_8563",
+              "route_9410": {
+                "id": "route_9410",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -864,
-                  "y": 624
+                  "x": -1368,
+                  "y": 144
                 }
               },
-              "route_8565": {
-                "id": "route_8565",
+              "route_9412": {
+                "id": "route_9412",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1104,
+                  "x": -1368,
+                  "y": 432
+                }
+              },
+              "route_9414": {
+                "id": "route_9414",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1368,
+                  "y": 696
+                }
+              },
+              "route_9416": {
+                "id": "route_9416",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1368,
+                  "y": -96
+                }
+              },
+              "route_9418": {
+                "id": "route_9418",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1248,
+                  "y": -192
+                }
+              },
+              "route_9420": {
+                "id": "route_9420",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1368,
                   "y": -72
                 }
               },
-              "route_8567": {
-                "id": "route_8567",
+              "route_9422": {
+                "id": "route_9422",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1248,
+                  "y": 264
+                }
+              },
+              "route_9424": {
+                "id": "route_9424",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -120
+                  "y": 144
                 }
               },
-              "route_8569": {
-                "id": "route_8569",
+              "route_9426": {
+                "id": "route_9426",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": 624
+                }
+              },
+              "route_9428": {
+                "id": "route_9428",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -168
+                  "y": -192
                 }
               },
-              "route_8571": {
-                "id": "route_8571",
+              "route_9430": {
+                "id": "route_9430",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": -96
+                }
+              },
+              "route_9432": {
+                "id": "route_9432",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -48
+                  "y": 264
                 }
               },
-              "route_8573": {
-                "id": "route_8573",
+              "route_9434": {
+                "id": "route_9434",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24397,8 +24410,26 @@
                   "y": 336
                 }
               },
-              "route_8575": {
-                "id": "route_8575",
+              "route_9436": {
+                "id": "route_9436",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": -24
+                }
+              },
+              "route_9438": {
+                "id": "route_9438",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": 96
+                }
+              },
+              "route_9440": {
+                "id": "route_9440",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24406,8 +24437,8 @@
                   "y": 408
                 }
               },
-              "route_8577": {
-                "id": "route_8577",
+              "route_9442": {
+                "id": "route_9442",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24415,8 +24446,8 @@
                   "y": 624
                 }
               },
-              "route_8579": {
-                "id": "route_8579",
+              "route_9444": {
+                "id": "route_9444",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24424,8 +24455,8 @@
                   "y": 456
                 }
               },
-              "route_8581": {
-                "id": "route_8581",
+              "route_9446": {
+                "id": "route_9446",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24433,26 +24464,8 @@
                   "y": -120
                 }
               },
-              "route_8583": {
-                "id": "route_8583",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -600,
-                  "y": 0
-                }
-              },
-              "route_8585": {
-                "id": "route_8585",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -480,
-                  "y": 48
-                }
-              },
-              "route_8587": {
-                "id": "route_8587",
+              "route_9448": {
+                "id": "route_9448",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24460,8 +24473,8 @@
                   "y": 120
                 }
               },
-              "route_8589": {
-                "id": "route_8589",
+              "route_9450": {
+                "id": "route_9450",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24469,8 +24482,26 @@
                   "y": 288
                 }
               },
-              "route_8591": {
-                "id": "route_8591",
+              "route_9452": {
+                "id": "route_9452",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -600,
+                  "y": 0
+                }
+              },
+              "route_9454": {
+                "id": "route_9454",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -480,
+                  "y": 48
+                }
+              },
+              "route_9456": {
+                "id": "route_9456",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24478,8 +24509,8 @@
                   "y": 456
                 }
               },
-              "route_8593": {
-                "id": "route_8593",
+              "route_9458": {
+                "id": "route_9458",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24487,8 +24518,8 @@
                   "y": 24
                 }
               },
-              "route_8595": {
-                "id": "route_8595",
+              "route_9460": {
+                "id": "route_9460",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24496,8 +24527,8 @@
                   "y": 192
                 }
               },
-              "route_8597": {
-                "id": "route_8597",
+              "route_9462": {
+                "id": "route_9462",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24505,8 +24536,8 @@
                   "y": 288
                 }
               },
-              "route_8599": {
-                "id": "route_8599",
+              "route_9464": {
+                "id": "route_9464",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -24517,9 +24548,9 @@
             },
             "connections": [
               {
-                "id": "conn_8601",
+                "id": "conn_9466",
                 "from": {
-                  "nodeId": "route_8545",
+                  "nodeId": "route_9406",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24528,9 +24559,9 @@
                 }
               },
               {
-                "id": "conn_8602",
+                "id": "conn_9467",
                 "from": {
-                  "nodeId": "route_8575",
+                  "nodeId": "route_9440",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24539,9 +24570,9 @@
                 }
               },
               {
-                "id": "conn_8603",
+                "id": "conn_9468",
                 "from": {
-                  "nodeId": "route_8541",
+                  "nodeId": "route_9402",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24550,9 +24581,9 @@
                 }
               },
               {
-                "id": "conn_8604",
+                "id": "conn_9469",
                 "from": {
-                  "nodeId": "route_8537",
+                  "nodeId": "route_9400",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24561,9 +24592,9 @@
                 }
               },
               {
-                "id": "conn_8605",
+                "id": "conn_9470",
                 "from": {
-                  "nodeId": "route_8551",
+                  "nodeId": "route_9412",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24572,9 +24603,9 @@
                 }
               },
               {
-                "id": "conn_8606",
+                "id": "conn_9471",
                 "from": {
-                  "nodeId": "route_8553",
+                  "nodeId": "route_9414",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24583,9 +24614,9 @@
                 }
               },
               {
-                "id": "conn_8607",
+                "id": "conn_9472",
                 "from": {
-                  "nodeId": "route_8561",
+                  "nodeId": "node_1093",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24594,9 +24625,9 @@
                 }
               },
               {
-                "id": "conn_8608",
+                "id": "conn_9473",
                 "from": {
-                  "nodeId": "route_8579",
+                  "nodeId": "route_9444",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24605,9 +24636,9 @@
                 }
               },
               {
-                "id": "conn_8609",
+                "id": "conn_9474",
                 "from": {
-                  "nodeId": "route_8577",
+                  "nodeId": "route_9442",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24616,7 +24647,7 @@
                 }
               },
               {
-                "id": "conn_8610",
+                "id": "conn_9475",
                 "from": {
                   "nodeId": "node_1087",
                   "socketKey": "out"
@@ -24627,9 +24658,9 @@
                 }
               },
               {
-                "id": "conn_8611",
+                "id": "conn_9476",
                 "from": {
-                  "nodeId": "route_8591",
+                  "nodeId": "route_9456",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24638,7 +24669,7 @@
                 }
               },
               {
-                "id": "conn_8612",
+                "id": "conn_9477",
                 "from": {
                   "nodeId": "node_1084",
                   "socketKey": "out"
@@ -24649,7 +24680,7 @@
                 }
               },
               {
-                "id": "conn_8613",
+                "id": "conn_9478",
                 "from": {
                   "nodeId": "node_1104",
                   "socketKey": "out"
@@ -24660,7 +24691,7 @@
                 }
               },
               {
-                "id": "conn_8614",
+                "id": "conn_9479",
                 "from": {
                   "nodeId": "node_1106",
                   "socketKey": "uvFrame"
@@ -24671,10 +24702,10 @@
                 }
               },
               {
-                "id": "conn_8615",
+                "id": "conn_9480",
                 "from": {
-                  "nodeId": "route_8555",
-                  "socketKey": "out"
+                  "nodeId": "node_1108",
+                  "socketKey": "color"
                 },
                 "to": {
                   "nodeId": "node_1110",
@@ -24682,9 +24713,9 @@
                 }
               },
               {
-                "id": "conn_8616",
+                "id": "conn_9481",
                 "from": {
-                  "nodeId": "route_8567",
+                  "nodeId": "route_9428",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24693,9 +24724,9 @@
                 }
               },
               {
-                "id": "conn_8617",
+                "id": "conn_9482",
                 "from": {
-                  "nodeId": "route_8569",
+                  "nodeId": "route_9430",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24704,9 +24735,9 @@
                 }
               },
               {
-                "id": "conn_8618",
+                "id": "conn_9483",
                 "from": {
-                  "nodeId": "route_8547",
+                  "nodeId": "route_9402",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24715,9 +24746,9 @@
                 }
               },
               {
-                "id": "conn_8619",
+                "id": "conn_9484",
                 "from": {
-                  "nodeId": "route_8571",
+                  "nodeId": "route_9420",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24726,7 +24757,7 @@
                 }
               },
               {
-                "id": "conn_8620",
+                "id": "conn_9485",
                 "from": {
                   "nodeId": "node_1116",
                   "socketKey": "out"
@@ -24737,9 +24768,9 @@
                 }
               },
               {
-                "id": "conn_8621",
+                "id": "conn_9486",
                 "from": {
-                  "nodeId": "route_8581",
+                  "nodeId": "route_9446",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24748,20 +24779,9 @@
                 }
               },
               {
-                "id": "conn_8622",
+                "id": "conn_9487",
                 "from": {
-                  "nodeId": "route_8585",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_1121",
-                  "socketKey": "alpha"
-                }
-              },
-              {
-                "id": "conn_8623",
-                "from": {
-                  "nodeId": "route_8593",
+                  "nodeId": "route_9458",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24770,7 +24790,7 @@
                 }
               },
               {
-                "id": "conn_8624",
+                "id": "conn_9488",
                 "from": {
                   "nodeId": "node_1126",
                   "socketKey": "normal"
@@ -24781,9 +24801,9 @@
                 }
               },
               {
-                "id": "conn_8625",
+                "id": "conn_9489",
                 "from": {
-                  "nodeId": "route_8559",
+                  "nodeId": "route_9424",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24792,9 +24812,9 @@
                 }
               },
               {
-                "id": "conn_8626",
+                "id": "conn_9490",
                 "from": {
-                  "nodeId": "route_8571",
+                  "nodeId": "route_9432",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24803,9 +24823,9 @@
                 }
               },
               {
-                "id": "conn_8627",
+                "id": "conn_9491",
                 "from": {
-                  "nodeId": "route_8573",
+                  "nodeId": "route_9434",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24814,9 +24834,9 @@
                 }
               },
               {
-                "id": "conn_8628",
+                "id": "conn_9492",
                 "from": {
-                  "nodeId": "route_8587",
+                  "nodeId": "route_9448",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24825,9 +24845,9 @@
                 }
               },
               {
-                "id": "conn_8629",
+                "id": "conn_9493",
                 "from": {
-                  "nodeId": "route_8589",
+                  "nodeId": "route_9450",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24836,9 +24856,9 @@
                 }
               },
               {
-                "id": "conn_8630",
+                "id": "conn_9494",
                 "from": {
-                  "nodeId": "route_8595",
+                  "nodeId": "route_9460",
                   "socketKey": "out"
                 },
                 "to": {
@@ -24847,365 +24867,409 @@
                 }
               },
               {
-                "id": "conn_8536",
+                "id": "conn_9495",
+                "from": {
+                  "nodeId": "route_9436",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9394",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_9496",
+                "from": {
+                  "nodeId": "route_9438",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9394",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_9497",
+                "from": {
+                  "nodeId": "route_9454",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1121",
+                  "socketKey": "alpha"
+                }
+              },
+              {
+                "id": "conn_9399",
                 "from": {
                   "nodeId": "node_1084",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8535",
+                  "nodeId": "route_9398",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8538",
+                "id": "conn_9401",
                 "from": {
                   "nodeId": "node_1083",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "route_8537",
+                  "nodeId": "route_9400",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8540",
+                "id": "conn_9403",
                 "from": {
-                  "nodeId": "route_8535",
+                  "nodeId": "route_9398",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8539",
+                  "nodeId": "route_9402",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8542",
+                "id": "conn_9405",
                 "from": {
-                  "nodeId": "route_8539",
+                  "nodeId": "node_1083",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "route_9404",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9407",
+                "from": {
+                  "nodeId": "route_9404",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8541",
+                  "nodeId": "route_9406",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8544",
+                "id": "conn_9409",
                 "from": {
-                  "nodeId": "route_8537",
+                  "nodeId": "route_9402",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8543",
+                  "nodeId": "route_9408",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8546",
+                "id": "conn_9411",
                 "from": {
-                  "nodeId": "route_8543",
+                  "nodeId": "route_9408",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8545",
+                  "nodeId": "route_9410",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8548",
-                "from": {
-                  "nodeId": "route_8539",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8547",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8550",
-                "from": {
-                  "nodeId": "route_8547",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8549",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8552",
+                "id": "conn_9413",
                 "from": {
                   "nodeId": "node_1089",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8551",
+                  "nodeId": "route_9412",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8554",
+                "id": "conn_9415",
                 "from": {
                   "nodeId": "node_1091",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8553",
+                  "nodeId": "route_9414",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8556",
-                "from": {
-                  "nodeId": "node_1108",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "route_8555",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8558",
-                "from": {
-                  "nodeId": "route_8549",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8557",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8560",
-                "from": {
-                  "nodeId": "route_8557",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8559",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8562",
-                "from": {
-                  "nodeId": "node_1093",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8561",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8564",
-                "from": {
-                  "nodeId": "route_8561",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8563",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8566",
+                "id": "conn_9417",
                 "from": {
                   "nodeId": "node_1110",
                   "socketKey": "rgb"
                 },
                 "to": {
-                  "nodeId": "route_8565",
+                  "nodeId": "route_9416",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8568",
+                "id": "conn_9419",
                 "from": {
-                  "nodeId": "route_8565",
+                  "nodeId": "route_9416",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8567",
+                  "nodeId": "route_9418",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8570",
-                "from": {
-                  "nodeId": "node_1112",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8569",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8572",
+                "id": "conn_9421",
                 "from": {
                   "nodeId": "node_1110",
                   "socketKey": "alpha"
                 },
                 "to": {
-                  "nodeId": "route_8571",
+                  "nodeId": "route_9420",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8574",
+                "id": "conn_9423",
+                "from": {
+                  "nodeId": "route_9420",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9422",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9425",
+                "from": {
+                  "nodeId": "route_9410",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9424",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9427",
+                "from": {
+                  "nodeId": "node_1093",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9426",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9429",
+                "from": {
+                  "nodeId": "route_9418",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9428",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9431",
+                "from": {
+                  "nodeId": "node_1112",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9430",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9433",
+                "from": {
+                  "nodeId": "route_9422",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9432",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9435",
                 "from": {
                   "nodeId": "node_1130",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8573",
+                  "nodeId": "route_9434",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8576",
-                "from": {
-                  "nodeId": "node_1085",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8575",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8578",
-                "from": {
-                  "nodeId": "route_8563",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8577",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8580",
-                "from": {
-                  "nodeId": "node_1096",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8579",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8582",
-                "from": {
-                  "nodeId": "node_1113",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8581",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8584",
+                "id": "conn_9437",
                 "from": {
                   "nodeId": "node_1118",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8583",
+                  "nodeId": "route_9436",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8586",
+                "id": "conn_9439",
                 "from": {
-                  "nodeId": "route_8583",
+                  "nodeId": "node_9393",
+                  "socketKey": "fade"
+                },
+                "to": {
+                  "nodeId": "route_9438",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9441",
+                "from": {
+                  "nodeId": "node_1085",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8585",
+                  "nodeId": "route_9440",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8588",
+                "id": "conn_9443",
+                "from": {
+                  "nodeId": "route_9426",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9442",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9445",
+                "from": {
+                  "nodeId": "node_1096",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9444",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9447",
+                "from": {
+                  "nodeId": "node_1113",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9446",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9449",
                 "from": {
                   "nodeId": "node_1128",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8587",
+                  "nodeId": "route_9448",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8590",
+                "id": "conn_9451",
                 "from": {
                   "nodeId": "node_1131",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8589",
+                  "nodeId": "route_9450",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8592",
+                "id": "conn_9453",
+                "from": {
+                  "nodeId": "node_9394",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9452",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9455",
+                "from": {
+                  "nodeId": "route_9452",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9454",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9457",
                 "from": {
                   "nodeId": "node_1098",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8591",
+                  "nodeId": "route_9456",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8594",
+                "id": "conn_9459",
                 "from": {
                   "nodeId": "node_1121",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8593",
+                  "nodeId": "route_9458",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8596",
+                "id": "conn_9461",
                 "from": {
                   "nodeId": "node_1134",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8595",
+                  "nodeId": "route_9460",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8598",
+                "id": "conn_9463",
                 "from": {
                   "nodeId": "node_1101",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8597",
+                  "nodeId": "route_9462",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8600",
+                "id": "conn_9465",
                 "from": {
                   "nodeId": "node_1124",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8599",
+                  "nodeId": "route_9464",
                   "socketKey": "in"
                 }
               }
@@ -25214,14 +25278,14 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "route_8597",
+                  "nodeId": "route_9462",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "route_8599",
+                  "nodeId": "route_9464",
                   "socketKey": "out"
                 }
               }
@@ -26081,7 +26145,7 @@
                   "name": "seed"
                 },
                 "position": {
-                  "x": -2160,
+                  "x": -2088,
                   "y": 336
                 }
               },
@@ -26090,8 +26154,8 @@
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
-                  "x": -2664,
-                  "y": -120
+                  "x": -2880,
+                  "y": -96
                 }
               },
               "node_1175": {
@@ -26143,7 +26207,7 @@
                   }
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 408
                 }
               },
@@ -26157,7 +26221,7 @@
                   "outMax": 1.25
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 672
                 }
               },
@@ -26168,7 +26232,7 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 504
                 }
               },
@@ -26215,8 +26279,8 @@
                   "outMax": 0.75
                 },
                 "position": {
-                  "x": -2448,
-                  "y": -120
+                  "x": -2664,
+                  "y": -96
                 }
               },
               "node_1196": {
@@ -26228,8 +26292,8 @@
                   "rows": 8
                 },
                 "position": {
-                  "x": -2160,
-                  "y": -144
+                  "x": -2376,
+                  "y": -120
                 }
               },
               "node_1198": {
@@ -26240,8 +26304,8 @@
                   "name": "tSmoke"
                 },
                 "position": {
-                  "x": -1752,
-                  "y": -144
+                  "x": -2088,
+                  "y": -120
                 }
               },
               "node_1200": {
@@ -26249,8 +26313,8 @@
                 "type": "split-color",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
-                  "y": -96
+                  "x": -1680,
+                  "y": -120
                 }
               },
               "node_1202": {
@@ -26261,8 +26325,8 @@
                   "value": [0.5, 0.46, 0.42]
                 },
                 "position": {
-                  "x": -1344,
-                  "y": -192
+                  "x": -1248,
+                  "y": -144
                 }
               },
               "node_1203": {
@@ -26306,8 +26370,8 @@
                   }
                 },
                 "position": {
-                  "x": -1344,
-                  "y": 0
+                  "x": -1680,
+                  "y": -24
                 }
               },
               "node_1208": {
@@ -26317,8 +26381,8 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -864,
-                  "y": -24
+                  "x": -1248,
+                  "y": -48
                 }
               },
               "node_1211": {
@@ -26384,7 +26448,7 @@
                   "value": 0.9
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 312
                 }
               },
@@ -26410,179 +26474,210 @@
                   "y": 168
                 }
               },
-              "route_8687": {
-                "id": "route_8687",
-                "type": "$route",
-                "parameters": {},
+              "node_9498": {
+                "id": "node_9498",
+                "type": "depth-fade",
+                "parameters": {
+                  "distance": 0.5
+                },
                 "position": {
-                  "x": -2448,
-                  "y": 96
+                  "x": -1248,
+                  "y": 72
                 }
               },
-              "route_8689": {
-                "id": "route_8689",
+              "node_9499": {
+                "id": "node_9499",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": -864,
+                  "y": -24
+                }
+              },
+              "route_9503": {
+                "id": "route_9503",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1872,
+                  "x": -2664,
+                  "y": 240
+                }
+              },
+              "route_9505": {
+                "id": "route_9505",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1800,
                   "y": 360
                 }
               },
-              "route_8691": {
-                "id": "route_8691",
+              "route_9507": {
+                "id": "route_9507",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1992,
-                  "y": 96
+                  "x": -1920,
+                  "y": 240
                 }
               },
-              "route_8693": {
-                "id": "route_8693",
+              "route_9509": {
+                "id": "route_9509",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1872,
+                  "x": -1800,
                   "y": 432
                 }
               },
-              "route_8695": {
-                "id": "route_8695",
+              "route_9511": {
+                "id": "route_9511",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1800,
+                  "y": 0
+                }
+              },
+              "route_9513": {
+                "id": "route_9513",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1368,
                   "y": 360
                 }
               },
-              "route_8697": {
-                "id": "route_8697",
+              "route_9515": {
+                "id": "route_9515",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 408
                 }
               },
-              "route_8699": {
-                "id": "route_8699",
+              "route_9517": {
+                "id": "route_9517",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
-                  "y": 96
+                  "x": -1488,
+                  "y": 240
                 }
               },
-              "route_8701": {
-                "id": "route_8701",
+              "route_9519": {
+                "id": "route_9519",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
-                  "y": 264
+                  "x": -1368,
+                  "y": 144
                 }
               },
-              "route_8703": {
-                "id": "route_8703",
+              "route_9521": {
+                "id": "route_9521",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1368,
                   "y": 432
                 }
               },
-              "route_8705": {
-                "id": "route_8705",
+              "route_9523": {
+                "id": "route_9523",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1368,
                   "y": 696
                 }
               },
-              "route_8707": {
-                "id": "route_8707",
+              "route_9525": {
+                "id": "route_9525",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
-                  "y": -120
+                  "x": -1368,
+                  "y": -96
                 }
               },
-              "route_8709": {
-                "id": "route_8709",
+              "route_9527": {
+                "id": "route_9527",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1104,
-                  "y": 264
+                  "x": -1248,
+                  "y": -192
                 }
               },
-              "route_8711": {
-                "id": "route_8711",
+              "route_9529": {
+                "id": "route_9529",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -984,
-                  "y": 120
-                }
-              },
-              "route_8713": {
-                "id": "route_8713",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -984,
-                  "y": 528
-                }
-              },
-              "route_8715": {
-                "id": "route_8715",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -864,
-                  "y": 624
-                }
-              },
-              "route_8717": {
-                "id": "route_8717",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1104,
+                  "x": -1368,
                   "y": -72
                 }
               },
-              "route_8719": {
-                "id": "route_8719",
+              "route_9531": {
+                "id": "route_9531",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1248,
+                  "y": 264
+                }
+              },
+              "route_9533": {
+                "id": "route_9533",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -120
+                  "y": 144
                 }
               },
-              "route_8721": {
-                "id": "route_8721",
+              "route_9535": {
+                "id": "route_9535",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": 624
+                }
+              },
+              "route_9537": {
+                "id": "route_9537",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -168
+                  "y": -192
                 }
               },
-              "route_8723": {
-                "id": "route_8723",
+              "route_9539": {
+                "id": "route_9539",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": -96
+                }
+              },
+              "route_9541": {
+                "id": "route_9541",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -48
+                  "y": 264
                 }
               },
-              "route_8725": {
-                "id": "route_8725",
+              "route_9543": {
+                "id": "route_9543",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26590,8 +26685,26 @@
                   "y": 336
                 }
               },
-              "route_8727": {
-                "id": "route_8727",
+              "route_9545": {
+                "id": "route_9545",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": -24
+                }
+              },
+              "route_9547": {
+                "id": "route_9547",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": 96
+                }
+              },
+              "route_9549": {
+                "id": "route_9549",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26599,8 +26712,8 @@
                   "y": 408
                 }
               },
-              "route_8729": {
-                "id": "route_8729",
+              "route_9551": {
+                "id": "route_9551",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26608,8 +26721,8 @@
                   "y": 624
                 }
               },
-              "route_8731": {
-                "id": "route_8731",
+              "route_9553": {
+                "id": "route_9553",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26617,8 +26730,8 @@
                   "y": 456
                 }
               },
-              "route_8733": {
-                "id": "route_8733",
+              "route_9555": {
+                "id": "route_9555",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26626,26 +26739,8 @@
                   "y": -120
                 }
               },
-              "route_8735": {
-                "id": "route_8735",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -600,
-                  "y": 0
-                }
-              },
-              "route_8737": {
-                "id": "route_8737",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -480,
-                  "y": 48
-                }
-              },
-              "route_8739": {
-                "id": "route_8739",
+              "route_9557": {
+                "id": "route_9557",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26653,8 +26748,8 @@
                   "y": 120
                 }
               },
-              "route_8741": {
-                "id": "route_8741",
+              "route_9559": {
+                "id": "route_9559",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26662,8 +26757,26 @@
                   "y": 288
                 }
               },
-              "route_8743": {
-                "id": "route_8743",
+              "route_9561": {
+                "id": "route_9561",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -600,
+                  "y": 0
+                }
+              },
+              "route_9563": {
+                "id": "route_9563",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -480,
+                  "y": 48
+                }
+              },
+              "route_9565": {
+                "id": "route_9565",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26671,8 +26784,8 @@
                   "y": 456
                 }
               },
-              "route_8745": {
-                "id": "route_8745",
+              "route_9567": {
+                "id": "route_9567",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26680,8 +26793,8 @@
                   "y": 24
                 }
               },
-              "route_8747": {
-                "id": "route_8747",
+              "route_9569": {
+                "id": "route_9569",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26689,8 +26802,8 @@
                   "y": 192
                 }
               },
-              "route_8749": {
-                "id": "route_8749",
+              "route_9571": {
+                "id": "route_9571",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26698,8 +26811,8 @@
                   "y": 288
                 }
               },
-              "route_8751": {
-                "id": "route_8751",
+              "route_9573": {
+                "id": "route_9573",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -26710,9 +26823,9 @@
             },
             "connections": [
               {
-                "id": "conn_8753",
+                "id": "conn_9575",
                 "from": {
-                  "nodeId": "route_8697",
+                  "nodeId": "route_9515",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26721,9 +26834,9 @@
                 }
               },
               {
-                "id": "conn_8754",
+                "id": "conn_9576",
                 "from": {
-                  "nodeId": "route_8727",
+                  "nodeId": "route_9549",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26732,9 +26845,9 @@
                 }
               },
               {
-                "id": "conn_8755",
+                "id": "conn_9577",
                 "from": {
-                  "nodeId": "route_8693",
+                  "nodeId": "route_9509",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26743,9 +26856,9 @@
                 }
               },
               {
-                "id": "conn_8756",
+                "id": "conn_9578",
                 "from": {
-                  "nodeId": "route_8689",
+                  "nodeId": "route_9505",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26754,9 +26867,9 @@
                 }
               },
               {
-                "id": "conn_8757",
+                "id": "conn_9579",
                 "from": {
-                  "nodeId": "route_8703",
+                  "nodeId": "route_9521",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26765,9 +26878,9 @@
                 }
               },
               {
-                "id": "conn_8758",
+                "id": "conn_9580",
                 "from": {
-                  "nodeId": "route_8705",
+                  "nodeId": "route_9523",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26776,9 +26889,9 @@
                 }
               },
               {
-                "id": "conn_8759",
+                "id": "conn_9581",
                 "from": {
-                  "nodeId": "route_8713",
+                  "nodeId": "node_1183",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26787,9 +26900,9 @@
                 }
               },
               {
-                "id": "conn_8760",
+                "id": "conn_9582",
                 "from": {
-                  "nodeId": "route_8731",
+                  "nodeId": "route_9553",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26798,9 +26911,9 @@
                 }
               },
               {
-                "id": "conn_8761",
+                "id": "conn_9583",
                 "from": {
-                  "nodeId": "route_8729",
+                  "nodeId": "route_9551",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26809,7 +26922,7 @@
                 }
               },
               {
-                "id": "conn_8762",
+                "id": "conn_9584",
                 "from": {
                   "nodeId": "node_1177",
                   "socketKey": "out"
@@ -26820,9 +26933,9 @@
                 }
               },
               {
-                "id": "conn_8763",
+                "id": "conn_9585",
                 "from": {
-                  "nodeId": "route_8743",
+                  "nodeId": "route_9565",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26831,7 +26944,7 @@
                 }
               },
               {
-                "id": "conn_8764",
+                "id": "conn_9586",
                 "from": {
                   "nodeId": "node_1174",
                   "socketKey": "out"
@@ -26842,7 +26955,7 @@
                 }
               },
               {
-                "id": "conn_8765",
+                "id": "conn_9587",
                 "from": {
                   "nodeId": "node_1194",
                   "socketKey": "out"
@@ -26853,7 +26966,7 @@
                 }
               },
               {
-                "id": "conn_8766",
+                "id": "conn_9588",
                 "from": {
                   "nodeId": "node_1196",
                   "socketKey": "uvFrame"
@@ -26864,10 +26977,10 @@
                 }
               },
               {
-                "id": "conn_8767",
+                "id": "conn_9589",
                 "from": {
-                  "nodeId": "route_8707",
-                  "socketKey": "out"
+                  "nodeId": "node_1198",
+                  "socketKey": "color"
                 },
                 "to": {
                   "nodeId": "node_1200",
@@ -26875,9 +26988,9 @@
                 }
               },
               {
-                "id": "conn_8768",
+                "id": "conn_9590",
                 "from": {
-                  "nodeId": "route_8719",
+                  "nodeId": "route_9537",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26886,9 +26999,9 @@
                 }
               },
               {
-                "id": "conn_8769",
+                "id": "conn_9591",
                 "from": {
-                  "nodeId": "route_8721",
+                  "nodeId": "route_9539",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26897,9 +27010,9 @@
                 }
               },
               {
-                "id": "conn_8770",
+                "id": "conn_9592",
                 "from": {
-                  "nodeId": "route_8699",
+                  "nodeId": "route_9511",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26908,9 +27021,9 @@
                 }
               },
               {
-                "id": "conn_8771",
+                "id": "conn_9593",
                 "from": {
-                  "nodeId": "route_8723",
+                  "nodeId": "route_9529",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26919,7 +27032,7 @@
                 }
               },
               {
-                "id": "conn_8772",
+                "id": "conn_9594",
                 "from": {
                   "nodeId": "node_1206",
                   "socketKey": "out"
@@ -26930,9 +27043,9 @@
                 }
               },
               {
-                "id": "conn_8773",
+                "id": "conn_9595",
                 "from": {
-                  "nodeId": "route_8733",
+                  "nodeId": "route_9555",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26941,20 +27054,9 @@
                 }
               },
               {
-                "id": "conn_8774",
+                "id": "conn_9596",
                 "from": {
-                  "nodeId": "route_8737",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_1211",
-                  "socketKey": "alpha"
-                }
-              },
-              {
-                "id": "conn_8775",
-                "from": {
-                  "nodeId": "route_8745",
+                  "nodeId": "route_9567",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26963,7 +27065,7 @@
                 }
               },
               {
-                "id": "conn_8776",
+                "id": "conn_9597",
                 "from": {
                   "nodeId": "node_1216",
                   "socketKey": "normal"
@@ -26974,9 +27076,9 @@
                 }
               },
               {
-                "id": "conn_8777",
+                "id": "conn_9598",
                 "from": {
-                  "nodeId": "route_8711",
+                  "nodeId": "route_9533",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26985,9 +27087,9 @@
                 }
               },
               {
-                "id": "conn_8778",
+                "id": "conn_9599",
                 "from": {
-                  "nodeId": "route_8723",
+                  "nodeId": "route_9541",
                   "socketKey": "out"
                 },
                 "to": {
@@ -26996,9 +27098,9 @@
                 }
               },
               {
-                "id": "conn_8779",
+                "id": "conn_9600",
                 "from": {
-                  "nodeId": "route_8725",
+                  "nodeId": "route_9543",
                   "socketKey": "out"
                 },
                 "to": {
@@ -27007,9 +27109,9 @@
                 }
               },
               {
-                "id": "conn_8780",
+                "id": "conn_9601",
                 "from": {
-                  "nodeId": "route_8739",
+                  "nodeId": "route_9557",
                   "socketKey": "out"
                 },
                 "to": {
@@ -27018,9 +27120,9 @@
                 }
               },
               {
-                "id": "conn_8781",
+                "id": "conn_9602",
                 "from": {
-                  "nodeId": "route_8741",
+                  "nodeId": "route_9559",
                   "socketKey": "out"
                 },
                 "to": {
@@ -27029,9 +27131,9 @@
                 }
               },
               {
-                "id": "conn_8782",
+                "id": "conn_9603",
                 "from": {
-                  "nodeId": "route_8747",
+                  "nodeId": "route_9569",
                   "socketKey": "out"
                 },
                 "to": {
@@ -27040,365 +27142,431 @@
                 }
               },
               {
-                "id": "conn_8688",
+                "id": "conn_9604",
+                "from": {
+                  "nodeId": "route_9545",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9499",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_9605",
+                "from": {
+                  "nodeId": "route_9547",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9499",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_9606",
+                "from": {
+                  "nodeId": "route_9563",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1211",
+                  "socketKey": "alpha"
+                }
+              },
+              {
+                "id": "conn_9504",
                 "from": {
                   "nodeId": "node_1174",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8687",
+                  "nodeId": "route_9503",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8690",
+                "id": "conn_9506",
                 "from": {
                   "nodeId": "node_1173",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "route_8689",
+                  "nodeId": "route_9505",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8692",
+                "id": "conn_9508",
                 "from": {
-                  "nodeId": "route_8687",
+                  "nodeId": "route_9503",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8691",
+                  "nodeId": "route_9507",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8694",
+                "id": "conn_9510",
                 "from": {
-                  "nodeId": "route_8691",
+                  "nodeId": "route_9507",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8693",
+                  "nodeId": "route_9509",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8696",
+                "id": "conn_9512",
                 "from": {
-                  "nodeId": "route_8689",
+                  "nodeId": "route_9507",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8695",
+                  "nodeId": "route_9511",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8698",
+                "id": "conn_9514",
                 "from": {
-                  "nodeId": "route_8695",
+                  "nodeId": "route_9505",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8697",
+                  "nodeId": "route_9513",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8700",
+                "id": "conn_9516",
                 "from": {
-                  "nodeId": "route_8691",
+                  "nodeId": "route_9513",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8699",
+                  "nodeId": "route_9515",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8702",
+                "id": "conn_9518",
                 "from": {
-                  "nodeId": "route_8699",
+                  "nodeId": "route_9507",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8701",
+                  "nodeId": "route_9517",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8704",
+                "id": "conn_9520",
+                "from": {
+                  "nodeId": "route_9517",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9519",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9522",
                 "from": {
                   "nodeId": "node_1179",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8703",
+                  "nodeId": "route_9521",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8706",
+                "id": "conn_9524",
                 "from": {
                   "nodeId": "node_1181",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8705",
+                  "nodeId": "route_9523",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8708",
-                "from": {
-                  "nodeId": "node_1198",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "route_8707",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8710",
-                "from": {
-                  "nodeId": "route_8701",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8709",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8712",
-                "from": {
-                  "nodeId": "route_8709",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8711",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8714",
-                "from": {
-                  "nodeId": "node_1183",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8713",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8716",
-                "from": {
-                  "nodeId": "route_8713",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8715",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8718",
+                "id": "conn_9526",
                 "from": {
                   "nodeId": "node_1200",
                   "socketKey": "rgb"
                 },
                 "to": {
-                  "nodeId": "route_8717",
+                  "nodeId": "route_9525",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8720",
+                "id": "conn_9528",
                 "from": {
-                  "nodeId": "route_8717",
+                  "nodeId": "route_9525",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8719",
+                  "nodeId": "route_9527",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8722",
-                "from": {
-                  "nodeId": "node_1202",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8721",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8724",
+                "id": "conn_9530",
                 "from": {
                   "nodeId": "node_1200",
                   "socketKey": "alpha"
                 },
                 "to": {
-                  "nodeId": "route_8723",
+                  "nodeId": "route_9529",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8726",
+                "id": "conn_9532",
+                "from": {
+                  "nodeId": "route_9529",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9531",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9534",
+                "from": {
+                  "nodeId": "route_9519",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9533",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9536",
+                "from": {
+                  "nodeId": "node_1183",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9535",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9538",
+                "from": {
+                  "nodeId": "route_9527",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9537",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9540",
+                "from": {
+                  "nodeId": "node_1202",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9539",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9542",
+                "from": {
+                  "nodeId": "route_9531",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9541",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9544",
                 "from": {
                   "nodeId": "node_1220",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8725",
+                  "nodeId": "route_9543",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8728",
-                "from": {
-                  "nodeId": "node_1175",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8727",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8730",
-                "from": {
-                  "nodeId": "route_8715",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8729",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8732",
-                "from": {
-                  "nodeId": "node_1186",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8731",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8734",
-                "from": {
-                  "nodeId": "node_1203",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8733",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8736",
+                "id": "conn_9546",
                 "from": {
                   "nodeId": "node_1208",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8735",
+                  "nodeId": "route_9545",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8738",
+                "id": "conn_9548",
                 "from": {
-                  "nodeId": "route_8735",
+                  "nodeId": "node_9498",
+                  "socketKey": "fade"
+                },
+                "to": {
+                  "nodeId": "route_9547",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9550",
+                "from": {
+                  "nodeId": "node_1175",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8737",
+                  "nodeId": "route_9549",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8740",
+                "id": "conn_9552",
+                "from": {
+                  "nodeId": "route_9535",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9551",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9554",
+                "from": {
+                  "nodeId": "node_1186",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9553",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9556",
+                "from": {
+                  "nodeId": "node_1203",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9555",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9558",
                 "from": {
                   "nodeId": "node_1218",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8739",
+                  "nodeId": "route_9557",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8742",
+                "id": "conn_9560",
                 "from": {
                   "nodeId": "node_1221",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8741",
+                  "nodeId": "route_9559",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8744",
+                "id": "conn_9562",
+                "from": {
+                  "nodeId": "node_9499",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9561",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9564",
+                "from": {
+                  "nodeId": "route_9561",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9563",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9566",
                 "from": {
                   "nodeId": "node_1188",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8743",
+                  "nodeId": "route_9565",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8746",
+                "id": "conn_9568",
                 "from": {
                   "nodeId": "node_1211",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8745",
+                  "nodeId": "route_9567",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8748",
+                "id": "conn_9570",
                 "from": {
                   "nodeId": "node_1224",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8747",
+                  "nodeId": "route_9569",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8750",
+                "id": "conn_9572",
                 "from": {
                   "nodeId": "node_1191",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8749",
+                  "nodeId": "route_9571",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8752",
+                "id": "conn_9574",
                 "from": {
                   "nodeId": "node_1214",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8751",
+                  "nodeId": "route_9573",
                   "socketKey": "in"
                 }
               }
@@ -27407,14 +27575,14 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "route_8749",
+                  "nodeId": "route_9571",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "route_8751",
+                  "nodeId": "route_9573",
                   "socketKey": "out"
                 }
               }
@@ -28285,8 +28453,8 @@
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
-                  "x": -2496,
-                  "y": -72
+                  "x": -2784,
+                  "y": -120
                 }
               },
               "node_1260": {
@@ -28297,8 +28465,8 @@
                   "b": 6.283
                 },
                 "position": {
-                  "x": -720,
-                  "y": 216
+                  "x": -816,
+                  "y": 240
                 }
               },
               "node_1262": {
@@ -28309,8 +28477,8 @@
                   "cameraModel": "parallel"
                 },
                 "position": {
-                  "x": -312,
-                  "y": 216
+                  "x": -408,
+                  "y": 240
                 }
               },
               "node_1264": {
@@ -28338,7 +28506,7 @@
                   }
                 },
                 "position": {
-                  "x": -1584,
+                  "x": -1632,
                   "y": 312
                 }
               },
@@ -28352,7 +28520,7 @@
                   "outMax": 1.25
                 },
                 "position": {
-                  "x": -1584,
+                  "x": -1632,
                   "y": 576
                 }
               },
@@ -28363,8 +28531,8 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -1176,
-                  "y": 408
+                  "x": -1200,
+                  "y": 360
                 }
               },
               "node_1271": {
@@ -28375,8 +28543,8 @@
                   "b": 0.6612
                 },
                 "position": {
-                  "x": -720,
-                  "y": 336
+                  "x": -816,
+                  "y": 360
                 }
               },
               "node_1273": {
@@ -28387,8 +28555,8 @@
                   "z": 1
                 },
                 "position": {
-                  "x": -312,
-                  "y": 360
+                  "x": -408,
+                  "y": 384
                 }
               },
               "node_1276": {
@@ -28396,8 +28564,8 @@
                 "type": "compose-transform",
                 "parameters": {},
                 "position": {
-                  "x": 96,
-                  "y": 216
+                  "x": 0,
+                  "y": 264
                 }
               },
               "node_1279": {
@@ -28410,8 +28578,8 @@
                   "outMax": 0.75
                 },
                 "position": {
-                  "x": -2280,
-                  "y": -72
+                  "x": -2568,
+                  "y": -120
                 }
               },
               "node_1281": {
@@ -28423,8 +28591,8 @@
                   "rows": 8
                 },
                 "position": {
-                  "x": -1992,
-                  "y": -96
+                  "x": -2280,
+                  "y": -144
                 }
               },
               "node_1283": {
@@ -28435,8 +28603,8 @@
                   "name": "tSmoke"
                 },
                 "position": {
-                  "x": -1584,
-                  "y": -96
+                  "x": -1992,
+                  "y": -144
                 }
               },
               "node_1285": {
@@ -28444,7 +28612,7 @@
                 "type": "split-color",
                 "parameters": {},
                 "position": {
-                  "x": -1176,
+                  "x": -1632,
                   "y": -96
                 }
               },
@@ -28456,7 +28624,7 @@
                   "value": [0.5, 0.46, 0.42]
                 },
                 "position": {
-                  "x": -1176,
+                  "x": -1200,
                   "y": 0
                 }
               },
@@ -28467,8 +28635,8 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -720,
-                  "y": -24
+                  "x": -816,
+                  "y": 0
                 }
               },
               "node_1291": {
@@ -28496,8 +28664,8 @@
                   }
                 },
                 "position": {
-                  "x": -1176,
-                  "y": 96
+                  "x": -1632,
+                  "y": 0
                 }
               },
               "node_1293": {
@@ -28507,7 +28675,7 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -720,
+                  "x": -1200,
                   "y": 96
                 }
               },
@@ -28516,17 +28684,8 @@
                 "type": "combine-color",
                 "parameters": {},
                 "position": {
-                  "x": -312,
+                  "x": -408,
                   "y": 48
-                }
-              },
-              "node_1299": {
-                "id": "node_1299",
-                "type": "lambert-shading",
-                "parameters": {},
-                "position": {
-                  "x": 96,
-                  "y": 96
                 }
               },
               "node_1301": {
@@ -28534,138 +28693,180 @@
                 "type": "spherical-normal",
                 "parameters": {},
                 "position": {
-                  "x": -312,
+                  "x": -408,
                   "y": 144
                 }
               },
-              "route_8830": {
-                "id": "route_8830",
-                "type": "$route",
-                "parameters": {},
+              "node_9716": {
+                "id": "node_9716",
+                "type": "depth-fade",
+                "parameters": {
+                  "distance": 0.3
+                },
                 "position": {
-                  "x": -2280,
-                  "y": 144
+                  "x": -1200,
+                  "y": 216
                 }
               },
-              "route_8832": {
-                "id": "route_8832",
-                "type": "$route",
-                "parameters": {},
+              "node_9717": {
+                "id": "node_9717",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
                 "position": {
-                  "x": -1704,
-                  "y": 264
+                  "x": -816,
+                  "y": 120
                 }
               },
-              "route_8834": {
-                "id": "route_8834",
-                "type": "$route",
-                "parameters": {},
+              "node_9805": {
+                "id": "node_9805",
+                "type": "half-lit-shading",
+                "parameters": {
+                  "wrap": 0.5
+                },
                 "position": {
-                  "x": -1824,
-                  "y": 144
+                  "x": 0,
+                  "y": 72
                 }
               },
-              "route_8836": {
-                "id": "route_8836",
+              "route_9808": {
+                "id": "route_9808",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1704,
-                  "y": 336
+                  "x": -2568,
+                  "y": 96
                 }
               },
-              "route_8838": {
-                "id": "route_8838",
+              "route_9810": {
+                "id": "route_9810",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1296,
-                  "y": 264
-                }
-              },
-              "route_8840": {
-                "id": "route_8840",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1176,
-                  "y": 360
-                }
-              },
-              "route_8842": {
-                "id": "route_8842",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1296,
-                  "y": 144
-                }
-              },
-              "route_8844": {
-                "id": "route_8844",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1272,
-                  "y": 432
-                }
-              },
-              "route_8846": {
-                "id": "route_8846",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1296,
+                  "x": -1728,
                   "y": 600
                 }
               },
-              "route_8848": {
-                "id": "route_8848",
+              "route_9812": {
+                "id": "route_9812",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -984,
-                  "y": 360
+                  "x": -1752,
+                  "y": 96
                 }
               },
-              "route_8850": {
-                "id": "route_8850",
+              "route_9814": {
+                "id": "route_9814",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -864,
-                  "y": 240
+                  "x": -1752,
+                  "y": -120
                 }
               },
-              "route_8852": {
-                "id": "route_8852",
+              "route_9816": {
+                "id": "route_9816",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -840,
-                  "y": 432
+                  "x": -1320,
+                  "y": 264
                 }
               },
-              "route_8854": {
-                "id": "route_8854",
+              "route_9818": {
+                "id": "route_9818",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -720,
-                  "y": 456
+                  "x": -1200,
+                  "y": 288
                 }
               },
-              "route_8856": {
-                "id": "route_8856",
+              "route_9820": {
+                "id": "route_9820",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -840,
+                  "x": -1320,
+                  "y": 336
+                }
+              },
+              "route_9822": {
+                "id": "route_9822",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1320,
+                  "y": 600
+                }
+              },
+              "route_9824": {
+                "id": "route_9824",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1320,
                   "y": -72
                 }
               },
-              "route_8858": {
-                "id": "route_8858",
+              "route_9826": {
+                "id": "route_9826",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1200,
+                  "y": -48
+                }
+              },
+              "route_9828": {
+                "id": "route_9828",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1416,
+                  "y": -48
+                }
+              },
+              "route_9830": {
+                "id": "route_9830",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1296,
+                  "y": 120
+                }
+              },
+              "route_9832": {
+                "id": "route_9832",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1320,
+                  "y": 144
+                }
+              },
+              "route_9834": {
+                "id": "route_9834",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -936,
+                  "y": 288
+                }
+              },
+              "route_9836": {
+                "id": "route_9836",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -912,
+                  "y": 480
+                }
+              },
+              "route_9838": {
+                "id": "route_9838",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -28673,102 +28874,129 @@
                   "y": -48
                 }
               },
-              "route_8860": {
-                "id": "route_8860",
+              "route_9840": {
+                "id": "route_9840",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -816,
+                  "x": -912,
+                  "y": 48
+                }
+              },
+              "route_9842": {
+                "id": "route_9842",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -936,
                   "y": 120
                 }
               },
-              "route_8862": {
-                "id": "route_8862",
+              "route_9844": {
+                "id": "route_9844",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -864,
-                  "y": 144
-                }
-              },
-              "route_8864": {
-                "id": "route_8864",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -432,
-                  "y": 456
-                }
-              },
-              "route_8866": {
-                "id": "route_8866",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -432,
-                  "y": 360
-                }
-              },
-              "route_8868": {
-                "id": "route_8868",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -432,
-                  "y": 0
-                }
-              },
-              "route_8870": {
-                "id": "route_8870",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -432,
-                  "y": 120
-                }
-              },
-              "route_8872": {
-                "id": "route_8872",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -24,
+                  "x": -936,
                   "y": 240
                 }
               },
-              "route_8874": {
-                "id": "route_8874",
+              "route_9846": {
+                "id": "route_9846",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -24,
+                  "x": -528,
+                  "y": 480
+                }
+              },
+              "route_9848": {
+                "id": "route_9848",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -528,
                   "y": 384
                 }
               },
-              "route_8876": {
-                "id": "route_8876",
+              "route_9850": {
+                "id": "route_9850",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -24,
+                  "x": -528,
+                  "y": 24
+                }
+              },
+              "route_9852": {
+                "id": "route_9852",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -528,
+                  "y": 144
+                }
+              },
+              "route_9854": {
+                "id": "route_9854",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -120,
+                  "y": 264
+                }
+              },
+              "route_9856": {
+                "id": "route_9856",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -120,
+                  "y": 408
+                }
+              },
+              "route_9858": {
+                "id": "route_9858",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -120,
                   "y": 72
                 }
               },
-              "route_8878": {
-                "id": "route_8878",
+              "route_9860": {
+                "id": "route_9860",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -24,
+                  "x": -120,
                   "y": 168
+                }
+              },
+              "route_9862": {
+                "id": "route_9862",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 360,
+                  "y": 288
+                }
+              },
+              "route_9864": {
+                "id": "route_9864",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": 360,
+                  "y": 96
                 }
               }
             },
             "connections": [
               {
-                "id": "conn_8880",
+                "id": "conn_9866",
                 "from": {
-                  "nodeId": "route_8850",
+                  "nodeId": "route_9834",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28777,7 +29005,7 @@
                 }
               },
               {
-                "id": "conn_8881",
+                "id": "conn_9867",
                 "from": {
                   "nodeId": "node_1260",
                   "socketKey": "out"
@@ -28788,9 +29016,9 @@
                 }
               },
               {
-                "id": "conn_8882",
+                "id": "conn_9868",
                 "from": {
-                  "nodeId": "route_8836",
+                  "nodeId": "route_9812",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28799,9 +29027,9 @@
                 }
               },
               {
-                "id": "conn_8883",
+                "id": "conn_9869",
                 "from": {
-                  "nodeId": "route_8832",
+                  "nodeId": "route_9810",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28810,9 +29038,9 @@
                 }
               },
               {
-                "id": "conn_8884",
+                "id": "conn_9870",
                 "from": {
-                  "nodeId": "route_8844",
+                  "nodeId": "route_9820",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28821,9 +29049,9 @@
                 }
               },
               {
-                "id": "conn_8885",
+                "id": "conn_9871",
                 "from": {
-                  "nodeId": "route_8846",
+                  "nodeId": "route_9822",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28832,9 +29060,9 @@
                 }
               },
               {
-                "id": "conn_8886",
+                "id": "conn_9872",
                 "from": {
-                  "nodeId": "route_8852",
+                  "nodeId": "node_1268",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28843,9 +29071,9 @@
                 }
               },
               {
-                "id": "conn_8887",
+                "id": "conn_9873",
                 "from": {
-                  "nodeId": "route_8866",
+                  "nodeId": "route_9848",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28854,9 +29082,9 @@
                 }
               },
               {
-                "id": "conn_8888",
+                "id": "conn_9874",
                 "from": {
-                  "nodeId": "route_8864",
+                  "nodeId": "route_9846",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28865,9 +29093,9 @@
                 }
               },
               {
-                "id": "conn_8889",
+                "id": "conn_9875",
                 "from": {
-                  "nodeId": "route_8872",
+                  "nodeId": "route_9854",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28876,9 +29104,9 @@
                 }
               },
               {
-                "id": "conn_8890",
+                "id": "conn_9876",
                 "from": {
-                  "nodeId": "route_8874",
+                  "nodeId": "route_9856",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28887,7 +29115,7 @@
                 }
               },
               {
-                "id": "conn_8891",
+                "id": "conn_9877",
                 "from": {
                   "nodeId": "node_1259",
                   "socketKey": "out"
@@ -28898,7 +29126,7 @@
                 }
               },
               {
-                "id": "conn_8892",
+                "id": "conn_9878",
                 "from": {
                   "nodeId": "node_1279",
                   "socketKey": "out"
@@ -28909,7 +29137,7 @@
                 }
               },
               {
-                "id": "conn_8893",
+                "id": "conn_9879",
                 "from": {
                   "nodeId": "node_1281",
                   "socketKey": "uvFrame"
@@ -28920,10 +29148,10 @@
                 }
               },
               {
-                "id": "conn_8894",
+                "id": "conn_9880",
                 "from": {
-                  "nodeId": "node_1283",
-                  "socketKey": "color"
+                  "nodeId": "route_9814",
+                  "socketKey": "out"
                 },
                 "to": {
                   "nodeId": "node_1285",
@@ -28931,9 +29159,9 @@
                 }
               },
               {
-                "id": "conn_8895",
+                "id": "conn_9881",
                 "from": {
-                  "nodeId": "route_8856",
+                  "nodeId": "route_9838",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28942,9 +29170,9 @@
                 }
               },
               {
-                "id": "conn_8896",
+                "id": "conn_9882",
                 "from": {
-                  "nodeId": "node_1287",
+                  "nodeId": "route_9840",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28953,9 +29181,9 @@
                 }
               },
               {
-                "id": "conn_8897",
+                "id": "conn_9883",
                 "from": {
-                  "nodeId": "route_8842",
+                  "nodeId": "route_9812",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28964,9 +29192,9 @@
                 }
               },
               {
-                "id": "conn_8898",
+                "id": "conn_9884",
                 "from": {
-                  "nodeId": "route_8860",
+                  "nodeId": "route_9830",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28975,9 +29203,9 @@
                 }
               },
               {
-                "id": "conn_8899",
+                "id": "conn_9885",
                 "from": {
-                  "nodeId": "route_8862",
+                  "nodeId": "route_9832",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28986,9 +29214,9 @@
                 }
               },
               {
-                "id": "conn_8900",
+                "id": "conn_9886",
                 "from": {
-                  "nodeId": "route_8868",
+                  "nodeId": "route_9850",
                   "socketKey": "out"
                 },
                 "to": {
@@ -28997,9 +29225,31 @@
                 }
               },
               {
-                "id": "conn_8901",
+                "id": "conn_9887",
                 "from": {
-                  "nodeId": "route_8870",
+                  "nodeId": "route_9842",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9717",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_9888",
+                "from": {
+                  "nodeId": "route_9844",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9717",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_9889",
+                "from": {
+                  "nodeId": "route_9852",
                   "socketKey": "out"
                 },
                 "to": {
@@ -29008,299 +29258,343 @@
                 }
               },
               {
-                "id": "conn_8902",
+                "id": "conn_9890",
                 "from": {
-                  "nodeId": "route_8876",
+                  "nodeId": "route_9858",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_1299",
+                  "nodeId": "node_9805",
                   "socketKey": "color"
                 }
               },
               {
-                "id": "conn_8903",
+                "id": "conn_9891",
                 "from": {
-                  "nodeId": "route_8878",
+                  "nodeId": "route_9860",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "node_1299",
+                  "nodeId": "node_9805",
                   "socketKey": "normal"
                 }
               },
               {
-                "id": "conn_8831",
+                "id": "conn_9809",
                 "from": {
                   "nodeId": "node_1259",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8830",
+                  "nodeId": "route_9808",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8833",
+                "id": "conn_9811",
                 "from": {
                   "nodeId": "node_1258",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "route_8832",
+                  "nodeId": "route_9810",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8835",
+                "id": "conn_9813",
                 "from": {
-                  "nodeId": "route_8830",
+                  "nodeId": "route_9808",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8834",
+                  "nodeId": "route_9812",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8837",
+                "id": "conn_9815",
                 "from": {
-                  "nodeId": "route_8834",
+                  "nodeId": "node_1283",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "route_9814",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9817",
+                "from": {
+                  "nodeId": "node_1258",
+                  "socketKey": "value"
+                },
+                "to": {
+                  "nodeId": "route_9816",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9819",
+                "from": {
+                  "nodeId": "route_9816",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8836",
+                  "nodeId": "route_9818",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8839",
-                "from": {
-                  "nodeId": "route_8832",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8838",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8841",
-                "from": {
-                  "nodeId": "route_8838",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8840",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8843",
-                "from": {
-                  "nodeId": "route_8834",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8842",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8845",
+                "id": "conn_9821",
                 "from": {
                   "nodeId": "node_1264",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8844",
+                  "nodeId": "route_9820",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8847",
+                "id": "conn_9823",
                 "from": {
                   "nodeId": "node_1266",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8846",
+                  "nodeId": "route_9822",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8849",
-                "from": {
-                  "nodeId": "route_8840",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8848",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8851",
-                "from": {
-                  "nodeId": "route_8848",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8850",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8853",
-                "from": {
-                  "nodeId": "node_1268",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8852",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8855",
-                "from": {
-                  "nodeId": "route_8852",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8854",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8857",
+                "id": "conn_9825",
                 "from": {
                   "nodeId": "node_1285",
                   "socketKey": "rgb"
                 },
                 "to": {
-                  "nodeId": "route_8856",
+                  "nodeId": "route_9824",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8859",
+                "id": "conn_9827",
+                "from": {
+                  "nodeId": "route_9824",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9826",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9829",
                 "from": {
                   "nodeId": "node_1285",
                   "socketKey": "alpha"
                 },
                 "to": {
-                  "nodeId": "route_8858",
+                  "nodeId": "route_9828",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8861",
+                "id": "conn_9831",
                 "from": {
-                  "nodeId": "route_8858",
+                  "nodeId": "route_9828",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8860",
+                  "nodeId": "route_9830",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8863",
+                "id": "conn_9833",
                 "from": {
                   "nodeId": "node_1291",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8862",
+                  "nodeId": "route_9832",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8865",
+                "id": "conn_9835",
                 "from": {
-                  "nodeId": "route_8854",
+                  "nodeId": "route_9818",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8864",
+                  "nodeId": "route_9834",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8867",
+                "id": "conn_9837",
                 "from": {
-                  "nodeId": "node_1271",
+                  "nodeId": "node_1268",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8866",
+                  "nodeId": "route_9836",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8869",
+                "id": "conn_9839",
                 "from": {
-                  "nodeId": "node_1288",
+                  "nodeId": "route_9826",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8868",
+                  "nodeId": "route_9838",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8871",
+                "id": "conn_9841",
+                "from": {
+                  "nodeId": "node_1287",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9840",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9843",
                 "from": {
                   "nodeId": "node_1293",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8870",
+                  "nodeId": "route_9842",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8873",
+                "id": "conn_9845",
+                "from": {
+                  "nodeId": "node_9716",
+                  "socketKey": "fade"
+                },
+                "to": {
+                  "nodeId": "route_9844",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9847",
+                "from": {
+                  "nodeId": "route_9836",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9846",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9849",
+                "from": {
+                  "nodeId": "node_1271",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9848",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9851",
+                "from": {
+                  "nodeId": "node_1288",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9850",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9853",
+                "from": {
+                  "nodeId": "node_9717",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9852",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9855",
                 "from": {
                   "nodeId": "node_1262",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8872",
+                  "nodeId": "route_9854",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8875",
+                "id": "conn_9857",
                 "from": {
                   "nodeId": "node_1273",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8874",
+                  "nodeId": "route_9856",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8877",
+                "id": "conn_9859",
                 "from": {
                   "nodeId": "node_1296",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_8876",
+                  "nodeId": "route_9858",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8879",
+                "id": "conn_9861",
                 "from": {
                   "nodeId": "node_1301",
                   "socketKey": "normal"
                 },
                 "to": {
-                  "nodeId": "route_8878",
+                  "nodeId": "route_9860",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9863",
+                "from": {
+                  "nodeId": "node_1276",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9862",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9865",
+                "from": {
+                  "nodeId": "node_9805",
+                  "socketKey": "color"
+                },
+                "to": {
+                  "nodeId": "route_9864",
                   "socketKey": "in"
                 }
               }
@@ -29309,15 +29603,15 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "node_1276",
+                  "nodeId": "route_9862",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "node_1299",
-                  "socketKey": "color"
+                  "nodeId": "route_9864",
+                  "socketKey": "out"
                 }
               }
             ],
@@ -30079,7 +30373,7 @@
                   "name": "seed"
                 },
                 "position": {
-                  "x": -2160,
+                  "x": -2088,
                   "y": 336
                 }
               },
@@ -30088,8 +30382,8 @@
                 "type": "life-ratio",
                 "parameters": {},
                 "position": {
-                  "x": -2664,
-                  "y": -120
+                  "x": -2880,
+                  "y": -96
                 }
               },
               "node_1338": {
@@ -30141,7 +30435,7 @@
                   }
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 408
                 }
               },
@@ -30155,7 +30449,7 @@
                   "outMax": 1.25
                 },
                 "position": {
-                  "x": -1752,
+                  "x": -1680,
                   "y": 672
                 }
               },
@@ -30166,7 +30460,7 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 504
                 }
               },
@@ -30213,8 +30507,8 @@
                   "outMax": 0.75
                 },
                 "position": {
-                  "x": -2448,
-                  "y": -120
+                  "x": -2664,
+                  "y": -96
                 }
               },
               "node_1359": {
@@ -30226,8 +30520,8 @@
                   "rows": 8
                 },
                 "position": {
-                  "x": -2160,
-                  "y": -144
+                  "x": -2376,
+                  "y": -120
                 }
               },
               "node_1361": {
@@ -30238,8 +30532,8 @@
                   "name": "tSmoke"
                 },
                 "position": {
-                  "x": -1752,
-                  "y": -144
+                  "x": -2088,
+                  "y": -120
                 }
               },
               "node_1363": {
@@ -30247,8 +30541,8 @@
                 "type": "split-color",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
-                  "y": -96
+                  "x": -1680,
+                  "y": -120
                 }
               },
               "node_1365": {
@@ -30259,8 +30553,8 @@
                   "value": [0.5, 0.45, 0.4]
                 },
                 "position": {
-                  "x": -1344,
-                  "y": -192
+                  "x": -1248,
+                  "y": -144
                 }
               },
               "node_1366": {
@@ -30304,8 +30598,8 @@
                   }
                 },
                 "position": {
-                  "x": -1344,
-                  "y": 0
+                  "x": -1680,
+                  "y": -24
                 }
               },
               "node_1371": {
@@ -30315,8 +30609,8 @@
                   "op": "multiply"
                 },
                 "position": {
-                  "x": -864,
-                  "y": -24
+                  "x": -1248,
+                  "y": -48
                 }
               },
               "node_1374": {
@@ -30382,7 +30676,7 @@
                   "value": 1.2
                 },
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 312
                 }
               },
@@ -30408,179 +30702,210 @@
                   "y": 168
                 }
               },
-              "route_8951": {
-                "id": "route_8951",
-                "type": "$route",
-                "parameters": {},
+              "node_9607": {
+                "id": "node_9607",
+                "type": "depth-fade",
+                "parameters": {
+                  "distance": 0.5
+                },
                 "position": {
-                  "x": -2448,
-                  "y": 96
+                  "x": -1248,
+                  "y": 72
                 }
               },
-              "route_8953": {
-                "id": "route_8953",
+              "node_9608": {
+                "id": "node_9608",
+                "type": "binary-op",
+                "parameters": {
+                  "op": "multiply"
+                },
+                "position": {
+                  "x": -864,
+                  "y": -24
+                }
+              },
+              "route_9612": {
+                "id": "route_9612",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1872,
+                  "x": -2664,
+                  "y": 240
+                }
+              },
+              "route_9614": {
+                "id": "route_9614",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1800,
                   "y": 360
                 }
               },
-              "route_8955": {
-                "id": "route_8955",
+              "route_9616": {
+                "id": "route_9616",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1992,
-                  "y": 96
+                  "x": -1920,
+                  "y": 240
                 }
               },
-              "route_8957": {
-                "id": "route_8957",
+              "route_9618": {
+                "id": "route_9618",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1872,
+                  "x": -1800,
                   "y": 432
                 }
               },
-              "route_8959": {
-                "id": "route_8959",
+              "route_9620": {
+                "id": "route_9620",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1800,
+                  "y": 0
+                }
+              },
+              "route_9622": {
+                "id": "route_9622",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1368,
                   "y": 360
                 }
               },
-              "route_8961": {
-                "id": "route_8961",
+              "route_9624": {
+                "id": "route_9624",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
+                  "x": -1248,
                   "y": 408
                 }
               },
-              "route_8963": {
-                "id": "route_8963",
+              "route_9626": {
+                "id": "route_9626",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
-                  "y": 96
+                  "x": -1488,
+                  "y": 240
                 }
               },
-              "route_8965": {
-                "id": "route_8965",
+              "route_9628": {
+                "id": "route_9628",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1344,
-                  "y": 264
+                  "x": -1368,
+                  "y": 144
                 }
               },
-              "route_8967": {
-                "id": "route_8967",
+              "route_9630": {
+                "id": "route_9630",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1368,
                   "y": 432
                 }
               },
-              "route_8969": {
-                "id": "route_8969",
+              "route_9632": {
+                "id": "route_9632",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
+                  "x": -1368,
                   "y": 696
                 }
               },
-              "route_8971": {
-                "id": "route_8971",
+              "route_9634": {
+                "id": "route_9634",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1464,
-                  "y": -120
+                  "x": -1368,
+                  "y": -96
                 }
               },
-              "route_8973": {
-                "id": "route_8973",
+              "route_9636": {
+                "id": "route_9636",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -1104,
-                  "y": 264
+                  "x": -1248,
+                  "y": -192
                 }
               },
-              "route_8975": {
-                "id": "route_8975",
+              "route_9638": {
+                "id": "route_9638",
                 "type": "$route",
                 "parameters": {},
                 "position": {
-                  "x": -984,
-                  "y": 120
-                }
-              },
-              "route_8977": {
-                "id": "route_8977",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -984,
-                  "y": 528
-                }
-              },
-              "route_8979": {
-                "id": "route_8979",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -864,
-                  "y": 624
-                }
-              },
-              "route_8981": {
-                "id": "route_8981",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -1104,
+                  "x": -1368,
                   "y": -72
                 }
               },
-              "route_8983": {
-                "id": "route_8983",
+              "route_9640": {
+                "id": "route_9640",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -1248,
+                  "y": 264
+                }
+              },
+              "route_9642": {
+                "id": "route_9642",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -120
+                  "y": 144
                 }
               },
-              "route_8985": {
-                "id": "route_8985",
+              "route_9644": {
+                "id": "route_9644",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": 624
+                }
+              },
+              "route_9646": {
+                "id": "route_9646",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -168
+                  "y": -192
                 }
               },
-              "route_8987": {
-                "id": "route_8987",
+              "route_9648": {
+                "id": "route_9648",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -960,
+                  "y": -96
+                }
+              },
+              "route_9650": {
+                "id": "route_9650",
                 "type": "$route",
                 "parameters": {},
                 "position": {
                   "x": -984,
-                  "y": -48
+                  "y": 264
                 }
               },
-              "route_8989": {
-                "id": "route_8989",
+              "route_9652": {
+                "id": "route_9652",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30588,8 +30913,26 @@
                   "y": 336
                 }
               },
-              "route_8991": {
-                "id": "route_8991",
+              "route_9654": {
+                "id": "route_9654",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": -24
+                }
+              },
+              "route_9656": {
+                "id": "route_9656",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -984,
+                  "y": 96
+                }
+              },
+              "route_9658": {
+                "id": "route_9658",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30597,8 +30940,8 @@
                   "y": 408
                 }
               },
-              "route_8993": {
-                "id": "route_8993",
+              "route_9660": {
+                "id": "route_9660",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30606,8 +30949,8 @@
                   "y": 624
                 }
               },
-              "route_8995": {
-                "id": "route_8995",
+              "route_9662": {
+                "id": "route_9662",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30615,8 +30958,8 @@
                   "y": 456
                 }
               },
-              "route_8997": {
-                "id": "route_8997",
+              "route_9664": {
+                "id": "route_9664",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30624,26 +30967,8 @@
                   "y": -120
                 }
               },
-              "route_8999": {
-                "id": "route_8999",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -600,
-                  "y": 0
-                }
-              },
-              "route_9001": {
-                "id": "route_9001",
-                "type": "$route",
-                "parameters": {},
-                "position": {
-                  "x": -480,
-                  "y": 48
-                }
-              },
-              "route_9003": {
-                "id": "route_9003",
+              "route_9666": {
+                "id": "route_9666",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30651,8 +30976,8 @@
                   "y": 120
                 }
               },
-              "route_9005": {
-                "id": "route_9005",
+              "route_9668": {
+                "id": "route_9668",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30660,8 +30985,26 @@
                   "y": 288
                 }
               },
-              "route_9007": {
-                "id": "route_9007",
+              "route_9670": {
+                "id": "route_9670",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -600,
+                  "y": 0
+                }
+              },
+              "route_9672": {
+                "id": "route_9672",
+                "type": "$route",
+                "parameters": {},
+                "position": {
+                  "x": -480,
+                  "y": 48
+                }
+              },
+              "route_9674": {
+                "id": "route_9674",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30669,8 +31012,8 @@
                   "y": 456
                 }
               },
-              "route_9009": {
-                "id": "route_9009",
+              "route_9676": {
+                "id": "route_9676",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30678,8 +31021,8 @@
                   "y": 24
                 }
               },
-              "route_9011": {
-                "id": "route_9011",
+              "route_9678": {
+                "id": "route_9678",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30687,8 +31030,8 @@
                   "y": 192
                 }
               },
-              "route_9013": {
-                "id": "route_9013",
+              "route_9680": {
+                "id": "route_9680",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30696,8 +31039,8 @@
                   "y": 288
                 }
               },
-              "route_9015": {
-                "id": "route_9015",
+              "route_9682": {
+                "id": "route_9682",
                 "type": "$route",
                 "parameters": {},
                 "position": {
@@ -30708,9 +31051,9 @@
             },
             "connections": [
               {
-                "id": "conn_9017",
+                "id": "conn_9684",
                 "from": {
-                  "nodeId": "route_8961",
+                  "nodeId": "route_9624",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30719,9 +31062,9 @@
                 }
               },
               {
-                "id": "conn_9018",
+                "id": "conn_9685",
                 "from": {
-                  "nodeId": "route_8991",
+                  "nodeId": "route_9658",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30730,9 +31073,9 @@
                 }
               },
               {
-                "id": "conn_9019",
+                "id": "conn_9686",
                 "from": {
-                  "nodeId": "route_8957",
+                  "nodeId": "route_9618",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30741,9 +31084,9 @@
                 }
               },
               {
-                "id": "conn_9020",
+                "id": "conn_9687",
                 "from": {
-                  "nodeId": "route_8953",
+                  "nodeId": "route_9614",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30752,9 +31095,9 @@
                 }
               },
               {
-                "id": "conn_9021",
+                "id": "conn_9688",
                 "from": {
-                  "nodeId": "route_8967",
+                  "nodeId": "route_9630",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30763,9 +31106,9 @@
                 }
               },
               {
-                "id": "conn_9022",
+                "id": "conn_9689",
                 "from": {
-                  "nodeId": "route_8969",
+                  "nodeId": "route_9632",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30774,9 +31117,9 @@
                 }
               },
               {
-                "id": "conn_9023",
+                "id": "conn_9690",
                 "from": {
-                  "nodeId": "route_8977",
+                  "nodeId": "node_1346",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30785,9 +31128,9 @@
                 }
               },
               {
-                "id": "conn_9024",
+                "id": "conn_9691",
                 "from": {
-                  "nodeId": "route_8995",
+                  "nodeId": "route_9662",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30796,9 +31139,9 @@
                 }
               },
               {
-                "id": "conn_9025",
+                "id": "conn_9692",
                 "from": {
-                  "nodeId": "route_8993",
+                  "nodeId": "route_9660",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30807,7 +31150,7 @@
                 }
               },
               {
-                "id": "conn_9026",
+                "id": "conn_9693",
                 "from": {
                   "nodeId": "node_1340",
                   "socketKey": "out"
@@ -30818,9 +31161,9 @@
                 }
               },
               {
-                "id": "conn_9027",
+                "id": "conn_9694",
                 "from": {
-                  "nodeId": "route_9007",
+                  "nodeId": "route_9674",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30829,7 +31172,7 @@
                 }
               },
               {
-                "id": "conn_9028",
+                "id": "conn_9695",
                 "from": {
                   "nodeId": "node_1337",
                   "socketKey": "out"
@@ -30840,7 +31183,7 @@
                 }
               },
               {
-                "id": "conn_9029",
+                "id": "conn_9696",
                 "from": {
                   "nodeId": "node_1357",
                   "socketKey": "out"
@@ -30851,7 +31194,7 @@
                 }
               },
               {
-                "id": "conn_9030",
+                "id": "conn_9697",
                 "from": {
                   "nodeId": "node_1359",
                   "socketKey": "uvFrame"
@@ -30862,10 +31205,10 @@
                 }
               },
               {
-                "id": "conn_9031",
+                "id": "conn_9698",
                 "from": {
-                  "nodeId": "route_8971",
-                  "socketKey": "out"
+                  "nodeId": "node_1361",
+                  "socketKey": "color"
                 },
                 "to": {
                   "nodeId": "node_1363",
@@ -30873,9 +31216,9 @@
                 }
               },
               {
-                "id": "conn_9032",
+                "id": "conn_9699",
                 "from": {
-                  "nodeId": "route_8983",
+                  "nodeId": "route_9646",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30884,9 +31227,9 @@
                 }
               },
               {
-                "id": "conn_9033",
+                "id": "conn_9700",
                 "from": {
-                  "nodeId": "route_8985",
+                  "nodeId": "route_9648",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30895,9 +31238,9 @@
                 }
               },
               {
-                "id": "conn_9034",
+                "id": "conn_9701",
                 "from": {
-                  "nodeId": "route_8963",
+                  "nodeId": "route_9620",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30906,9 +31249,9 @@
                 }
               },
               {
-                "id": "conn_9035",
+                "id": "conn_9702",
                 "from": {
-                  "nodeId": "route_8987",
+                  "nodeId": "route_9638",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30917,7 +31260,7 @@
                 }
               },
               {
-                "id": "conn_9036",
+                "id": "conn_9703",
                 "from": {
                   "nodeId": "node_1369",
                   "socketKey": "out"
@@ -30928,9 +31271,9 @@
                 }
               },
               {
-                "id": "conn_9037",
+                "id": "conn_9704",
                 "from": {
-                  "nodeId": "route_8997",
+                  "nodeId": "route_9664",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30939,20 +31282,9 @@
                 }
               },
               {
-                "id": "conn_9038",
+                "id": "conn_9705",
                 "from": {
-                  "nodeId": "route_9001",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "node_1374",
-                  "socketKey": "alpha"
-                }
-              },
-              {
-                "id": "conn_9039",
-                "from": {
-                  "nodeId": "route_9009",
+                  "nodeId": "route_9676",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30961,7 +31293,7 @@
                 }
               },
               {
-                "id": "conn_9040",
+                "id": "conn_9706",
                 "from": {
                   "nodeId": "node_1379",
                   "socketKey": "normal"
@@ -30972,9 +31304,9 @@
                 }
               },
               {
-                "id": "conn_9041",
+                "id": "conn_9707",
                 "from": {
-                  "nodeId": "route_8975",
+                  "nodeId": "route_9642",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30983,9 +31315,9 @@
                 }
               },
               {
-                "id": "conn_9042",
+                "id": "conn_9708",
                 "from": {
-                  "nodeId": "route_8987",
+                  "nodeId": "route_9650",
                   "socketKey": "out"
                 },
                 "to": {
@@ -30994,9 +31326,9 @@
                 }
               },
               {
-                "id": "conn_9043",
+                "id": "conn_9709",
                 "from": {
-                  "nodeId": "route_8989",
+                  "nodeId": "route_9652",
                   "socketKey": "out"
                 },
                 "to": {
@@ -31005,9 +31337,9 @@
                 }
               },
               {
-                "id": "conn_9044",
+                "id": "conn_9710",
                 "from": {
-                  "nodeId": "route_9003",
+                  "nodeId": "route_9666",
                   "socketKey": "out"
                 },
                 "to": {
@@ -31016,9 +31348,9 @@
                 }
               },
               {
-                "id": "conn_9045",
+                "id": "conn_9711",
                 "from": {
-                  "nodeId": "route_9005",
+                  "nodeId": "route_9668",
                   "socketKey": "out"
                 },
                 "to": {
@@ -31027,9 +31359,9 @@
                 }
               },
               {
-                "id": "conn_9046",
+                "id": "conn_9712",
                 "from": {
-                  "nodeId": "route_9011",
+                  "nodeId": "route_9678",
                   "socketKey": "out"
                 },
                 "to": {
@@ -31038,365 +31370,431 @@
                 }
               },
               {
-                "id": "conn_8952",
+                "id": "conn_9713",
+                "from": {
+                  "nodeId": "route_9654",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9608",
+                  "socketKey": "a"
+                }
+              },
+              {
+                "id": "conn_9714",
+                "from": {
+                  "nodeId": "route_9656",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_9608",
+                  "socketKey": "b"
+                }
+              },
+              {
+                "id": "conn_9715",
+                "from": {
+                  "nodeId": "route_9672",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "node_1374",
+                  "socketKey": "alpha"
+                }
+              },
+              {
+                "id": "conn_9613",
                 "from": {
                   "nodeId": "node_1337",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8951",
+                  "nodeId": "route_9612",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8954",
+                "id": "conn_9615",
                 "from": {
                   "nodeId": "node_1336",
                   "socketKey": "value"
                 },
                 "to": {
-                  "nodeId": "route_8953",
+                  "nodeId": "route_9614",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8956",
+                "id": "conn_9617",
                 "from": {
-                  "nodeId": "route_8951",
+                  "nodeId": "route_9612",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8955",
+                  "nodeId": "route_9616",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8958",
+                "id": "conn_9619",
                 "from": {
-                  "nodeId": "route_8955",
+                  "nodeId": "route_9616",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8957",
+                  "nodeId": "route_9618",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8960",
+                "id": "conn_9621",
                 "from": {
-                  "nodeId": "route_8953",
+                  "nodeId": "route_9616",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8959",
+                  "nodeId": "route_9620",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8962",
+                "id": "conn_9623",
                 "from": {
-                  "nodeId": "route_8959",
+                  "nodeId": "route_9614",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8961",
+                  "nodeId": "route_9622",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8964",
+                "id": "conn_9625",
                 "from": {
-                  "nodeId": "route_8955",
+                  "nodeId": "route_9622",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8963",
+                  "nodeId": "route_9624",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8966",
+                "id": "conn_9627",
                 "from": {
-                  "nodeId": "route_8963",
+                  "nodeId": "route_9616",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8965",
+                  "nodeId": "route_9626",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8968",
+                "id": "conn_9629",
+                "from": {
+                  "nodeId": "route_9626",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9628",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9631",
                 "from": {
                   "nodeId": "node_1342",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8967",
+                  "nodeId": "route_9630",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8970",
+                "id": "conn_9633",
                 "from": {
                   "nodeId": "node_1344",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8969",
+                  "nodeId": "route_9632",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8972",
-                "from": {
-                  "nodeId": "node_1361",
-                  "socketKey": "color"
-                },
-                "to": {
-                  "nodeId": "route_8971",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8974",
-                "from": {
-                  "nodeId": "route_8965",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8973",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8976",
-                "from": {
-                  "nodeId": "route_8973",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8975",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8978",
-                "from": {
-                  "nodeId": "node_1346",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8977",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8980",
-                "from": {
-                  "nodeId": "route_8977",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8979",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8982",
+                "id": "conn_9635",
                 "from": {
                   "nodeId": "node_1363",
                   "socketKey": "rgb"
                 },
                 "to": {
-                  "nodeId": "route_8981",
+                  "nodeId": "route_9634",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8984",
+                "id": "conn_9637",
                 "from": {
-                  "nodeId": "route_8981",
+                  "nodeId": "route_9634",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8983",
+                  "nodeId": "route_9636",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8986",
-                "from": {
-                  "nodeId": "node_1365",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8985",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8988",
+                "id": "conn_9639",
                 "from": {
                   "nodeId": "node_1363",
                   "socketKey": "alpha"
                 },
                 "to": {
-                  "nodeId": "route_8987",
+                  "nodeId": "route_9638",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8990",
+                "id": "conn_9641",
+                "from": {
+                  "nodeId": "route_9638",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9640",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9643",
+                "from": {
+                  "nodeId": "route_9628",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9642",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9645",
+                "from": {
+                  "nodeId": "node_1346",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9644",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9647",
+                "from": {
+                  "nodeId": "route_9636",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9646",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9649",
+                "from": {
+                  "nodeId": "node_1365",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9648",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9651",
+                "from": {
+                  "nodeId": "route_9640",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9650",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9653",
                 "from": {
                   "nodeId": "node_1383",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8989",
+                  "nodeId": "route_9652",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_8992",
-                "from": {
-                  "nodeId": "node_1338",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8991",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8994",
-                "from": {
-                  "nodeId": "route_8979",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8993",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8996",
-                "from": {
-                  "nodeId": "node_1349",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8995",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_8998",
-                "from": {
-                  "nodeId": "node_1366",
-                  "socketKey": "out"
-                },
-                "to": {
-                  "nodeId": "route_8997",
-                  "socketKey": "in"
-                }
-              },
-              {
-                "id": "conn_9000",
+                "id": "conn_9655",
                 "from": {
                   "nodeId": "node_1371",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_8999",
+                  "nodeId": "route_9654",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9002",
+                "id": "conn_9657",
                 "from": {
-                  "nodeId": "route_8999",
+                  "nodeId": "node_9607",
+                  "socketKey": "fade"
+                },
+                "to": {
+                  "nodeId": "route_9656",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9659",
+                "from": {
+                  "nodeId": "node_1338",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_9001",
+                  "nodeId": "route_9658",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9004",
+                "id": "conn_9661",
+                "from": {
+                  "nodeId": "route_9644",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9660",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9663",
+                "from": {
+                  "nodeId": "node_1349",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9662",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9665",
+                "from": {
+                  "nodeId": "node_1366",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9664",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9667",
                 "from": {
                   "nodeId": "node_1381",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_9003",
+                  "nodeId": "route_9666",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9006",
+                "id": "conn_9669",
                 "from": {
                   "nodeId": "node_1384",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_9005",
+                  "nodeId": "route_9668",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9008",
+                "id": "conn_9671",
+                "from": {
+                  "nodeId": "node_9608",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9670",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9673",
+                "from": {
+                  "nodeId": "route_9670",
+                  "socketKey": "out"
+                },
+                "to": {
+                  "nodeId": "route_9672",
+                  "socketKey": "in"
+                }
+              },
+              {
+                "id": "conn_9675",
                 "from": {
                   "nodeId": "node_1351",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_9007",
+                  "nodeId": "route_9674",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9010",
+                "id": "conn_9677",
                 "from": {
                   "nodeId": "node_1374",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_9009",
+                  "nodeId": "route_9676",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9012",
+                "id": "conn_9679",
                 "from": {
                   "nodeId": "node_1387",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_9011",
+                  "nodeId": "route_9678",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9014",
+                "id": "conn_9681",
                 "from": {
                   "nodeId": "node_1354",
                   "socketKey": "out"
                 },
                 "to": {
-                  "nodeId": "route_9013",
+                  "nodeId": "route_9680",
                   "socketKey": "in"
                 }
               },
               {
-                "id": "conn_9016",
+                "id": "conn_9683",
                 "from": {
                   "nodeId": "node_1377",
                   "socketKey": "color"
                 },
                 "to": {
-                  "nodeId": "route_9015",
+                  "nodeId": "route_9682",
                   "socketKey": "in"
                 }
               }
@@ -31405,14 +31803,14 @@
               {
                 "slot": "particleTransform",
                 "from": {
-                  "nodeId": "route_9013",
+                  "nodeId": "route_9680",
                   "socketKey": "out"
                 }
               },
               {
                 "slot": "albedo",
                 "from": {
-                  "nodeId": "route_9015",
+                  "nodeId": "route_9682",
                   "socketKey": "out"
                 }
               }
