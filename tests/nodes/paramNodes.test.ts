@@ -122,7 +122,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
     expect(shader.uniformDeclarations).toContain("uniform sampler2D u_param_mask;");
     // The handle is flagged external so the assembler emits `{ type: "sampler2D", external }`.
     expect(shader.uniforms["u_param_mask"].external).toBe("u_param_mask");
-    expect(shader.fragment.body.join("\n")).toContain("texture2D(u_param_mask");
+    expect(shader.fragment.body.join("\n")).toContain("fxSample_u_param_mask(");
   });
 
   it("texture with no chosen asset compiles to transparent, allocating no sampler", () => {
@@ -135,7 +135,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
         FX_PARTICLE_TARGET,
       );
       expect(shader.uniformDeclarations.join("\n")).not.toContain("sampler2D");
-      expect(shader.fragment.body.join("\n")).not.toContain("texture2D");
+      expect(shader.fragment.body.join("\n")).not.toContain("fxSample_");
     }
   });
 

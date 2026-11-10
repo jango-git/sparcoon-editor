@@ -16,7 +16,7 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { FX_MESH_TARGET } from "../engine/render/target/FXParticleRenderTarget";
-import { collectLightingRequirements } from "../engine/core/compiler/collectLightingRequirements";
+import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import {
@@ -26,6 +26,7 @@ import {
   type RenderMode,
 } from "../domain/nodePalette";
 import { meshTransformWarnings } from "../domain/meshDiagnostics";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import {
   RenderBudgetMemo,
   renderBudgetFindings,
@@ -108,6 +109,16 @@ export class MeshView {
     return this.mesh;
   }
 
+  /** Whether the mesh is shown (not muted). */
+  public get visible(): boolean {
+    return this.lastVisible;
+  }
+
+  /** Whether the running mesh draws a material that reads the scene depth (a Depth Fade). */
+  public get readsSceneDepth(): boolean {
+    return this.mesh !== undefined && this.artifact?.sceneDepth === true;
+  }
+
   /** The gizmo's invisible pick proxy, raycast to select this mesh in the viewport. */
   public get pickTarget(): Object3D {
     return this.marker.pickTarget;
@@ -126,6 +137,10 @@ export class MeshView {
     if (result.status === "invalid") {
       return invalidFromErrors(result.errors);
     }
+    const depthFadeErrors = depthFadeModeErrors(this.renderLive.graphView, renderMode);
+    if (depthFadeErrors.length > 0) {
+      return invalidFromErrors(depthFadeErrors);
+    }
     if (this.shader === undefined) {
       return invalid(["MeshView: no compiled IR after a valid apply"]);
     }
@@ -134,7 +149,7 @@ export class MeshView {
     try {
       artifact = assembleRenderArtifact(
         this.shader,
-        collectLightingRequirements(this.renderLive.graphView),
+        collectRenderCapabilities(this.renderLive.graphView),
         toArtifactGeometrySource(geometry),
         [],
         renderMode,
@@ -155,7 +170,6 @@ export class MeshView {
     if (budget.errors.length > 0) {
       return invalidFromErrors(budget.errors);
     }
-    this.artifact = artifact;
     const warnings = [...budget.warnings, ...meshTransformWarnings(this.renderLive.graphView)];
 
     const geometryKey = encodeGeometrySource(geometry);
@@ -179,6 +193,8 @@ export class MeshView {
       } catch (error) {
         return invalid([describeError(error)]);
       }
+      // Only once the mesh has taken it: a failed install leaves the last good one running.
+      this.artifact = artifact;
       this.builtShader = this.shader;
       this.builtGeometryKey = geometryKey;
       this.builtCustomGeometryReference = currentCustomGeometryReference;
@@ -190,6 +206,7 @@ export class MeshView {
 
     // Value-only edit: scrub the fresh uniform values into the running material's slots by name.
     this.mesh?.applyValues(this.uniformValues(artifact));
+    this.artifact = artifact;
     return withWarnings(REBOUND, warnings);
   }
 

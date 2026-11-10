@@ -46,13 +46,13 @@ describe("texture wrap", () => {
       it("clamp (and an absent wrap, as in a project saved before the param) adds no UV math", () => {
         for (const wrap of ["clamp", undefined]) {
           const body = fragmentOf(wrap, tier);
-          expect(body).toContain("texture2D(");
+          expect(body).toContain("fxSample_u_param_sheet(");
           expect(body).not.toMatch(/fract\(|mod\(|step\(/);
         }
       });
 
       it("repeat tiles the UV with fract", () => {
-        expect(fragmentOf("repeat", tier)).toMatch(/texture2D\([^;]*fract\(/s);
+        expect(fragmentOf("repeat", tier)).toMatch(/fxSample_u_param_sheet\([^;]*fract\(/s);
       });
 
       it("mirror folds the UV with mod and abs", () => {
@@ -64,7 +64,7 @@ describe("texture wrap", () => {
       it("border masks the sample with step", () => {
         const body = fragmentOf("border", tier);
         expect(body).toContain("step(");
-        expect(body.match(/texture2D\(/g)).toHaveLength(1);
+        expect(body.match(/fxSample_u_param_sheet\(/g)).toHaveLength(1);
       });
     });
   }

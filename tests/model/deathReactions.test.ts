@@ -169,7 +169,7 @@ describe("death reactions in a saved document", () => {
     expect(source?.scene.emitters[0]?.reactions).toEqual([]);
   });
 
-  it("keeps well-formed reactions and drops corrupt or endless ones", () => {
+  it("keeps well-formed reactions and drops corrupt, endless or over-distance ones", () => {
     const [a, b] = chain();
     const source = normalizeSource(
       saved([
@@ -179,6 +179,7 @@ describe("death reactions in a saved document", () => {
           reactions: [
             { id: "ok", source: "a", kind: "play", rate: 5, duration: 0.5 },
             { id: "endless", source: "a", kind: "play", rate: 5, duration: 0 },
+            { id: "distance", source: "a", kind: "play", rate: 5, duration: 1, over: "distance" },
             { id: "no_source", kind: "burst", count: 3 },
             { id: "bad_kind", source: "a", kind: "spray", count: 3 },
           ],

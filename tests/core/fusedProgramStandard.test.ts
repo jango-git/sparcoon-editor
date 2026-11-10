@@ -164,6 +164,17 @@ describe("fused transform-feedback program assembly", () => {
     expect(updateBranch).toContain(`out_lifecycle.x = in_lifecycle.x + u_fxDt;`);
   });
 
+  it("passes a dead slot through untouched, ahead of the update branch, so the update never runs on it", () => {
+    const program = compileMotionGraph();
+    const [beforeUpdate] = program.vertexSource.split("} else {");
+    const [, deadBranch] = beforeUpdate.split("} else if (in_lifecycle.x >= in_lifecycle.y) {");
+    expect(deadBranch).toBeDefined();
+    expect(deadBranch).toContain("out_position = in_position;");
+    expect(deadBranch).toContain("out_lifecycle = in_lifecycle;");
+    // Age frozen, so the slot stays dead until a birth overwrites it.
+    expect(deadBranch).not.toContain("u_fxDt");
+  });
+
   it("computes birth range from the wraparound-safe spawn-range uniforms", () => {
     const program = compileMotionGraph();
     expect(program.vertexSource).toContain(

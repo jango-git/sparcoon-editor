@@ -7,7 +7,7 @@
  *   recomputed by the pipeline on every structural edit.
  */
 
-import type { FXKeyEase, FXSpawnAction } from "sparcoon";
+import type { FXEmissionBasis, FXKeyEase, FXSpawnAction } from "sparcoon";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type {
@@ -26,13 +26,6 @@ import {
   type TransformChannel,
   type TransformTrack,
 } from "./transform";
-
-/** Emitter-level settings the user authors (spawn rate, ...). Expected capacity lives on the
- *  spawn sink instead (domain/sinkMeta.ts's SpawnSinkConfig) - it is structural (a buffer resize),
- *  unlike this record's fields. */
-export interface EmitterSettings {
-  readonly spawnRate: number;
-}
 
 /** One baked keyframe: a Timeline Value's value at a point in time (seconds on the timeline). */
 export interface Keyframe {
@@ -60,10 +53,17 @@ export interface AnimationTrack {
 
 /**
  * What makes an emitter spawn, whatever triggers it: the runtime's own `FXSpawnAction` - `burst`
- * spawns `count` particles at once; `play` emits at `rate` particles/second for `duration` seconds
- * (`0` = without end - timeline events only).
+ * spawns `count` particles at once; `play` emits `rate` particles per second, or per world unit the
+ * emitter travels (`over: "distance"`, timeline events only), for `duration` seconds (`0` = without
+ * end - timeline events only). `over` is omitted when it is `"time"`, so a document saved before it
+ * existed round-trips unchanged.
  */
 export type SpawnAction = FXSpawnAction;
+
+/** The `over` field a play counting per `over` carries: none for `"time"` (see {@link SpawnAction}). */
+export function emissionBasisField(over: FXEmissionBasis): { readonly over?: FXEmissionBasis } {
+  return over === "time" ? {} : { over };
+}
 export type BurstAction = Extract<SpawnAction, { readonly kind: "burst" }>;
 export type PlayAction = Extract<SpawnAction, { readonly kind: "play" }>;
 
@@ -95,7 +95,9 @@ export interface BurstReaction extends BurstAction {
   readonly source: string;
 }
 
-export interface PlayReaction extends PlayAction {
+/** A reaction's play counts over time only: it spawns from where a particle died, which does not
+ *  move. */
+export interface PlayReaction extends Omit<PlayAction, "over"> {
   readonly id: string;
   readonly source: string;
 }
@@ -118,7 +120,6 @@ export interface EmitterDoc {
    * (the default), so a document saved before trails existed round-trips unchanged.
    */
   readonly trailGraph?: EditorGraph;
-  readonly settings: EmitterSettings;
   /** This emitter's animation tracks (one per animated Timeline Value); the timeline shows them. */
   readonly tracks: readonly AnimationTrack[];
   /** This emitter's timeline spawn events (burst / play), sorted by time; the timeline drives them. */
@@ -417,9 +418,6 @@ export interface EditorState {
   derived: DerivedState;
 }
 
-/** A fresh emitter's settings; also the fallback when a persisted emitter's settings are corrupt. */
-export const DEFAULT_EMITTER_SETTINGS: EmitterSettings = { spawnRate: 20 };
-
 /** A fresh document's timeline settings: length in seconds and frame rate. */
 export const DEFAULT_TIMELINE: TimelineState = { duration: 5, fps: 30, loop: true };
 
@@ -511,7 +509,6 @@ export function createDefaultEmitter(id: string, name: string): EmitterDoc {
     name,
     renderGraph,
     behaviorGraph,
-    settings: DEFAULT_EMITTER_SETTINGS,
     tracks: [],
     // One default burst so a fresh document still shows particles the moment the timeline plays.
     events: [{ id: "event_1", kind: "burst", time: 0, count: 32 }],
@@ -558,7 +555,6 @@ export function createEmptyEmitter(id: string, name: string): EmitterDoc {
     name,
     renderGraph: buildGraph(GraphKind.Render, [], []),
     behaviorGraph: buildGraph(GraphKind.Behavior, [], []),
-    settings: DEFAULT_EMITTER_SETTINGS,
     tracks: [],
     events: [],
     reactions: [],

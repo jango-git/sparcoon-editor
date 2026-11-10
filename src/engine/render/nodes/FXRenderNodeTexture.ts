@@ -1,3 +1,4 @@
+import { fxExternalSampleFunction } from "sparcoon/editor";
 import { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXRenderContext } from "../compiler/FXRenderContext";
@@ -6,7 +7,7 @@ import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
-import { litVec, raw, ref } from "../../core/ir/FXExprBuilder";
+import { litVec, raw } from "../../core/ir/FXExprBuilder";
 import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
 import { TEXTURE_META, TEXTURE_WRAP_MODES } from "../../nodes-std/manualNodeMetas";
 import type { FXTextureWrapMode } from "../../nodes-std/manualNodeMetas";
@@ -57,13 +58,16 @@ const VEC4 = FX_VALUE_TYPES.vec4;
 const SAMPLER2D = FX_VALUE_TYPES.sampler2D;
 
 /** Render node (fragment): samples an external sampler at `uv` (defaulting to `p_uv`) into an
- *  rgba color. Owns no `three` resource: declares an external uniform under a stable slot that
- *  the host binds by name via `FXEmitter.fromArtifacts({ textures })` / `applyValues`.
+ *  rgba color, through the runtime-defined `fxSample_<uniform>` (see `fxExternalSampleFunction`).
+ *  Owns no `three` resource: declares an external uniform under a stable slot that the host binds
+ *  by name via `FXEmitter.fromArtifacts({ textures })` / `applyValues`.
  *
  *  `wrap` is applied to `uv` in the shader, not on the sampler: the host owns the `Texture` (and
  *  its `wrapS`/`wrapT`) in an exported effect, so a sampler setting could never reach it. `clamp`
- *  leaves `uv` as is (the host texture's own clamp); `repeat` tiles it with `fract`; `mirror` tiles
- *  it flipping every other tile; `border` samples as `clamp` but is transparent outside [0, 1]. */
+ *  leaves `uv` as is (the host texture's own clamp, or for an atlas region the runtime's clamp to
+ *  the region); `repeat` tiles it with `fract`; `mirror` tiles it flipping every other tile;
+ *  `border` samples as `clamp` but is transparent outside [0, 1]. Each mode thus tiles or masks a
+ *  bound region, never the whole atlas. */
 export class FXRenderNodeTexture extends FXRenderNode {
   public readonly type = "texture";
   public readonly stage = FXShaderStage.FRAGMENT;
@@ -117,14 +121,16 @@ export class FXRenderNodeTexture extends FXRenderNode {
     const fn = ctx.builders;
     const uv = ctx.readInput("uv", ctx.readTargetInput("p_uv"));
     // An external sampler: declared under the stable slot, no baked value - the host binds it.
+    // Sampled through the runtime's per-slot function, not `texture2D`: the host may bind a whole
+    // `Texture` or a region of an atlas, and the runtime defines the function for what it got.
     this.handle = ctx.allocateUniform({
       type: SAMPLER2D,
       value: undefined,
       name: paramUniformName(this.parameterName),
       external: true,
     });
-    const sampler = ref("uniform", this.handle.name, SAMPLER2D);
-    const sample = (at: FXExpr): FXExpr => raw(VEC4, "glsl", "texture2D($0, $1)", sampler, at);
+    const sampleFunction = fxExternalSampleFunction(this.handle.name);
+    const sample = (at: FXExpr): FXExpr => raw(VEC4, "glsl", `${sampleFunction}($0)`, at);
     switch (this.wrap) {
       case "clamp":
         ctx.setOutput("color", sample(uv));

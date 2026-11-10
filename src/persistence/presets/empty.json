@@ -39,7 +39,7 @@
                   "value": [1, 1, 1, 1]
                 },
                 "position": {
-                  "x": 264,
+                  "x": 240,
                   "y": 96
                 }
               }
@@ -76,7 +76,7 @@
                 "parameters": {},
                 "position": {
                   "x": 480,
-                  "y": 264
+                  "y": 336
                 }
               },
               "node_5": {
@@ -87,7 +87,7 @@
                   "max": 0.5
                 },
                 "position": {
-                  "x": 264,
+                  "x": 240,
                   "y": 96
                 }
               }
@@ -106,19 +106,17 @@
             "attributes": [],
             "comments": []
           },
-          "settings": {
-            "spawnRate": 20
-          },
           "tracks": [],
           "events": [
             {
-              "id": "event_4",
               "kind": "play",
-              "time": 0,
               "rate": 1,
-              "duration": 0
+              "duration": 0,
+              "id": "event_4",
+              "time": 0
             }
           ],
+          "reactions": [],
           "transform": {
             "position": [0, 0, 0],
             "rotation": [0, 0, 0, 1],
@@ -136,9 +134,11 @@
     "assets": [],
     "environments": [],
     "meshAssets": [],
+    "palette": [],
     "timeline": {
       "duration": 5,
-      "fps": 30
+      "fps": 30,
+      "loop": true
     }
   }
 }

@@ -18,6 +18,7 @@ import {
   WebGL1Renderer,
   WebGLRenderer,
   WebGLRenderTarget,
+  type Camera,
   type Object3D,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -28,6 +29,7 @@ import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
 import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
+import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
 import type { DecodedEnvironment } from "./environmentTexture";
 
@@ -93,6 +95,7 @@ export class SceneCoordinator {
   private readonly camera: PerspectiveCamera;
   private readonly controls: OrbitControls;
   private readonly environment: SceneEnvironment;
+  private readonly depthPass: SceneDepthPass;
   private readonly settings: PreviewSettingsStore;
   /** The decoded active-environment textures (ADR-0004), set externally as the library resolves them. */
   private activeEnvironment: DecodedEnvironment | undefined;
@@ -130,6 +133,7 @@ export class SceneCoordinator {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.depthPass = new SceneDepthPass(this.renderer, this.scene);
 
     this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
     this.camera.position.set(0, 2, 7);
@@ -189,6 +193,11 @@ export class SceneCoordinator {
   /** Wires the live particle-count source (the scene emitters), reported alongside FPS. */
   public setParticleCountSource(source: () => number): void {
     this.getParticleCount = source;
+  }
+
+  /** Wires the effects a scene depth pre-pass serves (the scene emitters); none until then. */
+  public setSceneDepthSource(source: SceneDepthSource): void {
+    this.depthPass.source = source;
   }
 
   /** Wires the live particle-overflow source (the scene emitters), reported alongside FPS. */
@@ -278,7 +287,7 @@ export class SceneCoordinator {
       if (background !== undefined) {
         this.scene.background = background;
       }
-      this.renderer.render(this.scene, camera);
+      this.renderFrom(camera);
       const canvas = this.renderer.domElement;
       return copyCanvas(canvas, canvas.width, canvas.height);
     } finally {
@@ -287,7 +296,7 @@ export class SceneCoordinator {
         this.renderer.setPixelRatio(pixelRatio);
         this.renderer.setSize(viewportSize.x, viewportSize.y, false);
       }
-      this.renderer.render(this.scene, this.camera);
+      this.renderFrom(this.camera);
     }
   }
 
@@ -309,6 +318,7 @@ export class SceneCoordinator {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.environment.destroy();
+    this.depthPass.dispose();
     this.renderer.dispose();
   }
 
@@ -400,7 +410,7 @@ export class SceneCoordinator {
     // emitter time (no spawn, no integration) while the camera and render stay live.
     this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrom(this.camera);
     this.frameHandle = requestAnimationFrame((next) => this.frame(next));
   }
 
@@ -447,7 +457,7 @@ export class SceneCoordinator {
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setRenderTarget(target);
     try {
-      this.renderer.render(this.scene, camera);
+      this.renderFrom(camera);
       const pixels = new Uint8Array(width * height * 4);
       this.renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
       return straightAlphaCanvas(pixels, width, height);
@@ -456,6 +466,12 @@ export class SceneCoordinator {
       this.renderer.setClearColor(clearColor, clearAlpha);
       target.dispose();
     }
+  }
+
+  /** Draws `camera`'s frame into the current target - after its scene depth, when an effect reads it. */
+  private renderFrom(camera: Camera): void {
+    this.depthPass.update(camera);
+    this.renderer.render(this.scene, camera);
   }
 
   private resize(): void {
@@ -469,7 +485,7 @@ export class SceneCoordinator {
     this.camera.updateProjectionMatrix();
     // Paint immediately: a ResizeObserver can fire while the rAF loop is throttled (a background
     // tab, or before start()), which would otherwise leave the canvas stretched until the next tick.
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrom(this.camera);
   }
 }
 

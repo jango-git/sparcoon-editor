@@ -16,7 +16,10 @@ import type { FXCompilerError } from "../core/compiler/FXCompilerError";
 import { FXCompilerErrorException } from "../core/compiler/FXCompilerError";
 import { FXCompilerBaseline } from "../render/compiler/FXCompilerBaseline";
 import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
-import { collectLightingRequirements } from "../core/compiler/collectLightingRequirements";
+import {
+  collectRenderCapabilities,
+  type FXRenderCapabilities,
+} from "../core/compiler/collectRenderCapabilities";
 import type { FXAttributeCollection } from "../core/compiler/collectAttributeRequests";
 import {
   collectAttributeRequests,
@@ -61,8 +64,8 @@ export interface FXCompiledArtifacts {
 }
 
 interface CompiledGraphs {
-  /** Lighting capability derived from the render graph: the shade intrinsics its nodes call. */
-  readonly lightingIntrinsics: readonly string[];
+  /** What the render graph's nodes ask of the runtime (lighting, scene depth). */
+  readonly capabilities: FXRenderCapabilities;
   readonly shader: FXCompiledShader;
   readonly kernel: FXCompiledKernel;
   readonly renderAttributes: readonly FXAttributeRequest[];
@@ -97,12 +100,12 @@ function compileGraphs(
   const renderAttributes = renderCollection.requests;
   const renderTarget = buildParticleTarget(renderAttributes);
   const shader = new FXCompilerBaseline().compile(renderGraph, renderTarget);
-  const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  const capabilities = collectRenderCapabilities(renderGraph);
 
   const behaviorAttributes = behaviorCollection.requests;
   const kernel = compileBehavior(behaviorGraph, buildParticleBehaviorTargets(behaviorAttributes));
 
-  return { lightingIntrinsics, shader, kernel, renderAttributes, behaviorAttributes };
+  return { capabilities, shader, kernel, renderAttributes, behaviorAttributes };
 }
 
 /**
@@ -121,7 +124,7 @@ export function compileToArtifacts(
     // Delegates to the shared in-memory assembler `compileMeshArtifact.ts` also uses.
     render: assembleRenderArtifact(
       compiled.shader,
-      compiled.lightingIntrinsics,
+      compiled.capabilities,
       geometry,
       compiled.renderAttributes,
       renderMode,

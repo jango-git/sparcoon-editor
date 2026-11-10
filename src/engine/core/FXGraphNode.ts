@@ -35,10 +35,19 @@ export abstract class FXGraphNode<TContext extends FXCompilerContext = FXCompile
 
   /**
    * Lighting intrinsic this node emits (e.g. `"fxLambertShade"`), an `fx_` ABI function the
-   * graph calls but never defines; {@link collectLightingRequirements} unions these into capability.
+   * graph calls but never defines; {@link collectRenderCapabilities} unions these into capability.
    */
   public get lightingIntrinsic(): string | undefined {
     return undefined;
+  }
+
+  /**
+   * Whether this node calls the runtime's `fxDepthFade` - the `fx_` ABI function that fades
+   * against the drawing camera's scene depth; {@link collectRenderCapabilities} folds it into the
+   * artifact's depth capability.
+   */
+  public get readsSceneDepth(): boolean {
+    return false;
   }
 
   /**

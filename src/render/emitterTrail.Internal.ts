@@ -11,6 +11,7 @@ import { FXLiveGraph, type FXLiveResult } from "../engine/core/live/FXLiveGraph"
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
+import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
@@ -28,6 +29,8 @@ import {
 } from "../domain/renderBudget";
 import { TRAIL_GEOMETRY, trailAttributeErrors } from "../domain/trailChecks";
 import { unwrittenAttributeWarnings } from "../domain/attributeChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
+import type { RenderMode } from "../domain/sinkMeta";
 
 /** Everything about a trail its live IR hash does not see. */
 function configKey(config: TrailSinkConfig): string {
@@ -83,6 +86,11 @@ export class EmitterTrail {
     return trailAttributeErrors(this.attributes, behaviorAttributes, declared);
   }
 
+  /** The trail's Depth Fade nodes, when `renderMode` writes depth (see `depthFadeModeErrors`). */
+  public depthFadeErrors(renderMode: RenderMode): readonly FXCompilerError[] {
+    return depthFadeModeErrors(this.live.graphView, renderMode);
+  }
+
   /** The trail's reads of attributes the behavior never writes (see `unwrittenAttributeWarnings`). */
   public unwrittenAttributeWarnings(
     written: ReadonlySet<string>,
@@ -100,7 +108,7 @@ export class EmitterTrail {
       options: {
         render: assembleRenderArtifact(
           this.shader,
-          [],
+          collectRenderCapabilities(this.live.graphView),
           TRAIL_GEOMETRY,
           this.attributes,
           config.renderMode,

@@ -1,3 +1,4 @@
+import type { FXRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
 import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
@@ -155,14 +156,15 @@ export function renderArtifactDeclarations(
 /** The `FXRenderArtifact` object literal (bare `{ ... }`, for `const <name>: FXRenderArtifact = <body>;`). */
 export function renderArtifactBody(
   shader: FXCompiledShader,
-  lightingIntrinsics: readonly string[],
+  capabilities: FXRenderCapabilities,
   geometry: FXGeometrySource,
   attributes: readonly FXAttributeRequest[],
   renderMode: FXRenderMode,
 ): string {
   return [
     "{",
-    `  lightingIntrinsics: ${JSON.stringify(lightingIntrinsics)},`,
+    `  lightingIntrinsics: ${JSON.stringify(capabilities.lightingIntrinsics)},`,
+    `  sceneDepth: ${JSON.stringify(capabilities.sceneDepth)},`,
     `  geometry: ${JSON.stringify(geometry)},`,
     `  options: { renderMode: ${JSON.stringify(renderMode)} },`,
     `  uniformDeclarations: ${JSON.stringify(shader.uniformDeclarations)},`,

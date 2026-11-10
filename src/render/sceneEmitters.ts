@@ -93,6 +93,9 @@ export class SceneEmitters implements SceneApplier {
   private readonly manualPoses = new Set<string>();
   // The death reactions as wired between views, re-made on every sync (cheap: a listener each).
   private reactionLinks: (() => void)[] = [];
+  // See readsSceneDepth: what the views' materials and visibility last said, refreshed when either
+  // can change - a sync (new materials) or a visibility flip.
+  private sceneDepthRead = false;
 
   constructor(
     scene: Scene,
@@ -116,6 +119,11 @@ export class SceneEmitters implements SceneApplier {
     this.vfxGroup.name = "VFX";
     this.vfxGroup.add(this.vfxMarker.object);
     scene.add(this.vfxGroup);
+  }
+
+  /** The effects' root: everything the scene depth pre-pass leaves out (see `SceneDepthSource`). */
+  public get effects(): Object3D {
+    return this.vfxGroup;
   }
 
   public sync(scene: SceneModel): SceneApplyResult {
@@ -148,6 +156,7 @@ export class SceneEmitters implements SceneApplier {
     this.wireReactions(scene);
     // Re-assert every entity's pose after the (re)build so a structural edit never resets it.
     this.applySceneTransforms(scene, this.currentTime());
+    this.refreshSceneDepthRead();
     this.highlightSelected();
     // Surface whichever entity the graph editor actually targets (same resolution as
     // `selectActiveGraphOwner`), so a VFX mesh's errors reach the graph panel like an emitter's.
@@ -186,6 +195,7 @@ export class SceneEmitters implements SceneApplier {
       this.vfxGroup,
       pose(scene.vfx.transform, scene.vfx.transformTracks, entityKey(VFX_ENTITY)),
     );
+    let visibilityChanged = false;
     for (const emitter of scene.emitters) {
       const view = this.views.get(emitter.id);
       view?.applyTransform(
@@ -195,14 +205,17 @@ export class SceneEmitters implements SceneApplier {
           entityKey({ kind: "emitter", id: emitter.id }),
         ),
       );
-      view?.setVisible(emitter.hidden !== true);
+      visibilityChanged = setVisible(view, emitter.hidden !== true) || visibilityChanged;
     }
     for (const mesh of scene.meshes) {
       const meshView = this.meshViews.get(mesh.id);
       meshView?.applyTransform(
         pose(mesh.transform, mesh.transformTracks, entityKey({ kind: "vfxMesh", id: mesh.id })),
       );
-      meshView?.setVisible(mesh.hidden !== true);
+      visibilityChanged = setVisible(meshView, mesh.hidden !== true) || visibilityChanged;
+    }
+    if (visibilityChanged) {
+      this.refreshSceneDepthRead();
     }
   }
 
@@ -322,6 +335,12 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
+  /** Whether any shown emitter or mesh reads the scene depth - the pre-pass is paid only then.
+   *  Kept, not polled: the pre-pass asks every frame. */
+  public readsSceneDepth(): boolean {
+    return this.sceneDepthRead;
+  }
+
   /** Total alive particle count across every unmuted emitter in the scene (for the viewport
    * stats) - a muted emitter keeps simulating (see `applySceneTransforms`) but contributes
    * nothing here, matching the fact that it renders nothing. */
@@ -395,6 +414,17 @@ export class SceneEmitters implements SceneApplier {
     }
     for (const [id, meshView] of this.meshViews) {
       meshView.setSelected(this.selected.kind === "vfxMesh" && this.selected.id === id);
+    }
+  }
+
+  /** Recomputes {@link readsSceneDepth} from every view's material and visibility. */
+  private refreshSceneDepthRead(): void {
+    this.sceneDepthRead = false;
+    for (const view of this.views.values()) {
+      this.sceneDepthRead ||= view.visible && view.readsSceneDepth;
+    }
+    for (const view of this.meshViews.values()) {
+      this.sceneDepthRead ||= view.visible && view.readsSceneDepth;
     }
   }
 
@@ -588,4 +618,17 @@ function createPickRaycaster(): Raycaster {
   const raycaster = new Raycaster();
   raycaster.layers.enable(EDITOR_OVERLAY_LAYER);
   return raycaster;
+}
+
+/** Shows or hides `view` (when it exists); whether that changed its visibility. */
+function setVisible(
+  view: { readonly visible: boolean; setVisible(visible: boolean): void } | undefined,
+  visible: boolean,
+): boolean {
+  if (view === undefined) {
+    return false;
+  }
+  const changed = view.visible !== visible;
+  view.setVisible(visible);
+  return changed;
 }

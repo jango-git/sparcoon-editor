@@ -6,7 +6,7 @@ import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
 import { FX_GLSL_RENDER_COMPILERS } from "../render/compiler/FXRenderCompilers";
 import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
-import { collectLightingRequirements } from "../core/compiler/collectLightingRequirements";
+import { collectRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import { compileBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
 import {
@@ -55,7 +55,7 @@ export function emitEffectModule(
       ([id, compiler]) => [id, compiler.compile(renderGraph, renderTarget)] as const,
     ),
   ) as Readonly<Record<keyof typeof FX_GLSL_RENDER_COMPILERS, FXCompiledShader>>;
-  const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  const capabilities = collectRenderCapabilities(renderGraph);
 
   const behaviorAttributes = collectAttributeRequests(behaviorGraph).requests;
   const kernel = compileBehavior(behaviorGraph, buildParticleBehaviorTargets(behaviorAttributes));
@@ -72,13 +72,7 @@ export function emitEffectModule(
   for (const declaration of renderArtifactDeclarations(
     (["baseline", "standard"] as const).map((tier) => ({
       name: RENDER_EXPORT_NAMES[tier],
-      body: renderArtifactBody(
-        shaders[tier],
-        lightingIntrinsics,
-        geometry,
-        renderAttributes,
-        renderMode,
-      ),
+      body: renderArtifactBody(shaders[tier], capabilities, geometry, renderAttributes, renderMode),
     })),
     "export const",
   )) {

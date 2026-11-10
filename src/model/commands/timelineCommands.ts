@@ -3,17 +3,19 @@
  * authoring data that never reaches the compiler, so it's saved/undoable but never recompiles.
  */
 
-import type { FXKeyEase } from "sparcoon";
+import type { FXEmissionBasis, FXKeyEase } from "sparcoon";
 import { canReact, deathSourceIds } from "../../domain/deathReactions";
 import { sameElements } from "../../util/arrays";
-import type {
-  AnimationTrack,
-  DeathReaction,
-  EmitterDoc,
-  Keyframe,
-  SourceState,
-  SpawnAction,
-  TimelineEvent,
+import {
+  emissionBasisField,
+  type AnimationTrack,
+  type DeathReaction,
+  type EmitterDoc,
+  type Keyframe,
+  type PlayEvent,
+  type SourceState,
+  type SpawnAction,
+  type TimelineEvent,
 } from "../editorState";
 import type { SceneEntity } from "../entity";
 import { snapTimeToFrame } from "../frames";
@@ -282,21 +284,28 @@ export function addBurstEvent(
   return event.id;
 }
 
-/** Adds a play event (emit at `rate`/s for `duration`s) at time `time` on emitter `id`. Returns its id. */
+/**
+ * Adds a play event (emit `rate` per second, or per unit travelled `over` distance, for `duration`s)
+ * at time `time` on emitter `id`. Returns its id.
+ */
 export function addPlayEvent(
   store: Store,
   id: string,
   time: number,
   rate: number = DEFAULT_PLAY_RATE,
   duration: number = DEFAULT_PLAY_DURATION,
+  over: FXEmissionBasis = "time",
 ): string {
-  const event: TimelineEvent = {
-    id: nextIdentifier("event"),
-    kind: "play",
-    time: snapTime(store.getSource(), time),
-    rate: Math.max(0, rate),
-    duration: snapDuration(store.getSource(), duration),
-  };
+  const event: TimelineEvent = withBasis(
+    {
+      id: nextIdentifier("event"),
+      kind: "play",
+      time: snapTime(store.getSource(), time),
+      rate: Math.max(0, rate),
+      duration: snapDuration(store.getSource(), duration),
+    },
+    over,
+  );
   updateEvents(store, id, (events) => sortedByTime([...events, event]));
   return event.id;
 }
@@ -309,9 +318,15 @@ export interface SpawnActionPatch {
 }
 
 /** A partial edit of an event (a play's duration 0 = forever); only the fields valid for its kind
- *  are applied. */
+ *  are applied. `over` is an event's only: a reaction's play counts over time. */
 export interface EventPatch extends SpawnActionPatch {
   readonly time?: number;
+  readonly over?: FXEmissionBasis;
+}
+
+/** `play` counting per `over` instead (see {@link emissionBasisField}). */
+function withBasis({ over: _over, ...rest }: PlayEvent, over: FXEmissionBasis): PlayEvent {
+  return { ...rest, ...emissionBasisField(over) };
 }
 
 /** Merges `patch` onto `action`, clamping and keeping only the fields its kind carries. */
@@ -363,7 +378,8 @@ export function removeEvent(store: Store, id: string, eventId: string): void {
 /** Merges `patch` onto `event`, clamping and keeping only the fields its kind carries. */
 function patchEvent(event: TimelineEvent, patch: EventPatch): TimelineEvent {
   const time = patch.time !== undefined ? Math.max(0, patch.time) : event.time;
-  return { ...patchAction(event, patch), time };
+  const next = { ...patchAction(event, patch), time };
+  return next.kind === "play" && patch.over !== undefined ? withBasis(next, patch.over) : next;
 }
 
 /**

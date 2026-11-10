@@ -73,6 +73,8 @@ export interface FXDescriptorCore {
     readonly string[] | ((params: Readonly<Record<string, unknown>>) => readonly string[]);
   /** Lighting intrinsic this node emits, surfaced through {@link FXGraphNode.lightingIntrinsic}. */
   readonly lightingIntrinsic?: string;
+  /** Whether this node calls `fxDepthFade`, surfaced through {@link FXGraphNode.readsSceneDepth}. */
+  readonly readsSceneDepth?: boolean;
   /** Complexity estimate, surfaced through {@link FXGraphNode.estimateCost}. */
   readonly cost: FXNodeCost;
   readonly build: FXDescriptorBuild;
@@ -189,6 +191,10 @@ export class FXDescriptorNode extends FXGraphNode {
 
   public override get lightingIntrinsic(): string | undefined {
     return this.core.lightingIntrinsic;
+  }
+
+  public override get readsSceneDepth(): boolean {
+    return this.core.readsSceneDepth ?? false;
   }
 
   /**

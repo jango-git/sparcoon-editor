@@ -145,6 +145,15 @@ describe("timeline events", () => {
     expect(added.duration).toBe(2);
   });
 
+  it("stores a play over distance, and over time as no field", () => {
+    const store = freshStore();
+    const id = emitterId(store);
+    const playId = addPlayEvent(store, id, 1, 5, 2, "distance");
+    expect((events(store).find((e) => e.id === playId) as PlayEvent).over).toBe("distance");
+    updateEvent(store, id, playId, { over: "time" });
+    expect(events(store).find((e) => e.id === playId)).not.toHaveProperty("over");
+  });
+
   it("patches only the fields valid for the event kind and re-sorts", () => {
     const store = freshStore();
     const id = emitterId(store);

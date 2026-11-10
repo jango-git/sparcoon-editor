@@ -3,8 +3,9 @@
  * strings. Rotation is always surfaced as Euler degrees (the key stores a quaternion).
  */
 
-import { t } from "../../i18n";
-import type { DeathReaction, TimelineEvent } from "../../model/editorState";
+import type { FXEmissionBasis } from "sparcoon";
+import { t, type TKey } from "../../i18n";
+import type { DeathReaction, PlayAction, TimelineEvent } from "../../model/editorState";
 import type { TransformChannel } from "../../model/transform";
 import { clamp } from "../primitives/math";
 import { channelToDisplay } from "./transformChannel";
@@ -42,20 +43,28 @@ export function spanFraction(seconds: number, total: number): number {
   return span > 0 ? seconds / span : 0;
 }
 
+/** The label of each basis a play's rate counts per, as it reads after the number. */
+const RATE_UNIT: Readonly<Record<FXEmissionBasis, TKey>> = {
+  time: "timeline.ratePerSecond",
+  distance: "timeline.ratePerUnit",
+};
+
+/** A play's rate with its unit: per second, or per unit travelled. */
+function rateText(play: PlayAction): string {
+  return t(RATE_UNIT[play.over ?? "time"], { rate: trimNumber(play.rate) });
+}
+
 export function describeEvent(event: TimelineEvent): string {
   if (event.kind === "burst") {
     return t("timeline.burstTooltip", { t: trimNumber(event.time), count: String(event.count) });
   }
   // A play with duration 0 emits forever - its tooltip says so instead of "0s".
   if (event.duration <= 0) {
-    return t("timeline.playInfiniteTooltip", {
-      t: trimNumber(event.time),
-      rate: trimNumber(event.rate),
-    });
+    return t("timeline.playInfiniteTooltip", { t: trimNumber(event.time), rate: rateText(event) });
   }
   return t("timeline.playTooltip", {
     t: trimNumber(event.time),
-    rate: trimNumber(event.rate),
+    rate: rateText(event),
     duration: trimNumber(event.duration),
   });
 }
@@ -70,7 +79,7 @@ export function describeReaction(reaction: DeathReaction, sourceName: string): s
   }
   return t("timeline.playOnDeathTooltip", {
     source: sourceName,
-    rate: trimNumber(reaction.rate),
+    rate: rateText(reaction),
     duration: trimNumber(reaction.duration),
   });
 }

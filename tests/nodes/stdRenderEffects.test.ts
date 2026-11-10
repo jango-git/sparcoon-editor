@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { fxLambertShading, fxAmbientShading } from "../../src/engine/nodes-std/render/lighting";
+import {
+  fxAmbientShading,
+  fxHalfLitShading,
+  fxLambertShading,
+} from "../../src/engine/nodes-std/render/lighting";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
 
@@ -120,7 +125,7 @@ describe("standard render lighting and normals", () => {
     expect(body).toContain("geometryTangent");
   });
 
-  it.each([fxLambertShading, fxAmbientShading])(
+  it.each([fxLambertShading, fxHalfLitShading, fxAmbientShading])(
     "$type exposes inline Color + Emission color pickers",
     (def) => {
       const inputs = def.describe().inputs;
@@ -131,6 +136,7 @@ describe("standard render lighting and normals", () => {
 
   it.each([
     ["lambert-shading", "fxLambertShade"],
+    ["half-lit-shading", "fxHalfLitShade"],
     ["ambient-shading", "fxAmbientShade"],
   ])(
     "%s shades the geometry normal when none is wired and adds its emission",
@@ -146,4 +152,23 @@ describe("standard render lighting and normals", () => {
       expect(body).toContain("0.2");
     },
   );
+
+  it("half-lit-shading passes wrap, scatter and focus after the normal, in that order", () => {
+    const body = shadedBody(
+      "half-lit-shading",
+      { scatter: reg.create("constant", { type: "float", value: 2.5 }) },
+      [edge("scatter", "out", "lit", "scatter")],
+    );
+    expect(body).toMatch(/fxHalfLitShade\([^;]*geometryNormal, 1\.0, [^,;]+, 8\.0\)/);
+    expect(body).toContain("2.5");
+  });
+
+  it("half-lit-shading asks the runtime for its intrinsic only", () => {
+    const graph = graphOf(
+      { lit: reg.create("half-lit-shading") },
+      [],
+      [bind("albedo", "lit", "color")],
+    );
+    expect(collectRenderCapabilities(graph).lightingIntrinsics).toEqual(["fxHalfLitShade"]);
+  });
 });

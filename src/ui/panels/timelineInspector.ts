@@ -20,8 +20,10 @@ import {
   type SpawnActionPatch,
 } from "../../model/commands";
 import { reactionSourceCandidates } from "../../domain/deathReactions";
+import type { FXEmissionBasis } from "sparcoon";
+import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
 import type { DeathReaction, EmitterDoc, SpawnAction } from "../../model/editorState";
-import { t } from "../../i18n";
+import { t, type TKey } from "../../i18n";
 import { frameOf, timeOfFrame } from "../../model/frames";
 import type { Store } from "../../model/store";
 import { clearChildren } from "../dom";
@@ -114,7 +116,7 @@ function renderEventInspector(ref: ItemRef, ctx: InspectorContext): void {
     ...spawnActionFields(
       event,
       (patch, live) => updateEvent(store, emitterId, ref.id, patch, live),
-      true,
+      { kind: "event", commitBasis: (over) => updateEvent(store, emitterId, ref.id, { over }) },
     ),
   );
   inspector.append(
@@ -212,18 +214,54 @@ function renderTransformKeyframeInspector(ref: ItemRef, ctx: InspectorContext): 
   );
 }
 
+/** Each basis a play's rate counts per, as the inspector names it. */
+const BASIS_LABEL: Readonly<Record<FXEmissionBasis, TKey>> = {
+  time: "timeline.overTime",
+  distance: "timeline.overDistance",
+};
+
+/** What the rate field says it counts, by the play's basis. */
+const RATE_TIP: Readonly<Record<FXEmissionBasis, TKey>> = {
+  time: "timeline.rateTip",
+  distance: "timeline.rateOverDistanceTip",
+};
+
 /** A partial edit of a spawn action, previewed live (no history entry) or committed. */
 type SpawnActionCommit = (patch: SpawnActionPatch, live: boolean) => void;
 
 /**
- * The fields of a spawn action - an event's or a reaction's: the burst count, or the play rate and
- * duration. Only an event's play may run forever (`allowInfinite`); a reaction's lasts at least a
- * frame.
+ * Where a spawn action lives, which decides how its play may run: an event's may run forever and
+ * count over distance; a reaction's lasts at least a frame and counts over time (it spawns from
+ * where a particle died, which does not move).
+ */
+type SpawnActionHost =
+  | { readonly kind: "event"; readonly commitBasis: (over: FXEmissionBasis) => void }
+  | { readonly kind: "reaction" };
+
+/** The row picking what a play's rate counts per. */
+function basisField(over: FXEmissionBasis, commit: (over: FXEmissionBasis) => void): HTMLElement {
+  return dropdownField(
+    t("timeline.over"),
+    FX_EMISSION_BASES.map((value) => ({ value, label: t(BASIS_LABEL[value]) })),
+    over,
+    (value) => {
+      const basis = asEmissionBasis(value);
+      if (basis !== undefined) {
+        commit(basis);
+      }
+    },
+    t("timeline.overTip"),
+  );
+}
+
+/**
+ * The fields of a spawn action - an event's or a reaction's (see {@link SpawnActionHost}): the burst
+ * count, or the play rate, what it counts per, and duration.
  */
 function spawnActionFields(
   action: SpawnAction,
   commit: SpawnActionCommit,
-  allowInfinite: boolean,
+  host: SpawnActionHost,
 ): HTMLElement[] {
   if (action.kind === "burst") {
     return [
@@ -242,26 +280,29 @@ function spawnActionFields(
     action.rate,
     { min: 0, step: 0.1 },
     (value) => commit({ rate: value }, false),
-    t("timeline.rateTip"),
+    t(RATE_TIP[action.over ?? "time"]),
     (value) => commit({ rate: value }, true),
   );
-  const duration = allowInfinite
-    ? durationField(
-        action.duration,
-        (value) => commit({ duration: value }, false),
-        () => commit({ duration: action.duration <= 0 ? DEFAULT_PLAY_DURATION : 0 }, false),
-        t("timeline.durationTip"),
-        (value) => commit({ duration: value }, true),
-      )
-    : inspectorField(
-        t("field.duration"),
-        action.duration,
-        { min: 0, step: 0.1 },
-        (value) => commit({ duration: value }, false),
-        t("timeline.reactionDurationTip"),
-        (value) => commit({ duration: value }, true),
-      );
-  return [rate, duration];
+  const duration =
+    host.kind === "event"
+      ? durationField(
+          action.duration,
+          (value) => commit({ duration: value }, false),
+          () => commit({ duration: action.duration <= 0 ? DEFAULT_PLAY_DURATION : 0 }, false),
+          t("timeline.durationTip"),
+          (value) => commit({ duration: value }, true),
+        )
+      : inspectorField(
+          t("field.duration"),
+          action.duration,
+          { min: 0, step: 0.1 },
+          (value) => commit({ duration: value }, false),
+          t("timeline.reactionDurationTip"),
+          (value) => commit({ duration: value }, true),
+        );
+  return host.kind === "event"
+    ? [rate, basisField(action.over ?? "time", host.commitBasis), duration]
+    : [rate, duration];
 }
 
 /**
@@ -291,7 +332,7 @@ export function renderReactionInspector(
     ...spawnActionFields(
       reaction,
       (patch, live) => updateReaction(store, target.id, reaction.id, patch, live),
-      false,
+      { kind: "reaction" },
     ),
     inspectorRemove(
       () => removeReaction(store, target.id, reaction.id),

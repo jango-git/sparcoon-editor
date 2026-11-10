@@ -152,6 +152,11 @@ export interface FXNodeDescriptor<
    */
   readonly lightingIntrinsic?: string;
   /**
+   * Whether {@link build} calls the runtime's `fxDepthFade` ({@link FXGraphNode.readsSceneDepth}).
+   * Omit for a node that does not.
+   */
+  readonly readsSceneDepth?: boolean;
+  /**
    * Static complexity estimate (see {@link FXGraphNode.estimateCost}): a flat number, or a
    * function of current params/resolved type. Roughly "one scalar float ALU op" per unit;
    * `0` for a compile-time literal or pure reshuffle (`constant`, `split`, `combine`, ...).
@@ -472,6 +477,9 @@ export function defineNode<
     ...(descriptor.reads !== undefined ? { reads: descriptor.reads } : {}),
     ...(descriptor.lightingIntrinsic !== undefined
       ? { lightingIntrinsic: descriptor.lightingIntrinsic }
+      : {}),
+    ...(descriptor.readsSceneDepth !== undefined
+      ? { readsSceneDepth: descriptor.readsSceneDepth }
       : {}),
     cost: descriptor.cost,
     build: descriptor.build as unknown as FXDescriptorBuild,

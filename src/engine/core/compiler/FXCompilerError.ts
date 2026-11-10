@@ -132,6 +132,8 @@ export type FXCompilerErrorCode =
   | "mesh-ignores-transform"
   // An emitter's trail graph on a depth-sorted emitter (domain/trailChecks.ts).
   | "trail-with-sort"
+  // A Depth Fade node in a graph whose render mode writes depth (domain/depthFadeChecks.ts).
+  | "depth-fade-needs-blending"
   // A warning: depth sorting asked of an emitter simulated on the GPU, where it does nothing
   // (domain/sortChecks.ts).
   | "sort-on-gpu-emitter"

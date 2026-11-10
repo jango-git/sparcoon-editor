@@ -48,6 +48,7 @@ import { reactingEmitters, reactionSourceCandidates } from "../../domain/deathRe
 import type { EditorGraph } from "../../domain/graphModel";
 import { isKeyframeValue } from "../../domain/graphModel";
 import { openContextMenu, type ContextMenuItem } from "../components/contextMenu";
+import { attachDividerDrag } from "../primitives/dividerDrag";
 import { beginPointerDrag } from "../primitives/drag";
 import { fractionAcross } from "../primitives/geometry";
 import { clamp } from "../primitives/math";
@@ -118,7 +119,15 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   const scrubPlayhead = (down: PointerEvent): void =>
     beginPlayheadScrub(down, { rows, transport, duration, fps });
   playhead.addEventListener("pointerdown", scrubPlayhead);
-  const stage = createElement("div", { className: "timeline__stage" }, [scroll, playhead]);
+  // The label column's divider, over the column's own right border (see attachLabelResizer).
+  const labelResizer = createElement("div", {
+    className: "resizer resizer--v timeline__label-resizer",
+  });
+  const stage = createElement("div", { className: "timeline__stage" }, [
+    scroll,
+    playhead,
+    labelResizer,
+  ]);
   const inspector = createElement("div", { className: "timeline__inspector" });
   const grid = createElement("div", { className: "timeline__grid" }, [stage, inspector]);
   const element = createElement("div", { className: "timeline" }, [grid]);
@@ -137,6 +146,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     currentTime: (): number => transport.getTime(),
     isInfinite: (): boolean => transport.isInfinite(),
   });
+  attachLabelResizer(labelResizer, element, stage, viewport);
   element.prepend(viewport.rulerElement);
   element.append(viewport.element);
   // The ruler flag scrubs exactly like the caret it names; a press anywhere else on the ruler
@@ -746,4 +756,39 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   // also covers the initial mount and the bottom-band divider drag - so no window `resize` here.
 
   return element;
+}
+
+/** The narrowest the label column may be dragged: an object's icon, a few letters and its buttons. */
+const MIN_LABEL_WIDTH = 200;
+/** The widest it may be dragged, for a long name. */
+const MAX_LABEL_WIDTH = 480;
+/** The lanes keep at least this much of the stage, however wide the column is dragged. */
+const MIN_LANE_WIDTH = 200;
+
+/**
+ * Lets `handle` resize the label column (`--timeline-label-width` on `panel`, read by the ruler,
+ * every row and the scrollbar), between {@link MIN_LABEL_WIDTH} and {@link MAX_LABEL_WIDTH}, never
+ * squeezing the lanes below {@link MIN_LANE_WIDTH}. Not persisted, like the workspace's own splits.
+ */
+function attachLabelResizer(
+  handle: HTMLElement,
+  panel: HTMLElement,
+  stage: HTMLElement,
+  viewport: TimelineViewport,
+): void {
+  attachDividerDrag(
+    handle,
+    "x",
+    () => Number.parseFloat(getComputedStyle(panel).getPropertyValue("--timeline-label-width")),
+    (width) => {
+      const max = Math.max(
+        MIN_LABEL_WIDTH,
+        Math.min(MAX_LABEL_WIDTH, stage.clientWidth - MIN_LANE_WIDTH),
+      );
+      panel.style.setProperty("--timeline-label-width", `${clamp(width, MIN_LABEL_WIDTH, max)}px`);
+      // The caret and the lane math measure the column, which no resize observer sees change.
+      viewport.refresh();
+    },
+    1,
+  );
 }

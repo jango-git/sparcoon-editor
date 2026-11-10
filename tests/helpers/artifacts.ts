@@ -58,6 +58,7 @@ export function unlitArtifact(
       .map((slot) => outputs[slot] ?? "");
   return {
     lightingIntrinsics: [],
+    sceneDepth: false,
     uniformDeclarations: over.uniformDeclarations ?? [],
     varyings: [],
     vertex: stage(over.vertexBody ?? [], outputsOf(true)),

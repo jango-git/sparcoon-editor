@@ -4,15 +4,16 @@
  * No engine/compiler dependency - every function here takes data in and returns a string.
  */
 
-import type {
-  AnimationTrack,
-  DeathReaction,
-  EmitterDoc,
-  Keyframe,
-  SourceState,
-  SpawnAction,
-  TimelineEvent,
-  VfxMeshDoc,
+import {
+  emissionBasisField,
+  type AnimationTrack,
+  type DeathReaction,
+  type EmitterDoc,
+  type Keyframe,
+  type SourceState,
+  type SpawnAction,
+  type TimelineEvent,
+  type VfxMeshDoc,
 } from "../model/editorState";
 import {
   TRANSFORM_CHANNELS,
@@ -20,6 +21,7 @@ import {
   type TransformChannel,
   type TransformTrack,
 } from "../model/transform";
+import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import type { EmitterIR, MeshIR } from "./exportCompile";
 
 export function transformLiteral(transform: Transform): string {
@@ -117,7 +119,12 @@ export function assertUniqueLiveNames(entities: readonly LiveEntity[], kind: str
 function actionLiteral(action: SpawnAction): SpawnAction {
   return action.kind === "burst"
     ? { kind: "burst", count: action.count }
-    : { kind: "play", rate: action.rate, duration: action.duration };
+    : {
+        kind: "play",
+        rate: action.rate,
+        duration: action.duration,
+        ...emissionBasisField(action.over ?? "time"),
+      };
 }
 
 /** The spawn events as the runtime reads them; none when `liveEvents` leaves spawning to the host. */
@@ -242,6 +249,9 @@ export function projectSpecLiteral(
   const meshes = meshSpecs.length === 0 ? "[]" : `[\n${meshSpecs.join(",\n")},\n  ]`;
   return [
     "const SPEC: FXEffectSpec = {",
+    // The runtime this module is compiled against: FXEffect warns when it is played on one that
+    // does not satisfy it.
+    `  runtime: ${JSON.stringify(FX_RUNTIME_VERSION)},`,
     `  duration: ${String(source.timeline.duration)},`,
     `  fps: ${String(source.timeline.fps)},`,
     `  loop: ${String(source.timeline.loop)},`,
@@ -260,6 +270,7 @@ export function importLine(
   helperNames: readonly string[],
   needsEmitterType: boolean,
   needsGpuKernelType = false,
+  needsExternalTextureType = false,
 ): string {
   const values = ["FXEffect", ...helperNames];
   const lines = [
@@ -271,13 +282,15 @@ export function importLine(
     "  type FXBehaviorArtifact,",
     ...(needsGpuKernelType ? ["  type FXParticleKernelArtifact,"] : []),
     ...(needsEmitterType ? ["  type FXEmitter,"] : []),
+    ...(needsExternalTextureType ? ["  type FXExternalTexture,"] : []),
     `} from ${JSON.stringify(specifier)};`,
   ];
   return lines.join("\n");
 }
 
 /** The `<Name>Assets` constructor-parameter interface: one entry per external slot, a single flat
- *  namespace shared by textures and mesh geometries (ADR-0002), not a nested shape. */
+ *  namespace shared by textures and mesh geometries (ADR-0002), not a nested shape. A texture slot
+ *  takes the runtime's `FXExternalTexture`: a whole `Texture`, or an atlas region of one. */
 export function assetsInterface(
   className: string,
   textureNames: readonly string[],
@@ -294,7 +307,7 @@ export function assetsInterface(
     return `export type ${className}Assets = Record<string, never>;`;
   }
   const fields = [
-    ...textureNames.map((name) => `  ${name}: Texture;`),
+    ...textureNames.map((name) => `  ${name}: FXExternalTexture;`),
     ...geometryNames.map((name) => `  ${name}: BufferGeometry;`),
   ].join("\n");
   return `export interface ${className}Assets {\n${fields}\n}`;
@@ -368,15 +381,16 @@ export function classDeclaration(
   ].join("\n");
 }
 
-// Identifiers a PascalCased project name could collide with in module scope: "FXEmitter"/"Mesh" are
-// imported only conditionally (see needsLiveGetter), "Texture" unconditionally - reserving all three
-// regardless is cheap and keeps this list independent of which project triggers which import.
+// Identifiers a PascalCased project name could collide with in module scope: "FXEmitter"/"Mesh"/
+// "FXExternalTexture" are imported only conditionally (see needsLiveGetter, texture slots) -
+// reserving them regardless is cheap and keeps this list independent of which project triggers
+// which import.
 const RESERVED_NAMES = new Set([
   "FXEffect",
   "FXEffectOptions",
   "FXEffectSpec",
   "SPEC",
-  "Texture",
+  "FXExternalTexture",
   "FXEmitter",
   "Mesh",
 ]);

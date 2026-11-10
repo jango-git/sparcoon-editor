@@ -1,3 +1,4 @@
+import type { FXRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import type {
   FXAttributeDecl,
   FXBehaviorArtifact,
@@ -53,7 +54,7 @@ function toUniformInit(value: unknown, type: string): FXUniformInit {
 /** Assembles the render artifact from a compiled shader (fresh uniform value slots). */
 export function assembleRenderArtifact(
   shader: FXCompiledShader,
-  lightingIntrinsics: readonly string[],
+  capabilities: FXRenderCapabilities,
   geometry: FXGeometrySource,
   attributes: readonly FXAttributeRequest[],
   renderMode: FXRenderMode,
@@ -72,7 +73,8 @@ export function assembleRenderArtifact(
     uniforms[name] = toUniformInit(handle.value, types.get(name) ?? "float");
   }
   return {
-    lightingIntrinsics,
+    lightingIntrinsics: capabilities.lightingIntrinsics,
+    sceneDepth: capabilities.sceneDepth,
     geometry,
     options: { renderMode },
     uniformDeclarations: [...shader.uniformDeclarations],

@@ -2,6 +2,7 @@ import {
   FX_AGE,
   FX_CORE_LIFECYCLE,
   FX_ID,
+  FX_LIFETIME,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
   FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
@@ -233,6 +234,18 @@ export function assembleTransformFeedbackProgram(
     ),
   );
 
+  // A dead slot (age >= lifetime - the same test the render material culls by and the trail
+  // history skips by) passes through untouched: the draw covers the whole capacity every tick, so
+  // without this a mostly-empty burst emitter would run its full update (noise, collisions) over
+  // every dead and never-spawned slot. Freezing age keeps the slot dead, and a never-spawned slot's
+  // zeroed lifecycle (0 >= 0) counts as dead too.
+  const lifecycleIn = glslBufferAttributeName(FX_CORE_LIFECYCLE);
+  const component = (offset: number): string => ["x", "y", "z", "w"][offset] ?? "x";
+  const deadCondition = `${lifecycleIn}.${component(FX_AGE)} >= ${lifecycleIn}.${component(FX_LIFETIME)}`;
+  const passThroughAssignments = buffers.map(
+    (buffer) => `    ${glslOutVaryingName(buffer.name)} = ${glslBufferAttributeName(buffer.name)};`,
+  );
+
   const vertexSource = `#version 300 es
 precision highp float;
 
@@ -250,6 +263,8 @@ void main(){
   bool fx_isBirth = ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM} > 0 && fx_relativeIndex < ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM};
   if (fx_isBirth) {
 ${[...spawn.body.map((line) => `    ${line}`), ...spawnAssignments].join("\n")}
+  } else if (${deadCondition}) {
+${passThroughAssignments.join("\n")}
   } else {
 ${[...update.body.map((line) => `    ${line}`), ...updateAssignments].join("\n")}
   }

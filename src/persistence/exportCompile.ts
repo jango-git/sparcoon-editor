@@ -31,7 +31,10 @@ import {
   FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
-import { collectLightingRequirements } from "../engine/core/compiler/collectLightingRequirements";
+import {
+  collectRenderCapabilities,
+  type FXRenderCapabilities,
+} from "../engine/core/compiler/collectRenderCapabilities";
 import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
@@ -58,6 +61,7 @@ import {
 } from "../domain/renderBudget";
 import { gpuSortWarnings } from "../domain/sortChecks";
 import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import {
   GraphKind,
@@ -130,7 +134,7 @@ function compileForEveryGLSLTier(
 
 export interface EmitterIR {
   readonly shaders: CompiledShadersByGLSLTier;
-  readonly lightingIntrinsics: readonly string[];
+  readonly capabilities: FXRenderCapabilities;
   readonly renderAttributes: readonly FXAttributeRequest[];
   readonly kernel: FXCompiledKernel;
   readonly behaviorAttributes: readonly FXAttributeRequest[];
@@ -161,6 +165,7 @@ export interface EmitterIR {
 /** An emitter's trail graph, compiled through every GLSL tier like its render graph. */
 export interface TrailIR {
   readonly shaders: CompiledShadersByGLSLTier;
+  readonly capabilities: FXRenderCapabilities;
   readonly renderAttributes: readonly FXAttributeRequest[];
   readonly renderMode: RenderMode;
   readonly frames: number;
@@ -200,11 +205,16 @@ function compileTrail(
   if (attributeError !== undefined) {
     fail(attributeError.message);
   }
+  const [depthFadeError] = depthFadeModeErrors(graph, config.renderMode);
+  if (depthFadeError !== undefined) {
+    fail(depthFadeError.message);
+  }
   const shaders = compileForEveryGLSLTier(graph, buildTrailTarget(renderAttributes));
+  const capabilities = collectRenderCapabilities(graph);
   const [budgetError] = trailRenderBudgetFindings(
     assembleRenderArtifact(
       shaders.standard,
-      [],
+      capabilities,
       TRAIL_GEOMETRY,
       renderAttributes,
       config.renderMode,
@@ -217,6 +227,7 @@ function compileTrail(
   }
   return {
     shaders,
+    capabilities,
     renderAttributes,
     renderMode: config.renderMode,
     frames: config.frames,
@@ -263,8 +274,12 @@ export function compileEmitter(
     throw new Error(`exportTypeScript: ${emitter.name}: ${firstStaleAttributeError.message}`);
   }
 
+  const [depthFadeError] = depthFadeModeErrors(renderGraph, config.renderMode);
+  if (depthFadeError !== undefined) {
+    throw new Error(`exportTypeScript: ${emitter.name}: ${depthFadeError.message}`);
+  }
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
-  const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  const capabilities = collectRenderCapabilities(renderGraph);
 
   // Compiled before the budget is counted: the GPU kernel's slot layout, when there is one,
   // decides what the Standard tier's particle mesh takes.
@@ -278,7 +293,7 @@ export function compileEmitter(
     emitterRenderBudgetFindings(
       assembleRenderArtifact(
         shaders.standard,
-        lightingIntrinsics,
+        capabilities,
         toArtifactGeometrySource(config.geometry),
         renderAttributes,
         config.renderMode,
@@ -291,7 +306,7 @@ export function compileEmitter(
 
   return {
     shaders,
-    lightingIntrinsics,
+    capabilities,
     renderAttributes,
     kernel: bundle.kernel,
     behaviorAttributes,
@@ -328,7 +343,7 @@ export function compileEmitter(
 
 export interface MeshIR {
   readonly shaders: CompiledShadersByGLSLTier;
-  readonly lightingIntrinsics: readonly string[];
+  readonly capabilities: FXRenderCapabilities;
   readonly geometry: FXGeometrySource;
   readonly renderMode: "blending" | "alphaHash" | "alphaTest" | "opaque";
   readonly castShadow: boolean;
@@ -338,15 +353,19 @@ export interface MeshIR {
 export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   const renderGraph = buildRenderGraph(mesh.renderGraph);
   const config = readRenderSinkConfig(mesh.renderGraph);
+  const [depthFadeError] = depthFadeModeErrors(renderGraph, config.renderMode);
+  if (depthFadeError !== undefined) {
+    throw new Error(`exportTypeScript: ${mesh.name}: ${depthFadeError.message}`);
+  }
   const shaders = compileForEveryGLSLTier(renderGraph, FX_MESH_TARGET);
-  const lightingIntrinsics = collectLightingRequirements(renderGraph);
+  const capabilities = collectRenderCapabilities(renderGraph);
   requireWithinRenderBudget(
     mesh.name,
     renderBudgetFindings(
       fxMeshRenderBudget(
         assembleRenderArtifact(
           shaders.standard,
-          lightingIntrinsics,
+          capabilities,
           toArtifactGeometrySource(config.geometry),
           [],
           config.renderMode,
@@ -357,7 +376,7 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   );
   return {
     shaders,
-    lightingIntrinsics,
+    capabilities,
     geometry: toArtifactGeometrySource(config.geometry),
     renderMode: config.renderMode,
     castShadow: config.castShadow,
@@ -383,7 +402,7 @@ function requireWithinRenderBudget(name: string, findings: RenderBudgetFindings)
  */
 export function renderGraphLighting(editorGraph: EditorGraph): readonly string[] | undefined {
   try {
-    return collectLightingRequirements(buildRenderGraph(editorGraph));
+    return collectRenderCapabilities(buildRenderGraph(editorGraph)).lightingIntrinsics;
   } catch {
     return undefined;
   }

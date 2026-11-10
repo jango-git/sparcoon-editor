@@ -222,7 +222,8 @@ function turnFirstOrder(turning: readonly Crossing[]): Crossing[] {
   return ordered;
 }
 
-/** Backtracking lane search: the fewest routes overall, within {@link SEARCH_BUDGET} steps. */
+/** Backtracking lane search with forward checking: the fewest routes overall, within
+ *  {@link SEARCH_BUDGET} steps. */
 function assignLanes(
   turning: readonly Crossing[],
   geometry: ChannelGeometry,
@@ -250,12 +251,18 @@ function assignLanes(
     );
   });
 
+  // Forward checking: placing a crossing drops every later crossing's options that clash with it,
+  // so a dead end shows the moment some crossing runs out of options rather than many levels
+  // deeper, and a branch stops once even its cheapest completion cannot beat the best found. The
+  // order and the options' order stay as given, so the first cheapest assignment found is the one
+  // a plain backtracking search would find - only reached in far fewer steps.
   const placed: { readonly crossing: Crossing; readonly choice: LaneChoice }[] = [];
   let best: Map<Crossing, LaneChoice> | undefined;
   let bestCost = Infinity;
   let budget = SEARCH_BUDGET;
-  const search = (index: number, cost: number): void => {
-    if (cost >= bestCost || budget-- <= 0) {
+  const search = (index: number, cost: number, options: readonly LaneChoice[][]): void => {
+    const cheapestRest = options.reduce((sum, left) => sum + (left[0]?.boxes.length ?? 0), 0);
+    if (cost + cheapestRest >= bestCost || budget-- <= 0) {
       return;
     }
     const crossing = turning[index];
@@ -264,23 +271,28 @@ function assignLanes(
       bestCost = cost;
       return;
     }
-    for (const choice of candidates[index] ?? []) {
-      if (
-        placed.some((other) =>
-          clashes(crossing, choice, other.crossing, other.choice, grid, strictOrder),
-        )
-      ) {
+    const [own = [], ...later] = options;
+    for (const choice of own) {
+      const narrowed = later.map((left, offset) => {
+        const other = turning[index + 1 + offset];
+        return other === undefined
+          ? left
+          : left.filter(
+              (otherChoice) => !clashes(crossing, choice, other, otherChoice, grid, strictOrder),
+            );
+      });
+      if (narrowed.some((left) => left.length === 0)) {
         continue;
       }
       placed.push({ crossing, choice });
-      search(index + 1, cost + choice.boxes.length);
+      search(index + 1, cost + choice.boxes.length, narrowed);
       placed.pop();
       if (budget <= 0) {
         return;
       }
     }
   };
-  search(0, 0);
+  search(0, 0, candidates);
   return best;
 }
 

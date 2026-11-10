@@ -21,7 +21,7 @@ imports `three`; host-specific concerns live in the backend layers.
   - `compiler/` - shared machinery both backends reuse: `FXCompilerContext`
     (the only API a node sees), `FXGraphTraversal` (reachability + topo-sort),
     `FXValidation`, `FXStructuralHash` (the recompile gate),
-    `collectAttributeRequests`/`collectLightingRequirements`/`collectGraphStats`
+    `collectAttributeRequests`/`collectRenderCapabilities`/`collectGraphStats`
     (cross-cutting graph queries), `placement`/`targetLint` (behavior-phase
     placement rules).
   - `codegen/` - backend-agnostic passes both emitters share: common-subexpression

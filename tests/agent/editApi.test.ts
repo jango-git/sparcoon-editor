@@ -376,7 +376,23 @@ describe("agent scene and timeline edits", () => {
       /invalid_argument.*addBurst\(emitterId, time, count\) takes positional arguments/,
     );
     expect(() => api.timeline.addPlay("emitter_a", { time: 1 } as never, 0, 0)).toThrow(
-      /addPlay\(emitterId, time, rate, duration\)/,
+      /addPlay\(emitterId, time, rate, duration, over\?\)/,
+    );
+  });
+
+  it("counts a play over distance, and refuses a basis that is not one", () => {
+    const { api } = apis(twoEmitterStore());
+    const play = api.timeline.addPlay("emitter_a", 0, 4, 0, "distance");
+    expect(api.scene.get().emitters[0].events).toContainEqual({
+      id: play,
+      kind: "play",
+      time: 0,
+      rate: 4,
+      duration: 0,
+      over: "distance",
+    });
+    expect(() => api.timeline.updateEvent("emitter_a", play, { over: "space" as never })).toThrow(
+      /over must be one of "time", "distance"/,
     );
   });
 });

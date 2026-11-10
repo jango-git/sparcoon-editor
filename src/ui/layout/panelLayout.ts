@@ -12,7 +12,7 @@
  */
 
 import { createElement } from "../dom";
-import { beginPointerDrag } from "../primitives/drag";
+import { attachDividerDrag } from "../primitives/dividerDrag";
 import { clamp } from "../primitives/math";
 
 /** Smallest a dragged pane may become. */
@@ -45,7 +45,7 @@ export function createWorkspace(
   ]);
 
   // Vertical split: drag sets the preview's width; the graph (flex: 1) takes the rest.
-  attachDrag(
+  attachDividerDrag(
     topResizer,
     "x",
     () => preview.getBoundingClientRect().width,
@@ -64,14 +64,14 @@ export function createWorkspace(
     const max = Math.max(MIN_PANE, workspace.clientHeight - MIN_OPPOSITE);
     bottom.style.height = `${clamp(height, MIN_PANE, max)}px`;
   };
-  attachDrag(
+  attachDividerDrag(
     rowResizerBelow,
     "y",
     () => bottom.getBoundingClientRect().height,
     applyBottomHeight,
     -1,
   );
-  attachDrag(
+  attachDividerDrag(
     rowResizerAbove,
     "y",
     () => bottom.getBoundingClientRect().height,
@@ -80,34 +80,4 @@ export function createWorkspace(
   );
 
   return workspace;
-}
-
-/**
- * Wires a divider so dragging it along `axis` feeds the moved distance back as an absolute size.
- * `readStart` samples the live size at press; `apply` receives `start + direction * delta` -
- * `direction` flips which way along the axis growth reads as positive, so two dividers can drive
- * the same size from opposite sides.
- */
-function attachDrag(
-  handle: HTMLElement,
-  axis: "x" | "y",
-  readStart: () => number,
-  apply: (size: number) => void,
-  direction: 1 | -1,
-): void {
-  handle.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) {
-      return;
-    }
-    event.preventDefault();
-    const startSize = readStart();
-    document.body.classList.add(axis === "x" ? "resizing-x" : "resizing-y");
-    beginPointerDrag(handle, event, {
-      onMove: (_move, { deltaX, deltaY }) => {
-        const delta = axis === "x" ? deltaX : deltaY;
-        apply(startSize + direction * delta);
-      },
-      onEnd: () => document.body.classList.remove("resizing-x", "resizing-y"),
-    });
-  });
 }

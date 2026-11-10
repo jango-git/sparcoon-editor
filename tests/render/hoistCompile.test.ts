@@ -93,7 +93,7 @@ describe("per-vertex hoist of per-particle fragment values", () => {
     const shader = standard.compile(graph, FX_PARTICLE_TARGET);
     expect(vertexOf(shader)).toContain("fxAnimatedFrameOnce(");
     expect(shader.vertex.helperFunctions.join("\n")).toContain("vec3 fxAnimatedFrameOnce(");
-    expect(fragmentOf(shader)).toContain("texture2D(u_param_sheet");
+    expect(fragmentOf(shader)).toContain("fxSample_u_param_sheet(");
     expect(fragmentOf(shader)).toContain("fxFlipbookFrameUV(");
     expect(fragmentOf(shader)).not.toContain("fxAnimatedFrameOnce(");
   });

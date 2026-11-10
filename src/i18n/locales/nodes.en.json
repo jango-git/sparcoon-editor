@@ -626,6 +626,21 @@
     },
     "searchTags": ["dt", "timestep", "frame time"]
   },
+  "depth-fade": {
+    "description": "Fades over a distance in front of the opaque scene: 0 where the fragment touches it, 1 from that distance on. Multiply alpha by it for soft particles, or take one minus it for an intersection glow. Needs the Blending render mode; without the scene depth it is 1.",
+    "inputs": {
+      "distance": {
+        "label": "Distance"
+      }
+    },
+    "label": "Depth Fade",
+    "outputs": {
+      "fade": {
+        "label": "Fade"
+      }
+    },
+    "searchTags": ["soft particles", "depth", "intersection"]
+  },
   "determinant": {
     "description": "The scalar determinant of a matrix.",
     "inputs": {
@@ -2068,5 +2083,35 @@
         "label": "Matrix"
       }
     }
+  },
+  "half-lit-shading": {
+    "description": "Shades a color with Lambert lighting for smoke, dust and clouds (direct + indirect + shadows). Wrap lifts the unlit side: 0 is Lambert, 1 is half-Lambert. Scatter adds the glow of a light behind the particle, and Scatter Focus narrows it. A flat billboard shades in one tone: give it a rounded normal (Spherical Normal, Normal Map).",
+    "inputs": {
+      "color": {
+        "label": "Color"
+      },
+      "emission": {
+        "label": "Emission"
+      },
+      "focus": {
+        "label": "Scatter Focus"
+      },
+      "normal": {
+        "label": "Normal"
+      },
+      "scatter": {
+        "label": "Scatter"
+      },
+      "wrap": {
+        "label": "Wrap"
+      }
+    },
+    "label": "Half-Lit Shading",
+    "outputs": {
+      "color": {
+        "label": "Color"
+      }
+    },
+    "searchTags": ["half lambert", "wrap", "smoke", "scatter", "translucency", "back light"]
   }
 }

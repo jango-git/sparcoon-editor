@@ -167,6 +167,30 @@ export const fxDissolve = defineNode({
   },
 });
 
+/**
+ * Fades over `distance` world units in front of the opaque scene: 0 where the fragment touches it,
+ * 1 from `distance` away - soft particles times alpha, an intersection glow as one minus it. The
+ * runtime defines `fxDepthFade` from the depth of whichever camera draws, and gives 1 (a hard
+ * edge) where that camera has none. Reading depth, a graph with it renders only in `blending`.
+ */
+export const fxDepthFade = defineNode({
+  type: "depth-fade",
+  domain: "render",
+  stage: "fragment",
+  category: "mask",
+  inputs: {
+    distance: { type: "float", value: 0.5, min: 0, max: 10, step: 0.05 },
+  },
+  outputs: { fade: { type: "float" } },
+  params: {},
+  // One depth fetch, two window-depth decodes (~5 each), the gap, the divide and the clamp.
+  cost: 16,
+  readsSceneDepth: true,
+  build: ({ inputs, fn }) => ({
+    fade: fn.raw(FLOAT, "glsl", "fxDepthFade($0)", inputs["distance"]),
+  }),
+});
+
 /** Fades a color's contribution by its own brightness (dark pixels drop out). */
 export const fxLightnessBlendingMask = defineNode({
   type: "lightness-blending-mask",
@@ -329,6 +353,7 @@ export const FX_RENDER_EFFECT_NODES: readonly FXNodeDefinition[] = [
   fxBlend,
   fxSphericalClip,
   fxDissolve,
+  fxDepthFade,
   fxLightnessBlendingMask,
   fxSurfaceNormal,
   fxSphericalNormal,

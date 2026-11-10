@@ -189,6 +189,7 @@ async function bootstrap(): Promise<void> {
   // scene emitters exist (before the first frame).
   coordinator.setParticleCountSource(() => sceneEmitters.totalParticleCount());
   coordinator.setParticleOverflowSource(() => sceneEmitters.totalParticleOverflowCount());
+  coordinator.setSceneDepthSource(sceneEmitters);
   // Restart the timeline only on a genuine rebuild (never a value-only rebind, e.g. a timeline-
   // value edit), and keep playing from the top so a live structural edit needs no replay tap.
   const pipeline = new Pipeline(store, sceneEmitters, () => {

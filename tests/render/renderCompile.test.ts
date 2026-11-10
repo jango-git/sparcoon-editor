@@ -64,7 +64,7 @@ describe("FXCompilerBaseline render golden - UV -> Texture -> Blend", () => {
 
   it("computes a diamond producer exactly once (texture sampled once)", () => {
     const shader = compiled();
-    const samples = shader.fragment.body.filter((line) => line.includes("texture2D("));
+    const samples = shader.fragment.body.filter((line) => line.includes("fxSample_u_param_sheet("));
     expect(samples).toHaveLength(1);
   });
 });

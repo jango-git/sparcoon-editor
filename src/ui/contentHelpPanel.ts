@@ -24,12 +24,16 @@ const MISC: readonly TKey[] = [
 const SHORTCUTS: readonly ShortcutEntry[] = [
   { keys: "Ctrl+Z", labelKey: "content.shortcutUndo" },
   { keys: "Ctrl+Shift+Z", labelKey: "content.shortcutRedo" },
-  { keys: "Space", labelKey: "content.shortcutPlayPause" },
   { keys: "Ctrl+C / Ctrl+V", labelKey: "content.shortcutCopyPaste" },
+  { keys: "Ctrl+S", labelKey: "content.shortcutSave" },
+  { keys: "Space", labelKey: "content.shortcutPlayPause" },
+  { keys: "Left / Right", labelKey: "content.shortcutStepFrame" },
   { keys: "Delete / Backspace / X", labelKey: "content.shortcutDelete" },
   { keys: "F", labelKey: "content.shortcutFrame" },
   { keys: "A", labelKey: "content.shortcutAddNode" },
   { keys: "C", labelKey: "content.shortcutComment" },
+  { keys: "G / R / S", labelKey: "content.shortcutTransform" },
+  { keys: "N", labelKey: "content.shortcutTransformPanel" },
   { keys: "I", labelKey: "content.shortcutKeyframe" },
 ];
 

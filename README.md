@@ -1,12 +1,12 @@
 # <img src="assets/logo.svg" width="30" height="30" alt="" align="top" /> Sparcoon Editor
 
 A node-based visual effects editor for three.js that runs in the browser. You build the effect from
-nodes and get back one self-contained TypeScript module: no graph, no compiler and no `eval` in your
-build.
+nodes and get back one self-contained TypeScript module, played by the
+[`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
 [Runtime](https://github.com/jango-git/sparcoon) -
-[npm](https://www.npmjs.com/package/sparcoon/v/0.12.0)
+[npm](https://www.npmjs.com/package/sparcoon)
 
 <table>
   <tr>
@@ -57,17 +57,16 @@ expects a bundler), or you work on another engine - Babylon.js, PlayCanvas, Pixi
 
 ### Why it will work in an ad build
 
-- **No runtime code generation.** The export carries ready GLSL and ordinary JavaScript functions
-  that your bundler sees as source. Neither `eval` nor `new Function` is used anywhere.
+- **No runtime code generation.** The export is ready GLSL plus ordinary JavaScript functions; neither
+  `eval` nor `new Function` is used anywhere.
 - **No dependency tail.** The runtime has exactly one peer dependency: `three`.
-- **Old hardware has a path.** Every graph compiles to two GLSL tiers, and the Baseline tier is
-  WebGL1-compatible; the runtime picks by renderer capability.
-- **Instancing.** Billboards and mesh particles draw in one call per emitter.
+- **Old hardware has a path.** Every graph also compiles to a WebGL1-compatible tier (see
+  [Rendering and simulation](#rendering-and-simulation)).
+- **Instancing.** Billboards and mesh particles draw in one call per emitter, plus one for its trail.
 - **The assets stay yours.** Textures and meshes are passed into the effect's constructor, so how you
   load, inline or pack them into a single file is your decision.
-- **Tree-shakeable ESM with full types**, shipped unbundled and unminified so your bundler treats it
-  like any other source. The target level is ES2020; for devices older than 2015, transpile it in
-  your own build (Babel, SWC, your bundler's target setting).
+- **Tree-shakeable ESM with full types**, unbundled and unminified, so your bundler treats it like any
+  other source and can transpile it as far down as you need.
 
 ## Quick start (nothing to install)
 
@@ -83,49 +82,25 @@ Nothing is uploaded anywhere: the project lives in your browser (autosaved to `l
 
 ## Using an exported effect
 
+The export is one module per project: a named `FXEffect` subclass - a `THREE.Group` - plus a typed
+interface for the assets the project references. Install the runtime and add the effect to your
+scene:
+
 ```sh
 npm install sparcoon three
 ```
 
-The editor emits one module per project: a named `FXEffect` subclass plus a typed interface for the
-assets the project references. `FXEffect` is a `THREE.Group`, so it behaves like any other scene
-object.
-
 ```ts
-import { TextureLoader } from "three";
-import { FXWorld } from "sparcoon";
-import { MyEffect, type MyEffectAssets } from "./effects/MyEffect"; // emitted by the editor
-
-const loader = new TextureLoader();
-const assets: MyEffectAssets = {
-  spark: loader.load("spark.png"), // one entry per Texture node and per mesh the project uses
-};
-
-// Passing the renderer matters: it selects the Standard artifact (WebGL2) where available and
-// enables GPU simulation. Without it the effect falls back to the Baseline tier unconditionally.
-const effect = new MyEffect(assets, { renderer, camera });
-
+const effect = new MyEffect(assets, { renderer, camera }); // emitted by the editor
 scene.add(effect);
 effect.play();
-
-function frame(deltaSeconds: number): void {
-  FXWorld.update(deltaSeconds); // advances the timeline and particles of every effect
-  renderer.render(scene, camera);
-}
+// each frame: FXWorld.update(deltaSeconds) before rendering
 ```
 
 Channels marked **Exclude from export** stay under your code's control - that is how anything which
-has to follow gameplay rather than a baked curve gets wired:
-
-```ts
-effect.setEmitterParam("Sparks", "intensity", 0.7);
-effect.getMesh("Shockwave")?.position.set(0, 1, 0);
-```
-
-Both calls are typed against the names the project actually declares, so a typo in an emitter or
-parameter name is caught at compile time.
-
-`effect.dispose()` frees its GPU resources and unsubscribes the effect from the world.
+has to follow gameplay rather than a baked curve gets wired, through calls typed against the names
+the project declares. Playback, parameters, emission from code, worlds and disposal are covered in
+the [runtime's README](https://github.com/jango-git/sparcoon#readme).
 
 ## What an effect is made of
 
@@ -145,32 +120,27 @@ attributes. The render graph feeds the **Surface sink** - color, transforms, geo
 sorting and shadow flags. A trail graph feeds the same sink, shaped for a ribbon: color, **Width**
 (which can taper along the trail through its UV), and how many points of each particle's path it
 keeps and how often it records one. Lighting and surface-normal nodes are not offered there, and a
-trail cannot be combined with depth sorting. A particle or trail material also has to fit the GPU:
-its vertex attributes and varyings are counted against what every WebGL2 GPU guarantees (an error
-past that, counted on the GPU simulation - whose particle state the editor lays out so adjacent
-fields share one attribute - when the emitter has a GPU kernel, else on the CPU one) and against
-WebGL1's lower minimums (a warning, always counted on the CPU simulation - the only one WebGL1
-runs; on a device that really lacks them, the runtime skips such a trail and draws the particles
-without it). A render or trail graph reading a declared attribute the behavior graph never writes gets a
-warning: the attribute is always 0 there.
+trail cannot be combined with depth sorting. A material that needs more vertex attributes or
+varyings than the GPU guarantees is flagged on its graph: an error past WebGL2's limits, a warning
+past WebGL1's.
 
 A Timeline Value name is one value across all of an emitter's graphs - one track, one
-`setEmitterParam` - so every node declaring it must agree on its type and on its default value,
-keyframed or not: declaring it at two types, or with two defaults (compared as the value the
-engine reads, so a vec3's `0` equals `[0, 0, 0]`), is an error on the disagreeing node.
+`setEmitterParam` - so every node declaring it must agree on its type and default.
 
 The **timeline** owns everything time-based: **Burst** events (how many particles to release on one
-frame) and **Play** events (a rate over a duration, or infinite), keyframes on **Timeline Value**
-nodes - named graph inputs you can drive at runtime - and keyframes on any object's position,
-rotation and scale.
+frame) and **Play** events (a rate per second or per unit the emitter travels, over a duration or
+infinite), keyframes on **Timeline Value** nodes - named graph inputs you can drive at runtime - and
+keyframes on any object's position, rotation and scale.
 
 ## What is inside
 
 **The node library** is split by graph. Behavior: spawn shapes (box, sphere, cone, cylinder, disc,
-torus), forces (gravity, drag, point force, turbulence, curl noise), collisions (plane, box, sphere, cone),
+torus), forces (gravity, drag, point force, vortex, turbulence, firework), collisions (plane, box, sphere, cone),
 integration, particle attributes and the usual math. Render: textures with frame animation and UV
-tiling/rotation, gradients and color ramps, HSL adjustment, fresnel, dissolve, normal maps, Lambert
-and ambient shading, full matrix math, camera facing and velocity alignment.
+tiling/rotation, gradients and color ramps, HSL adjustment, fresnel, dissolve, Depth Fade (soft
+particles and intersection glows - the host gives each camera its scene depth, see the runtime's
+README), normal maps, Lambert, Half-Lit and ambient shading, full matrix math, camera facing and
+velocity alignment.
 
 **Assets.** Images as textures, `.hdr` environments, `.glb` / `.gltf` meshes. The **Upload asset**
 button on the Content screen takes a file and sends it to the right library by type.
@@ -182,24 +152,27 @@ viewport background, a baked light probe, and Sun's auto-derived direction and c
 `localStorage`. An approximate ALU **cost** per node. Light, auto and dark themes, mouse or touchpad
 navigation, and an English, Russian or Ukrainian interface, with more locales to come.
 
-| Shortcut                     | Action              |
-| ---------------------------- | ------------------- |
-| `Ctrl+Z` / `Ctrl+Shift+Z`    | Undo / redo         |
-| `Ctrl+S`                     | Save project JSON   |
-| `Ctrl+Space`                 | Content screen      |
-| `Space`                      | Play / pause        |
-| `Left` / `Right`             | Step one frame      |
-| `A`                          | Add node (graph)    |
-| `C`                          | Add comment (graph) |
-| `I`                          | Keyframe selection  |
-| `F`                          | Frame / fit view    |
-| `Delete` / `Backspace` / `X` | Delete selection    |
+| Shortcut                     | Action                            |
+| ---------------------------- | --------------------------------- |
+| `Ctrl+Z` / `Ctrl+Shift+Z`    | Undo / redo                       |
+| `Ctrl+C` / `Ctrl+V`          | Copy / paste                      |
+| `Ctrl+S`                     | Save project JSON                 |
+| `Ctrl+Space`                 | Content screen                    |
+| `Space`                      | Play / pause                      |
+| `Left` / `Right`             | Step one frame                    |
+| `A`                          | Add node (graph)                  |
+| `C`                          | Add comment (graph)               |
+| `G` / `R` / `S`              | Move / rotate / scale (viewport)  |
+| `N`                          | Toggle transform panel (viewport) |
+| `I`                          | Keyframe selection                |
+| `F`                          | Frame / fit view                  |
+| `Delete` / `Backspace` / `X` | Delete selection                  |
 
 ## Rendering and simulation
 
 Graphs compile to two GLSL tiers: **Standard** (WebGL2) and **Baseline** (WebGL1-compatible). The
-preview switches between them, and an export always carries both - the runtime picks by renderer
-capability. The same nodes exist on both tiers, though the quality of some implementations depends on
+preview switches between them, and an export always carries both - the runtime picks by the
+capabilities of the renderer it is given. The same nodes exist on both tiers, though the quality of some implementations depends on
 the backend.
 
 An emitter can additionally simulate on the GPU through transform feedback. That is enabled per
@@ -224,8 +197,9 @@ Known and deliberate, so you do not discover them mid-project:
 - A multi-mesh `.glb` decomposes into one asset per mesh. Uploaded meshes are baked into plain vertex
   arrays; materials and hierarchy are dropped on purpose, since the material comes from the render
   graph.
-- A lit graph reads the lights of the host scene, so a lit effect needs a light probe and a
-  directional light in your scene. The preview's own lighting rig is not exported.
+- A lit graph shades with the lights of the host scene - Lambert and Half-Lit with all of three's
+  lights, ambient shading with the ambient, hemisphere and light-probe ones - so in a scene without
+  them it comes out dark. The preview's own lighting rig is not exported.
 - The **Embed assets** checkbox does nothing yet: the TypeScript export always takes its assets
   through the constructor.
 - Projects travel as files. No share links, no cloud, no accounts.
@@ -234,18 +208,17 @@ Known and deliberate, so you do not discover them mid-project:
 
 ## Compatibility
 
-|             |                                                                 |
-| ----------- | --------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.12.0                                               |
-| three.js    | `>=0.157 <0.180` (peer dependency of the runtime)               |
-| Editor      | Any browser with WebGL2; WebGL1 is enough for the Baseline tier |
-| Your build  | A bundler (Vite, webpack, Rollup, esbuild). ES2020 output       |
-| Local setup | Node 20+                                                        |
+|             |                                                                   |
+| ----------- | ----------------------------------------------------------------- |
+| Runtime     | `sparcoon` 0.13.0                                                 |
+| three.js    | `>=0.157 <0.180` (peer dependency of the runtime)                 |
+| Editor      | A browser with WebGL2; with only WebGL1, the Baseline preview     |
+| Your build  | A bundler (Vite, webpack, Rollup, esbuild); the runtime is ES2020 |
+| Local setup | Node 20+                                                          |
 
-## Status
+## Reporting bugs
 
-Pre-release, under active development. If you hit a bug, the most useful thing is a short screen
-capture plus the project `.json` it reproduces on.
+The most useful thing is a short screen capture plus the project `.json` it reproduces on.
 
 ## Running locally
 

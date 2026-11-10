@@ -22,13 +22,12 @@ import {
 import { nextIdentifier } from "../model/commands/identifier";
 import {
   createDefaultVfx,
-  DEFAULT_EMITTER_SETTINGS,
   DEFAULT_TIMELINE,
+  emissionBasisField,
   type AnimationTrack,
   type DeathReaction,
   type EditorState,
   type EmitterDoc,
-  type EmitterSettings,
   type EnvironmentAsset,
   type Keyframe,
   type MeshAsset,
@@ -50,8 +49,8 @@ import {
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
-import { asKeyEase } from "sparcoon/editor";
-import { asFiniteNumber, asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
+import { asEmissionBasis, asKeyEase } from "sparcoon/editor";
+import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
 import { migrateRenamedInputs } from "./renamedInputs";
 
@@ -367,7 +366,6 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     ...(isRecord(value["trailGraph"])
       ? { trailGraph: normalizeTrailGraph(value["trailGraph"]) }
       : {}),
-    settings: normalizeSettings(value["settings"]),
     tracks: normalizeTracks(value["tracks"]),
     events: normalizeEvents(value["events"]),
     reactions: normalizeReactions(value["reactions"]),
@@ -378,16 +376,6 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     ...(value["liveEvents"] === true ? { liveEvents: true } : {}),
     // See normalizeVfxMesh: omitted (not `false`) when not hidden, for a byte-for-byte round-trip.
     ...(value["hidden"] === true ? { hidden: true } : {}),
-  };
-}
-
-/** Restores an emitter's spawn settings, defaulting missing/corrupt numeric fields. */
-function normalizeSettings(raw: unknown): EmitterSettings {
-  if (!isRecord(raw)) {
-    return DEFAULT_EMITTER_SETTINGS;
-  }
-  return {
-    spawnRate: asFiniteNumber(raw["spawnRate"], DEFAULT_EMITTER_SETTINGS.spawnRate),
   };
 }
 
@@ -522,7 +510,7 @@ function normalizeEvents(raw: unknown): readonly TimelineEvent[] {
 
 /**
  * Keeps only well-formed persisted death reactions (a corrupt one is dropped, not fatal - and so is
- * a play without end, which no reaction may be). Whether each source exists, and cycles, are
+ * a play without end or over distance, which no reaction may be). Whether each source exists, and cycles, are
  * checked across the scene ({@link withValidReactions}).
  */
 function normalizeReactions(raw: unknown): readonly DeathReaction[] {
@@ -539,7 +527,7 @@ function normalizeReactions(raw: unknown): readonly DeathReaction[] {
     if (
       typeof source === "string" &&
       action !== undefined &&
-      (action.kind === "burst" || action.duration > 0)
+      (action.kind === "burst" || (action.duration > 0 && action.over === undefined))
     ) {
       reactions.push({ ...action, id: value["id"], source });
     }
@@ -557,7 +545,13 @@ function normalizeSpawnAction(value: Record<string, unknown>): SpawnAction | und
     isFiniteNumber(value["rate"]) &&
     isFiniteNumber(value["duration"])
   ) {
-    return { kind: "play", rate: value["rate"], duration: value["duration"] };
+    return {
+      kind: "play",
+      rate: value["rate"],
+      duration: value["duration"],
+      // An unknown or missing basis reads as the default, time.
+      ...emissionBasisField(asEmissionBasis(value["over"]) ?? "time"),
+    };
   }
   return undefined;
 }

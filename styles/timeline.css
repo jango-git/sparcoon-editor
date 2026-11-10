@@ -152,6 +152,16 @@
   overflow: hidden;
 }
 
+/* The label column's divider (timelinePanel.ts): a grab area over the column's own right border,
+   lit on hover like the workspace's dividers (frame.css). */
+.timeline__label-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--timeline-label-width) - 1px);
+  background: transparent;
+}
+
 .timeline__inspector {
   flex: none;
   width: var(--timeline-inspector-width);

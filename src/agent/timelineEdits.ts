@@ -20,6 +20,8 @@ import {
   type EventPatch,
   type ReactionPatch,
 } from "../model/commands";
+import type { FXEmissionBasis } from "sparcoon";
+import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
 import { canReact } from "../domain/deathReactions";
 import type { DeathReaction, SourceState, TimelineEvent } from "../model/editorState";
 import { isRecord } from "../util/guards";
@@ -43,8 +45,17 @@ export interface TimelineEdits extends KeyframeEdits {
   setLoop(loop: boolean): void;
   /** Spawns `count` particles at once at `time`. Returns the event id. */
   addBurst(emitterId: string, time: number, count: number): string;
-  /** Emits `rate` particles per second from `time` for `duration` seconds (0 = forever). */
-  addPlay(emitterId: string, time: number, rate: number, duration: number): string;
+  /**
+   * Emits `rate` particles per second - or, `over` `"distance"`, per world unit the emitter
+   * travels (nothing while it stands still) - from `time` for `duration` seconds (0 = forever).
+   */
+  addPlay(
+    emitterId: string,
+    time: number,
+    rate: number,
+    duration: number,
+    over?: FXEmissionBasis,
+  ): string;
   updateEvent(emitterId: string, eventId: string, patch: EventPatch): void;
   removeEvent(emitterId: string, eventId: string): void;
   /**
@@ -102,8 +113,20 @@ function requireEvent(source: SourceState, emitterId: string, eventId: string): 
 /** The fields a patch may set on each event kind; the command ignores the others silently. */
 const EVENT_FIELDS: Readonly<Record<TimelineEvent["kind"], readonly string[]>> = {
   burst: ["time", "count"],
-  play: ["time", "rate", "duration"],
+  play: ["time", "rate", "duration", "over"],
 };
+
+/** A play's `over` argument: one of the runtime's {@link FX_EMISSION_BASES}. */
+function requireEmissionBasis(value: unknown): FXEmissionBasis {
+  const basis = asEmissionBasis(value);
+  if (basis === undefined) {
+    throw new AgentError(
+      "invalid_argument",
+      `over must be one of ${FX_EMISSION_BASES.map((candidate) => `"${candidate}"`).join(", ")}.`,
+    );
+  }
+  return basis;
+}
 
 function requirePatch(event: TimelineEvent, patch: EventPatch): EventPatch {
   for (const [key, value] of Object.entries(patch)) {
@@ -113,7 +136,11 @@ function requirePatch(event: TimelineEvent, patch: EventPatch): EventPatch {
         `A ${event.kind} event has no field "${key}" (fields: ${EVENT_FIELDS[event.kind].join(", ")}).`,
       );
     }
-    requireFiniteNumber(key, value);
+    if (key === "over") {
+      requireEmissionBasis(value);
+    } else {
+      requireFiniteNumber(key, value);
+    }
   }
   return patch;
 }
@@ -222,14 +249,15 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
         ),
       ),
 
-    addPlay: (emitterId, time, rate, duration) =>
+    addPlay: (emitterId, time, rate, duration, over = "time") =>
       session.mutate((store) =>
         addPlayEvent(
           store,
           requireEmitter(store.getSource(), emitterId),
-          requireEventTime("addPlay(emitterId, time, rate, duration)", time),
+          requireEventTime("addPlay(emitterId, time, rate, duration, over?)", time),
           requireFiniteNumber("rate", rate),
           requireFiniteNumber("duration", duration),
+          requireEmissionBasis(over),
         ),
       ),
 

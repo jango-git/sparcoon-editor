@@ -41,7 +41,7 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { buildParticleTarget } from "../engine/render/target/FXParticleRenderTarget";
-import { collectLightingRequirements } from "../engine/core/compiler/collectLightingRequirements";
+import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import {
   assembleBehaviorArtifact,
   assembleGpuKernelArtifact,
@@ -80,6 +80,7 @@ import { externalSlots } from "./externalSlots";
 import { EmitterTrail, type AssembledTrail } from "./emitterTrail.Internal";
 import { gpuSortWarnings } from "../domain/sortChecks";
 import { trailSortError } from "../domain/trailChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
@@ -269,6 +270,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
     return this.lastVisible;
   }
 
+  /** Whether the running emitter draws a material that reads the scene depth (a Depth Fade). */
+  public get readsSceneDepth(): boolean {
+    return (
+      this.artifacts?.render.sceneDepth === true ||
+      this.artifacts?.trail?.options.render.sceneDepth === true
+    );
+  }
+
   /** The gizmo's invisible pick proxy, raycast to select this emitter in the viewport. */
   public get pickTarget(): Object3D {
     return this.marker.pickTarget;
@@ -342,8 +351,12 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
         declaredAttributes,
       ),
     ];
-    if (attributeErrors.length > 0) {
-      return hold({ render: invalidFromErrors(attributeErrors) });
+    const renderErrors = [
+      ...attributeErrors,
+      ...depthFadeModeErrors(this.renderLive.graphView, renderMode),
+    ];
+    if (renderErrors.length > 0) {
+      return hold({ render: invalidFromErrors(renderErrors) });
     }
     if (trail !== undefined) {
       // A sort scrambles the per-slot path a trail records: the fix is on the render graph's
@@ -355,7 +368,10 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
           trail: invalidFromErrors([{ code: sortError.code, message: sortError.message }]),
         });
       }
-      const trailErrors = trail.live.attributeErrors(this.behaviorAttributes, declaredAttributes);
+      const trailErrors = [
+        ...trail.live.attributeErrors(this.behaviorAttributes, declaredAttributes),
+        ...trail.live.depthFadeErrors(trail.input.config.renderMode),
+      ];
       if (trailErrors.length > 0) {
         return hold({ trail: invalidFromErrors(trailErrors) });
       }
@@ -368,7 +384,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
       artifacts = {
         render: assembleRenderArtifact(
           this.shader,
-          collectLightingRequirements(this.renderLive.graphView),
+          collectRenderCapabilities(this.renderLive.graphView),
           toArtifactGeometrySource(geometry),
           this.renderAttributes,
           renderMode,

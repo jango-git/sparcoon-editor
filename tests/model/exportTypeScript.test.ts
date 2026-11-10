@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as three from "three";
+import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import * as sparcoon from "sparcoon";
 import { createDefaultVfxMesh, type SourceState } from "../../src/model/editorState";
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
@@ -10,6 +11,7 @@ import {
   SPAWN_SINK_ID,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
+import { eventsLiteral } from "../../src/persistence/exportLiterals";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { renderArtifactDeclarations } from "../../src/engine/emit/artifactLiterals";
 import { loadModule } from "../helpers/loadModule";
@@ -201,7 +203,8 @@ describe("emitProjectModule - structure", () => {
     // while keeping its exported class/interfaces typed for the consumer.
     expect(text.startsWith("// @ts-nocheck\n")).toBe(true);
     expect(text).toContain('from "sparcoon"');
-    expect(text).toContain('from "three"');
+    // Nothing the default project types needs three: no texture slot, mesh or custom geometry.
+    expect(text).not.toContain('from "three"');
     expect(text).toContain("  FXEffect,");
     expect(text).toContain("const render0Baseline: FXRenderArtifact = {");
     // The default graph uses nothing only one tier has: Standard names Baseline's artifact.
@@ -213,10 +216,19 @@ describe("emitProjectModule - structure", () => {
     expect(text).toContain("export type EffectAssets = Record<string, never>;");
   });
 
+  it("stamps the runtime version it compiles against, in the spec and the header", () => {
+    const text = emitProjectModule(createTestState().source);
+    expect(text).toContain(`// Built against sparcoon ${FX_RUNTIME_VERSION}.`);
+    expect(text).toContain(`const SPEC: FXEffectSpec = {\n  runtime: "${FX_RUNTIME_VERSION}",`);
+  });
+
   it("declares a typed asset per external texture slot", () => {
     const text = emitProjectModule(textureEmitterSource());
     expect(text).toContain("export interface EffectAssets {");
-    expect(text).toContain("sprite: Texture;");
+    // A whole Texture or an atlas region of one, typed by the runtime.
+    expect(text).toContain("sprite: FXExternalTexture;");
+    expect(text).toContain("  type FXExternalTexture,");
+    expect(text).not.toContain('from "three"');
     expect(text).toContain('externalSlots: ["sprite"]');
   });
 
@@ -718,5 +730,20 @@ describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () =>
     const text = emitProjectModule(emitterWithGpuFlag(false));
     expect(text).not.toContain("FXParticleKernelArtifact");
     expect(text).not.toContain("gpuBehavior");
+  });
+});
+
+describe("spawn events in the export", () => {
+  it("ships a play's basis only when it counts over distance", () => {
+    const literal = JSON.parse(
+      eventsLiteral([
+        { id: "a", kind: "play", time: 0, rate: 4, duration: 1 },
+        { id: "b", kind: "play", time: 1, rate: 2, duration: 0, over: "distance" },
+      ]),
+    );
+    expect(literal).toEqual([
+      { kind: "play", rate: 4, duration: 1, time: 0 },
+      { kind: "play", rate: 2, duration: 0, over: "distance", time: 1 },
+    ]);
   });
 });
