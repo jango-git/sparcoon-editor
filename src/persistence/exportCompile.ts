@@ -50,6 +50,7 @@ import { FX_JS_NOISE, FX_JS_NOISED } from "../engine/core/ir/noise/FXValueNoise.
 import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
 import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
 import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
+import { FX_JS_SEED_HASH } from "../engine/core/ir/noise/FXSeedHash.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import type { FXBufferLayout, FXGeometrySource } from "sparcoon";
 import { fxMeshRenderBudget } from "sparcoon/editor";
@@ -96,6 +97,7 @@ const HELPER_IMPORT_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
   [FX_JS_FBM.source, ["fxFractal1", "fxFractal2", "fxFractal3"]],
   [FX_JS_CURL.source, ["fxCurl2", "fxCurl3"]],
   [FX_JS_VORONOI.source, ["fxVoronoi2", "fxVoronoi3"]],
+  [FX_JS_SEED_HASH.source, ["fxSeedHash1", "fxSeedHash2", "fxSeedHash3", "fxSeedHash4"]],
 ]);
 
 export function helperImportNames(source: string): readonly string[] {
@@ -103,7 +105,8 @@ export function helperImportNames(source: string): readonly string[] {
   if (names === undefined) {
     throw new Error(
       "exportTypeScript: a compiled kernel emitted a behavior helper with no matching sparcoon " +
-        "export. Add the function to sparcoon's miscellaneous/fxMath.ts and register it in " +
+        "export. Add the function to sparcoon (math in miscellaneous/fxMath.ts, noise in " +
+        "miscellaneous/noise/), export it from its index and register it in " +
         `HELPER_IMPORT_NAMES:\n${source}`,
     );
   }

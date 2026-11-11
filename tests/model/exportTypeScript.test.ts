@@ -242,6 +242,32 @@ describe("emitProjectModule - structure", () => {
   });
 });
 
+/** The starter with a vec4 Hash of the particle id written into a `seeded` attribute at spawn:
+ *  a behavior kernel that calls the seed hash's widest helper. */
+function seedHashEmitterSource(): SourceState {
+  const base = createTestState().source;
+  const emitter = base.scene.emitters[0];
+  const graph = emitter.behaviorGraph;
+  const behaviorGraph: EditorGraph = {
+    ...graph,
+    attributes: [...graph.attributes, { name: "seeded", type: "vec4" }],
+    nodes: {
+      ...graph.nodes,
+      hashNode: {
+        id: "hashNode",
+        type: "hash",
+        parameters: { type: "vec4" },
+        position: { x: 0, y: 0 },
+      },
+    },
+    outputBindings: [
+      ...graph.outputBindings,
+      { slot: "attr:seeded", from: { nodeId: "hashNode", socketKey: "out" }, phase: "spawn" },
+    ],
+  };
+  return { ...base, scene: { ...base.scene, emitters: [{ ...emitter, behaviorGraph }] } };
+}
+
 describe("emitProjectModule - executes", () => {
   it("builds an emitter that spawns from its timeline burst event", () => {
     const module = loadModule(emitProjectModule(createTestState().source));
@@ -382,6 +408,24 @@ describe("emitProjectModule - executes", () => {
       effect.play();
       expect(() => sparcoon.FXWorld.update(0.1)).not.toThrow(); // FXEmitter.burst(0) would assert-throw
       expect(totalParticles(effect)).toBe(0);
+    } finally {
+      effect.dispose();
+    }
+  });
+
+  it("imports the seed hash a behavior Hash node calls, and runs it", () => {
+    const text = emitProjectModule(seedHashEmitterSource());
+    expect(text).toMatch(/import \{[^}]*\bfxSeedHash4\b[^}]*\} from "sparcoon"/);
+    const module = loadModule(text);
+    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
+      play(): void;
+      dispose(): void;
+    };
+    const effect = new Effect({});
+    try {
+      effect.play();
+      expect(() => sparcoon.FXWorld.update(0.1)).not.toThrow();
+      expect(totalParticles(effect)).toBe(32);
     } finally {
       effect.dispose();
     }

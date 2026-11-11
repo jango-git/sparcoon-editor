@@ -206,16 +206,6 @@ Known and deliberate, so you do not discover them mid-project:
 - No performance measurements yet. The cost readout in the editor is a relative ALU estimate for
   comparing graphs; it cannot be read as frame time.
 
-## Compatibility
-
-|             |                                                                   |
-| ----------- | ----------------------------------------------------------------- |
-| Runtime     | `sparcoon` 0.13.0                                                 |
-| three.js    | `>=0.157 <0.180` (peer dependency of the runtime)                 |
-| Editor      | A browser with WebGL2; with only WebGL1, the Baseline preview     |
-| Your build  | A bundler (Vite, webpack, Rollup, esbuild); the runtime is ES2020 |
-| Local setup | Node 20+                                                          |
-
 ## Reporting bugs
 
 The most useful thing is a short screen capture plus the project `.json` it reproduces on.
