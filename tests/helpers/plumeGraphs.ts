@@ -5,7 +5,6 @@ import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
@@ -17,6 +16,8 @@ import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRe
 import { attributeSlot, readAttr, storeAttr } from "./attr";
 import { edge } from "./graphBuild";
 import { behaviorRegistry, renderRegistry } from "./stdRegistry";
+import type { FXSlotLayout } from "sparcoon/editor";
+import { slotOf, splitFields, type FieldBuffers } from "./slots";
 
 /**
  * A deterministic gravity plume and the checks both artifact paths (`compileToArtifacts` in
@@ -79,26 +80,18 @@ export function plumeGraphs(): {
   return { render, behavior };
 }
 
-/** Allocates one buffer per state buffer the kernel declares (core + attributes). */
-function buffersFor(kernel: FXCompiledKernel, count: number): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of kernel.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * count);
-  }
-  return buffers;
-}
-
 /** The minimal shape read from `FXEmitter`'s private `mesh` getter - reading it this way, instead
  *  of importing the runtime's internal `FXInstancedParticle` type, keeps the test off the package
  *  boundary's non-public surface. */
 interface ParticleMesh {
-  readonly propertyBuffers: Record<string, { readonly array: Float32Array }>;
+  readonly slot: FXSlotLayout;
+  readonly slots: Float32Array;
 }
 
 function particleY(emitter: FXEmitter): number | undefined {
-  return (emitter as unknown as { mesh: ParticleMesh }).mesh.propertyBuffers.position.array[
-    FX_POSITION_Y
-  ];
+  const { slot, slots } = (emitter as unknown as { mesh: ParticleMesh }).mesh;
+  const position = slot.fields.find((field) => field.name === "position");
+  return position === undefined ? undefined : slots[position.offset + FX_POSITION_Y];
 }
 
 /** The render artifact carries exactly what a direct baseline compile of the plume produces. */
@@ -115,38 +108,37 @@ export function expectPlumeRenderMatchesDirectCompile(
   expect(artifact.attributeReads).toEqual([]);
 }
 
-/** The behavior artifact declares the direct kernel's buffer layout, written sets and attribute. */
+/** The behavior artifact declares the direct kernel's slot. */
 export function expectPlumeBehaviorLayoutMatchesKernel(
   artifact: FXBehaviorArtifact,
   behavior: FXGraph<FXBehaviorNode>,
 ): void {
   const kernel = compileParticleBehavior(behavior);
   expect(artifact.buffers).toEqual(kernel.update.buffers);
-  expect(artifact.updateWrittenBuffers).toEqual(kernel.update.writtenBuffers);
-  expect(artifact.spawnWrittenBuffers).toEqual(kernel.spawn?.writtenBuffers);
-  expect(artifact.attributeWrites).toEqual([{ name: "velocity", components: 3 }]);
+  expect(artifact.buffers.map((buffer) => buffer.name)).toContain("velocity");
 }
 
-/** One spawn + one update through the artifact leaves every buffer exactly as the direct kernel
+/** One spawn + one update through the artifact leaves the slots exactly as the direct kernel
  *  does, and the plume actually moved (position advanced, velocity accumulated). */
 export function expectPlumeSimulatesLikeDirectCompile(
   artifact: FXBehaviorArtifact,
   behavior: FXGraph<FXBehaviorNode>,
 ): void {
   const kernel = compileParticleBehavior(behavior);
-  const direct = buffersFor(kernel, COUNT);
+  const slot = slotOf(kernel.update.buffers);
+  const direct = new Float32Array(slot.stride * COUNT);
   buildParticleSpawnKernel(kernel)(direct, 0, COUNT, kernel.spawn?.bindings ?? {});
   buildParticleUpdateKernel(kernel)(direct, COUNT, DT, kernel.update.bindings);
 
-  const viaArtifact = buffersFor(kernel, COUNT);
+  const viaArtifact = new Float32Array(slot.stride * COUNT);
   artifact.spawn?.(viaArtifact, 0, COUNT, artifact.bindings);
   artifact.update(viaArtifact, COUNT, DT, artifact.bindings);
 
-  for (const name of Object.keys(direct)) {
-    expect([...viaArtifact[name]], name).toEqual([...direct[name]]);
-  }
-  expect(viaArtifact.position.some((value) => value !== 0)).toBe(true);
-  expect(viaArtifact.velocity.some((value) => value !== 0)).toBe(true);
+  expect([...viaArtifact]).toEqual([...direct]);
+  const fields: FieldBuffers = {};
+  splitFields(slot, viaArtifact, fields);
+  expect(fields.position.some((value) => value !== 0)).toBe(true);
+  expect(fields.velocity.some((value) => value !== 0)).toBe(true);
 }
 
 /** The artifact pair launches through `FXEmitter.fromArtifacts`: a burst is born at the origin,

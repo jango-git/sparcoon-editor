@@ -4,14 +4,13 @@ import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
-  buildParticleUpdateKernel,
   compileBehavior,
   previewBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
-import { bind, edge, graphOf } from "../helpers/graphBuild";
+import { bind, edge, fieldUpdateKernel, graphOf } from "../helpers/graphBuild";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
@@ -76,7 +75,7 @@ describe("defineNode - behavior backend", () => {
     const graph = velocityGraph(node);
 
     const compiled = compileBehavior(graph, velocityTargets);
-    const update = buildParticleUpdateKernel(compiled);
+    const update = fieldUpdateKernel(compiled);
 
     const buffers = freshBuffers();
     update(buffers, 1, 0.5, compiled.update.bindings);
@@ -89,7 +88,7 @@ describe("defineNode - behavior backend", () => {
 
     const before = previewBehaviorHash(graph, velocityTargets);
     const compiled = compileBehavior(graph, velocityTargets);
-    const update = buildParticleUpdateKernel(compiled);
+    const update = fieldUpdateKernel(compiled);
 
     node.applyParams?.({ acceleration: [0, -20, 0] });
     node.syncLiveValues?.();
@@ -113,7 +112,7 @@ describe("defineNode - behavior backend", () => {
     }) as unknown as FXBehaviorNode;
     const compiled = compileBehavior(velocityGraph(node), velocityTargets);
     const buffers = freshBuffers();
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0.5, compiled.update.bindings);
+    fieldUpdateKernel(compiled)(buffers, 1, 0.5, compiled.update.bindings);
     expect([...buffers.velocity.slice(0, 3)]).toEqual([-5, -5, -5]);
   });
 });

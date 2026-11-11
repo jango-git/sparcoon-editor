@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
-  buildParticleSpawnKernel,
   compileBehavior,
   validateBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { bind, graphOf, runKernel } from "../helpers/graphBuild";
+import { bind, fieldSpawnKernel, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 import type { FXValueSlot } from "../helpers/valueTarget";
 import { buildValueBehaviorTarget, VALUES_BUFFER } from "../helpers/valueTarget";
@@ -51,7 +50,7 @@ describe("update-only value behavior target", () => {
 
   it("throws a clear message when a spawn kernel is built (no spawn phase)", () => {
     const compiled = compileBehavior(valueGraph(0.5, [1, 0, 0]), targetFactory());
-    expect(() => buildParticleSpawnKernel(compiled)).toThrow(/no spawn phase/);
+    expect(() => fieldSpawnKernel(compiled)).toThrow(/no spawn phase/);
   });
 
   it("rejects a reachable spawn node: validate names it, compile refuses outright", () => {

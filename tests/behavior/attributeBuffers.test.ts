@@ -11,11 +11,7 @@ import type {
   FXCompiledKernel,
   FXKernelBufferLayout,
 } from "../../src/engine/behavior/FXCompiledKernel";
-import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
-  compileBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import {
   attributeSlot,
   buildParticleBehaviorTargets,
@@ -24,7 +20,7 @@ import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FX
 import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { bind, edge, graphOf } from "../helpers/graphBuild";
+import { bind, edge, fieldSpawnKernel, fieldUpdateKernel, graphOf } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;
@@ -55,7 +51,7 @@ describe("behavior attribute buffers", () => {
 
     const targets = buildParticleBehaviorTargets([{ name: "seed", type: FLOAT }]);
     const compiled = compileBehavior(graph, targets);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     const buffers = { ...coreBuffers(2), seed: new Float32Array(2) };
     spawn(buffers, 0, 2, compiled.spawn!.bindings);
@@ -79,7 +75,7 @@ describe("behavior attribute buffers", () => {
 
     const targets = buildParticleBehaviorTargets([{ name: "tint", type: VEC3 }]);
     const compiled = compileBehavior(graph, targets);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     const buffers = { ...coreBuffers(1), tint: new Float32Array(3) };
     spawn(buffers, 0, 1, compiled.spawn!.bindings);
@@ -99,7 +95,7 @@ describe("behavior attribute buffers", () => {
 
     const targets = buildParticleBehaviorTargets([{ name: "energy", type: FLOAT }]);
     const compiled = compileBehavior(graph, targets);
-    const update = buildParticleUpdateKernel(compiled);
+    const update = fieldUpdateKernel(compiled);
 
     const buffers = { ...coreBuffers(1), energy: new Float32Array(1) };
     update(buffers, 1, 0.016, compiled.update.bindings);
@@ -129,9 +125,10 @@ describe("buildParticleBehaviorTargets naming + layout", () => {
   it("exposes the core buffers, an attr buffer, an ATTR input and an attr slot in both phases", () => {
     const targets = buildParticleBehaviorTargets([{ name: "tint", type: VEC3 }]);
     for (const phase of [targets.spawn, targets.update]) {
+      // The slot, in sparcoon's packing order: three vec3s, so by name.
       expect(phase.buffers).toEqual([
-        { name: "position", stride: 3 },
         { name: "lifecycle", stride: 3 },
+        { name: "position", stride: 3 },
         { name: "tint", stride: 3 },
       ]);
       expect(phase.inputs.some((i) => i.name === "ATTR_tint" && i.buffer === "tint")).toBe(true);

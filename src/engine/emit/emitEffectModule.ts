@@ -79,8 +79,6 @@ export function emitEffectModule(
     lines.push(declaration);
     lines.push("");
   }
-  lines.push(
-    `export const behavior: FXBehaviorArtifact = ${behaviorArtifactBody(kernel, behaviorAttributes)};`,
-  );
+  lines.push(`export const behavior: FXBehaviorArtifact = ${behaviorArtifactBody(kernel)};`);
   return lines.join("\n") + "\n";
 }

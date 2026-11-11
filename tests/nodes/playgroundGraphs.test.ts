@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
-  compileParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
@@ -13,7 +9,7 @@ import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_LIFETIME } from "sparcoon";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
-import { bind, edge } from "../helpers/graphBuild";
+import { bind, edge, fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
@@ -70,8 +66,8 @@ describe("playground graphs - standard registries + hand-written resource nodes"
     });
 
     const compiled = compileParticleBehavior(graph);
-    const spawn = buildParticleSpawnKernel(compiled);
-    const update = buildParticleUpdateKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
+    const update = fieldUpdateKernel(compiled);
     // One Float32Array per state buffer the compiled kernel declares (core + attributes).
     const buffers: Record<string, Float32Array> = {};
     for (const buffer of compiled.update.buffers) {

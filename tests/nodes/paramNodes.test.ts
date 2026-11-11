@@ -6,11 +6,10 @@ import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import {
-  buildParticleUpdateKernel,
   compileParticleBehavior,
   previewParticleBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { bind } from "../helpers/graphBuild";
+import { bind, fieldUpdateKernel } from "../helpers/graphBuild";
 import { fullBehaviorRegistry, fullRenderRegistry } from "../helpers/stdRegistry";
 
 function renderGraph(
@@ -153,7 +152,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
     expect(compiled.update.bindings["b_param_speed"].value).toBe(7);
 
     const buffers = { position: new Float32Array(3), lifecycle: Float32Array.from([0, 1]) };
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
+    fieldUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
     expect(buffers.position[0]).toBe(7);
   });
 

@@ -54,7 +54,7 @@ import { FX_JS_SEED_HASH } from "../engine/core/ir/noise/FXSeedHash.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import type { FXBufferLayout, FXGeometrySource } from "sparcoon";
 import { fxMeshRenderBudget } from "sparcoon/editor";
-import { assembleRenderArtifact, attributeDecls } from "../engine/emit/assembleArtifacts";
+import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
 import {
   emitterRenderBudgetFindings,
@@ -229,7 +229,7 @@ function compileTrail(
       renderAttributes,
       config.renderMode,
     ),
-    attributeDecls(behaviorAttributes),
+    kernel.update.buffers,
     kernelBuffers,
   ).errors;
   if (budgetError !== undefined) {
@@ -309,7 +309,7 @@ export function compileEmitter(
         renderAttributes,
         config.renderMode,
       ),
-      attributeDecls(behaviorAttributes),
+      bundle.kernel.update.buffers,
       config.castShadow,
       kernelBuffers,
     ),

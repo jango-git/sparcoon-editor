@@ -11,8 +11,11 @@ import { FX_BEHAVIOR_FUNCTIONS } from "./FXBehaviorFunctions.Internal";
 /** The packed `mat4 builtin` state buffer name - always present, always integrated. */
 export const BUILTIN_BUFFER = "builtin";
 
-/** A named set of per-particle state buffers passed to a kernel (`builtin` + attributes). */
-export type FXKernelBuffers = Readonly<Record<string, Float32Array>>;
+/**
+ * The kernel's one state array, every particle's slot back to back: a target's buffers lie in each
+ * slot in the order the target declares them (sparcoon's `slotLayout`, which places the fields).
+ */
+export const SLOTS_PARAMETER = "slots";
 
 /**
  * The emitter's world transform, supplied by the runtime each spawn/update call so a graph
@@ -31,7 +34,7 @@ export const FX_BEHAVIOR_ALL_FUNCTIONS = new Map([...FX_FUNCTIONS, ...FX_BEHAVIO
 
 /** Compiled update kernel: mutates every live particle in `[0, count)` each frame. */
 export type FXParticleUpdateKernel = (
-  buffers: FXKernelBuffers,
+  slots: Float32Array,
   count: number,
   dt: number,
   bindings: Readonly<Record<string, FXKernelBindingHandle>>,
@@ -40,24 +43,20 @@ export type FXParticleUpdateKernel = (
 
 /** Compiled spawn kernel: initializes the freshly born particles in `[start, start + count)`. */
 export type FXParticleSpawnKernel = (
-  buffers: FXKernelBuffers,
+  slots: Float32Array,
   start: number,
   count: number,
   bindings: Readonly<Record<string, FXKernelBindingHandle>>,
   emitter?: FXEmitterTransform,
 ) => void;
 
-/** Hoisted local holding a state buffer's `Float32Array` (`const s_<name> = buffers[...]`). */
-export function bufferArrayName(name: string): string {
-  return `s_${name}`;
-}
-
-/** Per-particle base offset local for a buffer (`const b_<name> = i * stride`). */
+/** Per-particle offset local of a buffer's field in the slots (`const b_<name> = i * stride +
+ *  field offset`). */
 export function bufferBaseName(name: string): string {
   return `b_${name}`;
 }
 
-/** A buffer element accessor: `s_<name>[b_<name> + offset]`. */
+/** A buffer element accessor: `slots[b_<name> + offset]`. */
 export function bufferAccess(name: string, offset: number): string {
-  return `${bufferArrayName(name)}[${bufferBaseName(name)} + ${offset.toString()}]`;
+  return `${SLOTS_PARAMETER}[${bufferBaseName(name)} + ${offset.toString()}]`;
 }

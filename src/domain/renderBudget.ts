@@ -8,7 +8,7 @@
  * offer more than the minimum.
  */
 
-import type { FXAttributeDecl, FXBufferLayout, FXRenderArtifact } from "sparcoon";
+import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
 import {
   FX_RENDER_BUDGET_MINIMUMS,
   fxEmitterRenderBudget,
@@ -131,26 +131,25 @@ export class RenderBudgetMemo {
 }
 
 /**
- * The findings for an emitter's particle material. The two backends lay the particle state out
- * differently: the JS mesh gives every field the behavior writes an attribute of its own (a read
- * nothing writes is a constant zero, free), while the
- * GPU (transform-feedback) mesh reads the kernel's slot through packed views - several adjacent
- * fields per attribute, laid out by the editor in the runtime's packing order
- * (`FXKernelBuildStandard.Internal.ts`). With `kernelBuffers` (the emitter's GPU kernel's
- * `buffers`) a Standard (WebGL2) error is measured on the GPU mesh, which is what WebGL2 runs;
- * a Baseline (WebGL1) warning is always measured on the JS mesh - the only one WebGL1 ever runs.
+ * The findings for an emitter's particle material. Both backends read a particle slot through its
+ * packed views - several adjacent fields per attribute, laid out by the editor in the runtime's
+ * packing order (`buildParticleBehaviorTargets`); a read nothing writes is a constant zero, free.
+ * Each is measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and
+ * `kernelBuffers` (the emitter's GPU kernel's, when it has one). A Standard (WebGL2) error is
+ * measured on the GPU mesh when there is one, which is what WebGL2 runs; a Baseline (WebGL1)
+ * warning is always measured on the JS mesh - the only one WebGL1 ever runs.
  */
 export function emitterRenderBudgetFindings(
   render: FXRenderArtifact,
-  behaviorWrites: readonly FXAttributeDecl[],
+  behaviorBuffers: readonly FXBufferLayout[],
   castShadow: boolean,
   kernelBuffers: readonly FXBufferLayout[] | undefined,
 ): RenderBudgetFindings {
-  const js = fxEmitterRenderBudget(render, behaviorWrites, { castShadow });
+  const js = fxEmitterRenderBudget(render, behaviorBuffers, { castShadow });
   if (kernelBuffers === undefined) {
     return renderBudgetFindings(js);
   }
-  const gpu = fxEmitterRenderBudget(render, behaviorWrites, { castShadow, kernelBuffers });
+  const gpu = fxEmitterRenderBudget(render, kernelBuffers, { castShadow });
   return renderBudgetFindings(gpu, js);
 }
 
@@ -162,13 +161,13 @@ export function emitterRenderBudgetFindings(
  */
 export function trailRenderBudgetFindings(
   render: FXRenderArtifact,
-  behaviorWrites: readonly FXAttributeDecl[],
+  behaviorBuffers: readonly FXBufferLayout[],
   kernelBuffers: readonly FXBufferLayout[] | undefined,
 ): RenderBudgetFindings {
-  const js = fxTrailRenderBudget(render, behaviorWrites);
+  const js = fxTrailRenderBudget(render, behaviorBuffers);
   if (kernelBuffers === undefined) {
     return renderBudgetFindings(js);
   }
-  const gpu = fxTrailRenderBudget(render, behaviorWrites, { backend: "gpu", kernelBuffers });
+  const gpu = fxTrailRenderBudget(render, kernelBuffers, { backend: "gpu" });
   return renderBudgetFindings(gpu, js);
 }

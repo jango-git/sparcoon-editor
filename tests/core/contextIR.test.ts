@@ -12,12 +12,9 @@ import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRen
 import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
 import { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
-  compileParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
+import { fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;
@@ -150,7 +147,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBe(2.5);
   });
 
@@ -172,7 +169,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect([
       buffers.position[FX_POSITION_X],
       buffers.position[FX_POSITION_Y],
@@ -207,7 +204,7 @@ describe("behavior context IR path", () => {
     });
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect([
       buffers.position[FX_POSITION_X],
       buffers.position[FX_POSITION_Y],
@@ -234,7 +231,7 @@ describe("behavior context IR path", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = core();
     buffers.position[FX_POSITION_Y] = 3;
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0, compiled.update.bindings);
+    fieldUpdateKernel(compiled)(buffers, 1, 0, compiled.update.bindings);
     expect(buffers.position[FX_POSITION_Y]).toBe(6);
   });
 });

@@ -9,6 +9,7 @@
 
 import {
   Color,
+  Fog,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
@@ -27,7 +28,7 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import type { PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
-import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
+import { EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
 import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
@@ -64,8 +65,14 @@ function createSceneRenderer(
 export interface FrameCaptureOptions {
   /** Pixel size to render at; omitted, the viewport's own drawing-buffer size. */
   readonly size?: { readonly width: number; readonly height: number };
-  /** Whether the editor's furniture (ground, grid, player figure, gizmos) is drawn. Default true. */
+  /** Whether the editor's furniture (grid, player figure, gizmos) is drawn. Default true. */
   readonly overlays?: boolean;
+  /**
+   * Whether the studio ground is drawn - what shadows fall on and a Depth Fade fades against.
+   * Default: as {@link overlays}. Drawn without the overlays, it fades into a solid
+   * {@link background} past the point the frame is aimed at, so no edge of the plane shows.
+   */
+  readonly ground?: boolean;
   /** Replaces the background for this frame (an active HDRI's included); lighting is untouched. */
   readonly background?: Color | "transparent";
   /** Where the frame is shot from; omitted, the viewport camera's own view. */
@@ -139,6 +146,7 @@ export class SceneCoordinator {
     this.camera.position.set(0, 2, 7);
     // The viewport shows the editor's furniture too; a clean capture switches this layer off.
     this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
+    this.camera.layers.enable(EDITOR_GROUND_LAYER);
 
     // Damping off so the camera stops exactly when the pointer does; polar clamp keeps it from
     // diving below the floor. Bound to the container (not the canvas) so a drag starting over a
@@ -257,15 +265,16 @@ export class SceneCoordinator {
   /**
    * Renders the scene once and returns a 2D-canvas copy of the frame, taken in the same task as
    * the render because the WebGL drawing buffer is not preserved past it. See
-   * {@link FrameCaptureOptions} for size, overlays and background; whatever they change is
+   * {@link FrameCaptureOptions} for size, overlays, ground and background; whatever they change is
    * restored afterwards and the live view repainted. The copy is always the drawing buffer's real
    * size, which a GPU limit can clamp below the requested one; the frame is never stretched.
    */
   public capture(options: FrameCaptureOptions = {}): HTMLCanvasElement {
-    const { size, overlays = true, background, view } = options;
+    const { size, overlays = true, ground = overlays, background, view } = options;
     const pixelRatio = this.renderer.getPixelRatio();
     const viewportSize = this.renderer.getSize(new Vector2());
     const viewportBackground = this.scene.background;
+    const viewportFog = this.scene.fog;
     // Shot through a copy, so size, overlays and point of view never touch the viewport camera.
     const camera = this.camera.clone();
     try {
@@ -274,12 +283,13 @@ export class SceneCoordinator {
         this.renderer.setSize(size.width, size.height, false);
         camera.aspect = size.width / size.height;
       }
-      if (view !== undefined) {
-        aimCaptureCamera(camera, view);
-      }
+      const target = view === undefined ? this.controls.target : aimCaptureCamera(camera, view);
       camera.updateProjectionMatrix();
       if (!overlays) {
         camera.layers.disable(EDITOR_OVERLAY_LAYER);
+      }
+      if (!ground) {
+        camera.layers.disable(EDITOR_GROUND_LAYER);
       }
       if (background === "transparent") {
         return this.renderTransparent(camera);
@@ -287,11 +297,21 @@ export class SceneCoordinator {
       if (background !== undefined) {
         this.scene.background = background;
       }
+      if (ground && !overlays && background instanceof Color) {
+        // Clear of the effect round the target, gone into the background well before the edge.
+        const distance = camera.position.distanceTo(target);
+        this.scene.fog = new Fog(
+          background,
+          distance * GROUND_FADE_START,
+          distance * GROUND_FADE_END,
+        );
+      }
       this.renderFrom(camera);
       const canvas = this.renderer.domElement;
       return copyCanvas(canvas, canvas.width, canvas.height);
     } finally {
       this.scene.background = viewportBackground;
+      this.scene.fog = viewportFog;
       if (size !== undefined) {
         this.renderer.setPixelRatio(pixelRatio);
         this.renderer.setSize(viewportSize.x, viewportSize.y, false);
@@ -518,7 +538,13 @@ function fitDistance(camera: PerspectiveCamera, radius: number): number {
  * Points a capture camera along `view`, pulling its near plane in for a close shot - the
  * viewport's fixed near plane would otherwise clip an object smaller than it.
  */
-function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): void {
+/** Where a clean frame's ground starts and ends fading into its background, as multiples of the
+ *  camera's distance to what it is aimed at. */
+const GROUND_FADE_START = 1.2;
+const GROUND_FADE_END = 2.4;
+
+/** Aims `camera` as `view` says; returns the point it is aimed at. */
+function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): Vector3 {
   let target: Vector3;
   if (view.kind === "look") {
     if (view.fov !== undefined) {
@@ -537,6 +563,7 @@ function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): void {
     camera.near,
     Math.max(MIN_CAPTURE_NEAR, camera.position.distanceTo(target) / 100),
   );
+  return target;
 }
 
 /** A 2D-canvas copy of `source`'s current pixels at `width` x `height`. */

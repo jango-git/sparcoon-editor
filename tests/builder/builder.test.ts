@@ -11,14 +11,12 @@ import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerB
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import {
-  buildParticleSpawnKernel,
-  compileParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { FX_LIFETIME } from "sparcoon";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 import { attributeSlot } from "../helpers/attr";
+import { fieldSpawnKernel } from "../helpers/graphBuild";
 
 describe("FXGraphBuilder - deterministic ids + wiring", () => {
   it("generates ids as `${type}#${index}` with a per-type counter", () => {
@@ -147,7 +145,7 @@ describe("FXGraphBuilder - snapshot compiles on both backends", () => {
     registerManualBehaviorNodes(registry);
     new FXGraphReconciler(registry).reconcile(graph, data);
     const compiled = compileParticleBehavior(graph);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     // Core buffers (position vec3, lifecycle vec3) + the velocity attribute buffer.
     const position = new Float32Array(3);

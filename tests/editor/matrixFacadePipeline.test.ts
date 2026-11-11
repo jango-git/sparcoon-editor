@@ -8,12 +8,10 @@ import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import {
-  buildParticleSpawnKernel,
-  compileBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
+import { fieldSpawnKernel } from "../helpers/graphBuild";
 
 // End-to-end proof of the combine/split matrix facades through the WHOLE pipeline: an authored
 // editor graph -> serializeGraph (facade expansion) -> reconstruct the engine graph from the
@@ -124,7 +122,7 @@ describe("combine/split matrix facades: editor -> serialize -> engine compile", 
       reconstructBehavior(serializeGraph(graph, GraphKind.Behavior)),
       buildParticleBehaviorTargets(),
     );
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
     const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
     spawn(buffers, 0, 1, compiled.spawn!.bindings);
     // Column 1 of the assembled mat3 is (4,5,6).

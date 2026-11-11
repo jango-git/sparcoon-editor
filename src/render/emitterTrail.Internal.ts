@@ -5,7 +5,7 @@
  */
 
 import type { FXTrailOptions } from "sparcoon/editor";
-import type { FXAttributeDecl, FXBufferLayout } from "sparcoon";
+import type { FXBufferLayout } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph, type FXLiveResult } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
@@ -124,16 +124,16 @@ export class EmitterTrail {
    * What `trail`'s material takes of a GPU, against each tier's minimums (see
    * `trailRenderBudgetFindings`; `kernelBuffers` is the emitter's GPU kernel's slot, when it has a
    * kernel whose history the trail could draw) - memoized on the installed IR, the render mode,
-   * `kernelBuffers` and `behaviorKey` (what `behaviorWrites` was derived from), all by identity.
+   * `kernelBuffers` and `behaviorKey` (what `behaviorBuffers` was derived from), all by identity.
    */
   public budgetFindings(
     trail: AssembledTrail,
-    behaviorWrites: readonly FXAttributeDecl[],
+    behaviorBuffers: readonly FXBufferLayout[],
     behaviorKey: unknown,
     kernelBuffers: readonly FXBufferLayout[] | undefined,
   ): RenderBudgetFindings {
     return this.budget.get([this.shader, behaviorKey, trail.config.renderMode, kernelBuffers], () =>
-      trailRenderBudgetFindings(trail.options.render, behaviorWrites, kernelBuffers),
+      trailRenderBudgetFindings(trail.options.render, behaviorBuffers, kernelBuffers),
     );
   }
 

@@ -40,8 +40,8 @@ describe("renderBudgetFindings", () => {
   });
 });
 
-/** A GPU kernel's slot over `decls`: the core buffers and every attribute, in packing order (as
- *  `FXKernelBuildStandard.Internal.ts` lays it out). */
+/** A particle slot over `decls`: the core buffers and every attribute, in packing order (as
+ *  `buildParticleBehaviorTargets` lays out both the JS behavior's and the GPU kernel's). */
 function kernelSlot(decls: readonly FXAttributeDecl[]): FXBufferLayout[] {
   return packingOrder([
     { name: "position", components: 3 },
@@ -67,29 +67,58 @@ function reading(decls: readonly FXAttributeDecl[]): ReturnType<typeof unlitArti
   });
 }
 
+/** `count` vec4 attributes named v0, v1, ... - a view each, whatever the order. */
+function vec4s(count: number): FXAttributeDecl[] {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `v${String(index)}`,
+    components: 4 as const,
+  }));
+}
+
 describe("emitterRenderBudgetFindings", () => {
-  // Twelve floats the render reads: one attribute each on the JS mesh (17, past WebGL2's 16), but
-  // packed four to a view over the GPU kernel's slot (8).
-  const decls = floats(12);
-  const render = reading(decls);
+  it("packs the JS mesh's slot: twelve floats share five views with the core, not twelve", () => {
+    const decls = floats(12);
+    // The base geometry's three, lifecycle + a float, position + a float, then ten floats in three.
+    expect(
+      emitterRenderBudgetFindings(reading(decls), kernelSlot(decls), false, undefined),
+    ).toEqual({ errors: [], warnings: [] });
+  });
 
   it("errs on the JS mesh when the emitter has no GPU kernel", () => {
-    const { errors, warnings } = emitterRenderBudgetFindings(render, decls, false, undefined);
+    const decls = vec4s(12);
+    const { errors, warnings } = emitterRenderBudgetFindings(
+      reading(decls),
+      kernelSlot(decls),
+      false,
+      undefined,
+    );
     expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
     expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
     expect(warnings).toEqual([]);
   });
 
-  it("measures Standard on the GPU kernel's packed slot, Baseline still on the JS mesh", () => {
+  it("measures Standard on the GPU kernel's slot, Baseline on the JS behavior's", () => {
+    // Four vec4s on the JS mesh (9, past WebGL1's 8), twelve in the kernel (17).
+    const decls = vec4s(12);
     const { errors, warnings } = emitterRenderBudgetFindings(
-      render,
-      decls,
+      reading(decls),
+      kernelSlot(decls.slice(0, 4)),
       false,
       kernelSlot(decls),
     );
-    expect(errors).toEqual([]);
-    expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
-    expect(warnings[0]?.params).toEqual({ used: 17, limit: 8 });
+    expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
+    expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
+    // The same resource's Baseline overrun is not repeated as a warning.
+    expect(warnings).toEqual([]);
+
+    const within = emitterRenderBudgetFindings(
+      reading(decls.slice(0, 4)),
+      kernelSlot(decls.slice(0, 4)),
+      false,
+      kernelSlot(decls.slice(0, 4)),
+    );
+    expect(within.errors).toEqual([]);
+    expect(within.warnings[0]?.params).toEqual({ used: 9, limit: 8 });
   });
 });
 
@@ -104,14 +133,18 @@ describe("trailRenderBudgetFindings", () => {
   const render = reading(decls);
 
   it("measures a JS-only emitter's trail on the JS history alone", () => {
-    const { errors, warnings } = trailRenderBudgetFindings(render, decls, undefined);
+    const { errors, warnings } = trailRenderBudgetFindings(render, kernelSlot(decls), undefined);
     expect(errors).toEqual([]);
     expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
     expect(warnings[0]?.params).toEqual({ used: 15, limit: 8 });
   });
 
   it("errs on the GPU history when the emitter has a GPU kernel, without also warning", () => {
-    const { errors, warnings } = trailRenderBudgetFindings(render, decls, kernelSlot(decls));
+    const { errors, warnings } = trailRenderBudgetFindings(
+      render,
+      kernelSlot(decls),
+      kernelSlot(decls),
+    );
     expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
     expect(errors[0]?.params).toEqual({ used: 18, limit: 16 });
     // The same resource's Baseline overrun (15 on the JS history) is not repeated as a warning.
@@ -122,18 +155,25 @@ describe("trailRenderBudgetFindings", () => {
     // Twelve floats: 32 attributes if every recorded field had a view of its own, 14 over the
     // kernel's slot, where they pack four to a view.
     const many = floats(12);
-    const { errors, warnings } = trailRenderBudgetFindings(reading(many), many, kernelSlot(many));
+    const { errors, warnings } = trailRenderBudgetFindings(
+      reading(many),
+      kernelSlot(many),
+      kernelSlot(many),
+    );
     expect(errors).toEqual([]);
     expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
   });
 
   it("finds nothing for a light trail on either backend", () => {
     const light = unlitArtifact();
-    expect(trailRenderBudgetFindings(light, [], kernelSlot([]))).toEqual({
+    expect(trailRenderBudgetFindings(light, kernelSlot([]), kernelSlot([]))).toEqual({
       errors: [],
       warnings: [],
     });
-    expect(trailRenderBudgetFindings(light, [], undefined)).toEqual({ errors: [], warnings: [] });
+    expect(trailRenderBudgetFindings(light, kernelSlot([]), undefined)).toEqual({
+      errors: [],
+      warnings: [],
+    });
   });
 });
 
@@ -277,12 +317,12 @@ describe("export render budget", () => {
     );
   });
 
-  it("counts an emitter with a GPU kernel's Standard-tier attributes over its packed slot", () => {
-    // Twelve floats: 17 vertex attributes on the JS mesh (one per field, past WebGL2's 16), far
-    // fewer over the GPU kernel's slot, which packs them four to a view.
+  it("counts either backend's attributes over its packed slot", () => {
+    // Twelve floats: 17 vertex attributes if each had one of its own (past WebGL2's 16), but both
+    // the JS mesh and the GPU kernel's read them from the slot four to a view.
     expect(() => compileEmitter(emitterReading(12, { type: "float" }))).not.toThrow();
     expect(() =>
       compileEmitter(emitterReading(12, { type: "float", tryGpuSimulation: false })),
-    ).toThrow(/17 vertex attributes; every WebGL2 GPU/);
+    ).not.toThrow();
   });
 });

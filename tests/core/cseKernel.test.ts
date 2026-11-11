@@ -3,12 +3,10 @@ import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGrap
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import {
-  buildParticleSpawnKernel,
-  compileBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { behaviorRegistry } from "../helpers/stdRegistry";
+import { fieldSpawnKernel } from "../helpers/graphBuild";
 
 // The behavior kernel runs a whole-phase CSE pass before printing (see cse.Internal.ts): a
 // subtree shared across scalarized components is emitted once. These assert the two things
@@ -70,7 +68,7 @@ describe("behavior kernel CSE", () => {
     expect(occurrences(body, "Math.sqrt")).toBe(0);
 
     // ...and it still computes the right value.
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
     const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
     spawn(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.position[0]).toBeCloseTo(0.6, 5);
@@ -89,7 +87,7 @@ describe("behavior kernel CSE", () => {
     );
     expect(occurrences(compiled.spawn!.body.join("\n"), "Math.random()")).toBe(3);
 
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
     // If the three draws had merged, x==y==z every particle. Across samples they must differ.
     let anyAxisDiffers = false;
     for (let i = 0; i < 32 && !anyAxisDiffers; i += 1) {

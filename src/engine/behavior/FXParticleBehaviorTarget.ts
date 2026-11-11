@@ -1,3 +1,4 @@
+import { packingOrder } from "sparcoon/editor";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
@@ -5,10 +6,9 @@ import { canonicalAttributeSuffix } from "../core/socket/FXAttribute";
 import type { FXKernelBufferLayout, FXKernelIntegration } from "./FXCompiledKernel";
 import {
   FX_AGE,
+  FX_CORE_BUFFERS,
   FX_CORE_LIFECYCLE,
-  FX_CORE_LIFECYCLE_STRIDE,
   FX_CORE_POSITION,
-  FX_CORE_POSITION_STRIDE,
   FX_ID,
   FX_LIFETIME,
   FX_POSITION_X,
@@ -222,12 +222,6 @@ function writeOutputs(includeSpawnOnly: boolean): readonly FXKernelTargetOutput[
   return [...scalars, ...vec3s];
 }
 
-/** The two fixed core buffers, always present in a particle target. */
-const CORE_BUFFERS: readonly FXKernelBufferLayout[] = [
-  { name: POSITION_BUFFER, stride: FX_CORE_POSITION_STRIDE },
-  { name: LIFECYCLE_BUFFER, stride: FX_CORE_LIFECYCLE_STRIDE },
-];
-
 /** Behavior target-input name exposing an attribute buffer for reads (both phases). */
 export function attributeInputName(name: string): string {
   return `ATTR_${name}`;
@@ -257,6 +251,19 @@ function attributeOffsets(components: number): number[] {
 }
 
 /** Attribute buffer + input + slot fragments shared by both phases. */
+/**
+ * The particle slot's buffers in the order both kernels lay it out - the JS one's literal offsets
+ * and the GPU one's attribute locations follow it, and the runtime never reorders it: sparcoon's
+ * {@link packingOrder}, so the fields it packs into one vertex attribute view lie side by side.
+ * The runtime's own function, not a copy; set-based, so the order never depends on the order
+ * attributes were declared in.
+ */
+function slotOrder(buffers: readonly FXKernelBufferLayout[]): readonly FXKernelBufferLayout[] {
+  return packingOrder(
+    buffers.map((buffer) => ({ name: buffer.name, components: buffer.stride, buffer })),
+  ).map((field) => field.buffer);
+}
+
 function attributeBuffers(
   attributes: readonly FXAttributeRequest[],
 ): readonly FXKernelBufferLayout[] {
@@ -299,10 +306,7 @@ export function buildParticleBehaviorTargets(
   tryGpuSimulation = false,
 ): { spawn: FXKernelTarget; update: FXKernelTarget; tryGpuSimulation: boolean } {
   const suffix = canonicalAttributeSuffix(attributes);
-  const buffers: readonly FXKernelBufferLayout[] = [
-    ...CORE_BUFFERS,
-    ...attributeBuffers(attributes),
-  ];
+  const buffers = slotOrder([...FX_CORE_BUFFERS, ...attributeBuffers(attributes)]);
   const attributeInputEntries = attributeInputs(attributes);
   const attributeSlotEntries = attributeSlots(attributes);
 

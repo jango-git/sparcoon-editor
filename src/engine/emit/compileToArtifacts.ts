@@ -129,7 +129,7 @@ export function compileToArtifacts(
       compiled.renderAttributes,
       renderMode,
     ),
-    behavior: assembleBehaviorArtifact(compiled.kernel, compiled.behaviorAttributes),
+    behavior: assembleBehaviorArtifact(compiled.kernel),
     // renderMode/geometry reshape the runtime material, not our compiled shader, so neither
     // moves the shader hash; fold them in so toggling either counts as structural.
     hash: `${compiled.shader.hash}::${compiled.kernel.hash}::rm-${renderMode}::geo-${JSON.stringify(geometry)}`,

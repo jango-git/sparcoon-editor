@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
   compileParticleBehavior,
   previewParticleBehaviorHash,
   validateParticleBehavior,
@@ -25,7 +23,14 @@ import {
   readBuiltinAttr,
   storeAttr,
 } from "../helpers/attr";
-import { bind, buffersFor, edge, graphOf } from "../helpers/graphBuild";
+import {
+  bind,
+  buffersFor,
+  edge,
+  fieldSpawnKernel,
+  fieldUpdateKernel,
+  graphOf,
+} from "../helpers/graphBuild";
 
 const reg = behaviorRegistry();
 const VEC3 = FX_VALUE_TYPES.vec3;
@@ -41,7 +46,7 @@ describe("compileParticleBehavior - kernels produce correct numbers", () => {
       [bind("lifetime", "life", "value"), bind("position", "point", "position")],
     );
     const compiled = compileParticleBehavior(graph);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 2);
     spawn(buffers, 0, 2, compiled.spawn!.bindings);
@@ -97,7 +102,7 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
     buffers["src"][0] = 42;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers["dst"][0]).toBe(42);
   });
 
@@ -161,11 +166,11 @@ describe("phase-scoped output bindings place flexible nodes", () => {
     const compiled = compileParticleBehavior(boundPosition("update"));
     const buffers = buffersFor(compiled, 1);
 
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     // Bound into update, not spawn: the spawn kernel leaves position at its zero default.
     expect(buffers.position[FX_POSITION_X]).toBe(0);
 
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
+    fieldUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
     expect(buffers.position[FX_POSITION_X]).toBe(5);
   });
 
@@ -173,7 +178,7 @@ describe("phase-scoped output bindings place flexible nodes", () => {
     const compiled = compileParticleBehavior(boundPosition(undefined));
     const buffers = buffersFor(compiled, 1);
 
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     // No phase signal: spawn-box keeps its declared `spawn` default, so it seeds at birth.
     expect(buffers.position[FX_POSITION_X]).toBe(5);
   });
@@ -216,7 +221,7 @@ describe("numeric coercion into output slots", () => {
       [bind("lifetime", "life", "value"), bind("position", "life", "value")],
     );
     const compiled = compileParticleBehavior(graph);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 1);
     spawn(buffers, 0, 1, compiled.spawn!.bindings);
@@ -233,7 +238,7 @@ describe("numeric coercion into output slots", () => {
       [bind("lifetime", "point", "position"), bind("position", "point", "position")],
     );
     const compiled = compileParticleBehavior(graph);
-    const spawn = buildParticleSpawnKernel(compiled);
+    const spawn = fieldSpawnKernel(compiled);
 
     const buffers = buffersFor(compiled, 1);
     spawn(buffers, 0, 1, compiled.spawn!.bindings);

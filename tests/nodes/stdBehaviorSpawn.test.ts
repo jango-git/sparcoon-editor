@@ -220,7 +220,7 @@ describe("birth-state nodes", () => {
       [],
       [bind("position", "rng", "out")],
     );
-    const spread = new Set<number>();
+    const spread = new Set<string>();
     for (let i = 0; i < 200; i++) {
       const [x, y, z] = runKernel(graph, { phase: "spawn" }).position;
       expect(x).toBeGreaterThanOrEqual(-1);

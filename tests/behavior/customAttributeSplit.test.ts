@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
-  buildParticleSpawnKernel,
-  buildParticleUpdateKernel,
   compileParticleBehavior,
   validateParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
@@ -10,7 +8,14 @@ import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 import { attributeSlot, readAttrComponents, storeAttr } from "../helpers/attr";
-import { bind, buffersFor, edge, graphOf } from "../helpers/graphBuild";
+import {
+  bind,
+  buffersFor,
+  edge,
+  fieldSpawnKernel,
+  fieldUpdateKernel,
+  graphOf,
+} from "../helpers/graphBuild";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 const FLOAT = FX_VALUE_TYPES.float;
@@ -69,12 +74,12 @@ describe("custom-attribute-split behavior node", () => {
 
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.velocity[FX_POSITION_X]).toBe(1);
     expect(buffers.velocity[FX_POSITION_Y]).toBe(2);
     expect(buffers.velocity[FX_POSITION_Z]).toBe(3);
 
-    buildParticleUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
+    fieldUpdateKernel(compiled)(buffers, 1, 0.016, compiled.update.bindings);
     expect(buffers.position[FX_POSITION_X]).toBe(1);
     expect(buffers.position[FX_POSITION_Y]).toBe(2);
     expect(buffers.position[FX_POSITION_Z]).toBe(3);
@@ -92,7 +97,7 @@ describe("custom-attribute-split behavior node", () => {
     const compiled = compileParticleBehavior(graph);
     const buffers = buffersFor(compiled, 1);
     buffers["seed"][0] = 0.7;
-    buildParticleSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
+    fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBeCloseTo(0.7, 6);
   });
 });

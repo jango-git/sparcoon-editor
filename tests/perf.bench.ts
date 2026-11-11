@@ -20,8 +20,9 @@ import {
   buildParticleUpdateKernel,
   compileParticleBehavior,
 } from "../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { FX_CORE_LIFECYCLE_STRIDE, FX_LIFETIME } from "sparcoon";
+import { FX_LIFETIME } from "sparcoon";
 import { behaviorRegistry } from "./helpers/stdRegistry";
+import { slotOf } from "./helpers/slots";
 
 // 1. rebind-path apply() on a ~50-node graph
 
@@ -80,15 +81,14 @@ const compiled = compileParticleBehavior(updateGraph);
 const runFn = buildParticleUpdateKernel(compiled);
 
 const COUNT = 10_000;
-function freshBuffer(): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of compiled.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * COUNT);
-  }
+function freshBuffer(): Float32Array {
+  const slot = slotOf(compiled.update.buffers);
+  const lifecycle = slot.fields.find((field) => field.name === "lifecycle")!.offset;
+  const slots = new Float32Array(slot.stride * COUNT);
   for (let i = 0; i < COUNT; i++) {
-    buffers.lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME] = 5;
+    slots[i * slot.stride + lifecycle + FX_LIFETIME] = 5;
   }
-  return buffers;
+  return slots;
 }
 
 describe("update kernel - 10k particles", () => {

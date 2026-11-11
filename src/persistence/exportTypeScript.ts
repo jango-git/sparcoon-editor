@@ -107,10 +107,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
       ),
     );
     artifactBlocks.push(
-      `const ${behaviorName}: FXBehaviorArtifact = ${behaviorArtifactBody(
-        ir.kernel,
-        ir.behaviorAttributes,
-      )};`,
+      `const ${behaviorName}: FXBehaviorArtifact = ${behaviorArtifactBody(ir.kernel)};`,
     );
     let gpuKernelName: string | undefined;
     if (ir.gpuProgram !== undefined) {

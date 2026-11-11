@@ -13,7 +13,7 @@ import {
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM,
 } from "sparcoon";
-import { floatGLSLType, packingOrder } from "sparcoon/editor";
+import { floatGLSLType } from "sparcoon/editor";
 import type {
   FXKernelBindingHandle,
   FXKernelBufferLayout,
@@ -64,8 +64,8 @@ export interface FXFusedProgramStandard {
   readonly fragmentSource: string;
   /** Varying names for `gl.transformFeedbackVaryings` - one per buffer, matching `buffers`' order. */
   readonly transformFeedbackVaryings: readonly string[];
-  /** The particle slot's fields in the order they lie in it - {@link slotOrder}'s, not the
-   *  target's. A buffer's index here is its attribute location and its place in the slot. */
+  /** The particle slot's fields in the order they lie in it - the target's. A buffer's index here
+   *  is its attribute location and its place in the slot. */
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
 }
@@ -153,21 +153,6 @@ function assignBuffer(
   return lines;
 }
 
-/**
- * The update target's buffers in the order the fused program lays its particle slot out: the
- * runtime's {@link packingOrder}, core `position`/`lifecycle` included, by raw buffer name. The
- * runtime never reorders a GPU kernel's buffers (index = attribute location = place in the slot)
- * and packs only fields lying side by side into one vertex attribute view, so this order is what
- * decides how few attributes the particle mesh and a trail's GPU history take. The runtime's own
- * function, not a copy, so the layout it packs over is the one it would have chosen; set-based, so
- * the order never depends on the order attributes were declared in.
- */
-function slotOrder(buffers: readonly FXKernelBufferLayout[]): readonly FXKernelBufferLayout[] {
-  return packingOrder(
-    buffers.map((buffer) => ({ name: buffer.name, components: buffer.stride, buffer })),
-  ).map((field) => field.buffer);
-}
-
 /** Assembles the fused spawn+update program from the two independently-compiled phases. */
 export function assembleTransformFeedbackProgram(
   compiled: FXCompiledKernelStandard,
@@ -181,8 +166,9 @@ export function assembleTransformFeedbackProgram(
   }
   const update = compiled.update;
   // The one ordered list every index below follows - input locations, varyings and the returned
-  // `buffers` (which the artifact and the exported literal copy as they are).
-  const buffers = slotOrder(update.buffers);
+  // `buffers` (which the artifact and the exported literal copy as they are): the target's own,
+  // already in slot order (`buildParticleBehaviorTargets`), so the JS kernel's slot is the same.
+  const buffers = update.buffers;
 
   // `layout(location = N)` binds each attribute to its buffer's own index in `buffers` - the
   // runtime binds by that index directly (`vertexAttribPointer(N, ...)`), never by looking an

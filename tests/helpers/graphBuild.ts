@@ -4,19 +4,24 @@ import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import type { FXEmitterTransform } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type {
+  FXEmitterTransform,
+  FXParticleSpawnKernel,
+  FXParticleUpdateKernel,
+} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
   compileBehavior,
   compileParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { fieldsFor, overFields, type FieldBuffers, type FieldKernel } from "./slots";
 
 /**
  * Graph-building and CPU-kernel helpers shared by the node and behavior tests: the
  * `bind`/`edge` wiring shorthands, a one-call graph constructor, and a runner that compiles a
  * behavior graph on the JS backend and executes one spawn or update invocation over freshly
- * allocated state buffers.
+ * allocated state buffers - per-field arrays, interleaved into the kernel's slots around the call.
  */
 
 /** Binds `nodeId.socketKey` to a target output slot, optionally scoped to one phase. */
@@ -54,12 +59,18 @@ export function graphOf<N extends FXGraphNode>(
 }
 
 /** One zeroed `Float32Array` per state buffer the compiled kernel declares (core + attributes). */
-export function buffersFor(compiled: FXCompiledKernel, count = 1): Record<string, Float32Array> {
-  const buffers: Record<string, Float32Array> = {};
-  for (const buffer of compiled.update.buffers) {
-    buffers[buffer.name] = new Float32Array(buffer.stride * count);
-  }
-  return buffers;
+export function buffersFor(compiled: FXCompiledKernel, count = 1): FieldBuffers {
+  return fieldsFor(compiled.update.buffers, count);
+}
+
+/** The compiled spawn kernel, called on per-field arrays (see `overFields`). */
+export function fieldSpawnKernel(compiled: FXCompiledKernel): FieldKernel<FXParticleSpawnKernel> {
+  return overFields(compiled.update.buffers, buildParticleSpawnKernel(compiled));
+}
+
+/** The compiled update kernel, called on per-field arrays (see `overFields`). */
+export function fieldUpdateKernel(compiled: FXCompiledKernel): FieldKernel<FXParticleUpdateKernel> {
+  return overFields(compiled.update.buffers, buildParticleUpdateKernel(compiled));
 }
 
 /** Options for {@link runKernel}. */
@@ -85,7 +96,7 @@ export interface RunKernelOptions {
 export function runKernel(
   graph: FXGraph<FXBehaviorNode>,
   options: RunKernelOptions = {},
-): Record<string, Float32Array> {
+): FieldBuffers {
   const { phase = "update", targets, count = 1, dt = 0.016, state = {}, emitter } = options;
   const compiled =
     targets !== undefined ? compileBehavior(graph, targets) : compileParticleBehavior(graph);
@@ -94,9 +105,9 @@ export function runKernel(
     buffers[name].set(values);
   }
   if (phase === "spawn") {
-    buildParticleSpawnKernel(compiled)(buffers, 0, count, compiled.spawn!.bindings, emitter);
+    fieldSpawnKernel(compiled)(buffers, 0, count, compiled.spawn!.bindings, emitter);
   } else {
-    buildParticleUpdateKernel(compiled)(buffers, count, dt, compiled.update.bindings, emitter);
+    fieldUpdateKernel(compiled)(buffers, count, dt, compiled.update.bindings, emitter);
   }
   return buffers;
 }

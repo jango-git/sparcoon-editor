@@ -36,6 +36,12 @@ export interface FrameOptions {
   /** Draws the effect alone: no ground, grid, player figure or gizmos. */
   readonly clean?: boolean;
   /**
+   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on and its Depth
+   * Fade fades against, so an effect built around the ground (debris settling, a crack in it)
+   * reads on it. Without `clean` the ground is drawn anyway.
+   */
+  readonly ground?: boolean;
+  /**
    * `"#rrggbb"` (sRGB, as a game would state it) or `"transparent"`; omitted, the viewport's own
    * background. Transparent loses purely additive light (see `SceneCoordinator.capture`), so a
    * solid color is the one to compare against a game frame with.
@@ -100,7 +106,15 @@ const MAX_CAPTURE_SIZE = 4096;
 /** Below this, a remaining interval is float noise rather than time left to simulate. */
 const TIME_EPSILON = 1e-9;
 
-const FRAME_OPTION_KEYS = ["width", "height", "clean", "background", "camera", "frame"] as const;
+const FRAME_OPTION_KEYS = [
+  "width",
+  "height",
+  "clean",
+  "ground",
+  "background",
+  "camera",
+  "frame",
+] as const;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 /** The capture-only point of view `options` asks for, checked; `undefined` for the viewport's. */
@@ -148,9 +162,12 @@ function requireFov(value: unknown): number {
 
 /** The coordinator's view of a frame's options, checked; `view` already resolved. */
 function requireFrame(options: FrameOptions, view: CaptureView | undefined): FrameCaptureOptions {
-  const { width, height, clean, background } = options;
+  const { width, height, clean, ground, background } = options;
   if (clean !== undefined && typeof clean !== "boolean") {
     throw new AgentError("invalid_argument", "clean must be a boolean.");
+  }
+  if (ground !== undefined && typeof ground !== "boolean") {
+    throw new AgentError("invalid_argument", "ground must be a boolean.");
   }
   if (background !== undefined && background !== "transparent" && !HEX_COLOR.test(background)) {
     throw new AgentError("invalid_argument", 'background must be "#rrggbb" or "transparent".');
@@ -164,7 +181,7 @@ function requireFrame(options: FrameOptions, view: CaptureView | undefined): Fra
           },
         }
       : {}),
-    ...(clean === true ? { overlays: false } : {}),
+    ...(clean === true ? { overlays: false, ground: ground === true } : {}),
     // three reads a hex string as sRGB and converts it to its linear working space.
     ...(background === undefined
       ? {}

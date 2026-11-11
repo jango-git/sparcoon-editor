@@ -17,11 +17,13 @@ function bound(graph: EditorGraph): number | undefined {
   return lifetimeUpperBound(serializeGraph(graph, GraphKind.Behavior));
 }
 
+const LIFETIME_NODE = "n_life";
+
 function withLifetime(graph: EditorGraph, min: number, max: number): EditorGraph {
-  const node = graph.nodes["n_life"]!;
+  const node = graph.nodes[LIFETIME_NODE];
   return {
     ...graph,
-    nodes: { ...graph.nodes, n_life: { ...node, parameters: { min, max } } },
+    nodes: { ...graph.nodes, [LIFETIME_NODE]: { ...node, parameters: { min, max } } },
   };
 }
 

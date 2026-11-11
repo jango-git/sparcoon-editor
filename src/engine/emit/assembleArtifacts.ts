@@ -30,8 +30,8 @@ import { fragmentStageSource, stageSource, uniformTypes, varyingDecls } from "./
  * {@link FXEmitter.applyValues}, not through shared object identity.
  */
 
-/** `{name, components}` decls the runtime merges to size the shared attribute buffers. */
-export function attributeDecls(attributes: readonly FXAttributeRequest[]): FXAttributeDecl[] {
+/** The `{name, components}` decls of the attributes a render reads (`attributeReads`). */
+function attributeDecls(attributes: readonly FXAttributeRequest[]): FXAttributeDecl[] {
   return attributes.map((attribute) => ({
     name: attribute.name,
     components: attribute.type.components as 1 | 2 | 3 | 4,
@@ -116,31 +116,14 @@ function mergeBindingSlots(
 /** Assembles the behavior artifact from a compiled kernel. `spawn`/`update` are the real
  *  `new Function`-built kernels; the binding slots are fresh, scrubbed via
  *  {@link FXEmitter.applyValues}. */
-export function assembleBehaviorArtifact(
-  kernel: FXCompiledKernel,
-  attributes: readonly FXAttributeRequest[],
-): FXBehaviorArtifact {
-  const bindings = mergeBindingSlots(kernel);
-  const update = buildParticleUpdateKernel(kernel);
-  const buffers = kernel.update.buffers.map((buffer) => ({
-    name: buffer.name,
-    stride: buffer.stride,
-  }));
+export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorArtifact {
   const base: FXBehaviorArtifact = {
-    buffers,
-    attributeWrites: attributeDecls(attributes),
-    bindings,
-    updateWrittenBuffers: [...kernel.update.writtenBuffers],
-    update,
+    // The slot, in the target's order (see `buildParticleBehaviorTargets`).
+    buffers: kernel.update.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
+    bindings: mergeBindingSlots(kernel),
+    update: buildParticleUpdateKernel(kernel),
   };
-  if (kernel.spawn === undefined) {
-    return base;
-  }
-  return {
-    ...base,
-    spawn: buildParticleSpawnKernel(kernel),
-    spawnWrittenBuffers: [...kernel.spawn.writtenBuffers],
-  };
+  return kernel.spawn === undefined ? base : { ...base, spawn: buildParticleSpawnKernel(kernel) };
 }
 
 /** Assembles the standard-tier (GPU/transform-feedback) behavior artifact from a fused program -

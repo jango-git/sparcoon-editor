@@ -45,7 +45,7 @@ export function validateKernelTarget(
   const errors: FXCompilerError[] = [];
   const strides = new Map<string, number>();
   for (const buffer of target.buffers) {
-    // Buffer names are spliced into the kernel source as `s_<name>`/`b_<name>` locals, so a
+    // Buffer names are spliced into the kernel source as `b_<name>` locals, so a
     // non-identifier is a `new Function` SyntaxError. The plain-identifier form also rejects
     // the `$` generated locals use, so a lint-passing name can never collide with them.
     if (!IDENTIFIER_PATTERN.test(buffer.name)) {

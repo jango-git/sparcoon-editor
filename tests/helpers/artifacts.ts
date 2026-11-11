@@ -6,7 +6,6 @@ import {
   type FXAttributeDecl,
   type FXBehaviorArtifact,
   type FXBufferLayout,
-  type FXKernelBuffers,
   type FXRenderArtifact,
   type FXShaderStageSource,
 } from "sparcoon";
@@ -14,6 +13,7 @@ import {
   particleReadsOf,
   surfaceReadsOf,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { overSlots, type FieldBuffers } from "./slots";
 
 /**
  * Hand-written artifact builders for the runtime executor tests. They stand in for the
@@ -87,7 +87,7 @@ export interface SeedAttr {
 
 /**
  * A behavior artifact whose `spawn` seeds a fixed `lifetime` into the core `lifecycle`
- * buffer and writes each declared attribute's value. `update` defaults to a no-op.
+ * buffer and writes each declared attribute's value; its `update` is a no-op.
  * `noSpawn: true` yields an update-only (non-particle) host - no `spawn` function, so
  * `canSpawn` is false.
  */
@@ -95,8 +95,6 @@ export function behaviorArtifact(
   spec: {
     lifetime?: number;
     attributes?: readonly SeedAttr[];
-    update?: FXBehaviorArtifact["update"];
-    updateWrittenBuffers?: readonly string[];
     noSpawn?: boolean;
   } = {},
 ): FXBehaviorArtifact {
@@ -108,39 +106,25 @@ export function behaviorArtifact(
     { name: FX_CORE_LIFECYCLE, stride: FX_CORE_LIFECYCLE_STRIDE },
     ...attributes.map((a) => ({ name: a.name, stride: a.components })),
   ];
-  const attributeWrites: FXAttributeDecl[] = attributes.map((a) => ({
-    name: a.name,
-    components: a.components,
-  }));
-
-  const spawnPart =
-    spec.noSpawn === true
-      ? {}
-      : {
-          spawnWrittenBuffers: [FX_CORE_LIFECYCLE, ...attributes.map((a) => a.name)],
-          spawn(buffers2: FXKernelBuffers, start: number, count: number): void {
-            const lifecycle = buffers2[FX_CORE_LIFECYCLE];
-            for (let i = start; i < start + count; i++) {
-              lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME] = lifetime;
-            }
-            for (const attr of attributes) {
-              const buf = buffers2[attr.name];
-              for (let i = start; i < start + count; i++) {
-                const value = attr.valueFn ? attr.valueFn(i) : (attr.value ?? []);
-                for (let c = 0; c < attr.components; c++) {
-                  buf[i * attr.components + c] = value[c] ?? 0;
-                }
-              }
-            }
-          },
-        };
-
+  const seed = overSlots(buffers, (fields: FieldBuffers, start: number, count: number): void => {
+    const lifecycle = fields[FX_CORE_LIFECYCLE];
+    for (let i = start; i < start + count; i++) {
+      lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME] = lifetime;
+    }
+    for (const attr of attributes) {
+      const buf = fields[attr.name];
+      for (let i = start; i < start + count; i++) {
+        const value = attr.valueFn ? attr.valueFn(i) : (attr.value ?? []);
+        for (let c = 0; c < attr.components; c++) {
+          buf[i * attr.components + c] = value[c] ?? 0;
+        }
+      }
+    }
+  });
   return {
     buffers,
-    attributeWrites,
     bindings: {},
-    updateWrittenBuffers: spec.updateWrittenBuffers ?? [],
-    update: spec.update ?? ((): void => undefined),
-    ...spawnPart,
+    update: (): void => undefined,
+    ...(spec.noSpawn === true ? {} : { spawn: seed }),
   };
 }

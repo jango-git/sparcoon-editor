@@ -6,7 +6,8 @@ import type {
   FXKernelWrite,
 } from "./FXCompiledKernel";
 import { killStatementJS } from "./FXKernelLifecycle.Internal";
-import { bufferAccess, bufferArrayName, bufferBaseName } from "./FXKernelShared.Internal";
+import { slotLayout } from "sparcoon/editor";
+import { bufferAccess, bufferBaseName, SLOTS_PARAMETER } from "./FXKernelShared.Internal";
 import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
 
 /**
@@ -22,20 +23,18 @@ function bindingPreamble(bindings: Readonly<Record<string, FXKernelBindingHandle
     .join("\n");
 }
 
-/** Hoists each state buffer's `Float32Array` into a local, ahead of the loop. */
-function bufferArrayPreamble(buffers: readonly FXKernelBufferLayout[]): string {
-  return buffers
-    .map(
-      (buffer) =>
-        `const ${bufferArrayName(buffer.name)} = buffers[${JSON.stringify(buffer.name)}];`,
-    )
-    .join("\n");
-}
-
-/** Declares the per-particle base offset of every buffer at the top of the loop. */
+/** Declares where every buffer's field of the current particle starts in the slots, at the top of
+ *  the loop: the particle's slot, then the field's place in it (`slotLayout`, as the runtime lays
+ *  the slot out). */
 function bufferBaseDecls(buffers: readonly FXKernelBufferLayout[]): string {
-  return buffers
-    .map((buffer) => `  const ${bufferBaseName(buffer.name)} = i * ${buffer.stride.toString()};`)
+  const slot = slotLayout(
+    buffers.map((buffer) => ({ name: buffer.name, components: buffer.stride })),
+  );
+  return slot.fields
+    .map(
+      (field) =>
+        `  const ${bufferBaseName(field.name)} = i * ${slot.stride.toString()} + ${field.offset.toString()};`,
+    )
     .join("\n");
 }
 
@@ -72,7 +71,6 @@ function phaseLoopBody(phase: FXCompiledKernelPhase): string {
 export function assembleKernelBody(phase: FXCompiledKernelPhase, loopHeader: string): string {
   return [
     bindingPreamble(phase.bindings),
-    bufferArrayPreamble(phase.buffers),
     // Particle-invariant locals, computed once per invocation before the loop.
     ...phase.preLoop,
     loopHeader,
@@ -90,7 +88,14 @@ export const SPAWN_LOOP_HEADER = "for (let i = start; i < start + count; i++) {"
 export function buildParticleUpdateKernel(compiled: FXCompiledKernel): FXParticleUpdateKernel {
   const phase = compiled.update;
   const source = [...phase.helpers, assembleKernelBody(phase, UPDATE_LOOP_HEADER)].join("\n");
-  const built = new Function("buffers", "count", "dt", "bindings", "emitter", source) as unknown;
+  const built = new Function(
+    SLOTS_PARAMETER,
+    "count",
+    "dt",
+    "bindings",
+    "emitter",
+    source,
+  ) as unknown;
   return built as FXParticleUpdateKernel;
 }
 
@@ -101,6 +106,13 @@ export function buildParticleSpawnKernel(compiled: FXCompiledKernel): FXParticle
     throw new Error("buildParticleSpawnKernel: compiled kernel has no spawn phase");
   }
   const source = [...phase.helpers, assembleKernelBody(phase, SPAWN_LOOP_HEADER)].join("\n");
-  const built = new Function("buffers", "start", "count", "bindings", "emitter", source) as unknown;
+  const built = new Function(
+    SLOTS_PARAMETER,
+    "start",
+    "count",
+    "bindings",
+    "emitter",
+    source,
+  ) as unknown;
   return built as FXParticleSpawnKernel;
 }

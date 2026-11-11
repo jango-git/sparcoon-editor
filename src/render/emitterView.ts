@@ -390,7 +390,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
           this.renderAttributes,
           renderMode,
         ),
-        behavior: assembleBehaviorArtifact(this.kernel, this.behaviorAttributes),
+        behavior: assembleBehaviorArtifact(this.kernel),
         ...(this.standardProgram !== undefined
           ? { gpuBehavior: assembleGpuKernelArtifact(this.standardProgram) }
           : {}),
@@ -420,7 +420,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
       try {
         trailBudget = artifacts.trail.live.budgetFindings(
           artifacts.trail,
-          artifacts.behavior.attributeWrites,
+          artifacts.behavior.buffers,
           this.behaviorAttributes,
           // The same "can this emitter run on the GPU" the export counts by: a compiled kernel,
           // whose slot (in its order) the GPU history copies.
@@ -723,7 +723,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
       () =>
         emitterRenderBudgetFindings(
           artifacts.render,
-          artifacts.behavior.attributeWrites,
+          artifacts.behavior.buffers,
           castShadow,
           program?.buffers,
         ),

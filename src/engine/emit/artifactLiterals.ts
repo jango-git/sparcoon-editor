@@ -20,13 +20,14 @@ import {
   UPDATE_LOOP_HEADER,
 } from "../behavior/FXParticleBehaviorKernel.Internal";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
+import { SLOTS_PARAMETER } from "../behavior/FXKernelShared.Internal";
 
 /** Serializes the compiler IR into TypeScript object literals, shared by {@link emitEffectModule}
  *  and {@link emitProjectModule}. Every function returns a bare `{ ... }` body, so the caller
  *  owns the `const <name> = <body>;` naming and can emit many entities per file. */
 
-/** `{name, components}` decls the runtime merges to size the shared attribute buffers. */
-export function attributeDecls(attributes: readonly FXAttributeRequest[]): string {
+/** The `{name, components}` decls of the attributes a render reads (`attributeReads`). */
+function attributeDecls(attributes: readonly FXAttributeRequest[]): string {
   return JSON.stringify(
     attributes.map((attribute) => ({
       name: attribute.name,
@@ -238,27 +239,20 @@ function indentBody(body: string, indent: string): string {
  *  `update` methods. `baseIndent` is the leading indentation of the `{`, so nested lines align
  *  when embedded at any depth. Math helpers are NOT included - the caller hoists the union of
  *  {@link collectBehaviorHelpers} to module scope. */
-export function behaviorArtifactBody(
-  kernel: FXCompiledKernel,
-  attributes: readonly FXAttributeRequest[],
-  baseIndent = "",
-): string {
+export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""): string {
   const inner = `${baseIndent}  `;
   const methodBody = `${inner}  `;
   const lines: string[] = [
     "{",
     `${inner}buffers: ${JSON.stringify(kernel.update.buffers)},`,
-    `${inner}attributeWrites: ${attributeDecls(attributes)},`,
     `${inner}bindings: ${bindingsLiteral(kernel)},`,
-    `${inner}updateWrittenBuffers: ${JSON.stringify(kernel.update.writtenBuffers)},`,
   ];
   if (kernel.spawn !== undefined) {
-    lines.push(`${inner}spawnWrittenBuffers: ${JSON.stringify(kernel.spawn.writtenBuffers)},`);
-    lines.push(`${inner}spawn(buffers, start, count, bindings, emitter) {`);
+    lines.push(`${inner}spawn(${SLOTS_PARAMETER}, start, count, bindings, emitter) {`);
     lines.push(indentBody(assembleKernelBody(kernel.spawn, SPAWN_LOOP_HEADER), methodBody));
     lines.push(`${inner}},`);
   }
-  lines.push(`${inner}update(buffers, count, dt, bindings, emitter) {`);
+  lines.push(`${inner}update(${SLOTS_PARAMETER}, count, dt, bindings, emitter) {`);
   lines.push(indentBody(assembleKernelBody(kernel.update, UPDATE_LOOP_HEADER), methodBody));
   lines.push(`${inner}},`);
   lines.push(`${baseIndent}}`);

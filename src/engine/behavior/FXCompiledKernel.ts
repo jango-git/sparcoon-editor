@@ -80,9 +80,10 @@ export interface FXCompiledKernelPhase {
   readonly kill?: string;
   /** Captured bindings keyed by generated name; passed to the kernel at runtime. */
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
-  /** State buffers this phase reads/writes (name + stride), for base computation. */
+  /** State buffers this phase reads/writes (name + stride), in slot order - each one's field
+   *  offset in the slot comes from it (`slotLayout`). */
   readonly buffers: readonly FXKernelBufferLayout[];
-  /** Buffers this phase actually writes - the host marks only these `needsUpdate`. */
+  /** Buffers this phase actually writes - what tells a read of an attribute nothing writes. */
   readonly writtenBuffers: readonly string[];
 }
 

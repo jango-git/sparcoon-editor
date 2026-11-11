@@ -61,7 +61,6 @@ import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.I
 // This module is the behavior compile family's entry point; re-export the public symbols that
 // moved to the split files so existing importers keep their one import path.
 export type {
-  FXKernelBuffers,
   FXEmitterTransform,
   FXParticleUpdateKernel,
   FXParticleSpawnKernel,

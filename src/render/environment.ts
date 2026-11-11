@@ -33,7 +33,7 @@ import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js"
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
 import { AXIS_COLORS } from "./axisColors";
-import { markEditorOverlay } from "./editorOverlay";
+import { markEditorGround, markEditorOverlay } from "./editorOverlay";
 import type { DecodedEnvironment } from "./environmentTexture";
 
 /** Y of the ground plane - shares the emitters' origin so particles rest on it, not above it. */
@@ -107,7 +107,7 @@ export class SceneEnvironment {
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.y = GROUND_Y - 0.025;
     this.ground.receiveShadow = true;
-    markEditorOverlay(this.ground);
+    markEditorGround(this.ground);
     scene.add(this.ground);
 
     // Sun - the key light. Its orthographic shadow camera is the shadow box; its
