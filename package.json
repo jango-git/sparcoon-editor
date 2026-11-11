@@ -42,7 +42,7 @@
   "dependencies": {
     "fast-simplex-noise": "^4.0.0",
     "ferrsign": "^0.0.4",
-    "sparcoon": "0.14.2",
+    "sparcoon": "0.15.0",
     "three": "^0.157.0"
   },
   "devDependencies": {

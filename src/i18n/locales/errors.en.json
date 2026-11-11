@@ -319,5 +319,8 @@
   },
   "attribute-never-written": {
     "message": "attribute \"{name}\" is read here but the behavior never writes it - it is always 0"
+  },
+  "lifetime-unbounded": {
+    "message": "the longest particle lifetime cannot be told from this graph, so an exported effect with this emitter never dispatches \"drained\" - feed the spawn sink's Lifetime from a Lifetime node with Min and Max typed in"
   }
 }

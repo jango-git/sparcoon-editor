@@ -142,7 +142,10 @@ export type FXCompilerErrorCode =
   // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
   | "param-value-conflict"
   // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).
-  | "attribute-never-written";
+  | "attribute-never-written"
+  // A warning: an emitter whose longest particle lifetime cannot be read off its graph
+  // (domain/lifetimeBound.ts).
+  | "lifetime-unbounded";
 
 /** A single, editor-presentable problem found in a graph. */
 export interface FXCompilerError {

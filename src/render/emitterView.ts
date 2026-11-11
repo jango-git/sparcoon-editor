@@ -79,6 +79,7 @@ import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { externalSlots } from "./externalSlots";
 import { EmitterTrail, type AssembledTrail } from "./emitterTrail.Internal";
 import { gpuSortWarnings } from "../domain/sortChecks";
+import { unboundedLifetimeWarnings } from "../domain/lifetimeBound";
 import { trailSortError } from "../domain/trailChecks";
 import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
@@ -461,6 +462,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
     return {
       ...result,
       render: withWarnings(result.render, renderWarnings),
+      // The preview runs without the bound (only an export settles by it), but warns as the export.
+      behavior: withWarnings(result.behavior, unboundedLifetimeWarnings(behaviorSnapshot)),
       ...(result.trail === undefined || trailWarnings === undefined
         ? {}
         : { trail: withWarnings(result.trail, trailWarnings) }),

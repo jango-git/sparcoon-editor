@@ -191,6 +191,8 @@ export function emitterSpecLiteral(
     // always present, so an omitted gpuBehavior just means this emitter falls back to JS, as at runtime.
     ...(gpuKernelName !== undefined ? [`      gpuBehavior: ${gpuKernelName},`] : []),
     `      expectedCapacity: ${String(ir.expectedCapacity)},`,
+    // Present only when the behavior graph tells it (see lifetimeBound.ts).
+    ...(ir.maxLifetime !== undefined ? [`      maxLifetime: ${String(ir.maxLifetime)},`] : []),
     `      sortInterval: ${String(ir.sortInterval)},`,
     // Read from the surface sink (like sortInterval); emitted only when true, matching the
     // omit-when-false optional FXEffectEmitterSpec fields.

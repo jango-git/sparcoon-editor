@@ -63,6 +63,7 @@ import {
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import { gpuSortWarnings } from "../domain/sortChecks";
+import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../domain/lifetimeBound";
 import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
 import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorGraph } from "../domain/graphModel";
@@ -159,6 +160,9 @@ export interface EmitterIR {
   // From the spawn sink (readSpawnSinkConfig), not the surface sink - the same authored number
   // the live preview builds with, so an exported project's capacity never drifts from the editor's.
   readonly expectedCapacity: number;
+  /** The longest lifetime a particle is born with (domain/lifetimeBound.ts); absent when the graph
+   *  does not tell. */
+  readonly maxLifetime?: number;
   /** The emitter's trail; absent when it has none. */
   readonly trail?: TrailIR;
   /**
@@ -261,7 +265,8 @@ export function compileEmitter(
     throw new Error(`exportTypeScript: ${emitter.name}: ${declarationConflict.error.message}`);
   }
   const renderGraph = buildRenderGraph(emitter.renderGraph);
-  const behaviorGraph = buildBehaviorGraph(emitter.behaviorGraph);
+  const behaviorSnapshot = serializeGraph(emitter.behaviorGraph, GraphKind.Behavior);
+  const behaviorGraph = buildBehaviorGraph(behaviorSnapshot);
   const config = readRenderSinkConfig(emitter.renderGraph);
 
   const renderAttributes = collectAttributeRequests(renderGraph).requests;
@@ -323,6 +328,7 @@ export function compileEmitter(
     castShadow: config.castShadow,
     receiveShadow: config.receiveShadow,
     expectedCapacity: spawnConfig.expectedCapacity,
+    ...withMaxLifetime(lifetimeUpperBound(behaviorSnapshot)),
     warnings: [
       ...unwrittenAttributeWarnings(
         renderGraph,
@@ -331,6 +337,7 @@ export function compileEmitter(
       ),
       // A WebGL2 host runs the shipped GPU kernel, and ignores the sort there.
       ...gpuSortWarnings(config.sortInterval, bundle.standardProgram !== undefined),
+      ...unboundedLifetimeWarnings(behaviorSnapshot),
     ],
     ...(emitter.trailGraph === undefined
       ? {}
@@ -421,11 +428,13 @@ function buildRenderGraph(editorGraph: EditorGraph): FXGraph<FXRenderNode> {
   );
 }
 
-function buildBehaviorGraph(editorGraph: EditorGraph): FXGraph<FXBehaviorNode> {
-  return reconcile(
-    new FXGraphReconciler(behaviorRegistry),
-    serializeGraph(editorGraph, GraphKind.Behavior),
-  );
+function buildBehaviorGraph(snapshot: FXGraphSnapshotData): FXGraph<FXBehaviorNode> {
+  return reconcile(new FXGraphReconciler(behaviorRegistry), snapshot);
+}
+
+// The optional field is left out, not set to undefined, under exactOptionalPropertyTypes.
+function withMaxLifetime(maxLifetime: number | undefined): { maxLifetime?: number } {
+  return maxLifetime === undefined ? {} : { maxLifetime };
 }
 
 function reconcile<N extends FXRenderNode | FXBehaviorNode>(
