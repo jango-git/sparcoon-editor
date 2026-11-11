@@ -482,7 +482,11 @@ function widthForType(type: string): number {
   return type === "vec4" || type === "color" ? 4 : type === "vec3" ? 3 : type === "vec2" ? 2 : 1;
 }
 
+/** A stored value as `width` numbers: a single number splats, as the engine reads it. */
 function toNumberArray(value: unknown, width: number): number[] {
+  if (typeof value === "number") {
+    return new Array<number>(width).fill(toNumber(value, 0));
+  }
   const source = Array.isArray(value) ? value : [];
   return Array.from({ length: width }, (_, index) => toNumber(source[index], 0));
 }

@@ -213,4 +213,25 @@ describe("birth-state nodes", () => {
     // Inline Math.random() -> a fresh draw each call (not a constant, not a seeded channel).
     expect(seen.size).toBeGreaterThan(1);
   });
+
+  it("random of a vector type draws each component independently within [min, max)", () => {
+    const graph = graphOf(
+      { rng: reg.create("random", { type: "vec3", min: [-1, 2, 10], max: [1, 3, 10] }) },
+      [],
+      [bind("position", "rng", "out")],
+    );
+    const spread = new Set<number>();
+    for (let i = 0; i < 200; i++) {
+      const [x, y, z] = runKernel(graph, { phase: "spawn" }).position;
+      expect(x).toBeGreaterThanOrEqual(-1);
+      expect(x).toBeLessThan(1);
+      expect(y).toBeGreaterThanOrEqual(2);
+      expect(y).toBeLessThan(3);
+      // A degenerate range pins its component.
+      expect(z).toBe(10);
+      spread.add(`${x < 0}/${y < 2.5}`);
+    }
+    // One shared draw would tie x and y together: x < 0 would always mean y < 2.5.
+    expect(spread.size).toBe(4);
+  });
 });

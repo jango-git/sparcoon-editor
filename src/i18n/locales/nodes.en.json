@@ -82,8 +82,11 @@
     }
   },
   "$update": {
-    "description": "The update sink: values wired here are written every simulation step (moving position, updating attributes over the particle's life).",
+    "description": "The update sink: values wired here are written every simulation step (moving position, updating attributes over the particle's life). Kill ends a particle's life early on the step its value is above 0.5: it dies as if of old age, so death reactions fire too.",
     "inputs": {
+      "kill": {
+        "label": "Kill"
+      },
       "position": {
         "label": "Position"
       },
@@ -306,6 +309,9 @@
     },
     "label": "Box Collision",
     "outputs": {
+      "contact": {
+        "label": "Contact"
+      },
       "velocity": {
         "label": "Velocity"
       }
@@ -348,6 +354,9 @@
     },
     "label": "Cone Collision",
     "outputs": {
+      "contact": {
+        "label": "Contact"
+      },
       "velocity": {
         "label": "Velocity"
       }
@@ -581,9 +590,6 @@
   "curl-noise": {
     "description": "Divergence-free vector noise (2D/3D), for fluid-like particle flow.",
     "inputs": {
-      "epsilon": {
-        "label": "Epsilon"
-      },
       "frequency": {
         "label": "Frequency"
       },
@@ -980,6 +986,42 @@
     },
     "searchTags": ["magnitude", "distance", "norm"]
   },
+  "distance": {
+    "description": "The Euclidean distance between two points.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      }
+    },
+    "label": "Distance",
+    "outputs": {
+      "out": {
+        "label": "Distance"
+      }
+    },
+    "searchTags": ["length", "magnitude", "radius", "between"]
+  },
+  "reflect": {
+    "description": "Mirrors a direction about a surface with a unit normal: incident - 2 * dot(normal, incident) * normal. Use for bounces and reflections.",
+    "inputs": {
+      "incident": {
+        "label": "Incident"
+      },
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "label": "Reflect",
+    "outputs": {
+      "out": {
+        "label": "Reflected"
+      }
+    },
+    "searchTags": ["bounce", "mirror", "ricochet", "specular"]
+  },
   "life-ratio": {
     "description": "Normalized particle age, clamp(age / lifetime, 0, 1).",
     "label": "Life Ratio",
@@ -1214,6 +1256,9 @@
     },
     "label": "Plane Collision",
     "outputs": {
+      "contact": {
+        "label": "Contact"
+      },
       "velocity": {
         "label": "Velocity"
       }
@@ -1269,6 +1314,24 @@
       }
     }
   },
+  "polar-uv": {
+    "description": "Maps UVs to polar coordinates about a center: X is the angle (0..1 around), Y the radius (1 at the quad's edge).",
+    "inputs": {
+      "center": {
+        "label": "Center"
+      },
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "label": "Polar UV",
+    "outputs": {
+      "uv": {
+        "label": "UV"
+      }
+    },
+    "searchTags": ["radial", "circular", "angle", "radius", "swirl", "coordinates"]
+  },
   "ramp": {
     "description": "Remaps a scalar 0..1 input through an editable curve (smooth or sharp anchors).",
     "inputs": {
@@ -1289,14 +1352,27 @@
     }
   },
   "random": {
-    "description": "A fresh per-particle random in [0, 1); store into an attribute to persist it.",
+    "description": "A fresh per-particle random in [min, max), each component drawn independently; store into an attribute to persist it, or use Hash for a stable value.",
+    "inputs": {
+      "min": {
+        "label": "Min"
+      },
+      "max": {
+        "label": "Max"
+      }
+    },
     "label": "Random",
     "outputs": {
       "out": {
         "label": "Random"
       }
     },
-    "searchTags": ["rand", "jitter", "hash", "noise"]
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["rand", "jitter", "hash", "noise", "range", "vector"]
   },
   "builtin-attribute": {
     "description": {
@@ -1455,6 +1531,46 @@
         "label": "Matrix"
       }
     }
+  },
+  "select": {
+    "description": "Compares A with B and passes on one of two values: If True when the comparison holds, else If False. Both values are computed; only the choice is made.",
+    "inputs": {
+      "a": {
+        "label": "A"
+      },
+      "b": {
+        "label": "B"
+      },
+      "ifFalse": {
+        "label": "If False"
+      },
+      "ifTrue": {
+        "label": "If True"
+      }
+    },
+    "label": "Select",
+    "outputs": {
+      "out": {
+        "label": "Result"
+      }
+    },
+    "params": {
+      "op": {
+        "label": "Comparison"
+      }
+    },
+    "searchTags": [
+      "if",
+      "condition",
+      "compare",
+      "comparison",
+      "branch",
+      "switch",
+      "ternary",
+      ">",
+      "<",
+      "=="
+    ]
   },
   "smoothstep": {
     "description": "Smooth Hermite interpolation of a value between two edges.",
@@ -1663,6 +1779,9 @@
     },
     "label": "Sphere Collision",
     "outputs": {
+      "contact": {
+        "label": "Contact"
+      },
       "velocity": {
         "label": "Velocity"
       }
@@ -2044,6 +2163,76 @@
         "label": "Matrix"
       }
     }
+  },
+  "voronoi": {
+    "description": "Cellular (Voronoi) noise at a 2D/3D coordinate: distances to the nearest feature points, cell edges and a per-cell random value. The fast quality keeps Nearest and Cell reliable; Second Nearest and Edge are approximate - use full for clean edges.",
+    "inputs": {
+      "frequency": {
+        "label": "Frequency"
+      },
+      "jitter": {
+        "label": "Jitter"
+      },
+      "p": {
+        "label": "Position"
+      },
+      "seed": {
+        "label": "Seed"
+      }
+    },
+    "label": "Voronoi",
+    "outputs": {
+      "cell": {
+        "label": "Cell"
+      },
+      "edge": {
+        "label": "Edge"
+      },
+      "f1": {
+        "label": "Nearest"
+      },
+      "f2": {
+        "label": "Second Nearest"
+      }
+    },
+    "params": {
+      "metric": {
+        "label": "Metric"
+      },
+      "quality": {
+        "label": "Quality"
+      }
+    },
+    "searchTags": ["cellular", "worley", "cells", "crackle"]
+  },
+  "hash": {
+    "description": "A stable random in [min, max) per seed (unconnected: the particle id), each component independent. Equal seeds give equal values; another salt gives an unrelated draw.",
+    "inputs": {
+      "seed": {
+        "label": "Seed"
+      },
+      "salt": {
+        "label": "Salt"
+      },
+      "min": {
+        "label": "Min"
+      },
+      "max": {
+        "label": "Max"
+      }
+    },
+    "label": "Hash",
+    "outputs": {
+      "out": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "type": {
+        "label": "Type"
+      }
+    },
+    "searchTags": ["random", "rand", "seed", "per particle", "stable", "white noise", "id"]
   },
   "vortex": {
     "description": "Swirls particles tangentially around an axis, with optional inward pull.",

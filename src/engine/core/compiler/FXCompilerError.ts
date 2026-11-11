@@ -37,6 +37,8 @@ export type FXCompilerErrorCode =
   | "integration-ref-not-scalar"
   | "integration-reads-dt-in-spawn"
   | "integration-input-not-declared"
+  | "kill-slot-in-spawn"
+  | "kill-slot-needs-lifecycle"
   | "phase-buffer-not-in-update"
   | "phase-buffer-stride-mismatch"
   | "bad-behavior-targets-shape"

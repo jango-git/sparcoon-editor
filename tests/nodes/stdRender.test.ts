@@ -158,6 +158,55 @@ describe("standard render nodes - uv and mask content", () => {
     expect(body).toMatch(/p_uv \* vec2\(3\.0, 4\.0\)\)? \+ vec2\(0\.5, 0\.25\)/);
   });
 
+  it("polar-uv maps the particle uv to angle (0..1) and doubled radius about its center", () => {
+    const polar = reg.create("polar-uv", { center: [0.25, 0.75] });
+    expect(polar.targetReads).toContain("p_uv");
+    const graph = graphOf(
+      { p: polar, l: reg.create("length"), c: white() },
+      [edge("p", "uv", "l", "v")],
+      [bind("albedo", "c", "out"), bind("alphaThreshold", "l", "out")],
+    );
+    const body = programText(compiler.compile(graph, FX_PARTICLE_TARGET));
+    const offset = /vec2 (\w+) = \(p_uv - vec2\(0\.25, 0\.75\)\);/.exec(body)?.[1];
+    expect(offset).toBeDefined();
+    expect(body).toContain(
+      `vec2(((atan((${offset}).y, (${offset}).x) / 6.283185307179586) + 0.5), (length(${offset}) * 2.0))`,
+    );
+  });
+
+  it("select prints as a GLSL ternary over the comparison, not-equal as equal with the values swapped", () => {
+    const glslOf = (op: string): string => {
+      const graph = graphOf(
+        { s: reg.create("select", { op, ifTrue: 0.75, ifFalse: 0.25 }), c: white() },
+        [],
+        [bind("albedo", "c", "out"), bind("alphaThreshold", "s", "out")],
+      );
+      return programText(compiler.compile(graph, FX_PARTICLE_TARGET));
+    };
+    expect(glslOf("greater")).toContain("((0.0 > 0.5 ? 1.0 : 0.0) != 0.0 ? 0.75 : 0.25)");
+    expect(glslOf("not-equal")).toContain("((0.0 == 0.5 ? 1.0 : 0.0) != 0.0 ? 0.25 : 0.75)");
+  });
+
+  it("distance and reflect print as GLSL length/dot over the uv", () => {
+    const graph = graphOf(
+      {
+        uv: reg.create("uv"),
+        r: reg.create("reflect"),
+        d: reg.create("distance", { b: [0.5, 0.5] }),
+        c: white(),
+      },
+      [
+        edge("uv", "uv", "r", "incident"),
+        edge("uv", "uv", "r", "normal"),
+        edge("r", "out", "d", "a"),
+      ],
+      [bind("albedo", "c", "out"), bind("alphaThreshold", "d", "out")],
+    );
+    const body = programText(compiler.compile(graph, FX_PARTICLE_TARGET));
+    expect(body).toContain("(uv_uv_0 - (uv_uv_0 * (dot(uv_uv_0, uv_uv_0) * 2.0)))");
+    expect(body).toContain("length((reflect_out_1 - vec2(0.5, 0.5)))");
+  });
+
   it("flow-uv drifts two half-cycle-apart phases along the flow, crossfaded so no snap is seen", () => {
     const flow = reg.create("flow-uv", { flow: [0.5, -1], speed: 2, strength: 0.3 });
     // Unwired, it flows the particle uv on the scene clock.

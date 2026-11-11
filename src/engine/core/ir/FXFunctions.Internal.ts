@@ -1,6 +1,9 @@
 import type { FXGLSLTypeName } from "../socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../socket/FXValueType";
 import type { FXCallSignature } from "./FXExprBuilder";
+import type { FXHelper, FXHelperModule } from "./FXHelperModule.Internal";
+import { FX_GLSL_STANDARD_NOISE_HASH } from "./noise/FXNoiseHash.Internal";
+import { noiseFunctionDefinitions } from "./noise/FXNoiseFunctions.Internal";
 
 /**
  * The backend-neutral function registry: each entry names a function, its signatures, and how
@@ -18,10 +21,10 @@ export interface FXFunctionDef {
   readonly glslBaseline?: string | ((args: readonly string[]) => string);
   /** JS printing of the scalar overload, over already-printed argument strings. */
   readonly js: (args: readonly string[]) => string;
-  /** Helper source the baseline-tier GLSL printer must emit once (keyed by {@link name}). */
-  readonly glslBaselineHelper?: string;
-  /** Helper source the JS printer must emit once (keyed by {@link name}). */
-  readonly jsHelper?: string;
+  /** Helper the baseline-tier GLSL printer must emit once (a string is keyed by {@link name}). */
+  readonly glslBaselineHelper?: FXHelper;
+  /** Helper the JS printer must emit once (a string is keyed by {@link name}). */
+  readonly jsHelper?: FXHelper;
   /**
    * Sibling GLSL form {@link printGLSLStandard} prefers over `glslBaseline` - only for a function
    * whose codegen genuinely differs between tiers (e.g. a future native op under GLSL3 vs a
@@ -30,8 +33,13 @@ export interface FXFunctionDef {
    * `glslBaseline`/`glslBaselineHelper`.
    */
   readonly glslStandard?: string | ((args: readonly string[]) => string);
-  /** Helper source {@link printGLSLStandard} must emit once, in place of `glslBaselineHelper`. */
-  readonly glslStandardHelper?: string;
+  /** Helper {@link printGLSLStandard} must emit once, in place of `glslBaselineHelper`. */
+  readonly glslStandardHelper?: FXHelper;
+  /**
+   * Scalarizes as one opaque call rather than element-wise: vector arguments are flattened into
+   * scalar ones, and a vecN result becomes N calls with the component index appended.
+   */
+  readonly packed?: true;
   /**
    * True for a function with no baseline-tier (GLSL ES 1.00 / WebGL1) form at all - e.g. a
    * bitwise op, `texelFetch`. Excluded from {@link baselineSignaturesFrom}'s signature map
@@ -102,329 +110,21 @@ export const FX_SMOOTHSTEP_HELPER =
   "function fxSmoothstep(e0, e1, x) { var t = Math.min(Math.max((x - e0) / (e1 - e0), 0.0), 1.0); return t * t * (3.0 - 2.0 * t); }";
 
 /**
- * Baseline-tier (GLSL ES 1.00 / WebGL1) noise: smoothed hash-corner value noise, 1D/2D/3D. GLSL
- * ES 1.00 has no bitwise operators (see the `standardOnly` int functions below), so this tier can
- * never use an integer hash - `sin`-based hashing is the only option available to it, always.
- * Each `noise(...)` overload hashes the corners of the cell containing its argument and blends
- * them with a Hermite (smoothstep) weight; output is remapped from the hash's natural [0, 1] to
- * [-1, 1] so every tier/dimension shares one output contract.
+ * Standard-tier `rand()`: hashes (vertex id, per-tick seed, call counter). `fxRandCounter` is a
+ * per-invocation global, so it only decorrelates the several `rand()` calls within one
+ * invocation; `gl_VertexID` and `u_fxRandSeed` (an `int` uniform the behavior assembler declares
+ * and the runtime changes every tick) decorrelate particles and ticks.
  */
-const FX_NOISE_GLSL_BASELINE_HELPER = `
-float fxHash1(float n){float s=sin(n*127.1)*43758.5453123;return s-floor(s);}
-float fxHash2(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
-float fxHash3(vec3 p){p=fract(p*vec3(443.897,441.423,437.195));p+=dot(p,p.yzx+19.19);return fract((p.x+p.y)*p.z);}
-float noise(float x){
-  float i=floor(x);
-  float f=x-i;
-  float u=f*f*(3.0-2.0*f);
-  return (fxHash1(i)*(1.0-u)+fxHash1(i+1.0)*u)*2.0-1.0;
-}
-float noise(vec2 p){
-  vec2 i=floor(p);
-  vec2 f=fract(p);
-  vec2 u=f*f*(3.0-2.0*f);
-  float a=fxHash2(i);
-  float b=fxHash2(i+vec2(1.0,0.0));
-  float c=fxHash2(i+vec2(0.0,1.0));
-  float d=fxHash2(i+vec2(1.0,1.0));
-  return mix(mix(a,b,u.x),mix(c,d,u.x),u.y)*2.0-1.0;
-}
-float noise(vec3 p){
-  vec3 i=floor(p);
-  vec3 f=fract(p);
-  vec3 u=f*f*(3.0-2.0*f);
-  float a=fxHash3(i+vec3(0.0,0.0,0.0));
-  float b=fxHash3(i+vec3(1.0,0.0,0.0));
-  float c=fxHash3(i+vec3(0.0,1.0,0.0));
-  float d=fxHash3(i+vec3(1.0,1.0,0.0));
-  float e=fxHash3(i+vec3(0.0,0.0,1.0));
-  float f2=fxHash3(i+vec3(1.0,0.0,1.0));
-  float g=fxHash3(i+vec3(0.0,1.0,1.0));
-  float h=fxHash3(i+vec3(1.0,1.0,1.0));
-  return mix(mix(mix(a,b,u.x),mix(c,d,u.x),u.y),mix(mix(e,f2,u.x),mix(g,h,u.x),u.y),u.z)*2.0-1.0;
-}`;
-
-/**
- * Standard-tier (GLSL ES 3.00 / WebGL2) noise: same value-noise scaffold as
- * {@link FX_NOISE_GLSL_BASELINE_HELPER} (hash the containing cell's corners, Hermite-blend them),
- * but each corner is hashed with a real integer bit-scramble (Ken Perlin's classic `IntNoise`)
- * instead of a `sin`-hash - cheaper and free of `sin`'s precision loss at large coordinates. Only
- * legal where `int` has guaranteed 32-bit range and bitwise operators exist (GLSL ES 3.00; ES 1.00
- * has neither guarantee) - the reason this tier is `standardOnly`, not a style preference.
- */
-const FX_NOISE_GLSL_STANDARD_HELPER = `
-float fxIntHash1(int n){
-  int shifted=n<<13;
-  int mixed=shifted^n;
-  int squared=mixed*mixed;
-  int step1=squared*15731+mixed*789221;
-  int step2=step1*step1+1376312589;
-  int masked=step2&0x00ffffff;
-  return float(masked)/16777216.0;
-}
-float noise(float x){
-  int i=int(floor(x));
-  float f=x-floor(x);
-  float u=f*f*(3.0-2.0*f);
-  return (fxIntHash1(i)*(1.0-u)+fxIntHash1(i+1)*u)*2.0-1.0;
-}
-float noise(vec2 p){
-  vec2 fl=floor(p);
-  int ix=int(fl.x);
-  int iy=int(fl.y);
-  vec2 f=p-fl;
-  vec2 u=f*f*(3.0-2.0*f);
-  float a=fxIntHash1(ix+iy*57);
-  float b=fxIntHash1(ix+1+iy*57);
-  float c=fxIntHash1(ix+(iy+1)*57);
-  float d=fxIntHash1(ix+1+(iy+1)*57);
-  return mix(mix(a,b,u.x),mix(c,d,u.x),u.y)*2.0-1.0;
-}
-float noise(vec3 p){
-  vec3 fl=floor(p);
-  int ix=int(fl.x);
-  int iy=int(fl.y);
-  int iz=int(fl.z);
-  vec3 f=p-fl;
-  vec3 u=f*f*(3.0-2.0*f);
-  float a=fxIntHash1(ix+iy*57+iz*113);
-  float b=fxIntHash1(ix+1+iy*57+iz*113);
-  float c=fxIntHash1(ix+(iy+1)*57+iz*113);
-  float d=fxIntHash1(ix+1+(iy+1)*57+iz*113);
-  float e=fxIntHash1(ix+iy*57+(iz+1)*113);
-  float f2=fxIntHash1(ix+1+iy*57+(iz+1)*113);
-  float g=fxIntHash1(ix+(iy+1)*57+(iz+1)*113);
-  float h=fxIntHash1(ix+1+(iy+1)*57+(iz+1)*113);
-  return mix(mix(mix(a,b,u.x),mix(c,d,u.x),u.y),mix(mix(e,f2,u.x),mix(g,h,u.x),u.y),u.z)*2.0-1.0;
-}`;
-
-/**
- * The scalar (CPU/behavior) twin of {@link FX_NOISE_GLSL_STANDARD_HELPER}: JS has no `int` type
- * or ES-1.00-style bitwise restriction, so the JS form always uses the integer hash (matching
- * `glslStandard`, never `glslBaseline`) - keeping GLSL and JS symmetric on the cheaper/higher-
- * quality integer-hash primitive rather than simplex. `Math.imul` plus
- * `| 0` truncation at each step mirrors GLSL's 32-bit `int` wraparound so the two tracks agree.
- * Takes vector components as separate float args (see the `noise` case in `scalarize`).
- */
-export const FX_NOISE_JS_HELPER = `
-function fxIntHash1(n){
-  var shifted=(n<<13)|0;
-  var mixed=(shifted^n)|0;
-  var squared=Math.imul(mixed,mixed);
-  var step1=(Math.imul(squared,15731)+Math.imul(mixed,789221))|0;
-  var step2=(Math.imul(step1,step1)+1376312589)|0;
-  return (step2&0x00ffffff)/16777216.0;
-}
-function fxIntHash2(ix,iy){return fxIntHash1((ix+Math.imul(iy,57))|0);}
-function fxIntHash3(ix,iy,iz){return fxIntHash1((ix+Math.imul(iy,57)+Math.imul(iz,113))|0);}
-function fxNoise1(x){
-  var i=Math.floor(x);
-  var f=x-i;
-  var u=f*f*(3-2*f);
-  return (fxIntHash1(i)*(1-u)+fxIntHash1(i+1)*u)*2-1;
-}
-function fxNoise2(vx,vy){
-  var ix=Math.floor(vx),iy=Math.floor(vy);
-  var fx=vx-ix,fy=vy-iy;
-  var ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
-  var a=fxIntHash2(ix,iy),b=fxIntHash2(ix+1,iy),c=fxIntHash2(ix,iy+1),d=fxIntHash2(ix+1,iy+1);
-  var ab=a+(b-a)*ux,cd=c+(d-c)*ux;
-  return (ab+(cd-ab)*uy)*2-1;
-}
-function fxNoise3(vx,vy,vz){
-  var ix=Math.floor(vx),iy=Math.floor(vy),iz=Math.floor(vz);
-  var fx=vx-ix,fy=vy-iy,fz=vz-iz;
-  var ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy),uz=fz*fz*(3-2*fz);
-  var a=fxIntHash3(ix,iy,iz),b=fxIntHash3(ix+1,iy,iz);
-  var c=fxIntHash3(ix,iy+1,iz),d=fxIntHash3(ix+1,iy+1,iz);
-  var e=fxIntHash3(ix,iy,iz+1),f=fxIntHash3(ix+1,iy,iz+1);
-  var g=fxIntHash3(ix,iy+1,iz+1),h=fxIntHash3(ix+1,iy+1,iz+1);
-  var ab=a+(b-a)*ux,cd=c+(d-c)*ux,abcd=ab+(cd-ab)*uy;
-  var ef=e+(f-e)*ux,gh=g+(h-g)*ux,efgh=ef+(gh-ef)*uy;
-  return (abcd+(efgh-abcd)*uz)*2-1;
-}`;
-
-/**
- * Standard-tier `rand()`: the same shift/xor/multiply bit-mixing shape as {@link
- * FX_NOISE_GLSL_STANDARD_HELPER}'s `fxIntHash1`, under a distinct name (`fxRandHash1`, not
- * `fxIntHash1`) - the GLSL-standard printer dedups a function's helper by that function's own
- * name (`noise` vs `rand`), not by helper text, so reusing `fxIntHash1` verbatim here would emit
- * two conflicting `fxIntHash1` definitions whenever a graph calls both `noise` and `rand`.
- * `fxRandCounter` is an ordinary GLSL global: every shader invocation (one per particle) gets its
- * own fresh copy, reset to `0`, so it only decorrelates the several `rand()` calls *within* one
- * invocation - decorrelating across particles and across ticks is `gl_VertexID`/`u_fxRandSeed`'s
- * job. `u_fxRandSeed` is a contract with the standard-tier behavior assembler (not yet built): an
- * `int` uniform it must declare and the runtime must change every tick.
- */
-const FX_RAND_GLSL_STANDARD_HELPER = `
+const FX_RAND_GLSL_STANDARD_HELPER: FXHelperModule = {
+  key: "rand",
+  requires: [FX_GLSL_STANDARD_NOISE_HASH.module],
+  source: `
 int fxRandCounter = 0;
-float fxRandHash1(int n){
-  int shifted=n<<13;
-  int mixed=shifted^n;
-  int squared=mixed*mixed;
-  int step1=squared*15731+mixed*789221;
-  int step2=step1*step1+1376312589;
-  int masked=step2&0x00ffffff;
-  return float(masked)/16777216.0;
-}
 float fxNextRandom(){
   fxRandCounter+=1;
-  int combined=gl_VertexID+u_fxRandSeed*57+fxRandCounter*113;
-  return fxRandHash1(combined);
-}`;
-
-/**
- * Maximum `fbm` octaves. `octaves` is an ordinary runtime argument (a live, per-particle-variable
- * input in the graphs that use it, not a compile-time constant), so the loop bound is clamped hard
- * inside the helper itself - else a runaway value freezes the tab (JS) or blows the GPU's loop
- * budget (GLSL). Exported so a node exposing `octaves` as an editable pin can bound its UI to the
- * same limit the compiled loop actually enforces.
- */
-export const FX_FBM_MAX_OCTAVES = 8;
-
-/**
- * `fbm`'s two helpers are each fully self-contained (their own private 1D value-noise sampler,
- * under names - `fxFbmHash1`/`fxFbmNoise1` - that can't collide with `noise`'s `fxIntHash1`/
- * `fxHash1`). Deliberate, not an oversight: `fn.call("fbm", ...)` only auto-emits `fbm`'s own
- * helper (keyed by its own name); if this text instead called into `noise`'s separately-keyed
- * helper, that helper would only be present when some OTHER call in the same graph happens to also
- * pull it in - self-containment is what lets `fbm` work as an ordinary, tier-transparent registry
- * function with no extra wiring, the same as everything else in this file.
- */
-export const FX_FBM_JS_HELPER = `
-function fxFbmHash1(n){
-  var shifted=(n<<13)|0;
-  var mixed=(shifted^n)|0;
-  var squared=Math.imul(mixed,mixed);
-  var step1=(Math.imul(squared,15731)+Math.imul(mixed,789221))|0;
-  var step2=(Math.imul(step1,step1)+1376312589)|0;
-  return (step2&0x00ffffff)/16777216.0;
-}
-function fxFbmNoise1(x){
-  var i=Math.floor(x);
-  var f=x-i;
-  var u=f*f*(3-2*f);
-  return (fxFbmHash1(i)*(1-u)+fxFbmHash1(i+1)*u)*2-1;
-}
-function fxFbm(x, octaves) {
-  var n = Math.min(Math.max(Math.floor(octaves), 0), ${FX_FBM_MAX_OCTAVES.toString()});
-  var sum = 0, amp = 1, freq = 1;
-  for (var o = 0; o < n; o++) {
-    sum += fxFbmNoise1(x * freq) * amp;
-    amp *= 0.5;
-    freq *= 2;
-  }
-  return sum;
-}`;
-
-const FX_FBM_GLSL_STANDARD_HELPER = `
-float fxFbmHash1(int n){
-  int shifted=n<<13;
-  int mixed=shifted^n;
-  int squared=mixed*mixed;
-  int step1=squared*15731+mixed*789221;
-  int step2=step1*step1+1376312589;
-  int masked=step2&0x00ffffff;
-  return float(masked)/16777216.0;
-}
-float fxFbmNoise1(float x){
-  int i=int(floor(x));
-  float f=x-floor(x);
-  float u=f*f*(3.0-2.0*f);
-  return (fxFbmHash1(i)*(1.0-u)+fxFbmHash1(i+1)*u)*2.0-1.0;
-}
-float fxFbm(float x, float octaves){
-  int n=int(clamp(floor(octaves),0.0,${FX_FBM_MAX_OCTAVES.toString()}.0));
-  float sum=0.0;
-  float amp=1.0;
-  float freq=1.0;
-  for(int o=0;o<n;o++){
-    sum+=fxFbmNoise1(x*freq)*amp;
-    amp*=0.5;
-    freq*=2.0;
-  }
-  return sum;
-}`;
-
-/**
- * 3D-domain twin of {@link FX_FBM_JS_HELPER}: samples the full input position every octave
- * (via a self-contained `fxFbm3Noise3`, structurally identical to `noise`'s `fxNoise3` but under
- * its own private names for the same self-containment reason `fbm` needs one) instead of a single
- * scalar axis - so the field genuinely varies across all three input components, not just one.
- */
-export const FX_FBM3_JS_HELPER = `
-function fxFbm3Hash1(n){
-  var shifted=(n<<13)|0;
-  var mixed=(shifted^n)|0;
-  var squared=Math.imul(mixed,mixed);
-  var step1=(Math.imul(squared,15731)+Math.imul(mixed,789221))|0;
-  var step2=(Math.imul(step1,step1)+1376312589)|0;
-  return (step2&0x00ffffff)/16777216.0;
-}
-function fxFbm3Hash3(ix,iy,iz){return fxFbm3Hash1((ix+Math.imul(iy,57)+Math.imul(iz,113))|0);}
-function fxFbm3Noise3(vx,vy,vz){
-  var ix=Math.floor(vx),iy=Math.floor(vy),iz=Math.floor(vz);
-  var fx=vx-ix,fy=vy-iy,fz=vz-iz;
-  var ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy),uz=fz*fz*(3-2*fz);
-  var a=fxFbm3Hash3(ix,iy,iz),b=fxFbm3Hash3(ix+1,iy,iz);
-  var c=fxFbm3Hash3(ix,iy+1,iz),d=fxFbm3Hash3(ix+1,iy+1,iz);
-  var e=fxFbm3Hash3(ix,iy,iz+1),f=fxFbm3Hash3(ix+1,iy,iz+1);
-  var g=fxFbm3Hash3(ix,iy+1,iz+1),h=fxFbm3Hash3(ix+1,iy+1,iz+1);
-  var ab=a+(b-a)*ux,cd=c+(d-c)*ux,abcd=ab+(cd-ab)*uy;
-  var ef=e+(f-e)*ux,gh=g+(h-g)*ux,efgh=ef+(gh-ef)*uy;
-  return (abcd+(efgh-abcd)*uz)*2-1;
-}
-function fxFbm3(vx, vy, vz, octaves) {
-  var n = Math.min(Math.max(Math.floor(octaves), 0), ${FX_FBM_MAX_OCTAVES.toString()});
-  var sum = 0, amp = 1, freq = 1;
-  for (var o = 0; o < n; o++) {
-    sum += fxFbm3Noise3(vx * freq, vy * freq, vz * freq) * amp;
-    amp *= 0.5;
-    freq *= 2;
-  }
-  return sum;
-}`;
-
-const FX_FBM3_GLSL_STANDARD_HELPER = `
-float fxFbm3Hash1(int n){
-  int shifted=n<<13;
-  int mixed=shifted^n;
-  int squared=mixed*mixed;
-  int step1=squared*15731+mixed*789221;
-  int step2=step1*step1+1376312589;
-  int masked=step2&0x00ffffff;
-  return float(masked)/16777216.0;
-}
-float fxFbm3Hash3(int ix,int iy,int iz){return fxFbm3Hash1(ix+iy*57+iz*113);}
-float fxFbm3Noise3(vec3 p){
-  vec3 i=floor(p);
-  vec3 f=p-i;
-  vec3 u=f*f*(3.0-2.0*f);
-  int ix=int(i.x);
-  int iy=int(i.y);
-  int iz=int(i.z);
-  float a=fxFbm3Hash3(ix,iy,iz);
-  float b=fxFbm3Hash3(ix+1,iy,iz);
-  float c=fxFbm3Hash3(ix,iy+1,iz);
-  float d=fxFbm3Hash3(ix+1,iy+1,iz);
-  float e=fxFbm3Hash3(ix,iy,iz+1);
-  float f2=fxFbm3Hash3(ix+1,iy,iz+1);
-  float g=fxFbm3Hash3(ix,iy+1,iz+1);
-  float h=fxFbm3Hash3(ix+1,iy+1,iz+1);
-  return (mix(mix(mix(a,b,u.x),mix(c,d,u.x),u.y),mix(mix(e,f2,u.x),mix(g,h,u.x),u.y),u.z))*2.0-1.0;
-}
-float fxFbm3(vec3 p, float octaves){
-  int n=int(clamp(floor(octaves),0.0,${FX_FBM_MAX_OCTAVES.toString()}.0));
-  float sum=0.0;
-  float amp=1.0;
-  float freq=1.0;
-  for(int o=0;o<n;o++){
-    sum+=fxFbm3Noise3(p*freq)*amp;
-    amp*=0.5;
-    freq*=2.0;
-  }
-  return sum;
-}`;
+  return fxUnit(fxPcg(fxLattice(uvec3(uint(gl_VertexID),uint(u_fxRandSeed),uint(fxRandCounter)))));
+}`,
+};
 
 /**
  * `fx`-prefixed GLSL helpers for transpose/determinant/inverse (GLSL ES 1.00 has no matrix
@@ -607,28 +307,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     js: (args) => `(1.0 - ${args[0]})`,
   });
 
-  // Value noise, 1D/2D/3D: vector-in/scalar-out, so (like the reductions) it is NOT element-wise;
-  // the scalarizer splits the vector arg and re-emits a scalar `noise` call, printed as
-  // fxNoise1/2/3 by arity. GLSL overloads `noise(...)` by argument type (baseline: sin-hash,
-  // standard: integer-hash - see the two helpers above); JS always uses the integer-hash form
-  // (symmetric with `glslStandard`, since JS has none of ES-1.00's bitwise/int restrictions).
-  definitions.push({
-    name: "noise",
-    signatures: [
-      { args: ["float"], result: "float" },
-      { args: ["vec2"], result: "float" },
-      { args: ["vec3"], result: "float" },
-    ],
-    glslBaselineHelper: FX_NOISE_GLSL_BASELINE_HELPER,
-    glslStandardHelper: FX_NOISE_GLSL_STANDARD_HELPER,
-    jsHelper: FX_NOISE_JS_HELPER,
-    js: (args) =>
-      args.length === 1
-        ? `fxNoise1(${args[0]})`
-        : args.length === 2
-          ? `fxNoise2(${args[0]}, ${args[1]})`
-          : `fxNoise3(${args[0]}, ${args[1]}, ${args[2]})`,
-  });
+  definitions.push(...noiseFunctionDefinitions());
 
   // A fresh draw in [0, 1), zero graph-authored args - decorrelation across the several `rand()`
   // calls one node's build() can make is a shader-local concern (a `fxRandCounter` global,
@@ -654,32 +333,6 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     signatures: [{ args: ["float"], result: "float" }],
     glslBaseline: (args) => `pow(${args[0]}, 1.0 / 3.0)`,
     js: (args) => `Math.cbrt(${args[0]})`,
-  });
-
-  // Fractal Brownian motion over 1D value noise (gain 0.5, lacunarity 2), `octaves` a runtime
-  // argument. `standardOnly`: no baseline-tier form exists (nothing calls it under that tier yet).
-  definitions.push({
-    name: "fbm",
-    signatures: [{ args: ["float", "float"], result: "float" }],
-    standardOnly: true,
-    jsHelper: FX_FBM_JS_HELPER,
-    glslStandardHelper: FX_FBM_GLSL_STANDARD_HELPER,
-    js: (args) => `fxFbm(${args[0]}, ${args[1]})`,
-    glslStandard: (args) => `fxFbm(${args[0]}, ${args[1]})`,
-  });
-
-  // 3D-domain twin of `fbm`: vector-in/scalar-out like `noise`, so the scalarizer flattens the
-  // `vec3` arg into separate scalar args for JS (see the "fbm3" case in `scalarize.Internal.ts`);
-  // GLSL keeps the native `vec3` arg, since GLSL has real vector types. `standardOnly`: same reason
-  // as `fbm` - no baseline-tier form exists yet.
-  definitions.push({
-    name: "fbm3",
-    signatures: [{ args: ["vec3", "float"], result: "float" }],
-    standardOnly: true,
-    jsHelper: FX_FBM3_JS_HELPER,
-    glslStandardHelper: FX_FBM3_GLSL_STANDARD_HELPER,
-    js: (args) => `fxFbm3(${args[0]}, ${args[1]}, ${args[2]}, ${args[3]})`,
-    glslStandard: (args) => `fxFbm3(${args[0]}, ${args[1]})`,
   });
 
   // Vector reductions: expanded by the scalarizer, never printed as scalar JS.

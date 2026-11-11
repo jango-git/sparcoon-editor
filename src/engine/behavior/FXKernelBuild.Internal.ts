@@ -5,6 +5,7 @@ import type {
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
+import { killStatementJS } from "./FXKernelLifecycle.Internal";
 import { bufferAccess, bufferArrayName, bufferBaseName } from "./FXKernelShared.Internal";
 import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
 
@@ -58,6 +59,8 @@ function phaseLoopBody(phase: FXCompiledKernelPhase): string {
     ...phase.body.map((line) => `  ${line}`),
     writeStatements(phase.writes),
     indented(phase.epilogue),
+    // Last, so a kill sees this update's writes.
+    ...(phase.kill === undefined ? [] : [`  ${killStatementJS(phase.kill)}`]),
   ].join("\n");
 }
 

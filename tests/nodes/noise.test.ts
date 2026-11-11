@@ -5,7 +5,8 @@ import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
 import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
-import { ref } from "../../src/engine/core/ir/FXExprBuilder";
+import { printGLSLStandard } from "../../src/engine/core/codegen/printGLSLStandard.Internal";
+import { construct, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import { call } from "../helpers/exprCall";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
@@ -52,15 +53,68 @@ describe("noise node - IR shape", () => {
     expect(printed.helpers.get("noise")).toContain("float noise(vec3 p)");
   });
 
-  it("scalarizes fbm3(vec3, octaves) into a single scalar fxFbm3 call with 4 flat args", () => {
-    const expr = call(
-      "fbm3",
-      ref("local", "v", FX_VALUE_TYPES.vec3),
-      ref("local", "o", FX_VALUE_TYPES.float),
-    );
+  it("scalarizes fbm(vec3, octaves, lacunarity, gain) into one flat fxFractal3 call", () => {
+    const o = ref("local", "o", FX_VALUE_TYPES.float);
+    const expr = call("fbm", ref("local", "v", FX_VALUE_TYPES.vec3), o, o, o);
     const components = scalarize(expr);
     expect(components).toHaveLength(1);
-    expect(printJS(components[0], FX_FUNCTIONS).code).toBe("fxFbm3(v_x, v_y, v_z, o)");
+    expect(printJS(components[0], FX_FUNCTIONS).code).toBe("fxFractal3(v_x, v_y, v_z, o, o, o)");
+  });
+
+  it("scalarizes a vector-result call into one call per component, index last", () => {
+    const o = ref("local", "o", FX_VALUE_TYPES.float);
+    const components = scalarize(
+      call("curlOctaves2", ref("local", "v", FX_VALUE_TYPES.vec2), o, o),
+    );
+    expect(components.map((component) => printJS(component, FX_FUNCTIONS).code)).toEqual([
+      "fxCurl2(v_x, v_y, 2, o, o, 0)",
+      "fxCurl2(v_x, v_y, 2, o, o, 1)",
+    ]);
+  });
+
+  it("unrolls fixed-octave fBm and curl in GLSL: no loop, one sample block per octave", () => {
+    const v = ref("local", "v", FX_VALUE_TYPES.vec3);
+    const o = ref("local", "o", FX_VALUE_TYPES.float);
+    for (const printer of [printGLSLBaseline, printGLSLStandard]) {
+      const fbm = printer(call("fbmOctaves3", v, o, o), FX_FUNCTIONS);
+      expect(fbm.code).toBe("fxFbmOctaves3(v, o, o)");
+      const fbmSource = fbm.helpers.get("fbmOctaves3") ?? "";
+      expect(fbmSource).not.toContain("for(");
+      expect(
+        fbmSource
+          .split("\n")
+          .find((line) => line.includes("vec3 p"))
+          ?.match(/noise\(p\)/g),
+      ).toHaveLength(3);
+      const curlSource =
+        printer(call("curlOctaves2", v, o, o), FX_FUNCTIONS).helpers.get("curlOctaves2") ?? "";
+      expect(curlSource).not.toContain("for(");
+    }
+  });
+
+  it("emits shared noise helpers once, dependencies first", () => {
+    const v = ref("local", "v", FX_VALUE_TYPES.vec3);
+    const o = ref("local", "o", FX_VALUE_TYPES.float);
+    const printed = printGLSLStandard(
+      construct(FX_VALUE_TYPES.vec2, call("noise", v), call("fbm", v, o, o, o)),
+      FX_FUNCTIONS,
+    );
+    expect([...printed.helpers.keys()]).toEqual(["fxHash", "noise", "fbm"]);
+    const js = printJS(scalarize(call("curlOctaves1", v, o, o))[0], FX_FUNCTIONS);
+    expect([...js.helpers.keys()]).toEqual(["fxHash", "fxNoised", "curl"]);
+  });
+
+  it("prints voronoi variants per tier: float hashes on baseline, PCG on standard", () => {
+    const v = ref("local", "v", FX_VALUE_TYPES.vec2);
+    const j = ref("local", "j", FX_VALUE_TYPES.float);
+    const expr = call("voronoiFastEuclidean", v, j);
+    const baseline = printGLSLBaseline(expr, FX_FUNCTIONS);
+    expect(baseline.code).toBe("fxVoronoiFastEuclidean(v, j)");
+    expect(baseline.helpers.get("fxHash")).toContain("vec2 fxHash22(vec2 p)");
+    expect(baseline.helpers.get("voronoiFastEuclidean")).toContain("fxHash22(t)");
+    const standard = printGLSLStandard(expr, FX_FUNCTIONS);
+    expect(standard.helpers.get("voronoiFastEuclidean")).toContain("fxUnit2(t)");
+    expect(printJS(scalarize(expr)[2], FX_FUNCTIONS).code).toBe("fxVoronoi2(v_x, v_y, j, 0, 0, 2)");
   });
 });
 
@@ -194,5 +248,155 @@ describe("curl-noise node", () => {
     const one = evalCurl([2.1, 0.6, -1.4], { octaves: "1" });
     const four = evalCurl([2.1, 0.6, -1.4], { octaves: "4" });
     expect(four).not.toEqual(one);
+  });
+
+  it("matches the central-difference curl of the noise potential (analytic gradients)", () => {
+    const h = 1e-4;
+    const derivative = (point: readonly number[], axis: number): number => {
+      const plus = [...point];
+      const minus = [...point];
+      plus[axis] += h;
+      minus[axis] -= h;
+      return (evalNoise(plus) - evalNoise(minus)) / (2 * h);
+    };
+    const shifted = (point: readonly number[], offset: readonly number[]): number[] =>
+      point.map((value, i) => value + offset[i]);
+
+    const p2 = [1.37, -0.61];
+    const [cx, cy] = evalCurl(p2);
+    expect(cx).toBeCloseTo(derivative(p2, 1), 3);
+    expect(cy).toBeCloseTo(-derivative(p2, 0), 3);
+
+    const p3 = [0.73, 2.29, -1.18];
+    const psi2 = shifted(p3, [31.416, 12.703, 5.906]);
+    const psi3 = shifted(p3, [-43.28, 27.13, -19.87]);
+    const curl = evalCurl(p3);
+    expect(curl[0]).toBeCloseTo(derivative(psi3, 1) - derivative(psi2, 2), 3);
+    expect(curl[1]).toBeCloseTo(derivative(p3, 2) - derivative(psi3, 0), 3);
+    expect(curl[2]).toBeCloseTo(derivative(psi2, 0) - derivative(p3, 1), 3);
+  });
+});
+
+/** constant(position) -> voronoi(params) -> one output into positionX, per output (JS backend). */
+function evalVoronoi(
+  position: readonly number[],
+  params: Record<string, unknown> = {},
+): { f1: number; f2: number; edge: number; cell: number } {
+  const type = position.length === 2 ? "vec2" : "vec3";
+  const read = (output: string): number =>
+    runKernel(
+      graphOf(
+        { p: reg.create("constant", { value: position, type }), v: reg.create("voronoi", params) },
+        [edge("p", "out", "v", "p")],
+        [bind("positionX", "v", output)],
+      ),
+    ).position[0];
+  return { f1: read("f1"), f2: read("f2"), edge: read("edge"), cell: read("cell") };
+}
+
+describe("voronoi node", () => {
+  const samples = Array.from({ length: 30 }, (_, i) => [
+    i * 0.731 - 7.3,
+    i * 0.417 + 2.1,
+    i * -0.29,
+  ]);
+
+  it("orders F1 <= F2, edge = F2 - F1 >= 0, cell in [0, 1)", () => {
+    for (const metric of ["euclidean", "manhattan", "chebyshev"]) {
+      for (const sample of samples) {
+        for (const position of [sample.slice(0, 2), sample]) {
+          const v = evalVoronoi(position, { metric });
+          expect(v.f1).toBeGreaterThanOrEqual(0);
+          expect(v.f2).toBeGreaterThanOrEqual(v.f1);
+          expect(v.edge).toBeCloseTo(v.f2 - v.f1, 6);
+          expect(v.cell).toBeGreaterThanOrEqual(0);
+          expect(v.cell).toBeLessThan(1);
+        }
+      }
+    }
+  });
+
+  it("fast quality finds the same nearest point as full for moderate jitter", () => {
+    for (const sample of samples) {
+      for (const position of [sample.slice(0, 2), sample]) {
+        const fast = evalVoronoi(position, { quality: "fast", jitter: 0.5 });
+        const full = evalVoronoi(position, { quality: "full", jitter: 0.5 });
+        expect(fast.f1).toBeCloseTo(full.f1, 9);
+        expect(fast.cell).toBe(full.cell);
+      }
+    }
+  });
+
+  it("zero jitter is the regular grid of cell centers", () => {
+    const v = evalVoronoi([3.5, -1.5], { jitter: 0 });
+    expect(v.f1).toBeCloseTo(0, 9);
+    expect(v.f2).toBeCloseTo(1, 9);
+  });
+});
+
+describe("hash node", () => {
+  /** hash(params) fed `seed` (a float constant, or the particle id when omitted) -> position. */
+  function evalHash(params: Record<string, unknown>, seed?: number, id = 0): number[] {
+    const nodes = { h: reg.create("hash", params) };
+    const graph =
+      seed === undefined
+        ? graphOf(nodes, [], [bind("position", "h", "out")])
+        : graphOf(
+            { ...nodes, s: reg.create("constant", { value: seed }) },
+            [edge("s", "out", "h", "seed")],
+            [bind("position", "h", "out")],
+          );
+    return [...runKernel(graph, { state: { lifecycle: [0, 0, id] } }).position];
+  }
+
+  it("is stable per seed, in [0, 1), and decorrelates neighbouring seeds", () => {
+    const values = Array.from({ length: 200 }, (_, i) => evalHash({}, i * 1e-4)[0]);
+    expect(evalHash({}, 0.0123)).toEqual(evalHash({}, 0.0123));
+    for (const value of values) {
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThan(1);
+    }
+    // Seeds 1e-4 apart: a smooth function would move by tiny steps, a hash jumps anywhere.
+    const steps = values.slice(1).map((value, i) => Math.abs(value - (values[i] ?? 0)));
+    expect(steps.reduce((sum, step) => sum + step, 0) / steps.length).toBeGreaterThan(0.2);
+  });
+
+  it("hashes the particle id when the seed is unconnected", () => {
+    expect(evalHash({}, undefined, 7)).toEqual(evalHash({}, 7));
+    expect(evalHash({}, undefined, 7)).not.toEqual(evalHash({}, undefined, 8));
+  });
+
+  it("gives another draw for another salt, and maps vector components into [min, max)", () => {
+    expect(evalHash({ salt: 1 }, 3)[0]).not.toBe(evalHash({ salt: 0 }, 3)[0]);
+    const [x, y, z] = evalHash({ type: "vec3", min: [-1, 2, 5], max: [1, 3, 5] }, 3);
+    expect(x).toBeGreaterThanOrEqual(-1);
+    expect(x).toBeLessThan(1);
+    expect(y).toBeGreaterThanOrEqual(2);
+    expect(y).toBeLessThan(3);
+    expect(z).toBe(5);
+    // The first component of a wider hash is the scalar hash of the same seed and salt.
+    expect((x + 1) / 2).toBeCloseTo(evalHash({}, 3)[0], 6);
+  });
+
+  it("splats scalar ranges across a vector type, its defaults too", () => {
+    // The default max (1) must cover every component, not pad to (1, 0, 0).
+    const draws = Array.from({ length: 50 }, (_, i) => evalHash({ type: "vec3" }, i));
+    expect(draws.some(([, y = 0, z = 0]) => y > 0 && z > 0)).toBe(true);
+    const [x, y, z] = evalHash({ type: "vec3", min: 4, max: 4 }, 1);
+    expect([x, y, z]).toEqual([4, 4, 4]);
+  });
+
+  it("prints per tier: Hoskins' float hash on baseline, PCG of the float bits on standard", () => {
+    const s = ref("local", "s", FX_VALUE_TYPES.vec3);
+    const salt = ref("local", "salt", FX_VALUE_TYPES.float);
+    const expr = call("seedHash2", s, salt);
+    const baseline = printGLSLBaseline(expr, FX_FUNCTIONS);
+    expect(baseline.code).toBe("fxSeedHash2(s, salt)");
+    expect(baseline.helpers.get("seedHash")).toContain("fxHash44(vec4(s,salt)).xy");
+    const standard = printGLSLStandard(expr, FX_FUNCTIONS);
+    expect(standard.helpers.get("seedHash")).toContain("floatBitsToUint(s)");
+    expect(printJS(scalarize(expr)[1], FX_FUNCTIONS).code).toBe(
+      "fxSeedHash2(s_x, s_y, s_z, salt, 1)",
+    );
   });
 });

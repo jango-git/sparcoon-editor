@@ -40,14 +40,16 @@ import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBund
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
 import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
 import {
-  FX_FBM3_JS_HELPER,
-  FX_FBM_JS_HELPER,
   FX_FRACT_HELPER,
   FX_MIX_HELPER,
   FX_MOD_HELPER,
-  FX_NOISE_JS_HELPER,
   FX_SMOOTHSTEP_HELPER,
 } from "../engine/core/ir/FXFunctions.Internal";
+import { FX_JS_NOISE_HASH } from "../engine/core/ir/noise/FXNoiseHash.Internal";
+import { FX_JS_NOISE, FX_JS_NOISED } from "../engine/core/ir/noise/FXValueNoise.Internal";
+import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
+import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
+import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import type { FXBufferLayout, FXGeometrySource } from "sparcoon";
 import { fxMeshRenderBudget } from "sparcoon/editor";
@@ -86,13 +88,14 @@ const HELPER_IMPORT_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
   [FX_MOD_HELPER, ["fxMod"]],
   [FX_MIX_HELPER, ["fxMix"]],
   [FX_SMOOTHSTEP_HELPER, ["fxSmoothstep"]],
-  [FX_NOISE_JS_HELPER, ["fxNoise1", "fxNoise2", "fxNoise3"]],
   [SAMPLE_LUT_HELPER_SOURCE, ["fxSampleLut"]],
-  // fxFbm's editor-side helper is self-contained (own private fxFbmHash1/fxFbmNoise1, not sharing
-  // fxNoise1's) but numerically identical to sparcoon's fxFbm - only the exported name matters here.
-  [FX_FBM_JS_HELPER, ["fxFbm"]],
-  // Same self-contained-but-numerically-identical relationship as fxFbm, for its 3D-domain twin.
-  [FX_FBM3_JS_HELPER, ["fxFbm3"]],
+  // Noise dependencies the kernel body never calls directly: sparcoon keeps them module-private.
+  [FX_JS_NOISE_HASH.source, []],
+  [FX_JS_NOISED.source, []],
+  [FX_JS_NOISE.source, ["fxNoise1", "fxNoise2", "fxNoise3"]],
+  [FX_JS_FBM.source, ["fxFractal1", "fxFractal2", "fxFractal3"]],
+  [FX_JS_CURL.source, ["fxCurl2", "fxCurl3"]],
+  [FX_JS_VORONOI.source, ["fxVoronoi2", "fxVoronoi3"]],
 ]);
 
 export function helperImportNames(source: string): readonly string[] {

@@ -38,6 +38,17 @@ export function finiteVector(where: string, raw: unknown, width: number): readon
 }
 
 /**
+ * A fixed-`width` vector, or a single finite number splatted across it - the same rule as a wired
+ * scalar on a vector input. Returns a fresh array.
+ */
+export function finiteVectorOrSplat(where: string, raw: unknown, width: number): readonly number[] {
+  if (typeof raw === "number") {
+    return new Array<number>(width).fill(finiteScalar(where, raw));
+  }
+  return finiteVector(where, raw, width);
+}
+
+/**
  * Validates a finite scalar or 1-4 component vector, no fixed width - for a generic `"T"`
  * editable input with no sibling `valueType` hint (e.g. `binary-op`'s `a`/`b`), whose true
  * width is only known from the graph at build time (`editableInputLiteral` pads/truncates it).

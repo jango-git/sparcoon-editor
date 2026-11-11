@@ -5,9 +5,11 @@ import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { VELOCITY_INPUT } from "./common";
 
 /**
- * Standard-library collision behavior nodes (update phase). A collision node returns only a
- * corrected velocity (the response); wire it back to the velocity slot and let `integrate-motion`
- * advance position. `restitution`/`friction` are `saturate`d so a wired-in value stays in `[0, 1]`.
+ * Standard-library collision behavior nodes (update phase). A collision node returns a corrected
+ * velocity (the response) - wire it back to the velocity slot and let `integrate-motion` advance
+ * position - and `contact`, 1 on a step the response applies and 0 otherwise, e.g. to wire into
+ * the update sink's `kill`. `restitution`/`friction` are `saturate`d so a wired-in value stays in
+ * `[0, 1]`.
  *
  * Every collider differs only in how it finds the contact - an outward unit normal and the signed
  * distance of the particle's center to the surface - and shares {@link bounce} for the response.
@@ -24,7 +26,8 @@ const VEC2 = FX_VALUE_TYPES.vec2;
  *
  * Cost: restitution/friction saturate (2) + normalVelocity dot (5) + the normal/tangent
  * split-and-reflect response (velocityNormal(3) + velocityTangent(3) + response(10) = 16) +
- * penetrating/approaching compares (2) + the nested vec3 select gating (6) = 31.
+ * penetrating/approaching compares (2) + the nested vec3 select gating (6) + the contact mask's
+ * nested scalar selects (2) = 33.
  */
 function bounce(
   prefix: string,
@@ -32,7 +35,7 @@ function bounce(
   contact: { readonly unitNormal: FXExpr; readonly signedDistance: FXExpr },
   local: (hint: string, expr: FXExpr) => FXExpr,
   fn: FXExprBuilderApi,
-): FXExpr {
+): { readonly velocity: FXExpr; readonly contact: FXExpr } {
   const velocity = inputs["velocity"];
   const restitution = fn.call("saturate", inputs["restitution"]);
   const friction = fn.call("saturate", inputs["friction"]);
@@ -50,11 +53,17 @@ function bounce(
 
   const penetrating = fn.lt(contact.signedDistance, inputs["radius"]);
   const approaching = fn.lt(normalVelocity, fn.lit(0));
-  return fn.select(penetrating, fn.select(approaching, response, velocity), velocity);
+  return {
+    velocity: fn.select(penetrating, fn.select(approaching, response, velocity), velocity),
+    contact: fn.select(penetrating, fn.select(approaching, fn.lit(1), fn.lit(0)), fn.lit(0)),
+  };
 }
 
 /** Bounce cost (see {@link bounce}) a collider's own contact cost is added to. */
-const BOUNCE_COST = 31;
+const BOUNCE_COST = 33;
+
+/** The outputs every collider shares (see {@link bounce}). */
+const COLLIDER_OUTPUTS = { velocity: { type: "vec3" }, contact: { type: "float" } } as const;
 
 /** `value`, or 1 where it is exactly 0: a divisor that keeps a degenerate direction finite. */
 function nonZero(value: FXExpr, fn: FXExprBuilderApi): FXExpr {
@@ -82,7 +91,7 @@ export const fxPlaneCollision = defineNode({
     restitution: { type: "float", value: 0.5, min: 0, max: 1, step: 0.05 },
     friction: { type: "float", value: 0, min: 0, max: 1, step: 0.05 },
   },
-  outputs: { velocity: { type: "vec3" } },
+  outputs: COLLIDER_OUTPUTS,
   params: {},
   // Flat: normal normalize (length(7)+guard(2)+divide(6)=15) + signed distance (sub+dot=8) = 23,
   // plus the bounce.
@@ -100,7 +109,7 @@ export const fxPlaneCollision = defineNode({
       "pc_sd",
       fn.call("dot", fn.sub(inputs["position"], inputs["point"]), unitNormal),
     );
-    return { velocity: bounce("pc", inputs, { unitNormal, signedDistance }, local, fn) };
+    return bounce("pc", inputs, { unitNormal, signedDistance }, local, fn);
   },
 });
 
@@ -126,7 +135,7 @@ export const fxSphereCollision = defineNode({
     restitution: { type: "float", value: 0.5, min: 0, max: 1, step: 0.05 },
     friction: { type: "float", value: 0, min: 0, max: 1, step: 0.05 },
   },
-  outputs: { velocity: { type: "vec3" } },
+  outputs: COLLIDER_OUTPUTS,
   params: {},
   // Flat: offset sub (3) + distance length (7) + zero-distance guard/select (2) + normal divide
   // (6) + fallback-normal select (6) + signed distance sub (1) = 25, plus the bounce.
@@ -146,7 +155,7 @@ export const fxSphereCollision = defineNode({
     // Signed distance to the sphere surface (negative once the particle center is inside the
     // sphere).
     const signedDistance = local("sc_sd", fn.sub(distance, inputs["sphereRadius"]));
-    return { velocity: bounce("sc", inputs, { unitNormal, signedDistance }, local, fn) };
+    return bounce("sc", inputs, { unitNormal, signedDistance }, local, fn);
   },
 });
 
@@ -175,7 +184,7 @@ export const fxBoxCollision = defineNode({
     restitution: { type: "float", value: 0.5, min: 0, max: 1, step: 0.05 },
     friction: { type: "float", value: 0, min: 0, max: 1, step: 0.05 },
   },
-  outputs: { velocity: { type: "vec3" } },
+  outputs: COLLIDER_OUTPUTS,
   params: {},
   // Flat: local offset sub (3) + per-axis clamp to the box (3) + surface offset sub (3) + distance
   // length (7) + zero-distance guard/select (2) + normal divide (6) + fallback-normal select (6) =
@@ -204,9 +213,7 @@ export const fxBoxCollision = defineNode({
     );
     // `distance` already folds in the box's own half-extents (via the clamp), so it doubles as
     // the signed distance to the surface.
-    return {
-      velocity: bounce("bc", inputs, { unitNormal, signedDistance: distance }, local, fn),
-    };
+    return bounce("bc", inputs, { unitNormal, signedDistance: distance }, local, fn);
   },
 });
 
@@ -243,7 +250,7 @@ export const fxConeCollision = defineNode({
     restitution: { type: "float", value: 0.5, min: 0, max: 1, step: 0.05 },
     friction: { type: "float", value: 0, min: 0, max: 1, step: 0.05 },
   },
-  outputs: { velocity: { type: "vec3" } },
+  outputs: COLLIDER_OUTPUTS,
   params: {},
   // Flat: the cone's frame - dimension clamps (3) + axis normalize with a +Y fallback (15+6=21)
   // + axial split (offset(3)+dot(5)+radial sub/mul(6)+length(7)+guard(2)+divide(6)=29) + the
@@ -353,7 +360,7 @@ export const fxConeCollision = defineNode({
         fn.mul(axisUnit, fn.swizzle(normal2D, "y")),
       ),
     );
-    return { velocity: bounce("cc", inputs, { unitNormal, signedDistance }, local, fn) };
+    return bounce("cc", inputs, { unitNormal, signedDistance }, local, fn);
   },
 });
 

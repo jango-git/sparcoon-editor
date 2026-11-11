@@ -8,7 +8,11 @@ import type { FXSocketDescriptor } from "../socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, literalGenericType, resolveValueType } from "../socket/FXValueType";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
-import { finiteScalar, finiteScalarOrVector, finiteVector } from "./paramValidators.Internal";
+import {
+  finiteScalar,
+  finiteScalarOrVector,
+  finiteVectorOrSplat,
+} from "./paramValidators.Internal";
 import type { FXBehaviorPhaseName, FXNodeCost, FXRenderStageName } from "./defineNode";
 import type { FXSocketSpec } from "./FXSocketSpec";
 import { isTargetInputDefault, toSocketDescriptors } from "./socketDescriptors.Internal";
@@ -372,11 +376,16 @@ export class FXDescriptorNode extends FXGraphNode {
     }
   }
 
-  /** Reshapes a `generic` value param to the node's current generic width, padding with 0. */
+  /**
+   * Reshapes a `generic` value param to the node's current generic width: a scalar splats, a
+   * vector pads with 0 or truncates.
+   */
   private reshapeGenericValue(value: unknown): number | readonly number[] {
     const width = this.currentGenericWidth();
-    const source =
-      typeof value === "number" ? [value] : ((value as readonly number[] | undefined) ?? []);
+    if (typeof value === "number") {
+      return width === 1 ? value : new Array<number>(width).fill(value);
+    }
+    const source = (value as readonly number[] | undefined) ?? [];
     if (width === 1) {
       return source[0] ?? 0;
     }
@@ -427,8 +436,9 @@ export class FXDescriptorNode extends FXGraphNode {
 
   /**
    * Coerces a raw editable-input override to the socket's value type (a generic `"T"`
-   * socket's width follows the sibling `valueType` param). A scalar enforces `min`/`max`,
-   * rejecting a runaway snapshot value as `bad-param`; on a vector they stay editor hints.
+   * socket's width follows the sibling `valueType` param); a single number splats across a vector.
+   * A scalar enforces `min`/`max`, rejecting a runaway snapshot value as `bad-param`; on a vector
+   * they stay editor hints.
    */
   private coerceSocketValue(
     key: string,
@@ -447,7 +457,7 @@ export class FXDescriptorNode extends FXGraphNode {
         : resolveValueType(specification.type).components;
     return width === 1
       ? finiteScalar(where, raw, specification.min, specification.max)
-      : finiteVector(where, raw, width);
+      : finiteVectorOrSplat(where, raw, width);
   }
 
   /**
@@ -488,11 +498,11 @@ export class FXDescriptorNode extends FXGraphNode {
         // Width comes from the declared type, not the default's length - a mismatch is
         // rejected at define time, but deriving it here keeps coerce correct anyway.
         const expected = specification.type === "vec2" ? 2 : specification.type === "vec3" ? 3 : 4;
-        return finiteVector(where, raw, expected);
+        return finiteVectorOrSplat(where, raw, expected);
       }
       case "generic": {
         const width = this.currentGenericWidth();
-        return width === 1 ? finiteScalar(where, raw) : finiteVector(where, raw, width);
+        return width === 1 ? finiteScalar(where, raw) : finiteVectorOrSplat(where, raw, width);
       }
       case "curve": {
         // `typeof null === "object"` too; `!raw` excludes exactly that case without writing

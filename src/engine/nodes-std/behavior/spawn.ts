@@ -2,7 +2,8 @@ import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition, FXExprBuilderApi } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
-import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
+import { FX_VALUE_TYPES, NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
+import { RANDOM_RANGE } from "../shared/noise";
 import { rand, TWO_PI } from "./common";
 
 /**
@@ -386,7 +387,10 @@ export const fxInitialVelocity = defineNode({
   },
 });
 
-/** A fresh per-particle random in [0, 1). Store it into a `seed` attribute to persist it. */
+/**
+ * A fresh per-particle random in `[min, max)`, each component drawn independently. Store it into
+ * a `seed` attribute to persist it, or use `hash` for a value stable per particle.
+ */
 export const fxRandom = defineNode({
   type: "random",
   domain: "behavior",
@@ -394,11 +398,19 @@ export const fxRandom = defineNode({
   // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "source",
-  inputs: {},
-  outputs: { out: { type: "float" } },
-  params: {},
-  cost: 2,
-  build: ({ fn }) => ({ out: rand(fn) }),
+  generic: { constraint: NUMERIC_VALUE_TYPES },
+  inputs: RANDOM_RANGE.inputs,
+  outputs: { out: { type: "T" } },
+  params: RANDOM_RANGE.params,
+  // Per component: a random draw (~2) + a mix (~3).
+  cost: ({ resolvedT }) => 5 * resolvedT.components,
+  build: ({ inputs, resolvedT, fn }) => {
+    const unit =
+      resolvedT.components === 1
+        ? rand(fn)
+        : fn.construct(resolvedT, ...Array.from({ length: resolvedT.components }, () => rand(fn)));
+    return { out: fn.call("mix", inputs["min"], inputs["max"], unit) };
+  },
 });
 
 /** All standard behavior spawn node definitions. */

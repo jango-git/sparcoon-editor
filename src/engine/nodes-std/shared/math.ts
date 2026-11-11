@@ -5,7 +5,7 @@ import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType"
 import { NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { fxColorRamp, fxCombineColor, fxHslAdjust, fxSplitColor } from "./color";
 import { fxRamp } from "./curveBake";
-import { fxCurlNoise, fxNoise } from "./noise";
+import { fxCurlNoise, fxHash, fxNoise, fxVoronoi } from "./noise";
 
 /**
  * Standard-library **type-polymorphic** math nodes, shared by the render and behavior backends.
@@ -337,6 +337,58 @@ export const fxMix = defineNode({
   build: ({ inputs, fn }) => ({ out: fn.call("mix", inputs["a"], inputs["b"], inputs["t"]) }),
 });
 
+const COMPARISONS = [
+  "less",
+  "less-equal",
+  "greater",
+  "greater-equal",
+  "equal",
+  "not-equal",
+] as const;
+type FXComparison = (typeof COMPARISONS)[number];
+
+/** `out = (a op b) ? ifTrue : ifFalse`. Branchless: both values are always computed. */
+export const fxSelect = defineNode({
+  type: "select",
+  domain: "shared",
+  stage: "param",
+  phase: "param",
+  category: "math",
+  generic: { constraint: NUMERIC },
+  inputs: {
+    a: { type: "float", value: 0 },
+    b: { type: "float", value: 0.5 },
+    ifTrue: { type: "T", required: true, value: 1 },
+    ifFalse: { type: "T", required: true, value: 0 },
+  },
+  outputs: { out: { type: "T" } },
+  params: {
+    op: { kind: "structural", type: "enum", options: COMPARISONS, default: "greater" },
+  },
+  // One comparison + a select per component.
+  cost: ({ resolvedT }) => 1 + resolvedT.components,
+  build: ({ inputs, params, fn }) => {
+    const a = inputs["a"];
+    const b = inputs["b"];
+    const ifTrue = inputs["ifTrue"];
+    const ifFalse = inputs["ifFalse"];
+    switch (params.op as FXComparison) {
+      case "less":
+        return { out: fn.select(fn.lt(a, b), ifTrue, ifFalse) };
+      case "less-equal":
+        return { out: fn.select(fn.le(a, b), ifTrue, ifFalse) };
+      case "greater":
+        return { out: fn.select(fn.gt(a, b), ifTrue, ifFalse) };
+      case "greater-equal":
+        return { out: fn.select(fn.ge(a, b), ifTrue, ifFalse) };
+      case "equal":
+        return { out: fn.select(fn.eq(a, b), ifTrue, ifFalse) };
+      case "not-equal":
+        return { out: fn.select(fn.eq(a, b), ifFalse, ifTrue) };
+    }
+  },
+});
+
 /** GLSL `smoothstep(edge0, edge1, x)`; scalar edges default to 0/1. */
 export const fxSmoothstep = defineNode({
   type: "smoothstep",
@@ -494,6 +546,51 @@ export const fxLength = defineNode({
   build: ({ inputs, fn }) => ({ out: fn.call("length", inputs["v"]) }),
 });
 
+/** `out = length(a - b)` - the Euclidean distance between two points. */
+export const fxDistance = defineNode({
+  type: "distance",
+  domain: "shared",
+  stage: "param",
+  phase: "param",
+  category: "math",
+  generic: { constraint: VECTORS },
+  inputs: {
+    a: { type: "T", required: true, value: 0 },
+    b: { type: "T", required: true, value: 0 },
+  },
+  outputs: { out: { type: "float" } },
+  params: {},
+  // N subtracts + `fxLength`.
+  cost: ({ resolvedT }) => 3 * resolvedT.components + 1,
+  build: ({ inputs, fn }) => ({
+    out: fn.call("length", fn.sub(inputs["a"], inputs["b"])),
+  }),
+});
+
+/** `out = i - 2 * dot(n, i) * n` - `i` mirrored about the plane with unit normal `n`. */
+export const fxReflect = defineNode({
+  type: "reflect",
+  domain: "shared",
+  stage: "param",
+  phase: "param",
+  category: "math",
+  generic: { constraint: VECTORS },
+  inputs: {
+    incident: { type: "T", required: true },
+    normal: { type: "T", required: true },
+  },
+  outputs: { out: { type: "T" } },
+  params: {},
+  // dot (2N - 1) + one scalar multiply + N multiplies + N subtracts.
+  cost: ({ resolvedT }) => 4 * resolvedT.components,
+  build: ({ inputs, fn }) => {
+    const incident = inputs["incident"];
+    const normal = inputs["normal"];
+    const along = fn.mul(fn.call("dot", normal, incident), fn.lit(2));
+    return { out: fn.sub(incident, fn.mul(normal, along)) };
+  },
+});
+
 /** All type-polymorphic shared math node definitions. */
 export const FX_SHARED_MATH_NODES: readonly FXNodeDefinition[] = [
   fxConstant,
@@ -502,12 +599,15 @@ export const FX_SHARED_MATH_NODES: readonly FXNodeDefinition[] = [
   fxUnaryOp,
   fxClamp,
   fxMix,
+  fxSelect,
   fxSmoothstep,
   fxRemap,
   fxSplit,
   fxCombine,
   fxDot,
   fxLength,
+  fxDistance,
+  fxReflect,
   fxColorRamp,
   fxRamp,
   fxCombineColor,
@@ -515,4 +615,6 @@ export const FX_SHARED_MATH_NODES: readonly FXNodeDefinition[] = [
   fxHslAdjust,
   fxNoise,
   fxCurlNoise,
+  fxVoronoi,
+  fxHash,
 ];

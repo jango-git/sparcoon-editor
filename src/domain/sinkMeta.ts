@@ -9,6 +9,7 @@ import {
   attributeSlot,
   buildParticleBehaviorTargets,
 } from "../engine/behavior/FXParticleBehaviorTarget";
+import { killSlotOutput } from "../engine/behavior/FXKernelLifecycle.Internal";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 import {
   buildParticleTarget,
@@ -150,16 +151,19 @@ function builtinSockets(
 }
 
 // Behavior sink builtins: the whole `position` vec3 (not per-axis slots), plus the birth-only
-// `lifetime` at spawn only. Types come from the engine target so they never drift.
+// `lifetime` at spawn only and `kill` at update only. Types come from the engine target so they
+// never drift.
 const behaviorTargets = buildParticleBehaviorTargets();
 const SPAWN_SINK_BUILTINS: readonly FXSocketMeta[] = builtinSockets(behaviorTargets.spawn.outputs, [
   "position",
   "lifetime",
 ]);
-const UPDATE_SINK_BUILTINS: readonly FXSocketMeta[] = builtinSockets(
-  behaviorTargets.update.outputs,
-  ["position"],
-);
+const UPDATE_SINK_BUILTINS: readonly FXSocketMeta[] = [
+  ...builtinSockets(behaviorTargets.update.outputs, ["position"]),
+  ...(behaviorTargets.update.killSlot === undefined
+    ? []
+    : [slotSocket(killSlotOutput(behaviorTargets.update.killSlot))]),
+];
 /** Whether the surface sink shows a slot in a render mode: `additivity` only when blending, the
  *  `alphaThreshold` cutoff in every mode but opaque, `albedo` + transforms always. */
 function showsSurfaceSlot(slot: string, renderMode: RenderMode): boolean {

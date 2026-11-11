@@ -4,6 +4,7 @@ import type { FXExpr } from "../../core/ir/FXExpr";
 import { litVec } from "../../core/ir/FXExprBuilder";
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
+import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
 
 /**
  * Standard-library render effect nodes (fragment): compositing, masks, normals. GLSL with no IR
@@ -136,12 +137,9 @@ export const fxDissolve = defineNode({
   },
   outputs: { color: { type: "vec4" } },
   params: {},
-  // age/lifetime progress (divide(2)+saturate(1)=3) + uv*scale(2) + the shared "noise" primitive
-  // at vec2 (~85 for the standard/integer-hash tier; baseline's sin-hash form is close, ~81 - the
-  // cost model has no per-tier number yet, so this reads as the standard-tier figure) + the [-1,1]
-  // -> [0,1] remap (mul+add = 2) + the edge guard (max = 1) + the span add (1) + a scalar
-  // smoothstep (3 flat guard + 8 = 11) + the final alpha multiply (1) = 106.
-  cost: 106,
+  // progress (3) + uv*scale (2) + vec2 noise + remap (2) + edge guard (1) + span add (1) +
+  // smoothstep (11) + alpha multiply (1).
+  cost: 21 + (FX_NOISE_CALL_COST[2] ?? 0),
   reads: ["PARTICLE_AGE", "PARTICLE_LIFETIME", "p_uv"],
   build: ({ inputs, target, local, fn }) => {
     const progress = local(

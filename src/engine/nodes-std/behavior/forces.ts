@@ -2,7 +2,8 @@ import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition, FXExprBuilderApi } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import { FX_FBM_MAX_OCTAVES } from "../../core/ir/FXFunctions.Internal";
+import { FX_FBM_MAX_OCTAVES } from "../../core/ir/noise/FXFractalNoise.Internal";
+import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
 import { DT_INPUT, rand, TWO_PI, VELOCITY_INPUT } from "./common";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
@@ -233,7 +234,7 @@ export const fxFirework = defineNode({
 });
 
 /** Fractal (fBm) velocity turbulence: three decorrelated fields sampled from the particle's full
- *  3D position (via `fbm3`), one per velocity channel - see TURBULENCE_CHANNEL_OFFSET. */
+ *  3D position (via `fbm`), one per velocity channel - see TURBULENCE_CHANNEL_OFFSET. */
 export const fxTurbulence = defineNode({
   type: "turbulence",
   domain: "behavior",
@@ -249,31 +250,47 @@ export const fxTurbulence = defineNode({
   },
   outputs: { velocity: { type: "vec3" } },
   params: {},
-  // `octaves` is an editable *input* pin (not a structural param), so its live value is not
-  // available here - it can even be wired to an arbitrary sub-expression, not just a literal.
-  // The compiled `fxFbm3` loop always runs up to FX_FBM_MAX_OCTAVES regardless (see its own
-  // clamp), so that worst case is the honest static bound. Per octave: loop bookkeeping (5, same
-  // shape as `fbm`'s) plus one 3D value-noise sample (184, see NOISE_CALL_COST[3] in
-  // shared/noise.ts - `fbm3`'s private hash is the same shape as `noise`'s) = 189/octave, times 3
-  // channels. Flat: the shared coordinate build (position*frequency + age = 6) + per channel
-  // (decorrelation-offset add (3) + fxFbm3's own octave-count clamp (floor+max+min = 3)) times 3
-  // channels (18) + the amplitude*dt kick (1) + the final vec3 blend (mul+add = 6) = 31.
-  cost: 3 * FX_FBM_MAX_OCTAVES * 189 + 31,
+  // `octaves` is an input pin (possibly wired), so the static bound is the loop's maximum: per
+  // channel and octave one 3D noise sample plus 5 ops of loop bookkeeping. Flat: coordinate build
+  // (6), per-channel offset add and octave clamp (3 * 6), amplitude scale (6), kick and blend (7).
+  cost: 3 * FX_FBM_MAX_OCTAVES * ((FX_NOISE_CALL_COST[3] ?? 0) + 5) + 37,
   reads: ["PARTICLE_POSITION"],
   build: ({ inputs, target, local, fn }) => {
     const age = inputs["time"];
     const position = target.read("PARTICLE_POSITION");
-    const kick = local("turbKick", fn.mul(inputs["amplitude"], inputs["dt"]));
+    // `fbm` is normalized to [-1, 1]; scaling by its total amplitude 2 * (1 - 0.5^n) (gain 0.5)
+    // keeps the force strength of the original unnormalized sum.
+    const octaveCount = fn.call(
+      "clamp",
+      fn.call("floor", inputs["octaves"]),
+      fn.lit(0),
+      fn.lit(FX_FBM_MAX_OCTAVES),
+    );
+    const amplitudeTotal = fn.mul(
+      fn.lit(2),
+      fn.sub(fn.lit(1), fn.call("pow", fn.lit(0.5), octaveCount)),
+    );
+    const kick = local(
+      "turbKick",
+      fn.mul(fn.mul(inputs["amplitude"], inputs["dt"]), amplitudeTotal),
+    );
     // One shared coordinate for all three channels, so the whole field drifts together as `age`
     // advances instead of each channel animating along its own uncorrelated 1D axis.
     const coordinate = local(
       "turbCoordinate",
       fn.add(fn.mul(position, inputs["frequency"]), fn.coerceNumeric(age, VEC3)),
     );
-    // fn.call("fbm3", ...): a normal registry function, tier-transparent (see the "fbm3" entry in
-    // core/ir/FXFunctions.Internal.ts) - the active printer emits whichever helper it needs.
     const sample = (offset: readonly [number, number, number], hint: string): FXExpr =>
-      local(hint, fn.call("fbm3", fn.add(coordinate, fn.litVec(...offset)), inputs["octaves"]));
+      local(
+        hint,
+        fn.call(
+          "fbm",
+          fn.add(coordinate, fn.litVec(...offset)),
+          inputs["octaves"],
+          fn.lit(2),
+          fn.lit(0.5),
+        ),
+      );
     const noise = fn.construct(
       VEC3,
       sample(TURBULENCE_CHANNEL_OFFSET.x, "turbFieldX"),

@@ -44,6 +44,7 @@ import type {
 import { buildParticleBehaviorTargets } from "./FXParticleBehaviorTarget";
 import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
+import { FX_CORE_LIFECYCLE } from "sparcoon";
 import { BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
 import {
   buildPhaseView,
@@ -165,6 +166,7 @@ class FXKernelState {
     epilogue: readonly string[],
     integration: readonly FXKernelIntegration[],
     buffers: readonly FXKernelBufferLayout[],
+    kill: string | undefined,
   ): FXCompiledKernelPhase {
     const bindings: Record<string, FXKernelBindingHandle> = {};
     for (const handle of this.bindingHandles) {
@@ -175,6 +177,9 @@ class FXKernelState {
     if (integration.length > 0) {
       written.add(BUILTIN_BUFFER);
     }
+    if (kill !== undefined) {
+      written.add(FX_CORE_LIFECYCLE);
+    }
     return {
       helpers: [...this.helperMap.values()],
       preLoop: this.preLoopLines,
@@ -182,6 +187,7 @@ class FXKernelState {
       body: this.bodyLines,
       writes,
       epilogue,
+      ...(kill === undefined ? {} : { kill }),
       bindings,
       buffers,
       writtenBuffers: [...written],
@@ -384,8 +390,14 @@ function compilePhase(
     target.outputs.map((output): [string, FXKernelTargetOutput] => [output.slot, output]),
   );
   const writes: FXKernelWrite[] = [];
+  let kill: string | undefined;
   for (const binding of view.outputBindings) {
     const producer = outputVariables.get(socketRefKey(binding.from));
+    if (binding.slot === target.killSlot) {
+      // A float slot: a vector producer gives its first component.
+      kill = producer?.[0];
+      continue;
+    }
     const output = outputBySlot.get(binding.slot);
     if (producer === undefined || output === undefined) {
       continue;
@@ -410,7 +422,14 @@ function compilePhase(
 
   const integration = target.integration ?? [];
   const epilogue = generateEpilogue(integration, target);
-  return state.assemblePhase(writes, target.preamble ?? [], epilogue, integration, target.buffers);
+  return state.assemblePhase(
+    writes,
+    target.preamble ?? [],
+    epilogue,
+    integration,
+    target.buffers,
+    kill,
+  );
 }
 
 /**

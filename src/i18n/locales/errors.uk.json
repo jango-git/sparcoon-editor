@@ -134,6 +134,12 @@
   "integration-reads-dt-in-spawn": {
     "message": "таргет \"{targetName}\" інтеграція читає \"dt\", але spawn-кернел не має dt"
   },
+  "kill-slot-in-spawn": {
+    "message": "таргет \"{targetName}\" оголошує слот kill, але вбивати може лише ядро update"
+  },
+  "kill-slot-needs-lifecycle": {
+    "message": "таргет \"{targetName}\" оголошує слот kill без буфера \"lifecycle\", на який він діє"
+  },
   "integration-input-not-declared": {
     "message": "таргет \"{targetName}\" інтеграція читає вхід \"{refName}\", який не оголошено"
   },

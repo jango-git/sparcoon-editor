@@ -106,6 +106,16 @@ describe("defineNode - behavior backend", () => {
       /3 finite numbers/,
     );
   });
+
+  it("splats a single number across a vector value param, as a wired scalar", () => {
+    const node = gravityDef.createInstance("behavior", {
+      acceleration: -10,
+    }) as unknown as FXBehaviorNode;
+    const compiled = compileBehavior(velocityGraph(node), velocityTargets);
+    const buffers = freshBuffers();
+    buildParticleUpdateKernel(compiled)(buffers, 1, 0.5, compiled.update.bindings);
+    expect([...buffers.velocity.slice(0, 3)]).toEqual([-5, -5, -5]);
+  });
 });
 
 describe("defineNode - render backend", () => {

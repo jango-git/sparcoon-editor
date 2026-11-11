@@ -134,6 +134,12 @@
   "integration-reads-dt-in-spawn": {
     "message": "target \"{targetName}\" integration reads \"dt\", but a spawn kernel has no dt"
   },
+  "kill-slot-in-spawn": {
+    "message": "target \"{targetName}\" declares a kill slot, but only an update kernel can kill"
+  },
+  "kill-slot-needs-lifecycle": {
+    "message": "target \"{targetName}\" declares a kill slot without the \"lifecycle\" buffer it acts on"
+  },
   "integration-input-not-declared": {
     "message": "target \"{targetName}\" integration reads input \"{refName}\", which is not declared"
   },

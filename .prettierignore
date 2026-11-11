@@ -3,3 +3,5 @@ dist/
 coverage/
 node_modules/
 package-lock.json
+# Effect library: minified, rebuilt by the sparcoon-demos build scripts
+src/persistence/presets/

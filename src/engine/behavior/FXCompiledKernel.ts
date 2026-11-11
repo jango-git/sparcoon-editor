@@ -76,6 +76,8 @@ export interface FXCompiledKernelPhase {
   readonly writes: readonly FXKernelWrite[];
   /** Target-provided statements injected at the bottom of the loop (e.g. integration). */
   readonly epilogue: readonly string[];
+  /** The bound kill value (a float expression); update phase only. */
+  readonly kill?: string;
   /** Captured bindings keyed by generated name; passed to the kernel at runtime. */
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
   /** State buffers this phase reads/writes (name + stride), for base computation. */

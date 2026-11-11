@@ -4,7 +4,9 @@ import {
   topologicalOrder,
 } from "../core/compiler/FXGraphTraversal.Internal";
 import { resolvePlacement } from "../core/compiler/placement.Internal";
+import type { FXValidatableOutput } from "../core/compiler/FXValidation.Internal";
 import { validateGraph } from "../core/compiler/FXValidation.Internal";
+import { killSlotOutput } from "./FXKernelLifecycle.Internal";
 import { FXGraph } from "../core/FXGraph";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import { FXBehaviorPhase } from "./FXBehaviorPhase";
@@ -40,7 +42,7 @@ export function resolvePlacementPhases(
   order: readonly string[],
 ): Map<string, FXBehaviorPhase> {
   const spawnExists = targets.spawn !== undefined;
-  const updateSlots = new Set(targets.update.outputs.map((output) => output.slot));
+  const updateSlots = new Set(bindableSlots(targets.update).map((output) => output.slot));
   return resolvePlacement<FXBehaviorNode, FXBehaviorPhase>(graph, order, {
     isFlexible: (node) => node.phaseFlexible,
     fixedSlot: (node) => node.phase,
@@ -247,6 +249,13 @@ function detectPhasePairErrors(spawn: FXKernelTarget, update: FXKernelTarget): F
   return errors;
 }
 
+/** What a graph may bind on `target`: its outputs, and its kill slot. */
+function bindableSlots(target: FXKernelTarget): readonly FXValidatableOutput[] {
+  return target.killSlot === undefined
+    ? target.outputs
+    : [...target.outputs, killSlotOutput(target.killSlot)];
+}
+
 /** Validates a behavior graph against both phase targets. Collects every error, never throws. */
 export function validateBehavior(
   graph: FXGraph<FXBehaviorNode>,
@@ -285,7 +294,8 @@ export function validateBehavior(
   const errors: FXCompilerError[] = [
     ...validateKernelTarget(targets.update, "update"),
     ...detectCrossPhaseErrors(graph, reachable, phaseOf),
-    ...validateGraph(updateView, targets.update).errors,
+    ...validateGraph(updateView, { ...targets.update, outputs: bindableSlots(targets.update) })
+      .errors,
     ...detectOverlappingWrites(updateView, targets.update),
   ];
   // The spawn phase is optional: an update-only target (a non-particle host) has no

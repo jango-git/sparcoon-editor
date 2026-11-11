@@ -192,7 +192,7 @@ describe("turbulence", () => {
     expect(movedAlongX[2]).not.toBeCloseTo(base[2], 4);
   });
 
-  it("compiles on the standard (GLSL) tier, sampling the position through one shared fxFbm3 helper", () => {
+  it("compiles on the standard (GLSL) tier, sampling the position through one shared fxFbm helper", () => {
     // No GLSL compiler runs headless, so the observable is the emitted text: the body samples
     // the vector-domain fBm from the particle position and the helper is emitted once.
     const compiled = compileBehaviorStandard(
@@ -201,8 +201,8 @@ describe("turbulence", () => {
     );
     const body = compiled.update.body.join("\n");
     expect(body).toContain("in_position");
-    expect(body).toContain("fxFbm3(");
-    expect(compiled.update.helpers.filter((h) => h.includes("float fxFbm3("))).toHaveLength(1);
+    expect(body).toContain("fxFbm(");
+    expect(compiled.update.helpers.filter((h) => h.includes("float fxFbm(vec3 p"))).toHaveLength(1);
   });
 
   it("bounds octaves so a runaway value cannot freeze the loop", () => {

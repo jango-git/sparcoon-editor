@@ -148,6 +148,67 @@ describe("generic binary math", () => {
   });
 });
 
+describe("select", () => {
+  it.each([
+    // [op, results for a below b, a equal to b, a above b]
+    ["less", [1, 0, 0]],
+    ["less-equal", [1, 1, 0]],
+    ["greater", [0, 0, 1]],
+    ["greater-equal", [0, 1, 1]],
+    ["equal", [0, 1, 0]],
+    ["not-equal", [1, 0, 1]],
+  ] as const)(
+    "%s passes on ifTrue (7) exactly when its comparison holds, else ifFalse (3)",
+    (op, expected) => {
+      const pick = (a: number): number =>
+        evalScalar(reg.create("select", { op }), { a, b: 0.5, ifTrue: 7, ifFalse: 3 }) === 7
+          ? 1
+          : 0;
+      expect([pick(0.25), pick(0.5), pick(0.75)]).toEqual(expected);
+    },
+  );
+
+  it("chooses a whole vector by a scalar comparison, ifFalse's inline value at ifTrue's width", () => {
+    const position = positionAfterUpdate(
+      {
+        v: reg.create("constant", { type: "vec3", value: [1, 2, 3] }),
+        a: reg.create("constant", { type: "float", value: 0.2 }),
+        out: reg.create("select", { op: "greater", ifFalse: [9, 8, 7] }),
+      },
+      [edge("v", "out", "out", "ifTrue"), edge("a", "out", "out", "a")],
+      "position",
+    );
+    expect([...position]).toEqual([9, 8, 7]);
+  });
+});
+
+describe("distance and reflect", () => {
+  it("distance is the length of a - b", () => {
+    const position = positionAfterUpdate(
+      {
+        a: reg.create("constant", { type: "vec3", value: [1, 2, 3] }),
+        out: reg.create("distance", { b: [4, 6, 3] }),
+      },
+      [edge("a", "out", "out", "a")],
+      "positionX",
+    );
+    expect(position[0]).toBeCloseTo(5, 6);
+  });
+
+  it("reflect mirrors a direction about a unit normal (a floor bounce)", () => {
+    const position = positionAfterUpdate(
+      {
+        i: reg.create("constant", { type: "vec3", value: [1, -2, 0.5] }),
+        n: reg.create("constant", { type: "vec3", value: [0, 1, 0] }),
+        out: reg.create("reflect"),
+      },
+      [edge("i", "out", "out", "incident"), edge("n", "out", "out", "normal")],
+      "position",
+    );
+    expect([...position]).toEqual([1, 2, 0.5]);
+  });
+});
+
 describe("unary, smoothstep and remap", () => {
   it.each(["asin", "acos", "atan"] as const)("unary-op exposes inverse trig (%s)", (op) => {
     const value = evalScalar(reg.create("unary-op", { op }), { x: 0.5 });

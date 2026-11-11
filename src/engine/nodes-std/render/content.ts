@@ -104,6 +104,36 @@ export const fxFlowUV = defineNode({
 });
 
 /**
+ * Polar UVs about `center`: `uv.x = atan2(d.y, d.x) / 2π + 0.5` (angle, 0..1 counterclockwise from
+ * the -x seam), `uv.y = 2 * length(d)` (radius, 1 at the quad's edge), with `d = uv - center`.
+ */
+export const fxPolarUV = defineNode({
+  type: "polar-uv",
+  domain: "render",
+  stage: "fragment",
+  category: "uv",
+  inputs: {
+    uv: { type: "vec2", default: { targetInput: "p_uv" } },
+    center: { type: "vec2", value: [0.5, 0.5] },
+  },
+  outputs: { uv: { type: "vec2" } },
+  params: {},
+  // The offset (2) + atan2 (4) + the angle's div + add (2) + length (5) + the radius' mul (1).
+  cost: 14,
+  build: ({ inputs, local, fn }) => {
+    const offset = local("pl_d", fn.sub(inputs["uv"], inputs["center"]));
+    const angle = fn.call("atan2", fn.swizzle(offset, "y"), fn.swizzle(offset, "x"));
+    return {
+      uv: fn.construct(
+        VEC2,
+        fn.add(fn.div(angle, fn.lit(2 * Math.PI)), fn.lit(0.5)),
+        fn.mul(fn.call("length", offset), fn.lit(2)),
+      ),
+    };
+  },
+});
+
+/**
  * How {@link fxAnimatedTexture} reads its ratio: once through by default - [0, 1] plays the sheet
  * first cell to last and holds the last (what a lifetime ratio means: a particle ends on its last
  * frame, never fading back into the first). `loop` instead `fract`-wraps any float to cycle the
@@ -301,6 +331,7 @@ export const FX_RENDER_CONTENT_NODES: readonly FXNodeDefinition[] = [
   fxRotateUV,
   fxTileUV,
   fxFlowUV,
+  fxPolarUV,
   fxAnimatedTexture,
   fxFlipbookFrame,
   fxFresnel,

@@ -61,6 +61,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     integration: (target.integration ?? [])
       .map((step) => [step.offset, exprSignature(step.expr)])
       .sort(byJSON),
+    killSlot: target.killSlot,
   } satisfies Record<keyof FXKernelTarget, unknown>;
   return JSON.stringify([
     "kernel",
@@ -70,6 +71,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     parts.outputs,
     parts.preamble,
     parts.integration,
+    parts.killSlot,
   ]);
 }
 

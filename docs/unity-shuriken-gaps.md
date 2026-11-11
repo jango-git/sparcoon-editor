@@ -40,8 +40,8 @@ These cannot be closed by a converter template or a new node.
 |---|---|
 | Sub Emitters: **birth**, **collision**, **trigger**, **manual** | Only death reactions exist. |
 | Sub Emitters: **inherit** color / size / rotation / lifetime | A spawn origin carries only position and velocity. |
-| Collision **Lifetime Loss**, kill on collision | The update sink cannot write lifetime, so a particle cannot be killed from the update. |
-| **Triggers** | Same as above. Only hiding through an alpha attribute is possible. |
+| Collision **Lifetime Loss** | The update can only kill (`kill`, e.g. from a collider's `contact`), not shorten a life. |
+| **Triggers** | Only the kill action: a graph can kill a particle inside or outside a volume, nothing else. |
 | Burst **probability** | Not supported. |
 | Shape **Mesh / Skinned Mesh / Sprite** | No spawning from a mesh surface. |
 | Shape **Texture** (color or discard by texture at spawn) | Behavior graphs do not sample textures. |

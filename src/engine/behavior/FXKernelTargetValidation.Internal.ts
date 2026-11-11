@@ -8,6 +8,7 @@ import {
   shapeError,
   valueTypeError,
 } from "../core/compiler/targetLint.Internal";
+import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE } from "sparcoon";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
 
@@ -214,6 +215,10 @@ export function validateKernelTarget(
     checkOffsets(output.buffer ?? BUILTIN_BUFFER, output.offsets, `output "${output.slot}"`);
   }
 
+  if (target.killSlot !== undefined) {
+    errors.push(...killSlotErrors(target, phase, seenOutputs));
+  }
+
   const integration = target.integration ?? [];
   if (integration.length > 0) {
     const inputNames = new Set(target.inputs.map((input) => input.name));
@@ -272,6 +277,39 @@ export function validateKernelTarget(
     }
   }
 
+  return errors;
+}
+
+/** A kill slot needs an update kernel and the lifecycle it acts on, and a name of its own. */
+function killSlotErrors(
+  target: FXKernelTarget,
+  phase: "spawn" | "update",
+  outputSlots: ReadonlySet<string>,
+): FXCompilerError[] {
+  const errors: FXCompilerError[] = [];
+  const slot = target.killSlot ?? "";
+  if (phase === "spawn") {
+    errors.push({
+      code: "kill-slot-in-spawn",
+      message: `target "${target.name}" declares a kill slot, but only an update kernel can kill`,
+      params: { targetName: target.name },
+    });
+  }
+  const lifecycle = target.buffers.find((buffer) => buffer.name === FX_CORE_LIFECYCLE);
+  if (lifecycle?.stride !== FX_CORE_LIFECYCLE_STRIDE) {
+    errors.push({
+      code: "kill-slot-needs-lifecycle",
+      message: `target "${target.name}" declares a kill slot without the "lifecycle" buffer it acts on`,
+      params: { targetName: target.name },
+    });
+  }
+  if (outputSlots.has(slot)) {
+    errors.push({
+      code: "duplicate-target-output",
+      message: `target "${target.name}" declares output slot "${slot}" more than once`,
+      params: { targetName: target.name, outputSlot: slot },
+    });
+  }
   return errors;
 }
 
@@ -397,6 +435,10 @@ export function kernelTargetShapeErrors(target: unknown): FXCompilerError[] {
         }
       });
     }
+  }
+
+  if (target["killSlot"] !== undefined && typeof target["killSlot"] !== "string") {
+    errors.push(shapeError(name, "killSlot", "a string"));
   }
 
   const preamble = target["preamble"];

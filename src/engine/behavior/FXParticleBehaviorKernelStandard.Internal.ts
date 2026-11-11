@@ -1,4 +1,5 @@
 import {
+  FX_CORE_LIFECYCLE,
   FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
   FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
@@ -110,6 +111,8 @@ export interface FXCompiledPhaseStandard {
   readonly uniformDeclarations: readonly string[];
   readonly body: readonly string[];
   readonly writes: readonly FXKernelWrite[];
+  /** The bound kill value (a float variable); update phase only. */
+  readonly kill?: string;
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly writtenBuffers: readonly string[];
@@ -181,17 +184,22 @@ class FXKernelStateStandard {
   public assemblePhase(
     writes: readonly FXKernelWrite[],
     buffers: readonly FXKernelBufferLayout[],
+    kill: string | undefined,
   ): FXCompiledPhaseStandard {
     const bindings: Record<string, FXKernelBindingHandle> = {};
     for (const handle of this.bindingHandles) {
       bindings[handle.name] = handle;
     }
     const written = new Set(writes.map((write) => write.buffer));
+    if (kill !== undefined) {
+      written.add(FX_CORE_LIFECYCLE);
+    }
     return {
       helpers: [...this.helperMap.values()],
       uniformDeclarations: this.uniformDeclarations,
       body: this.bodyLines,
       writes,
+      ...(kill === undefined ? {} : { kill }),
       bindings,
       buffers,
       writtenBuffers: [...written],
@@ -362,11 +370,14 @@ function compilePhaseStandard(
     target.outputs.map((output): [string, FXKernelTargetOutput] => [output.slot, output]),
   );
   const writes: FXKernelWrite[] = [];
+  let kill: string | undefined;
   for (const binding of view.outputBindings) {
     const producerVariable = outputVariables.get(socketRefKey(binding.from));
+    const isKill = binding.slot === target.killSlot;
     const output = outputBySlot.get(binding.slot);
+    const slotType = isKill ? FLOAT : output?.type;
     const producerNode = view.getNode(binding.from.nodeId);
-    if (producerVariable === undefined || output === undefined || producerNode === undefined) {
+    if (producerVariable === undefined || producerNode === undefined || slotType === undefined) {
       continue;
     }
     const producerOutput = outputSocket(producerNode, binding.from.socketKey);
@@ -374,11 +385,18 @@ function compilePhaseStandard(
       producerOutput === undefined
         ? undefined
         : socketConcreteType(binding.from.nodeId, producerOutput, resolution.types);
-    const buffer = output.buffer ?? BUILTIN_BUFFER;
     const variable =
-      producerType === undefined || producerType.id === output.type.id
+      producerType === undefined || producerType.id === slotType.id
         ? producerVariable
-        : coerceOutputVariable(state, producerVariable, producerType, output.type);
+        : coerceOutputVariable(state, producerVariable, producerType, slotType);
+    if (isKill) {
+      kill = variable;
+      continue;
+    }
+    if (output === undefined) {
+      continue;
+    }
+    const buffer = output.buffer ?? BUILTIN_BUFFER;
     if (output.offsets.length === 1) {
       output.offsets.forEach((offset) => {
         writes.push({ buffer, offset, expr: variable });
@@ -394,7 +412,7 @@ function compilePhaseStandard(
     }
   }
 
-  return state.assemblePhase(writes, target.buffers);
+  return state.assemblePhase(writes, target.buffers, kill);
 }
 
 /** Adapts a producer variable to an output slot's declared type (pad/truncate/splat), emitting a

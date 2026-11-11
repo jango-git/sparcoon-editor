@@ -15,6 +15,7 @@ import {
   FX_POSITION_Y,
   FX_POSITION_Z,
 } from "sparcoon";
+import { FX_KILL_SLOT } from "./FXKernelLifecycle.Internal";
 
 /**
  * A builtin a behavior node may read. `offsets` are the float indices within the named
@@ -62,6 +63,12 @@ export interface FXKernelTarget {
   readonly outputs: readonly FXKernelTargetOutput[];
   readonly preamble?: readonly string[];
   readonly integration?: readonly FXKernelIntegration[];
+  /**
+   * The slot that kills a particle early: a float, killing above `FX_KILL_THRESHOLD`. Not an
+   * output - it writes no storage, the lifecycle epilogue applies it. Update targets only; needs
+   * the core `lifecycle` buffer.
+   */
+  readonly killSlot?: string;
 }
 
 /**
@@ -322,6 +329,7 @@ export function buildParticleBehaviorTargets(
     ],
     outputs: [...writeOutputs(false), ...attributeSlotEntries],
     // No built-in integration: motion is an explicit `integrate-motion` node now.
+    killSlot: FX_KILL_SLOT,
   };
   return { spawn, update, tryGpuSimulation };
 }

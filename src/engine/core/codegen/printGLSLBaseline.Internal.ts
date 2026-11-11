@@ -1,6 +1,7 @@
 import { FXCompilerErrorException } from "../compiler/FXCompilerError";
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
+import { collectHelper } from "../ir/FXHelperModule.Internal";
 import { isIntType } from "../socket/FXValueType";
 
 /**
@@ -17,7 +18,7 @@ const REF_BY_NAME: FXRefResolver = (ref) => ref.name;
  */
 export interface FXGLSLPrintResult {
   readonly code: string;
-  /** Function helpers to emit once each, keyed by function name. */
+  /** Helpers to emit once each, dependencies first (see `collectHelper`). */
   readonly helpers: ReadonlyMap<string, string>;
 }
 
@@ -70,7 +71,7 @@ export function printGLSLBaseline(
         }
         const argumentStrings = node.args.map(print);
         if (definition.glslBaselineHelper !== undefined) {
-          helpers.set(definition.name, definition.glslBaselineHelper);
+          collectHelper(helpers, definition.name, definition.glslBaselineHelper);
         }
         if (typeof definition.glslBaseline === "function") {
           return definition.glslBaseline(argumentStrings);

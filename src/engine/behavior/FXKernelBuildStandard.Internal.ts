@@ -21,6 +21,7 @@ import type {
 } from "./FXCompiledKernel";
 import type { FXCompiledKernelStandard } from "./FXParticleBehaviorKernelStandard.Internal";
 import { glslBufferAttributeName } from "./FXParticleBehaviorKernelStandard.Internal";
+import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
 
 /**
  * The `new Function`-assembly layer's standard-tier sibling: turns a {@link FXCompiledKernelStandard}
@@ -202,7 +203,11 @@ export function assembleTransformFeedbackProgram(
   const lifecycleAgeOverride = new Map([
     [
       FX_AGE,
-      `${glslBufferAttributeName(FX_CORE_LIFECYCLE)}.x + ${FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM}`,
+      agedLifecycleAgeGLSL(
+        glslBufferAttributeName(FX_CORE_LIFECYCLE),
+        FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
+        update.kill,
+      ),
     ],
   ]);
   // Host-owned, like age above: no write slot exists for id (FXParticleBehaviorTarget.ts's

@@ -1,6 +1,7 @@
 import type { FXExpr } from "../ir/FXExpr";
 import type { FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, isMatrixType, matrixDimension } from "../socket/FXValueType";
+import { FX_FUNCTIONS } from "../ir/FXFunctions.Internal";
 
 /**
  * Lowers a vector/matrix expr into one scalar expr per component (JS has no vectors). Names
@@ -131,18 +132,6 @@ function scalarizeCall(expression: Extract<FXExpr, { kind: "call" }>): readonly 
         );
       return [term(1, 2, 2, 1), term(2, 0, 0, 2), term(0, 1, 1, 0)];
     }
-    case "noise": {
-      // Vector-in / scalar-output: pass the input's components as separate scalar args to a
-      // scalar `noise` call (printed as `fxNoise1`/`fxNoise2`/`fxNoise3`), rather than per-component.
-      const components = scalarize(at(expression.args, 0));
-      return [{ kind: "call", type: FLOAT, fn: "noise", args: components }];
-    }
-    case "fbm3": {
-      // Same shape as `noise` above, plus the trailing scalar `octaves` arg passed through as-is.
-      const position = scalarize(at(expression.args, 0));
-      const octaves = scalarize(at(expression.args, 1));
-      return [{ kind: "call", type: FLOAT, fn: "fbm3", args: [...position, ...octaves] }];
-    }
     case "transpose": {
       // Pure component reindex, no arithmetic: column-major flat index `col*n + row`, so the
       // transpose's (col c, row r) entry is the source's (col r, row c) = `m[r*n + c]`.
@@ -161,6 +150,9 @@ function scalarizeCall(expression: Extract<FXExpr, { kind: "call" }>): readonly 
     case "inverse":
       return scalarizeInverse(scalarize(at(expression.args, 0)));
     default: {
+      if (FX_FUNCTIONS.get(expression.fn)?.packed === true) {
+        return scalarizePackedCall(expression);
+      }
       // Every other registered function is element-wise.
       const argComponents = expression.args.map(scalarize);
       return indices(expression.type.components).map((i) => ({
@@ -178,6 +170,20 @@ const SWIZZLE_CHANNELS = "xyzw";
 
 function floatLiteral(value: number): FXExpr {
   return { kind: "lit", type: FLOAT, values: [value] };
+}
+
+/** A `packed` function (see `FXFunctionDef.packed`): flattened args, one call per result component. */
+function scalarizePackedCall(expression: Extract<FXExpr, { kind: "call" }>): readonly FXExpr[] {
+  const args = expression.args.flatMap(scalarize);
+  if (expression.type.components === 1) {
+    return [{ kind: "call", type: FLOAT, fn: expression.fn, args }];
+  }
+  return indices(expression.type.components).map((i) => ({
+    kind: "call",
+    type: FLOAT,
+    fn: expression.fn,
+    args: [...args, floatLiteral(i)],
+  }));
 }
 
 function binF(op: "add" | "sub" | "mul" | "div", a: FXExpr, b: FXExpr): FXExpr {

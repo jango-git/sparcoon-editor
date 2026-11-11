@@ -1,5 +1,6 @@
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
+import { collectHelper } from "../ir/FXHelperModule.Internal";
 import type { FXRefResolver } from "./printGLSLBaseline.Internal";
 
 /**
@@ -8,7 +9,7 @@ import type { FXRefResolver } from "./printGLSLBaseline.Internal";
  */
 export interface FXJSPrintResult {
   readonly code: string;
-  /** Function helpers to emit once each, keyed by function name. */
+  /** Helpers to emit once each, dependencies first (see `collectHelper`). */
   readonly helpers: ReadonlyMap<string, string>;
 }
 
@@ -26,7 +27,7 @@ export function printJS(
     const definition = functions.get("mod");
     if (definition !== undefined) {
       if (definition.jsHelper !== undefined) {
-        helpers.set("mod", definition.jsHelper);
+        collectHelper(helpers, "mod", definition.jsHelper);
       }
       return definition.js([a, b]);
     }
@@ -88,7 +89,7 @@ export function printJS(
         }
         const argumentStrings = node.args.map(print);
         if (definition.jsHelper !== undefined) {
-          helpers.set(definition.name, definition.jsHelper);
+          collectHelper(helpers, definition.name, definition.jsHelper);
         }
         return definition.js(argumentStrings);
       }
