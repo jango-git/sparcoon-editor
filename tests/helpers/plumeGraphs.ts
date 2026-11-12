@@ -101,7 +101,8 @@ export function expectPlumeRenderMatchesDirectCompile(
 ): void {
   const shader = new FXCompilerBaseline().compile(render, buildParticleTarget([]));
   expect(artifact.lightingIntrinsics).toEqual([]);
-  expect(artifact.uniformDeclarations).toEqual(shader.uniformDeclarations);
+  expect(artifact.vertex.uniformDeclarations).toEqual(shader.vertex.uniformDeclarations);
+  expect(artifact.fragment.uniformDeclarations).toEqual(shader.fragment.uniformDeclarations);
   expect(artifact.vertex.body).toEqual(shader.vertex.body);
   expect(artifact.fragment.body).toEqual(shader.fragment.body);
   expect(artifact.outputs).toEqual(shader.outputs);

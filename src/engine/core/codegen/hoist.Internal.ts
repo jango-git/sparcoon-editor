@@ -1,6 +1,6 @@
 import { refNames } from "../ir/visit.Internal";
 import type { FXRate, FXRatedLocal } from "./rates.Internal";
-import { operationCount } from "./rates.Internal";
+import { freeEverywhere, operationCount } from "./rates.Internal";
 
 /**
  * A two-stage SSA plan: `early` locals run first (once per vertex), `late` ones after (once per
@@ -15,7 +15,8 @@ export interface FXTwoStagePlan<L extends FXRatedLocal> {
 }
 
 /** A placed plan: each stage's locals in definition order, and the early locals the late stage
- *  reads across the boundary. A constant is never carried: each stage reading one defines it. */
+ *  reads across the boundary. A constant (or a free alias of what both stages read) is never
+ *  carried: each stage reading one defines it. */
 export interface FXPlacedPlan<L extends FXRatedLocal> {
   readonly early: readonly L[];
   readonly late: readonly L[];
@@ -29,6 +30,10 @@ export interface FXHoistPolicy<L extends FXRatedLocal> {
   /** The highest rate a late local may have and still move: one constant across what an early
    *  invocation's outputs are spread over (render: a particle's primitive). */
   readonly maxRate: FXRate;
+  /** The highest rate both stages read for free, with no carrying (render: a draw's uniforms). A
+   *  local of at most this rate that costs nothing and reads only such locals is, like a constant,
+   *  defined in each stage that reads it and never carried. */
+  readonly sharedRate: FXRate;
   /**
    * Whether a candidate crossing - the early locals the late stage reads - fits what the backend
    * can carry between the stages, with `late` the late stage then. Called with the original
@@ -43,7 +48,8 @@ export interface FXHoistPolicy<L extends FXRatedLocal> {
  * constant across an early invocation's span (0 < rate <= `maxRate`) moves to the early stage, so it is computed once per vertex
  * instead of once per fragment, and the late stage reads the result across the boundary instead.
  * A constant (rate 0) is not moved but defined in each stage that reads it - the compiler folds
- * it, where carrying it would only spend a varying.
+ * it, where carrying it would only spend a varying. So is a free local both stages can read as it
+ * is (rate <= `sharedRate`, no operation, reading only such locals): an alias of a uniform.
  *
  * A late local the late stage's result does not read is dropped.
  *
@@ -73,7 +79,8 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
     return read;
   };
   const rateOf = (local: L): number => policy.rates.get(local.name) ?? Infinity;
-  const constant = new Set(all.filter((local) => rateOf(local) === 0).map((local) => local.name));
+  // Defined in each stage that reads it, never carried.
+  const everywhere = freeEverywhere(all, reads, policy.rates, policy.sharedRate);
   const early = new Set(plan.early.map((local) => local.name));
 
   // What the late stage's result reads, transitively. Nothing else of the late stage is kept: a
@@ -89,14 +96,15 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
   const lateLive = plan.late.filter((local) => live.has(local.name));
   const moved = new Set(
     lateLive
-      .filter((local) => rateOf(local) > 0 && rateOf(local) <= policy.maxRate)
+      .filter((local) => !everywhere.has(local.name) && rateOf(local) <= policy.maxRate)
       .map((local) => local.name),
   );
 
-  /** The late stage's own (non-constant) locals while `moved` holds what it does. */
+  /** The late stage's own locals (none defined everywhere) while `moved` holds what it does. */
   const lateNow = (): L[] =>
-    lateLive.filter((local) => !moved.has(local.name) && !constant.has(local.name));
-  /** The early locals (originally there or moved) the late stage reads; constants never cross. */
+    lateLive.filter((local) => !moved.has(local.name) && !everywhere.has(local.name));
+  /** The early locals (originally there or moved) the late stage reads; what is defined
+   *  everywhere never crosses. */
   const crossingOf = (late: readonly L[], carried: ReadonlySet<string>): L[] => {
     const read = readBy(
       late.map((local) => local.name),
@@ -105,7 +113,7 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
     return all.filter(
       (local) =>
         read.has(local.name) &&
-        !constant.has(local.name) &&
+        !everywhere.has(local.name) &&
         (early.has(local.name) || carried.has(local.name)),
     );
   };
@@ -124,7 +132,7 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
 
   // The plan as it came, nothing moved.
   const original = crossingOf(
-    lateLive.filter((local) => !constant.has(local.name)),
+    lateLive.filter((local) => !everywhere.has(local.name)),
     new Set(),
   );
   const originalFits = policy.fits(original, lateNow());
@@ -144,43 +152,51 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
     moved.delete(cheapest.name);
   }
 
-  // Each stage defines the constants it reads itself: the late stage those its own locals and
-  // roots read, the early stage also those the moved locals read. Definition order is kept.
+  // Each stage defines the everywhere locals it reads itself: the late stage those its own locals
+  // and roots read, the early stage also those the moved locals read. Definition order is kept.
   const late = lateNow();
-  const lateNeeds = withConstants(
-    readBy(
-      late.map((local) => local.name),
-      plan.lateRoots,
-    ),
-    constant,
+  const lateNeeds = withEverywhere(
+    late.map((local) => local.name),
+    plan.lateRoots,
+    everywhere,
     reads,
   );
-  const earlyNeeds = withConstants(moved, constant, reads);
+  const earlyNeeds = withEverywhere(moved, [], everywhere, reads);
   return {
     early: all.filter(
       (local) =>
         early.has(local.name) ||
         moved.has(local.name) ||
-        (constant.has(local.name) && earlyNeeds.has(local.name)),
+        (everywhere.has(local.name) && earlyNeeds.has(local.name)),
     ),
     late: all.filter(
-      (local) => late.includes(local) || (constant.has(local.name) && lateNeeds.has(local.name)),
+      (local) => late.includes(local) || (everywhere.has(local.name) && lateNeeds.has(local.name)),
     ),
     crossing: crossingOf(late, moved),
   };
 }
 
-/** `names` and every constant they read, transitively. */
-function withConstants(
-  names: Iterable<string>,
-  constant: ReadonlySet<string>,
+/**
+ * The everywhere locals a stage defines itself: those its own locals (`defined`) read, transitively,
+ * and those among `alsoRead` (what its result reads directly). Only through what the stage defines:
+ * a value it reads across the boundary brings nothing of what that value read.
+ */
+function withEverywhere(
+  defined: Iterable<string>,
+  alsoRead: Iterable<string>,
+  everywhere: ReadonlySet<string>,
   reads: ReadonlyMap<string, ReadonlySet<string>>,
 ): Set<string> {
-  const closure = new Set(names);
+  const closure = new Set(defined);
+  for (const name of alsoRead) {
+    if (everywhere.has(name)) {
+      closure.add(name);
+    }
+  }
   const pending = [...closure];
   for (let name = pending.pop(); name !== undefined; name = pending.pop()) {
     for (const read of reads.get(name) ?? []) {
-      if (constant.has(read) && !closure.has(read)) {
+      if (everywhere.has(read) && !closure.has(read)) {
         closure.add(read);
         pending.push(read);
       }

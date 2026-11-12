@@ -4,14 +4,14 @@
  * from - so {@link EmitterView} only decides when to build, swap or drop the trail, not how.
  */
 
+import { everyTierShaders } from "./everyTierShaders";
 import type { FXTrailOptions } from "sparcoon/editor";
-import type { FXBufferLayout } from "sparcoon";
+import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph, type FXLiveResult } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
-import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
@@ -25,6 +25,7 @@ import type { TrailSinkConfig } from "../domain/nodePalette";
 import {
   RenderBudgetMemo,
   trailRenderBudgetFindings,
+  type FXRenderArtifactsByTier,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import { TRAIL_GEOMETRY, trailAttributeErrors } from "../domain/trailChecks";
@@ -45,6 +46,8 @@ export interface AssembledTrail {
 
 export class EmitterTrail {
   private readonly live: FXLiveGraph<FXRenderNode, FXCompiledShader>;
+  // The trail snapshot last applied: what the budget compiles the other tier from.
+  private snapshot: FXGraphSnapshotData | undefined = undefined;
   // The latest installed IR and the attributes it reads.
   private shader: FXCompiledShader | undefined = undefined;
   private attributes: readonly FXAttributeRequest[] = [];
@@ -53,7 +56,10 @@ export class EmitterTrail {
   private builtKey: string | undefined = undefined;
   private readonly budget = new RenderBudgetMemo();
 
-  constructor(registry: FXNodeRegistry<FXRenderNode>, tier: FXGLSLRenderTier) {
+  constructor(
+    private readonly registry: FXNodeRegistry<FXRenderNode>,
+    private readonly tier: FXGLSLRenderTier,
+  ) {
     const live: FXLiveGraph<FXRenderNode, FXCompiledShader> = new FXLiveGraph(
       new FXGraphReconciler(registry),
       new FXRenderLiveBackend(
@@ -75,6 +81,7 @@ export class EmitterTrail {
 
   /** Reconciles and compiles the trail graph; never throws (see {@link FXLiveGraph.apply}). */
   public apply(snapshot: FXGraphSnapshotData): FXLiveResult<FXRenderNode> {
+    this.snapshot = snapshot;
     return this.live.apply(snapshot);
   }
 
@@ -108,7 +115,6 @@ export class EmitterTrail {
       options: {
         render: assembleRenderArtifact(
           this.shader,
-          collectRenderCapabilities(this.live.graphView),
           TRAIL_GEOMETRY,
           this.attributes,
           config.renderMode,
@@ -133,7 +139,7 @@ export class EmitterTrail {
     kernelBuffers: readonly FXBufferLayout[] | undefined,
   ): RenderBudgetFindings {
     return this.budget.get([this.shader, behaviorKey, trail.config.renderMode, kernelBuffers], () =>
-      trailRenderBudgetFindings(trail.options.render, behaviorBuffers, kernelBuffers),
+      trailRenderBudgetFindings(this.everyTier(trail), behaviorBuffers, kernelBuffers),
     );
   }
 
@@ -158,5 +164,32 @@ export class EmitterTrail {
 
   public destroy(): void {
     this.live.destroy();
+  }
+
+  /** `trail`'s artifact (the preview tier's) beside the other tier's of the same graph. */
+  private everyTier(trail: AssembledTrail): FXRenderArtifactsByTier {
+    const render = trail.options.render;
+    const shader = this.shader;
+    const snapshot = this.snapshot;
+    if (shader === undefined || snapshot === undefined) {
+      return { baseline: render, standard: render };
+    }
+    const shaders = everyTierShaders({
+      tier: this.tier,
+      shader,
+      snapshot,
+      registry: this.registry,
+      buildTarget: buildTrailTarget,
+    });
+    const assemble = (compiled: FXCompiledShader): FXRenderArtifact =>
+      compiled === shader
+        ? render
+        : assembleRenderArtifact(
+            compiled,
+            TRAIL_GEOMETRY,
+            this.attributes,
+            trail.config.renderMode,
+          );
+    return { baseline: assemble(shaders.baseline), standard: assemble(shaders.standard) };
   }
 }

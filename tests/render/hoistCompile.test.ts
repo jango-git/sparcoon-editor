@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fxGraphVaryingAllowance, packedVaryingVectors, fxVaryingShape } from "sparcoon/editor";
+import { fxGraphVaryingAllowance, packedVectors, fxPackedShape } from "sparcoon/editor";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
@@ -12,6 +12,7 @@ import {
 } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { fullRenderRegistry } from "../helpers/stdRegistry";
+import { GLSL_NAME, drawUniformNames, readsName } from "../helpers/glslNames";
 
 /**
  * The compiler computes a fragment-stage value that is the same at every fragment of a particle
@@ -21,6 +22,9 @@ import { fullRenderRegistry } from "../helpers/stdRegistry";
 const reg = fullRenderRegistry();
 const standard = new FXCompilerStandard();
 const baseline = new FXCompilerBaseline();
+
+/** The ramp's value: the one float the graph builds by `mix`. */
+const CURVE = new RegExp(String.raw`float ${GLSL_NAME} = mix\(`);
 
 const vertexOf = (shader: FXCompiledShader): string => shader.vertex.body.join("\n");
 const fragmentOf = (shader: FXCompiledShader): string => shader.fragment.body.join("\n");
@@ -50,11 +54,11 @@ function fadeGraph(source: "life-ratio" | "time" = "life-ratio"): FXGraph<FXRend
 describe("per-vertex hoist of per-particle fragment values", () => {
   it("computes a curve over the life ratio per vertex, carried flat on Standard", () => {
     const shader = standard.compile(fadeGraph(), FX_PARTICLE_TARGET);
-    expect(vertexOf(shader)).toMatch(/float curveValue_\d+ = /);
+    expect(vertexOf(shader)).toMatch(CURVE);
     expect(vertexOf(shader)).toContain("PARTICLE_AGE");
     // The fragment reads the curve's value, not the particle's age, and still does the uv part.
     expect(fragmentOf(shader)).not.toContain("PARTICLE_AGE");
-    expect(fragmentOf(shader)).not.toMatch(/curveValue_\d+ = /);
+    expect(fragmentOf(shader)).not.toMatch(CURVE);
     expect(fragmentOf(shader)).toContain("length(");
     expect(shader.fragment.targetReads).not.toContain("PARTICLE_AGE");
     expect(shader.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
@@ -62,21 +66,22 @@ describe("per-vertex hoist of per-particle fragment values", () => {
 
   it("marks it flat on Baseline too: the runtime qualifies it where the GLSL can", () => {
     const shader = baseline.compile(fadeGraph(), FX_PARTICLE_TARGET);
-    expect(vertexOf(shader)).toMatch(/float curveValue_\d+ = /);
+    expect(vertexOf(shader)).toMatch(CURVE);
     expect(shader.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
   });
 
   it("keeps a trail's per-point values in the fragment: they change along the ribbon", () => {
     const shader = standard.compile(fadeGraph(), FX_TRAIL_TARGET);
-    expect(fragmentOf(shader)).toMatch(/float curveValue_\d+ = /);
+    expect(fragmentOf(shader)).toMatch(CURVE);
     expect(fragmentOf(shader)).toContain("PARTICLE_AGE");
     expect(shader.varyings).toEqual([]);
   });
 
-  it("computes a mesh's clock-driven value per vertex", () => {
+  it("computes a mesh's clock-driven value once per tick on the CPU, not per vertex", () => {
     const shader = standard.compile(fadeGraph("time"), FX_MESH_TARGET);
-    expect(vertexOf(shader)).toMatch(/float curveValue_\d+ = /);
-    expect(vertexOf(shader)).toContain("u_time");
+    expect(shader.draw?.statements.join("\n")).toContain("inputs.time");
+    expect(vertexOf(shader)).not.toMatch(CURVE);
+    expect(drawUniformNames(shader).some((name) => readsName(fragmentOf(shader), name))).toBe(true);
     expect(fragmentOf(shader)).not.toContain("u_time");
   });
 
@@ -99,46 +104,62 @@ describe("per-vertex hoist of per-particle fragment values", () => {
   });
 
   it("never carries more than the tier leaves a graph", () => {
-    // Eight per-particle colors, each modulated per fragment: carrying all of them would take
-    // eight vec4 rows, past Baseline's allowance, so the cheapest stay per fragment.
-    const nodes: Record<string, FXRenderNode> = {
-      life: reg.create("life-ratio"),
-      uv: reg.create("uv"),
-      radius: reg.create("length"),
-    };
-    const edges = [edge("uv", "uv", "radius", "v")];
-    let previous = "";
-    for (let index = 0; index < 8; index++) {
-      nodes[`ramp${String(index)}`] = reg.create("color-ramp");
-      nodes[`mod${String(index)}`] = reg.create("binary-op", { op: "multiply" });
-      edges.push(
-        edge("life", "out", `ramp${String(index)}`, "t"),
-        edge(`ramp${String(index)}`, "color", `mod${String(index)}`, "a"),
-        edge("radius", "out", `mod${String(index)}`, "b"),
-      );
-      if (previous !== "") {
-        nodes[`sum${String(index)}`] = reg.create("binary-op", { op: "add" });
-        edges.push(
-          edge(previous, "out", `sum${String(index)}`, "a"),
-          edge(`mod${String(index)}`, "out", `sum${String(index)}`, "b"),
-        );
-        previous = `sum${String(index)}`;
-      } else {
-        previous = `mod${String(index)}`;
-      }
-    }
-    const graph = graphOf(nodes, edges, [bind("albedo", previous, "out")]);
+    // Carrying all eight colors would take eight vec4 rows, past Baseline's allowance, so the
+    // cheapest stay per fragment.
+    const graph = eightColors();
     const none = { normal: false, tangent: false, position: false };
     for (const [compiler, tier] of [
       [baseline, "baseline"],
       [standard, "standard"],
     ] as const) {
       const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-      const rows = packedVaryingVectors(
-        shader.varyings.map((varying) => fxVaryingShape(varying.type.glslTypeName)),
-      );
-      expect(rows).toBeLessThanOrEqual(fxGraphVaryingAllowance(tier, none));
+      expect(rowsOf(shader)).toBeLessThanOrEqual(fxGraphVaryingAllowance(tier, none, []));
       expect(shader.varyings.length).toBeGreaterThan(0);
     }
   });
+
+  it("reserves no lighting for an unlit graph: it carries past the lit allowance", () => {
+    const shader = baseline.compile(eightColors(), FX_PARTICLE_TARGET);
+    const none = { normal: false, tangent: false, position: false };
+    expect(shader.capabilities.lightingIntrinsics).toEqual([]);
+    expect(rowsOf(shader)).toBeGreaterThan(
+      fxGraphVaryingAllowance("baseline", none, ["fxLambertShade"]),
+    );
+  });
 });
+
+/** The varying rows `shader` carries, by the runtime's packing rule. */
+function rowsOf(shader: FXCompiledShader): number {
+  return packedVectors(shader.varyings.map((varying) => fxPackedShape(varying.type.glslTypeName)));
+}
+
+/** Eight per-particle colors (ramps over the life ratio), each modulated per fragment, summed. */
+function eightColors(): FXGraph<FXRenderNode> {
+  const nodes: Record<string, FXRenderNode> = {
+    life: reg.create("life-ratio"),
+    uv: reg.create("uv"),
+    radius: reg.create("length"),
+  };
+  const edges = [edge("uv", "uv", "radius", "v")];
+  let previous = "";
+  for (let index = 0; index < 8; index++) {
+    nodes[`ramp${String(index)}`] = reg.create("color-ramp");
+    nodes[`mod${String(index)}`] = reg.create("binary-op", { op: "multiply" });
+    edges.push(
+      edge("life", "out", `ramp${String(index)}`, "t"),
+      edge(`ramp${String(index)}`, "color", `mod${String(index)}`, "a"),
+      edge("radius", "out", `mod${String(index)}`, "b"),
+    );
+    if (previous !== "") {
+      nodes[`sum${String(index)}`] = reg.create("binary-op", { op: "add" });
+      edges.push(
+        edge(previous, "out", `sum${String(index)}`, "a"),
+        edge(`mod${String(index)}`, "out", `sum${String(index)}`, "b"),
+      );
+      previous = `sum${String(index)}`;
+    } else {
+      previous = `mod${String(index)}`;
+    }
+  }
+  return graphOf(nodes, edges, [bind("albedo", previous, "out")]);
+}

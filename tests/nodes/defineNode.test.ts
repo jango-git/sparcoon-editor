@@ -128,7 +128,7 @@ describe("defineNode - render backend", () => {
     const uniformNames = Object.keys(shader.uniforms);
     expect(uniformNames).toHaveLength(1);
     expect(shader.uniforms[uniformNames[0]].value).toEqual([1, 0, 0, 1]);
-    expect(shader.uniformDeclarations.some((d) => d.includes("vec4"))).toBe(true);
+    expect(shader.fragment.uniformDeclarations.some((d) => d.includes("vec4"))).toBe(true);
     expect(shader.fragment.body.join("\n")).toContain(uniformNames[0]);
   });
 });

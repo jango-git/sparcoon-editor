@@ -12,6 +12,7 @@ import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FXRenderNodeTexture } from "../../src/engine/render/nodes/FXRenderNodeTexture";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { renderRegistry } from "../helpers/stdRegistry";
+import { GLSL_NAME } from "../helpers/glslNames";
 
 const reg = renderRegistry();
 
@@ -140,7 +141,7 @@ class FragmentVaryingAlloc extends FXRenderNode {
   public readonly inputs: readonly FXSocketDescriptor[] = [];
   public readonly outputs: readonly FXSocketDescriptor[] = [{ key: "out", type: VEC4 }];
   public build(ctx: FXRenderContext): void {
-    ctx.allocateVarying(VEC3, "bad");
+    ctx.allocateVarying(VEC3);
     ctx.setOutput("out", construct(VEC4, litVec(0, 0, 0), lit(1)));
   }
 }
@@ -232,7 +233,9 @@ describe("numeric coercion across connections", () => {
     const slot = shader.outputs["albedo"];
     expect(
       shader.fragment.body.some(
-        (line) => line.includes(`vec4 ${slot} =`) && /vec4\(\w+_\d+, 0\.0\)/.test(line),
+        (line) =>
+          line.includes(`vec4 ${slot} =`) &&
+          new RegExp(String.raw`vec4\(${GLSL_NAME}, 0\.0\)`).test(line),
       ),
     ).toBe(true);
   });

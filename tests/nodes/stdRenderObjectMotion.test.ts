@@ -10,6 +10,7 @@ import {
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
+import { drawUniformNames } from "../helpers/glslNames";
 
 // `object-velocity` / `object-angular-velocity` are shared nodes: in render they read the
 // `objectVelocity`/`objectAngularVelocity` builtins - host state FXEmitter/FXEffect push each
@@ -67,16 +68,17 @@ describe("render object-velocity / object-angular-velocity nodes", () => {
 });
 
 describe("render point-velocity node", () => {
-  it("compiles against FX_MESH_TARGET and emits a cross() combining both builtins", () => {
+  it("compiles against FX_MESH_TARGET, combining both builtins once per tick on the CPU", () => {
     const shader = compiler.compile(
-      graphReadingIntoAlbedo(reg.create("point-velocity")),
+      graphReadingIntoAlbedo(reg.create("point-velocity", { offset: [0, 1, 0] })),
       FX_MESH_TARGET,
     );
-    const source = sourceOf(shader);
-    expect(source).toContain("cross(");
-    expect(source).toContain("objectVelocity");
-    expect(source).toContain("objectAngularVelocity");
-    expect(Object.keys(shader.uniforms)).toHaveLength(0);
+    // v + w x r reads the object's motion alone, so the draw stage computes it (an offset: at
+    // none, w x r folds away).
+    const compute = shader.draw?.statements.join("\n") ?? "";
+    expect(compute).toContain("inputs.objectVelocity[");
+    expect(compute).toContain("inputs.objectAngularVelocity[");
+    expect(drawUniformNames(shader)).toContain(shader.outputs["albedo"]);
   });
 
   it("compiles against FX_PARTICLE_TARGET too, even with velocity/torque fully wired explicitly", () => {

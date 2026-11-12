@@ -20,7 +20,10 @@ export interface FXTargetInput {
 
 /**
  * How often a target input's value changes, slowest first:
- * - `draw`: once per draw call - a uniform (the clock, the camera, the emitter's motion);
+ * - `frame`: once per draw, and known on the CPU before it - the clock, the pose the tick sampled,
+ *   the object's motion, a parameter: what the draw stage may compute once per tick instead;
+ * - `view`: once per draw, but per camera (the camera's own matrix and position), so only the
+ *   GPU, drawing for a camera, has it;
  * - `primitive`: once per instanced primitive - a particle's own state, the same at all its
  *   vertices and fragments;
  * - `vertex`: per vertex, interpolated across the primitive (`p_uv`, the camera distance) - linear
@@ -29,16 +32,17 @@ export interface FXTargetInput {
  *
  * A fragment-stage value reading nothing faster than `primitive` is the same at every fragment of
  * a primitive, so the compiler may compute it per vertex and carry it across (see
- * `hoistToEarlyStage`).
+ * `hoistToEarlyStage`); one reading nothing faster than `frame`, once per tick on the CPU.
  */
-export type FXInputRate = "draw" | "primitive" | "vertex" | "fragment";
+export type FXInputRate = "frame" | "view" | "primitive" | "vertex" | "fragment";
 
 /** {@link FXInputRate} as the rank `classifyRates` joins over; rank 0 is a literal. */
 export const FX_INPUT_RATE_RANK: Readonly<Record<FXInputRate, number>> = {
-  draw: 1,
-  primitive: 2,
-  vertex: 3,
-  fragment: 4,
+  frame: 1,
+  view: 2,
+  primitive: 3,
+  vertex: 4,
+  fragment: 5,
 };
 
 /**
@@ -68,7 +72,7 @@ export interface FXTarget {
 
 /**
  * The rates a render graph compiled against `target` reads at: each target input at its declared
- * {@link FXInputRate}, a uniform once per draw. What the compiler cannot place - an impure call, a
+ * {@link FXInputRate}, a uniform (a parameter, set from the CPU) once per frame. What the compiler cannot place - an impure call, a
  * `raw` not marked pure, anything else - is pinned at `fragment`, so nothing reading it moves.
  */
 export function renderRatePolicy(
@@ -83,7 +87,7 @@ export function renderRatePolicy(
         case "targetInput":
           return rates.get(ref.name) ?? pinned;
         case "uniform":
-          return FX_INPUT_RATE_RANK.draw;
+          return FX_INPUT_RATE_RANK.frame;
         // A render graph reads no binding or attribute ref; a local one `classifyRates` resolves.
         case "local":
         case "binding":

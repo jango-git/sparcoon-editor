@@ -34,8 +34,8 @@ import {
   commonSubexpressionElimination,
   partitionByInvariance,
 } from "../core/codegen/cse.Internal";
-import { printJS } from "../core/codegen/printJS.Internal";
-import { uniqueIdentifier } from "../core/codegen/uniqueName.Internal";
+import { printJSLocals } from "../core/codegen/printJS.Internal";
+import { FXJSNames } from "../core/codegen/uniqueName.Internal";
 import type {
   FXBehaviorTargets,
   FXKernelTarget,
@@ -80,19 +80,18 @@ const VEC_COMPONENT_NAMES = ["x", "y", "z", "w"] as const;
 
 /** Mutable accumulator for one phase's compilation (JS SSA). */
 class FXKernelState {
-  private counter = 0;
   private readonly preLoopLines: string[] = [];
   private readonly bodyLines: string[] = [];
   private readonly localsIR: FXKernelLocal[] = [];
   private readonly helperMap = new Map<string, string>();
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
 
+  /** `names` is the kernel's: shared with the other phase, whose bindings merge with this
+   *  phase's by name. */
+  constructor(private readonly names: FXJSNames) {}
+
   public uniqueName(hint: string): string {
-    // `$` is legal in a JS identifier but rejected by the kernel-target name lint,
-    // so a generated local can never collide with a buffer-derived `s_`/`b_` local.
-    const name = uniqueIdentifier(hint, "$", this.counter);
-    this.counter += 1;
-    return name;
+    return this.names.next(hint);
   }
 
   /** Registers a materialized local's scalar AST into the phase plan (printed at {@link finalize}). */
@@ -120,19 +119,14 @@ class FXKernelState {
       (ref) => isInvariantKernelRef(target, ref),
       isImpureCall,
     );
-    const printInto = (locals: readonly FXKernelLocal[], destination: string[]): void => {
-      for (const { name, expr } of locals) {
-        const { code, helpers } = printJS(expr, FX_BEHAVIOR_ALL_FUNCTIONS, (candidate) =>
-          resolveKernelRef(target, candidate),
-        );
-        for (const [key, source] of helpers) {
-          this.emitHelper(key, source);
-        }
-        destination.push(`const ${name} = (${code});`);
-      }
-    };
-    printInto(preLoop, this.preLoopLines);
-    printInto(body, this.bodyLines);
+    const resolveRef = (candidate: Extract<FXExpr, { kind: "ref" }>): string =>
+      resolveKernelRef(target, candidate);
+    this.preLoopLines.push(
+      ...printJSLocals(preLoop, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helperMap),
+    );
+    this.bodyLines.push(
+      ...printJSLocals(body, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helperMap),
+    );
   }
 
   public emitHelper(key: string, source: string): void {
@@ -374,9 +368,10 @@ class FXParticleKernelContext
 function compilePhase(
   view: FXGraph<FXBehaviorNode>,
   target: FXKernelTarget,
+  names: FXJSNames,
 ): FXCompiledKernelPhase {
   const { order, resolution } = prepareCompile(view);
-  const state = new FXKernelState();
+  const state = new FXKernelState(names);
   const outputVariables = new Map<string, readonly string[]>();
 
   buildNodes(view, order, (node, id) => {
@@ -449,13 +444,16 @@ export function compileBehavior(
   const phaseOf = (id: string): FXBehaviorPhase =>
     phases.get(id) ?? graph.getNode(id)?.phase ?? FXBehaviorPhase.UPDATE;
 
+  // One name source for both phases: their bindings merge into one set by name.
+  const names = new FXJSNames();
   const spawn =
     targets.spawn !== undefined
-      ? compilePhase(buildPhaseView(graph, FXBehaviorPhase.SPAWN, phaseOf), targets.spawn)
+      ? compilePhase(buildPhaseView(graph, FXBehaviorPhase.SPAWN, phaseOf), targets.spawn, names)
       : undefined;
   const update = compilePhase(
     buildPhaseView(graph, FXBehaviorPhase.UPDATE, phaseOf),
     targets.update,
+    names,
   );
 
   const hash = structuralHash(

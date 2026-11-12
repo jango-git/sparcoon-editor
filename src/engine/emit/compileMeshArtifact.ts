@@ -4,7 +4,6 @@ import type { FXGeometrySource, FXRenderArtifact, FXRenderMode } from "sparcoon"
 import type { FXCompilerError } from "../core/compiler/FXCompilerError";
 import { FXCompilerBaseline } from "../render/compiler/FXCompilerBaseline";
 import { FX_MESH_TARGET } from "../render/target/FXParticleRenderTarget";
-import { collectRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import { assembleRenderArtifact } from "./assembleArtifacts";
 
 /** Render-only sibling of {@link compileToArtifacts} for a VFX mesh: a single, non-instanced
@@ -30,10 +29,9 @@ export function compileMeshArtifact(
   options: FXCompileMeshOptions = {},
 ): FXCompiledMeshArtifact {
   const shader = new FXCompilerBaseline().compile(renderGraph, FX_MESH_TARGET);
-  const capabilities = collectRenderCapabilities(renderGraph);
   const renderMode = options.renderMode ?? "blending";
   const geometry: FXGeometrySource = options.geometry ?? { type: "primitive", primitive: "plane" };
-  const render = assembleRenderArtifact(shader, capabilities, geometry, [], renderMode);
+  const render = assembleRenderArtifact(shader, geometry, [], renderMode);
   // renderMode/geometry reshape the runtime material, not the shader, so fold them into the hash
   // explicitly (mirrors compileToArtifacts) - toggling either counts as structural.
   return { render, hash: `${shader.hash}::rm-${renderMode}::geo-${JSON.stringify(geometry)}` };

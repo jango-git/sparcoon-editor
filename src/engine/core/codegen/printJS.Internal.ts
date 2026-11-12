@@ -1,7 +1,8 @@
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
 import { collectHelper } from "../ir/FXHelperModule.Internal";
-import type { FXRefResolver } from "./printGLSLBaseline.Internal";
+import type { FXRefResolver } from "./printGLSL.Internal";
+import { shortestFloat32 } from "./float32.Internal";
 
 /**
  * Mirrors `printGLSLBaseline` but only ever sees scalarized (float-only) trees - `scalarize` has
@@ -63,7 +64,7 @@ export function printJS(
     switch (node.kind) {
       case "lit":
         requireScalar(node, "literal");
-        return String(node.values[0]);
+        return jsNumber(node.values[0]);
       case "ref":
         requireScalar(node, "reference");
         return resolveRef(node);
@@ -125,4 +126,36 @@ function requireScalar(expression: FXExpr, what: string): void {
   if (expression.type.components !== 1) {
     throw new Error(`sparcoon IR: non-scalar ${what} reached the JS printer`);
   }
+}
+
+/**
+ * A literal as the GPU kernel spells the same constant (see `shortestFloat32`): the JS kernel then
+ * starts from the very values the GPU one does. An integer (a slot offset, a hash constant) is
+ * written as it is - short already, and exact past float32's range.
+ */
+function jsNumber(value: number | undefined): string {
+  return value !== undefined && Number.isFinite(value) && !Number.isInteger(value)
+    ? shortestFloat32(value)
+    : String(value);
+}
+
+/**
+ * `const <name> = (<code>);` for each of `locals` (scalarized), in order - the JS backends' one way
+ * to print a local - with every helper they pull in added to `helpers` (dependencies first).
+ */
+export function printJSLocals(
+  locals: readonly { readonly name: string; readonly expr: FXExpr }[],
+  functions: ReadonlyMap<string, FXFunctionDef>,
+  resolveRef: FXRefResolver,
+  helpers: Map<string, string>,
+): string[] {
+  return locals.map(({ name, expr }) => {
+    const printed = printJS(expr, functions, resolveRef);
+    for (const [key, source] of printed.helpers) {
+      if (!helpers.has(key)) {
+        helpers.set(key, source);
+      }
+    }
+    return `const ${name} = (${printed.code});`;
+  });
 }

@@ -13,7 +13,6 @@ import {
 } from "../../src/domain/nodePalette";
 import { eventsLiteral } from "../../src/persistence/exportLiterals";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
-import { renderArtifactDeclarations } from "../../src/engine/emit/artifactLiterals";
 import { loadModule } from "../helpers/loadModule";
 import { createTestState } from "../helpers/testDocument";
 
@@ -166,35 +165,6 @@ function emitterWithGpuFlag(on: boolean): SourceState {
   return { ...base, scene: { ...base.scene, emitters: [{ ...emitter, behaviorGraph }] } };
 }
 
-describe("renderArtifactDeclarations", () => {
-  it("names an earlier tier's word-for-word identical artifact instead of repeating it", () => {
-    expect(
-      renderArtifactDeclarations([
-        { name: "aBaseline", body: "{ a: 1 }" },
-        { name: "aStandard", body: "{ a: 1 }" },
-      ]),
-    ).toEqual([
-      "const aBaseline: FXRenderArtifact = { a: 1 };",
-      "const aStandard: FXRenderArtifact = aBaseline;",
-    ]);
-  });
-
-  it("writes out each tier whose artifact differs", () => {
-    expect(
-      renderArtifactDeclarations(
-        [
-          { name: "renderBaseline", body: "{ a: 1 }" },
-          { name: "renderStandard", body: "{ a: 2 }" },
-        ],
-        "export const",
-      ),
-    ).toEqual([
-      "export const renderBaseline: FXRenderArtifact = { a: 1 };",
-      "export const renderStandard: FXRenderArtifact = { a: 2 };",
-    ]);
-  });
-});
-
 describe("emitProjectModule - structure", () => {
   it("emits a self-contained class with per-entity artifacts and a scene spec", () => {
     const text = emitProjectModule(createTestState().source);
@@ -267,6 +237,79 @@ function seedHashEmitterSource(): SourceState {
   };
   return { ...base, scene: { ...base.scene, emitters: [{ ...emitter, behaviorGraph }] } };
 }
+
+/** A source whose one emitter's albedo is `sin(time)`: one value for the whole draw. */
+function drawStageEmitterSource(): SourceState {
+  const base = createTestState().source;
+  const emitter = base.scene.emitters[0];
+  const node = (id: string, type: string, parameters: Record<string, unknown> = {}) => ({
+    id,
+    type,
+    parameters,
+    position: { x: 0, y: 0 },
+  });
+  const edge = (from: string, fromKey: string, to: string, toKey: string) => ({
+    id: `${from}.${fromKey}->${to}.${toKey}`,
+    from: { nodeId: from, socketKey: fromKey },
+    to: { nodeId: to, socketKey: toKey },
+  });
+  const renderGraph = ensureSinks(
+    {
+      ...createEmptyGraph(),
+      nodes: {
+        clock: node("clock", "time"),
+        wave: node("wave", "unary-op", { op: "sin" }),
+        color: node("color", "combine", { type: "vec4" }),
+      },
+      connections: [
+        edge("clock", "out", "wave", "x"),
+        ...["x", "y", "z", "w"].map((key) => edge("wave", "out", "color", key)),
+      ],
+      outputBindings: [{ slot: "albedo", from: { nodeId: "color", socketKey: "out" } }],
+    },
+    GraphKind.Render,
+  );
+  return { ...base, scene: { ...base.scene, emitters: [{ ...emitter, renderGraph }] } };
+}
+
+describe("emitProjectModule - draw stage", () => {
+  it("ships the draw stage as a written method, never code built from a string", () => {
+    const text = emitProjectModule(drawStageEmitterSource());
+    expect(text).toContain("compute(inputs, uniforms) {");
+    expect(text).not.toMatch(/\bnew Function\b|\beval\s*\(/);
+  });
+
+  it("computes its draw uniforms once per tick from the clock", () => {
+    const module = loadModule(emitProjectModule(drawStageEmitterSource()));
+    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
+      play(): void;
+      dispose(): void;
+    };
+    const effect = new Effect({});
+    try {
+      effect.play();
+      sparcoon.FXWorld.update(0.25);
+      // The draw uniforms the generated `compute` writes: named apart from every parameter.
+      const drawn: unknown[] = [];
+      effect.traverse((object) => {
+        const material = (
+          object as { material?: { uniforms?: Record<string, { value: unknown }> } }
+        ).material;
+        for (const [name, uniform] of Object.entries(material?.uniforms ?? {})) {
+          if (/^_[0-9a-z]+$/.test(name)) {
+            drawn.push(uniform.value);
+          }
+        }
+      });
+      // The whole albedo is one value for the draw: lifted as one vec4.
+      const wave = Math.fround(Math.sin(0.25));
+      expect(drawn).toHaveLength(1);
+      expect((drawn[0] as number[]).map(Math.fround)).toEqual([wave, wave, wave, wave]);
+    } finally {
+      effect.dispose();
+    }
+  });
+});
 
 describe("emitProjectModule - executes", () => {
   it("builds an emitter that spawns from its timeline burst event", () => {

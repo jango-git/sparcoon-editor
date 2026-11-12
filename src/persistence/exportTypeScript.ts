@@ -13,11 +13,14 @@ import { effectiveSpawnConfig } from "../domain/deathReactions";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
-  gpuKernelArtifactBody,
-  renderArtifactBody,
-  renderArtifactDeclarations,
+  collectDrawHelpers,
+  collectKernelDrawHelpers,
 } from "../engine/emit/artifactLiterals";
-import type { FXGeometrySource } from "sparcoon";
+import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
+import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
+import type { CompiledShadersByGLSLTier } from "./exportCompile";
+import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
+import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import type { SourceState } from "../model/editorState";
 import { TRAIL_GEOMETRY } from "../domain/trailChecks";
@@ -59,6 +62,14 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   const className = classNameFor(source.name);
 
   const helperNames = new Set<string>();
+  // The JS helpers a behavior or a draw stage calls are module-scope imports.
+  const importHelpers = (helpers: Iterable<string>): void => {
+    for (const helper of helpers) {
+      for (const name of helperImportNames(helper)) {
+        helperNames.add(name);
+      }
+    }
+  };
   const externalTextureNames = new Set<string>();
   const externalGeometryNames = new Set<string>();
   const artifactBlocks: string[] = [];
@@ -70,13 +81,24 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   let needsGpuKernelType = false;
   // One `FXRenderArtifact` constant per GLSL tier, in tier order - an emitter's render and trail
   // and a mesh's render alike.
+  const renderWriter = new FXRenderModuleWriter();
+  const kernelWriter = new FXKernelModuleWriter();
   const pushRenderArtifacts = (
     names: RenderArtifactNames,
-    body: (tier: keyof RenderArtifactNames) => string,
+    shaders: CompiledShadersByGLSLTier,
+    geometry: FXGeometrySource,
+    attributes: readonly FXAttributeRequest[],
+    renderMode: FXRenderMode,
   ): void => {
+    for (const tier of RENDER_TIERS) {
+      importHelpers(collectDrawHelpers(shaders[tier]));
+    }
     artifactBlocks.push(
-      ...renderArtifactDeclarations(
-        RENDER_TIERS.map((tier) => ({ name: names[tier], body: body(tier) })),
+      ...renderWriter.tierDeclarations(
+        RENDER_TIERS.map((tier) => ({ name: names[tier], shader: shaders[tier] })),
+        geometry,
+        attributes,
+        renderMode,
       ),
     );
   };
@@ -90,22 +112,10 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   const emitterIndex = new Map(source.scene.emitters.map((emitter, index) => [emitter.id, index]));
   source.scene.emitters.forEach((emitter, index) => {
     const ir = compileEmitter(emitter, effectiveSpawnConfig(emitter, source.scene));
-    for (const helper of collectBehaviorHelpers(ir.kernel)) {
-      for (const name of helperImportNames(helper)) {
-        helperNames.add(name);
-      }
-    }
+    importHelpers(collectBehaviorHelpers(ir.kernel));
     const renderNames = tierNames(`render${String(index)}`);
     const behaviorName = `behavior${String(index)}`;
-    pushRenderArtifacts(renderNames, (tier) =>
-      renderArtifactBody(
-        ir.shaders[tier],
-        ir.capabilities,
-        ir.geometry,
-        ir.renderAttributes,
-        ir.renderMode,
-      ),
-    );
+    pushRenderArtifacts(renderNames, ir.shaders, ir.geometry, ir.renderAttributes, ir.renderMode);
     artifactBlocks.push(
       `const ${behaviorName}: FXBehaviorArtifact = ${behaviorArtifactBody(ir.kernel)};`,
     );
@@ -113,22 +123,19 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     if (ir.gpuProgram !== undefined) {
       gpuKernelName = `gpuKernel${String(index)}`;
       needsGpuKernelType = true;
-      artifactBlocks.push(
-        `const ${gpuKernelName}: FXParticleKernelArtifact = ${gpuKernelArtifactBody(ir.gpuProgram)};`,
-      );
+      importHelpers(collectKernelDrawHelpers(ir.gpuProgram));
+      artifactBlocks.push(...kernelWriter.declarations(gpuKernelName, ir.gpuProgram));
     }
     let trailNames: RenderArtifactNames | undefined;
     if (ir.trail !== undefined) {
       const trail = ir.trail;
       trailNames = tierNames(`trail${String(index)}`);
-      pushRenderArtifacts(trailNames, (tier) =>
-        renderArtifactBody(
-          trail.shaders[tier],
-          trail.capabilities,
-          TRAIL_GEOMETRY,
-          trail.renderAttributes,
-          trail.renderMode,
-        ),
+      pushRenderArtifacts(
+        trailNames,
+        trail.shaders,
+        TRAIL_GEOMETRY,
+        trail.renderAttributes,
+        trail.renderMode,
       );
     }
     // One external-slot list per emitter: its particles' and its trail's textures together.
@@ -157,9 +164,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   source.scene.meshes.forEach((mesh, index) => {
     const ir = compileMesh(mesh);
     const renderNames = tierNames(`meshRender${String(index)}`);
-    pushRenderArtifacts(renderNames, (tier) =>
-      renderArtifactBody(ir.shaders[tier], ir.capabilities, ir.geometry, [], ir.renderMode),
-    );
+    pushRenderArtifacts(renderNames, ir.shaders, ir.geometry, [], ir.renderMode);
     const slots = externalParamNames(ir.shaders.baseline);
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
@@ -202,6 +207,8 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     lines.push(`import { ${threeTypeImports.join(", ")} } from "three";`);
   }
   lines.push("");
+  // The helpers first: the artifacts below name them.
+  lines.push(...renderWriter.helperDeclarations().map((block) => `${block}\n`));
   lines.push(...artifactBlocks.map((block) => `${block}\n`));
   lines.push(specLiteral);
   lines.push("");

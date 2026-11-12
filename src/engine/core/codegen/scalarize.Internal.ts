@@ -99,6 +99,22 @@ export function scalarComponentName(base: string, index: number): string {
   return `${base}_${index < SWIZZLE_CHANNELS.length ? SWIZZLE_CHANNELS[index] : `m${index.toString()}`}`;
 }
 
+/**
+ * The component of `base` that `name` is (see {@link scalarComponentName}), or `undefined` when
+ * `name` is no component of it.
+ */
+export function scalarComponentIndex(name: string, base: string): number | undefined {
+  if (!name.startsWith(`${base}_`)) {
+    return undefined;
+  }
+  const suffix = name.slice(base.length + 1);
+  if (suffix.length === 1 && SWIZZLE_CHANNELS.includes(suffix)) {
+    return SWIZZLE_CHANNELS.indexOf(suffix);
+  }
+  const matrix = /^m(\d+)$/.exec(suffix)?.[1];
+  return matrix === undefined ? undefined : Number(matrix);
+}
+
 function scalarizeCall(expression: Extract<FXExpr, { kind: "call" }>): readonly FXExpr[] {
   switch (expression.fn) {
     case "length": {

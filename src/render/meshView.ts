@@ -4,8 +4,9 @@
  * gate and geometry/render-mode rebuild tracking as an emitter's.
  */
 
+import { everyTierShaders } from "./everyTierShaders";
 import type { BufferGeometry, Object3D, Texture } from "three";
-import { FXMesh, fxMeshRenderBudget } from "sparcoon/editor";
+import { FXMesh } from "sparcoon/editor";
 import type { FXRenderArtifact } from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
@@ -16,7 +17,6 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { FX_MESH_TARGET } from "../engine/render/target/FXParticleRenderTarget";
-import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import {
@@ -29,7 +29,7 @@ import { meshTransformWarnings } from "../domain/meshDiagnostics";
 import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import {
   RenderBudgetMemo,
-  renderBudgetFindings,
+  meshRenderBudgetFindings,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import type { LiveApplyStatus } from "../model/editorState";
@@ -52,6 +52,8 @@ function describeError(error: unknown): string {
 export class MeshView {
   private readonly budget = new RenderBudgetMemo();
   private readonly renderLive: FXLiveGraph<FXRenderNode, FXCompiledShader>;
+  private readonly renderRegistry: FXNodeRegistry<FXRenderNode>;
+  private readonly renderBackend: FXGLSLRenderTier;
   private shader: FXCompiledShader | undefined = undefined;
   // The last assembled artifact, kept so a timeline value-drive can find each param's uniform slot
   // and its baked baseline (to revert a param that stops being driven).
@@ -102,6 +104,8 @@ export class MeshView {
         },
       ),
     );
+    this.renderRegistry = renderRegistry;
+    this.renderBackend = renderBackend;
   }
 
   /** The runtime mesh's Object3D (its transform is the mesh's pose), or `undefined` before build. */
@@ -149,7 +153,6 @@ export class MeshView {
     try {
       artifact = assembleRenderArtifact(
         this.shader,
-        collectRenderCapabilities(this.renderLive.graphView),
         toArtifactGeometrySource(geometry),
         [],
         renderMode,
@@ -161,9 +164,25 @@ export class MeshView {
     // Held before it replaces anything, like the emitter's (see EmitterView.apply).
     let budget: RenderBudgetFindings;
     try {
-      budget = this.budget.get([this.shader, renderMode, castShadow], () =>
-        renderBudgetFindings(fxMeshRenderBudget(artifact, { castShadow })),
-      );
+      const shader = this.shader;
+      budget = this.budget.get([shader, renderMode, castShadow], () => {
+        // The other tier's artifact of the same graph beside this one: each counted on its own.
+        const shaders = everyTierShaders({
+          tier: this.renderBackend,
+          shader,
+          snapshot: renderSnapshot,
+          registry: this.renderRegistry,
+          buildTarget: () => FX_MESH_TARGET,
+        });
+        const assemble = (compiled: FXCompiledShader): FXRenderArtifact =>
+          compiled === shader
+            ? artifact
+            : assembleRenderArtifact(compiled, toArtifactGeometrySource(geometry), [], renderMode);
+        return meshRenderBudgetFindings(
+          { baseline: assemble(shaders.baseline), standard: assemble(shaders.standard) },
+          castShadow,
+        );
+      });
     } catch (error) {
       return invalid([describeError(error)]);
     }

@@ -90,3 +90,20 @@ export function refNamesIn(exprs: Iterable<FXExpr>, kind: FXRefKind): string[] {
   }
   return [...names];
 }
+
+/** `expr` with each ref `replace` maps to an expression swapped for it; other refs are kept. */
+export function replaceRefs(
+  expr: FXExpr,
+  replace: (ref: Extract<FXExpr, { kind: "ref" }>) => FXExpr | undefined,
+): FXExpr {
+  if (expr.kind === "ref") {
+    return replace(expr) ?? expr;
+  }
+  const children = childrenOf(expr);
+  return children.length === 0
+    ? expr
+    : withChildren(
+        expr,
+        children.map((child) => replaceRefs(child, replace)),
+      );
+}

@@ -13,5 +13,5 @@ export interface FXRenderContext extends FXCompilerContext {
   allocateUniform(descriptor: FXUniformDescriptor): FXUniformHandle;
 
   /** Allocates a vertex->fragment varying and returns its generated name. */
-  allocateVarying(type: FXValueType, hint: string): string;
+  allocateVarying(type: FXValueType): string;
 }

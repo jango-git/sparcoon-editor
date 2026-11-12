@@ -31,9 +31,17 @@ const VERTEX_OUTPUT_SLOTS: ReadonlySet<string> = new Set([
 
 /** A hand-written stage: its code, and what it reads of each particle - every identifier it
  *  names, through the compiler's own target-input mapping. */
-function stage(body: readonly string[], outputs: readonly string[]): FXShaderStageSource {
+function stage(
+  body: readonly string[],
+  outputs: readonly string[],
+  uniformDeclarations: readonly string[],
+): FXShaderStageSource {
   const identifiers = new Set([...body, ...outputs].join("\n").match(/\b[A-Za-z_]\w*\b/g));
   return {
+    // As the compiler declares them: in each stage whose code reads them.
+    uniformDeclarations: uniformDeclarations.filter((declaration) =>
+      identifiers.has(/(\w+);$/.exec(declaration)?.[1] ?? ""),
+    ),
     helperFunctions: [],
     body,
     particleReads: particleReadsOf([...identifiers]),
@@ -59,11 +67,10 @@ export function unlitArtifact(
   return {
     lightingIntrinsics: [],
     sceneDepth: false,
-    uniformDeclarations: over.uniformDeclarations ?? [],
     varyings: [],
-    vertex: stage(over.vertexBody ?? [], outputsOf(true)),
+    vertex: stage(over.vertexBody ?? [], outputsOf(true), over.uniformDeclarations ?? []),
     fragment: {
-      ...stage(over.fragmentBody ?? [], outputsOf(false)),
+      ...stage(over.fragmentBody ?? [], outputsOf(false), over.uniformDeclarations ?? []),
       // Every identifier it names, through the compiler's own target-input mapping, as above.
       surfaceReads: surfaceReadsOf([
         ...new Set(

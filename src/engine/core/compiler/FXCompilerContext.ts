@@ -54,10 +54,12 @@ export interface FXCompilerContext {
   /**
    * Materializes `expr` into a named SSA local and returns a ref reading it back, so a shared
    * sub-expression (normalization, cross products) is computed once instead of duplicated.
+   * `hint` names the local in the JS kernel; GLSL backends use compact generated names.
    */
   defineLocal(hint: string, expr: FXExpr): FXExpr;
 
-  /** Allocates a collision-free identifier scoped to this compilation. */
+  /** Allocates a collision-free identifier scoped to this compilation; `hint` as in
+   *  {@link defineLocal}. */
   uniqueName(hint: string): string;
 
   /** Appends a helper (function/snippet), deduplicated by `key`. */

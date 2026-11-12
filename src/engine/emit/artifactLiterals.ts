@@ -1,6 +1,9 @@
-import type { FXRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
+import { zeroValue } from "../render/compiler/FXCompiledShader";
+import type { FXValueType } from "../core/socket/FXValueType";
+import type { FXCompiledDrawStage } from "../core/codegen/drawStage.Internal";
+import { DRAW_COMPUTE_PARAMETERS } from "../core/codegen/drawStageBuild.Internal";
 import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
 import type {
   FXCompiledKernel,
@@ -43,6 +46,7 @@ function attributeDecls(attributes: readonly FXAttributeRequest[]): string {
  */
 export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
   return {
+    uniformDeclarations: [...stage.uniformDeclarations],
     helperFunctions: [...stage.helperFunctions],
     body: [...stage.body],
     particleReads: particleReadsOf(stage.targetReads),
@@ -64,46 +68,39 @@ export function fragmentStageSource(stage: FXCompiledStage): FXFragmentStageSour
   return { ...stageSource(stage), surfaceReads: surfaceReadsOf(stage.targetReads) };
 }
 
-function stageLiteral(source: FXShaderStageSource | FXFragmentStageSource): string {
+/** How a module prints one stage's helpers and body: each an array literal (expression text). */
+export interface FXStagePrinter {
+  helpers(stage: FXRenderStageKey, helperFunctions: readonly string[]): string;
+  body(stage: FXRenderStageKey, body: readonly string[]): string;
+}
+
+/** The stages of a render artifact, by the property that holds each. */
+export type FXRenderStageKey = "vertex" | "fragment";
+
+/** Every helper and line written out. */
+const PLAIN_STAGES: FXStagePrinter = {
+  helpers: (_stage, helperFunctions) => JSON.stringify(helperFunctions),
+  body: (_stage, body) => JSON.stringify(body),
+};
+
+function stageLiteral(
+  stage: FXRenderStageKey,
+  source: FXShaderStageSource | FXFragmentStageSource,
+  printer: FXStagePrinter,
+): string {
   const surface =
     "surfaceReads" in source ? `, surfaceReads: ${JSON.stringify(source.surfaceReads)}` : "";
   return (
-    `{ helperFunctions: ${JSON.stringify(source.helperFunctions)}, ` +
-    `body: ${JSON.stringify(source.body)}, ` +
+    `{ uniformDeclarations: ${JSON.stringify(source.uniformDeclarations)}, ` +
+    `helperFunctions: ${printer.helpers(stage, source.helperFunctions)}, ` +
+    `body: ${printer.body(stage, source.body)}, ` +
     `particleReads: ${JSON.stringify(source.particleReads)}${surface} }`
   );
 }
 
-/** Parses `uniform <glslType> <name>;` declarations into a name -> type map. Shared with
- *  {@link assembleArtifacts}'s in-memory assembler, so the two never part ways on the format. */
-export function uniformTypes(declarations: readonly string[]): Map<string, string> {
-  const types = new Map<string, string>();
-  for (const declaration of declarations) {
-    // RegExp#exec is the external API that demands null; converted once here at the boundary.
-    const match = /^uniform\s+(\S+)\s+([A-Za-z_$][\w$]*)\s*;/.exec(declaration) ?? undefined;
-    if (match !== undefined) {
-      const glslType = match[1];
-      const name = match[2];
-      // Both groups are mandatory in the pattern above, so a successful match always
-      // captures them; this guard only proves it to noUncheckedIndexedAccess.
-      if (glslType === undefined || name === undefined) {
-        throw new Error("uniformTypes: matched uniform declaration without captured groups");
-      }
-      types.set(name, glslType);
-    }
-  }
-  return types;
-}
-
 /** Whether any declared uniform is a `sampler2D` - drives whether the module imports texture helpers. */
 export function uniformsUseTexture(shader: FXCompiledShader): boolean {
-  const types = uniformTypes(shader.uniformDeclarations);
-  for (const name of Object.keys(shader.uniforms)) {
-    if (types.get(name) === "sampler2D") {
-      return true;
-    }
-  }
-  return false;
+  return Object.values(shader.uniforms).some((handle) => handle.type.glslTypeName === "sampler2D");
 }
 
 function serializeUniformValue(value: unknown, name: string): string {
@@ -121,62 +118,57 @@ function serializeUniformValue(value: unknown, name: string): string {
 }
 
 function uniformsLiteral(shader: FXCompiledShader): string {
-  const types = uniformTypes(shader.uniformDeclarations);
   const entries = Object.entries(shader.uniforms).map(([name, handle]) => {
     // An external sampler carries no baked value: the host binds it by slot name at load time
     // (via `fromArtifacts({ textures })` / `applyValues`), so emit only the slot, not a value.
     if (handle.external !== undefined) {
       return `${JSON.stringify(name)}: { type: "sampler2D", external: ${JSON.stringify(handle.external)} }`;
     }
-    const type = types.get(name) ?? "float";
+    const type = handle.type.glslTypeName;
     return `${JSON.stringify(name)}: { type: ${JSON.stringify(type)}, value: ${serializeUniformValue(handle.value, name)} }`;
   });
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`;
 }
 
-/**
- * One `<keyword> <name>: FXRenderArtifact = <body>;` declaration per GLSL tier, in tier order. A
- * tier whose artifact literal is word for word an earlier tier's - the compilers agree whenever a
- * graph uses nothing only one tier has - names that one instead of repeating it: the module
- * carries each distinct artifact once, and the tiers share it at runtime.
- */
-export function renderArtifactDeclarations(
-  declarations: readonly { readonly name: string; readonly body: string }[],
-  keyword: "const" | "export const" = "const",
-): string[] {
-  const firstNamed = new Map<string, string>();
-  return declarations.map(({ name, body }) => {
-    const earlier = firstNamed.get(body);
-    if (earlier === undefined) {
-      firstNamed.set(body, name);
-    }
-    return `${keyword} ${name}: FXRenderArtifact = ${earlier ?? body};`;
-  });
-}
-
-/** The `FXRenderArtifact` object literal (bare `{ ... }`, for `const <name>: FXRenderArtifact = <body>;`). */
+/** The `FXRenderArtifact` object literal (bare `{ ... }`, for `const <name>: FXRenderArtifact = <body>;`),
+ *  its stages printed by `stages` (in full by default). */
 export function renderArtifactBody(
   shader: FXCompiledShader,
-  capabilities: FXRenderCapabilities,
   geometry: FXGeometrySource,
   attributes: readonly FXAttributeRequest[],
   renderMode: FXRenderMode,
+  stages: FXStagePrinter = PLAIN_STAGES,
 ): string {
   return [
     "{",
-    `  lightingIntrinsics: ${JSON.stringify(capabilities.lightingIntrinsics)},`,
-    `  sceneDepth: ${JSON.stringify(capabilities.sceneDepth)},`,
+    `  lightingIntrinsics: ${JSON.stringify(shader.capabilities.lightingIntrinsics)},`,
+    `  sceneDepth: ${JSON.stringify(shader.capabilities.sceneDepth)},`,
     `  geometry: ${JSON.stringify(geometry)},`,
     `  options: { renderMode: ${JSON.stringify(renderMode)} },`,
-    `  uniformDeclarations: ${JSON.stringify(shader.uniformDeclarations)},`,
     `  varyings: ${JSON.stringify(varyingDecls(shader))},`,
-    `  vertex: ${stageLiteral(stageSource(shader.vertex))},`,
-    `  fragment: ${stageLiteral(fragmentStageSource(shader.fragment))},`,
+    `  vertex: ${stageLiteral("vertex", stageSource(shader.vertex), stages)},`,
+    `  fragment: ${stageLiteral("fragment", fragmentStageSource(shader.fragment), stages)},`,
     `  outputs: ${JSON.stringify(shader.outputs)},`,
     `  uniforms: ${uniformsLiteral(shader)},`,
     `  attributeReads: ${attributeDecls(attributes)},`,
+    ...(shader.draw === undefined ? [] : [drawComputeLiteral(shader.draw)]),
     "}",
   ].join("\n");
+}
+
+/** The `compute` method of a render artifact: its statements as written source. Its helpers are
+ *  module-scope imports (see {@link collectDrawHelpers}), never inlined here. */
+function drawComputeLiteral(stage: FXCompiledDrawStage): string {
+  return [
+    `  compute(${DRAW_COMPUTE_PARAMETERS.join(", ")}) {`,
+    ...stage.statements.map((statement) => `    ${statement}`),
+    "  },",
+  ].join("\n");
+}
+
+/** The JS helpers a render artifact's `compute` calls, to hoist to module scope like a behavior's. */
+export function collectDrawHelpers(shader: FXCompiledShader): readonly string[] {
+  return shader.draw?.helpers ?? [];
 }
 
 /** Behavior math helpers, deduped across both phases, to hoist to module scope. */
@@ -259,11 +251,20 @@ export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""):
   return lines.join("\n");
 }
 
-function gpuBindingsLiteral(bindings: Readonly<Record<string, FXKernelBindingHandle>>): string {
-  const entries = Object.entries(bindings).map(
-    ([name, handle]) =>
-      `${JSON.stringify(name)}: { value: ${serializeBindingValue(handle.value)} }`,
-  );
+function gpuBindingsLiteral(
+  bindings: Readonly<Record<string, FXKernelBindingHandle>>,
+  drawUniforms: Readonly<Record<string, FXValueType>>,
+): string {
+  const entries = [
+    ...Object.entries(bindings).map(
+      ([name, handle]) =>
+        `${JSON.stringify(name)}: { value: ${serializeBindingValue(handle.value)} }`,
+    ),
+    // The draw uniforms, seeded at zero: `compute` writes them every pass.
+    ...Object.entries(drawUniforms).map(
+      ([name, type]) => `${JSON.stringify(name)}: { value: ${JSON.stringify(zeroValue(type))} }`,
+    ),
+  ];
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`;
 }
 
@@ -271,15 +272,28 @@ function gpuBindingsLiteral(bindings: Readonly<Record<string, FXKernelBindingHan
  *  FXParticleKernelArtifact = <body>;`) - the standard-tier (GPU/transform-feedback) sibling of
  *  {@link behaviorArtifactBody}. Unlike the JS artifact, there are no per-phase math helpers to
  *  hoist separately: `program.vertexSource` already carries every GLSL helper inline (the fused
- *  assembler's own doc comment - `FXKernelBuildStandard.Internal.ts`). */
-export function gpuKernelArtifactBody(program: FXFusedProgramStandard): string {
+ *  assembler's own doc comment - `FXKernelBuildStandard.Internal.ts`). `sources` are the two
+ *  sources' expressions in the module (by default written out). */
+export function gpuKernelArtifactBody(
+  program: FXFusedProgramStandard,
+  sources: { readonly vertexSource: string; readonly fragmentSource: string } = {
+    vertexSource: JSON.stringify(program.vertexSource),
+    fragmentSource: JSON.stringify(program.fragmentSource),
+  },
+): string {
   return [
     "{",
-    `  vertexSource: ${JSON.stringify(program.vertexSource)},`,
-    `  fragmentSource: ${JSON.stringify(program.fragmentSource)},`,
+    `  vertexSource: ${sources.vertexSource},`,
+    `  fragmentSource: ${sources.fragmentSource},`,
     `  buffers: ${JSON.stringify(program.buffers)},`,
     `  transformFeedbackVaryings: ${JSON.stringify(program.transformFeedbackVaryings)},`,
-    `  bindings: ${gpuBindingsLiteral(program.bindings)},`,
+    `  bindings: ${gpuBindingsLiteral(program.bindings, program.draw?.uniforms ?? {})},`,
+    ...(program.draw === undefined ? [] : [drawComputeLiteral(program.draw.stage)]),
     "}",
   ].join("\n");
+}
+
+/** The JS helpers a GPU kernel's `compute` calls, to hoist to module scope like a behavior's. */
+export function collectKernelDrawHelpers(program: FXFusedProgramStandard): readonly string[] {
+  return program.draw?.stage.helpers ?? [];
 }

@@ -143,6 +143,17 @@ export function validateRenderTargetSemantics(target: FXTarget): FXCompilerError
         message: `target "${target.name}" input "${input.name}" names unknown rate "${input.rate}"`,
         params: { targetName: target.name, inputName: input.name, rate: input.rate },
       });
+    } else if (
+      FX_INPUT_RATE_RANK[input.rate] <= FX_INPUT_RATE_RANK.view &&
+      !LEGAL_STAGES.every((stage) => input.stages.includes(stage))
+    ) {
+      // The placement defines a free alias of a uniform-rate value in each stage that reads it
+      // instead of carrying it (`sharedRate`), so both stages must be able to read the input.
+      errors.push({
+        code: "uniform-rate-input-not-in-both-stages",
+        message: `target "${target.name}" ${input.rate}-rate input "${input.name}" must be readable in both stages`,
+        params: { targetName: target.name, inputName: input.name, rate: input.rate },
+      });
     }
   }
 

@@ -4,6 +4,7 @@ import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerB
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
+import { drawUniformNames, readsName } from "../helpers/glslNames";
 
 // Matrix nodes build/compose/apply mat2/mat3/mat4 transforms. These graphs are hand-built (the
 // generic contract harness cannot synthesize matrix inputs from a `constant`), binding a
@@ -282,7 +283,7 @@ describe("standard render matrix nodes", () => {
     expect(shader.outputs["albedo"]).toBeDefined();
   });
 
-  it("world-matrix reads Three's modelMatrix (free in the vertex stage, no extra uniform)", () => {
+  it("world-matrix reads the pose: a chain of it alone is computed once per tick on the CPU", () => {
     // world-matrix -> transform-point -> compose-transform -> particleTransform (vertex slot).
     // modelMatrix is Three's built-in vertex uniform, so the vertex body references it and no
     // u_ uniform is added.
@@ -297,12 +298,14 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.vertex.body.join("\n")).toContain("modelMatrix");
-    // It is a host builtin (like u_time), not a compiler-allocated uniform.
-    expect(Object.keys(shader.uniforms)).toHaveLength(0);
+    // Nothing here changes per particle: the chain reads the pose once per tick on the CPU (a host
+    // input, like the clock), and the vertex stage reads the result.
+    expect(shader.draw?.statements.join("\n")).toContain("inputs.modelMatrix[");
+    expect(shader.vertex.body.join("\n")).not.toContain("modelMatrix");
+    expect(Object.keys(shader.uniforms).sort()).toEqual(drawUniformNames(shader).sort());
   });
 
-  it("matrix-to-mat3 resizes world-matrix down to feed transform-direction (mat3(modelMatrix))", () => {
+  it("matrix-to-mat3 resizes world-matrix down to feed transform-direction (on the CPU)", () => {
     const graph = graphOf(
       {
         wm: reg.create("world-matrix"),
@@ -320,14 +323,15 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const source = shader.fragment.body.join("\n") + shader.vertex.body.join("\n");
-    expect(source).toContain("modelMatrix");
-    // The resize is GLSL's native mat3(mat4) constructor - a reindex, no arithmetic.
-    expect(source).toContain("mat3(");
+    // A direction of the pose alone: turned once per tick on the CPU, read by the shading.
+    const compute = shader.draw?.statements.join("\n") ?? "";
+    expect(compute).toContain("inputs.modelMatrix[");
+    const fragment = shader.fragment.body.join("\n");
+    expect(drawUniformNames(shader).some((name) => readsName(fragment, name))).toBe(true);
     expect(shader.outputs["albedo"]).toBeDefined();
   });
 
-  it("inverse-world-matrix derives inverse(modelMatrix) in-shader (emits the inverse helper)", () => {
+  it("inverse-world-matrix: the pose's inverse is computed once per tick on the CPU, not in-shader", () => {
     const graph = graphOf(
       {
         iwm: reg.create("inverse-world-matrix"),
@@ -339,9 +343,11 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    // inverse(modelMatrix) is the pose's alone: inverted once per tick on the CPU, never in-shader.
+    expect(shader.draw?.statements.join("\n")).toContain("inputs.modelMatrix[");
     const vsrc = shader.vertex.body.join("\n") + shader.vertex.helperFunctions.join("\n");
-    expect(vsrc).toContain("modelMatrix");
-    expect(vsrc).toContain("fxInverse");
+    expect(vsrc).not.toContain("fxInverse");
+    expect(drawUniformNames(shader)).toContain(shader.outputs["particleTransform"]);
   });
 
   it("a matrix produced in vertex crosses into fragment through a mat3 varying", () => {

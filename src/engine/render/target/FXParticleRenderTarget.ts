@@ -1,8 +1,9 @@
 import type { FXParticleReads, FXSurfaceReads } from "sparcoon";
 import {
+  fxGraphUniformAllowance,
   fxGraphVaryingAllowance,
-  fxVaryingShape,
-  packedVaryingVectors,
+  fxPackedShape,
+  packedVectors,
   type FXGLSLRenderTier,
 } from "sparcoon/editor";
 import type { FXValueType } from "../../core/socket/FXValueType";
@@ -42,24 +43,24 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "geometryTangent", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
   { name: "worldPosition", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
   // Global clock (seconds since start), updated per frame by the material adapter + FXEmitter.
-  { name: "u_time", type: FLOAT, stages: BOTH_STAGES, rate: "draw" },
+  { name: "u_time", type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
   // Time elapsed since the previous frame (seconds), updated per frame likewise.
-  { name: "u_deltaTime", type: FLOAT, stages: BOTH_STAGES, rate: "draw" },
+  { name: "u_deltaTime", type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
   // View-space distance from the camera to the particle center, computed in the vertex stage
   // and interpolated. Enables distance-based fades.
   { name: "p_cameraDistance", type: FLOAT, stages: [FXShaderStage.FRAGMENT], rate: "vertex" },
   // Three declares and populates `modelMatrix` automatically; costs no per-frame plumbing.
-  { name: "modelMatrix", type: MAT4, stages: BOTH_STAGES, rate: "draw" },
+  { name: "modelMatrix", type: MAT4, stages: BOTH_STAGES, rate: "frame" },
   // Three declares and updates `viewMatrix` in both prefixes (BOTH_STAGES also keeps a
   // stage-flexible reader like `look-at-camera` from failing the nominal-stage read check).
-  { name: "viewMatrix", type: MAT4, stages: BOTH_STAGES, rate: "draw" },
+  { name: "viewMatrix", type: MAT4, stages: BOTH_STAGES, rate: "view" },
   // Three declares `cameraPosition` in both prefixes; feeds billboards and fresnel.
-  { name: "cameraPosition", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
+  { name: "cameraPosition", type: VEC3, stages: BOTH_STAGES, rate: "view" },
   // The emitter/mesh's world-space linear/angular velocity, pushed by FXEmitter/FXEffect each
   // tick. Unprefixed: a domain-shared builtin, also exposed by the behavior target, not a
   // render-local uniform.
-  { name: "objectVelocity", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
-  { name: "objectAngularVelocity", type: VEC3, stages: BOTH_STAGES, rate: "draw" },
+  { name: "objectVelocity", type: VEC3, stages: BOTH_STAGES, rate: "frame" },
+  { name: "objectAngularVelocity", type: VEC3, stages: BOTH_STAGES, rate: "frame" },
 ];
 
 /** Varying (and render target-input) name a user attribute `name` is read through. */
@@ -113,7 +114,7 @@ export function surfaceReadsOf(targetReads: readonly string[]): FXSurfaceReads {
 /**
  * The varyings the runtime declares for the particle properties a fragment stage reading the
  * target inputs `targetReads` reads (see {@link particleReadsOf}): the core position and lifecycle
- * as a `vec3` each, an attribute at its own width - as `packedVaryingVectors` counts them.
+ * as a `vec3` each, an attribute at its own width - as `packedVectors` counts them.
  */
 export function fragmentPropertyVaryings(
   target: FXTarget,
@@ -144,19 +145,51 @@ export function fragmentPropertyVaryings(
  * runtime's own packing rule: the `carried` values and the particle properties a fragment stage
  * reading `lateReads` needs as varyings (see {@link fragmentPropertyVaryings}). `fragmentReads` -
  * what the fragment stage reads of the target at all - fixes the surface frame the material
- * builds, which no move between the stages changes (it is per fragment).
+ * builds, which no move between the stages changes (it is per fragment); `lightingIntrinsics`
+ * (empty: unlit) the lighting the graph's nodes call.
  */
 export function crossingBudget(
   target: FXTarget,
   tier: FXGLSLRenderTier,
   fragmentReads: readonly string[],
+  lightingIntrinsics: readonly string[],
 ): (carried: readonly FXValueType[], lateReads: readonly string[]) => boolean {
-  const allowance = fxGraphVaryingAllowance(tier, surfaceReadsOf(fragmentReads));
+  const allowance = fxGraphVaryingAllowance(
+    tier,
+    surfaceReadsOf(fragmentReads),
+    lightingIntrinsics,
+  );
   return (carried, lateReads) =>
-    packedVaryingVectors([
-      ...carried.map((type) => fxVaryingShape(type.glslTypeName)),
+    packedVectors([
+      ...carried.map((type) => fxPackedShape(type.glslTypeName)),
       ...fragmentPropertyVaryings(target, lateReads),
     ]) <= allowance;
+}
+
+/**
+ * Whether a graph's draw uniforms fit beside its own: the `graphUniforms` it declares (numeric
+ * types; samplers take no vector) and the external slots `externalSlots` - against what `tier`
+ * leaves a graph's uniforms beside the heaviest material its code fixes
+ * (`fxGraphUniformAllowance`), counted by the runtime's own packing rule. `fragmentReads` and
+ * `lightingIntrinsics` fix that material, as for {@link crossingBudget}.
+ */
+export function drawUniformBudget(
+  tier: FXGLSLRenderTier,
+  fragmentReads: readonly string[],
+  lightingIntrinsics: readonly string[],
+  graphUniforms: readonly FXValueType[],
+  externalSlots: readonly string[],
+): (drawUniforms: readonly FXValueType[]) => boolean {
+  const allowance = fxGraphUniformAllowance(
+    tier,
+    surfaceReadsOf(fragmentReads),
+    lightingIntrinsics,
+    externalSlots,
+  );
+  return (drawUniforms) =>
+    packedVectors(
+      [...graphUniforms, ...drawUniforms].map((type) => fxPackedShape(type.glslTypeName)),
+    ) <= allowance;
 }
 
 /** Per-attribute render inputs: each requested attribute is readable in both stages through its

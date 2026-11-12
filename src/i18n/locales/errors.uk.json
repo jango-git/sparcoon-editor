@@ -176,6 +176,9 @@
   "unknown-render-input-rate": {
     "message": "таргет \"{targetName}\" вхід \"{inputName}\" називає невідому частоту \"{rate}\""
   },
+  "uniform-rate-input-not-in-both-stages": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" з частотою {rate} має читатися в обох стадіях"
+  },
   "unknown-render-output-stage": {
     "message": "таргет \"{targetName}\" вихід \"{outputSlot}\" називає невідому стадію \"{stage}\""
   },
@@ -301,6 +304,30 @@
   },
   "render-varying-budget-baseline": {
     "message": "матеріалу потрібно varying-векторів: {used}; тир Baseline на GPU з WebGL1 гарантує лише {limit}, там ефект може не відмалюватися"
+  },
+  "render-vertex-uniform-budget": {
+    "message": "матеріалу потрібно вершинних uniform-векторів: {used}; будь-який GPU з WebGL2 гарантує {limit} - оголосіть менше параметрів або передавайте у вершинну стадію менше значень"
+  },
+  "render-vertex-uniform-budget-baseline": {
+    "message": "матеріалу потрібно вершинних uniform-векторів: {used}; найслабший пристрій з WebGL1, який підтримує тир Baseline, дає {limit}, там ефект може не відмалюватися"
+  },
+  "render-fragment-uniform-budget": {
+    "message": "матеріалу потрібно фрагментних uniform-векторів: {used}; будь-який GPU з WebGL2 гарантує {limit} - оголосіть менше параметрів"
+  },
+  "render-fragment-uniform-budget-baseline": {
+    "message": "матеріалу потрібно фрагментних uniform-векторів: {used}; найслабший пристрій з WebGL1, який підтримує тир Baseline, дає {limit}, там ефект може не відмалюватися"
+  },
+  "render-vertex-sampler-budget": {
+    "message": "матеріалу потрібно текстурних юнітів у вершинній стадії: {used}; будь-який GPU з WebGL2 гарантує {limit} - вибирайте менше текстур у вершинній стадії"
+  },
+  "render-vertex-sampler-budget-baseline": {
+    "message": "матеріалу потрібно текстурних юнітів у вершинній стадії: {used}; найслабший пристрій з WebGL1, який підтримує тир Baseline, дає {limit}, там ефект може не відмалюватися"
+  },
+  "render-fragment-sampler-budget": {
+    "message": "матеріалу потрібно текстурних юнітів у фрагментній стадії: {used}; будь-який GPU з WebGL2 гарантує {limit} - вибирайте менше текстур"
+  },
+  "render-fragment-sampler-budget-baseline": {
+    "message": "матеріалу потрібно текстурних юнітів у фрагментній стадії: {used}; найслабший пристрій з WebGL1, який підтримує тир Baseline, дає {limit}, там ефект може не відмалюватися"
   },
   "mesh-ignores-transform": {
     "message": "цей меш не читає свою матрицю світу, тож його не рухають ні трансформ, ні ключі, ні розташування ефекту в сцені - під'єднайте ноду «Світова матриця» до входу «Перетворення вершини»"

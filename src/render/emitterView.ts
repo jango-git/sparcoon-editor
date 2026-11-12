@@ -5,6 +5,7 @@
  * rebind. The trail graph's own live compile and built state live in {@link EmitterTrail}.
  */
 
+import { everyTierShaders } from "./everyTierShaders";
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
 import { FXEmitter } from "sparcoon/editor";
 import type {
@@ -16,7 +17,13 @@ import type {
   FXParticleDeathListener,
   FXSpawnTarget,
 } from "sparcoon/editor";
-import type { FXBehaviorArtifact, FXParticleKernelArtifact, FXRenderArtifact } from "sparcoon";
+import type {
+  FXBehaviorArtifact,
+  FXParticleKernelArtifact,
+  FXGeometrySource,
+  FXRenderArtifact,
+  FXUniformValue,
+} from "sparcoon";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
@@ -41,7 +48,6 @@ import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompile
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { buildParticleTarget } from "../engine/render/target/FXParticleRenderTarget";
-import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import {
   assembleBehaviorArtifact,
   assembleGpuKernelArtifact,
@@ -59,6 +65,7 @@ import {
 import {
   emitterRenderBudgetFindings,
   RenderBudgetMemo,
+  type FXRenderArtifactsByTier,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import { undeclaredAttributeErrors } from "../domain/serialize";
@@ -136,6 +143,8 @@ function describeError(error: unknown): string {
  */
 export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
   private readonly renderLive: FXLiveGraph<FXRenderNode, FXCompiledShader>;
+  // The render snapshot last applied: what the budget compiles the other tier from.
+  private renderSnapshot: FXGraphSnapshotData | undefined = undefined;
   private readonly behaviorLive: FXLiveGraph<FXBehaviorNode, FXCompiledBehaviorBundle>;
   // The trail graph's live part, created when the emitter first has a trail and dropped with it.
   private liveTrail: EmitterTrail | undefined = undefined;
@@ -307,6 +316,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
     // Each live graph reconciles + gates internally and never throws: a bad edit (unknown node,
     // failed validation, a codegen fault) comes back in its `errors`, holding the last good IR.
     const renderResult = this.renderLive.apply(renderSnapshot);
+    this.renderSnapshot = renderSnapshot;
     const behaviorResult = this.behaviorLive.apply(behaviorSnapshot);
     const trailResult = trail?.live.apply(trail.input.snapshot);
 
@@ -378,14 +388,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
       }
     }
 
-    // Assembly copies compiled strings + snapshots values (no code generation), so a value-only
-    // rebind never re-pays the compile. A same-name binding conflict would throw here; hold rather than crash.
+    // Assembly copies compiled strings and snapshots values (a draw stage's `compute` is built once
+    // per compiled stage), so a value-only rebind never re-pays the compile. A same-name binding
+    // conflict would throw here; hold rather than crash.
     let artifacts: PreviewArtifacts;
     try {
       artifacts = {
         render: assembleRenderArtifact(
           this.shader,
-          collectRenderCapabilities(this.renderLive.graphView),
           toArtifactGeometrySource(geometry),
           this.renderAttributes,
           renderMode,
@@ -408,7 +418,12 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
     // is its own: a failure counting the trail's materials is the trail's.
     let budget: RenderBudgetFindings;
     try {
-      budget = this.budgetFindings(artifacts, renderMode, castShadow);
+      budget = this.budgetFindings(
+        artifacts,
+        toArtifactGeometrySource(geometry),
+        renderMode,
+        castShadow,
+      );
     } catch (error) {
       return hold({ render: invalid([describeError(error)]) });
     }
@@ -707,7 +722,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
    */
   private budgetFindings(
     artifacts: PreviewArtifacts,
-    renderMode: string,
+    geometry: FXGeometrySource,
+    renderMode: RenderMode,
     castShadow: boolean,
   ): RenderBudgetFindings {
     const program = this.standardProgram;
@@ -722,12 +738,37 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
       ],
       () =>
         emitterRenderBudgetFindings(
-          artifacts.render,
+          this.everyTierArtifacts(artifacts.render, geometry, renderMode),
           artifacts.behavior.buffers,
           castShadow,
           program?.buffers,
         ),
     );
+  }
+
+  /** `render` (the preview tier's) beside the other tier's artifact of the same graph. */
+  private everyTierArtifacts(
+    render: FXRenderArtifact,
+    geometry: FXGeometrySource,
+    renderMode: RenderMode,
+  ): FXRenderArtifactsByTier {
+    const shader = this.shader;
+    const snapshot = this.renderSnapshot;
+    if (shader === undefined || snapshot === undefined) {
+      return { baseline: render, standard: render };
+    }
+    const shaders = everyTierShaders({
+      tier: this.renderBackend,
+      shader,
+      snapshot,
+      registry: this.renderRegistry,
+      buildTarget: buildParticleTarget,
+    });
+    const assemble = (compiled: FXCompiledShader): FXRenderArtifact =>
+      compiled === shader
+        ? render
+        : assembleRenderArtifact(compiled, geometry, this.renderAttributes, renderMode);
+    return { baseline: assemble(shaders.baseline), standard: assemble(shaders.standard) };
   }
 
   /** Full rebuild path: a fresh `FXEmitter.fromArtifacts` replacing the previous one - resets
@@ -806,27 +847,34 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
     }
   }
 
-  /** The live uniform/binding values to scrub into a running emitter on a rebind. */
+  /** The live uniform/binding values to scrub into a running emitter on a rebind: each material's
+   *  own, by its artifact's names - a generated name is its graph's alone, so the particles' and
+   *  the trail's may coincide for two different uniforms. */
   private valuesFromArtifacts(artifacts: PreviewArtifacts): FXApplyValues {
-    const uniforms: Record<string, number | readonly number[] | Texture> = {};
-    for (const render of renderArtifactsOf(artifacts)) {
-      // A name every material declares carries one default (`param-value-conflict`), so the first
-      // material's value stands for all of them.
-      for (const [name, init] of Object.entries(render.uniforms)) {
-        if (init.value !== undefined && !(name in uniforms)) {
-          uniforms[name] = init.value;
-        }
-      }
-      // External sampler slots carry no baked value: bind each to its live texture.
-      for (const slot of externalSlots(render)) {
-        uniforms[slot.uniformName] = this.resolveTexture(slot.paramName);
-      }
-    }
+    const trail = artifacts.trail?.options.render;
     const bindings: Record<string, number | Float32Array> = {};
     for (const [name, slot] of Object.entries(artifacts.behavior.bindings)) {
       bindings[name] = slot.value;
     }
-    return { uniforms, bindings };
+    return {
+      particleMaterial: this.materialValues(artifacts.render),
+      ...(trail === undefined ? {} : { trailMaterial: this.materialValues(trail) }),
+      bindings,
+    };
+  }
+
+  /** The values of `render`'s uniforms: the baked ones, and each external slot's live texture. */
+  private materialValues(render: FXRenderArtifact): Record<string, FXUniformValue> {
+    const values: Record<string, FXUniformValue> = {};
+    for (const [name, init] of Object.entries(render.uniforms)) {
+      if (init.value !== undefined) {
+        values[name] = init.value;
+      }
+    }
+    for (const slot of externalSlots(render)) {
+      values[slot.uniformName] = this.resolveTexture(slot.paramName);
+    }
+    return values;
   }
 
   /** Writes one param's value into whichever render uniform / behavior bindings it declares. */

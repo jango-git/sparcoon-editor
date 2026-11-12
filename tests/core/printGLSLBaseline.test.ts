@@ -3,10 +3,8 @@ import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCom
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
-import {
-  glslFloat,
-  printGLSLBaseline,
-} from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
+import { glslFloat } from "../../src/engine/core/codegen/printGLSL.Internal";
+import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
 import {
   add,
   construct,
@@ -66,10 +64,11 @@ describe("operators", () => {
     expect(glsl(lt(a, b))).toBe("(a < b ? 1.0 : 0.0)");
   });
 
-  it("select is a bool-coerced ternary", () => {
+  it("select over a comparison is a ternary over it; over any other value, over that value", () => {
     const va = ref("local", "va", FX_VALUE_TYPES.vec3);
     const vb = ref("local", "vb", FX_VALUE_TYPES.vec3);
-    expect(glsl(select(lt(a, b), va, vb))).toBe("((a < b ? 1.0 : 0.0) != 0.0 ? va : vb)");
+    expect(glsl(select(lt(a, b), va, vb))).toBe("(a < b ? va : vb)");
+    expect(glsl(select(a, va, vb))).toBe("(a != 0.0 ? va : vb)");
   });
 });
 

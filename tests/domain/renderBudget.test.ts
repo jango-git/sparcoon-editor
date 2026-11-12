@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { FXAttributeDecl, FXBufferLayout } from "sparcoon";
-import { packingOrder } from "sparcoon/editor";
+import { interpolate } from "../../src/i18n/interpolate";
+import errorsEn from "../../src/i18n/locales/errors.en.json" with { type: "json" };
+import type { FXAttributeDecl, FXBufferLayout, FXRenderArtifact } from "sparcoon";
+import { packingOrder, type FXRenderBudget } from "sparcoon/editor";
 import {
   emitterRenderBudgetFindings,
   RenderBudgetMemo,
   renderBudgetFindings,
   trailRenderBudgetFindings,
+  type FXRenderArtifactsByTier,
 } from "../../src/domain/renderBudget";
 import { unlitArtifact } from "../helpers/artifacts";
 import { createDefaultEmitter } from "../../src/model/editorState";
@@ -13,16 +16,35 @@ import { compileEmitter } from "../../src/persistence/exportCompile";
 import type { EmitterDoc } from "../../src/model/editorState";
 import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
 
+/** `render` as the artifact of both tiers. */
+function bothTiers(render: FXRenderArtifact): FXRenderArtifactsByTier {
+  return { baseline: render, standard: render };
+}
+
+/** A budget within every minimum, with `over` taking its place. */
+function budget(over: Partial<FXRenderBudget> = {}): FXRenderBudget {
+  return {
+    attributes: 8,
+    varyingVectors: 8,
+    vertexUniformVectors: 64,
+    fragmentUniformVectors: 32,
+    vertexSamplers: 2,
+    fragmentSamplers: 4,
+    ...over,
+  };
+}
+
 describe("renderBudgetFindings", () => {
   it("finds nothing within both tiers' minimums", () => {
-    expect(renderBudgetFindings({ attributes: 8, varyingVectors: 8 })).toEqual({
+    expect(renderBudgetFindings(budget(), budget())).toEqual({
       errors: [],
       warnings: [],
     });
   });
 
   it("warns past only Baseline's (WebGL1) minimums", () => {
-    const { errors, warnings } = renderBudgetFindings({ attributes: 9, varyingVectors: 12 });
+    const over = budget({ attributes: 9, varyingVectors: 12 });
+    const { errors, warnings } = renderBudgetFindings(over, over);
     expect(errors).toEqual([]);
     expect(warnings.map((warning) => warning.code)).toEqual([
       "render-attribute-budget-baseline",
@@ -32,11 +54,23 @@ describe("renderBudgetFindings", () => {
   });
 
   it("errs past Standard's (WebGL2) minimums, without repeating the same overrun as a warning", () => {
-    const { errors, warnings } = renderBudgetFindings({ attributes: 17, varyingVectors: 12 });
+    const over = budget({ attributes: 17, varyingVectors: 12 });
+    const { errors, warnings } = renderBudgetFindings(over, over);
     expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
     expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
     // The varyings are still past Baseline's only.
     expect(warnings.map((warning) => warning.code)).toEqual(["render-varying-budget-baseline"]);
+  });
+
+  it("measures uniforms and texture units per stage against the device floor", () => {
+    const over = budget({ fragmentUniformVectors: 65, vertexSamplers: 17 });
+    const { errors, warnings } = renderBudgetFindings(over, over);
+    expect(errors.map((error) => error.code)).toEqual(["render-vertex-sampler-budget"]);
+    expect(warnings.map((warning) => warning.code)).toEqual([
+      "render-fragment-uniform-budget-baseline",
+    ]);
+    expect(warnings[0]?.message).toContain("the least WebGL1 device the Baseline tier supports");
+    expect(warnings[0]?.params).toEqual({ used: 65, limit: 64 });
   });
 });
 
@@ -80,14 +114,14 @@ describe("emitterRenderBudgetFindings", () => {
     const decls = floats(12);
     // The base geometry's three, lifecycle + a float, position + a float, then ten floats in three.
     expect(
-      emitterRenderBudgetFindings(reading(decls), kernelSlot(decls), false, undefined),
+      emitterRenderBudgetFindings(bothTiers(reading(decls)), kernelSlot(decls), false, undefined),
     ).toEqual({ errors: [], warnings: [] });
   });
 
   it("errs on the JS mesh when the emitter has no GPU kernel", () => {
     const decls = vec4s(12);
     const { errors, warnings } = emitterRenderBudgetFindings(
-      reading(decls),
+      bothTiers(reading(decls)),
       kernelSlot(decls),
       false,
       undefined,
@@ -101,7 +135,7 @@ describe("emitterRenderBudgetFindings", () => {
     // Four vec4s on the JS mesh (9, past WebGL1's 8), twelve in the kernel (17).
     const decls = vec4s(12);
     const { errors, warnings } = emitterRenderBudgetFindings(
-      reading(decls),
+      bothTiers(reading(decls)),
       kernelSlot(decls.slice(0, 4)),
       false,
       kernelSlot(decls),
@@ -112,13 +146,81 @@ describe("emitterRenderBudgetFindings", () => {
     expect(warnings).toEqual([]);
 
     const within = emitterRenderBudgetFindings(
-      reading(decls.slice(0, 4)),
+      bothTiers(reading(decls.slice(0, 4))),
       kernelSlot(decls.slice(0, 4)),
       false,
       kernelSlot(decls.slice(0, 4)),
     );
     expect(within.errors).toEqual([]);
     expect(within.warnings[0]?.params).toEqual({ used: 9, limit: 8 });
+  });
+});
+
+describe("renderBudgetFindings - wording", () => {
+  it("bakes each finding's English message from its errors.en.json template", () => {
+    // Past every minimum of both tiers on Standard's count, past only Baseline's on the other:
+    // every resource yields an error, and (on a budget of its own) every warning.
+    const huge = budget({
+      attributes: 99,
+      varyingVectors: 99,
+      vertexUniformVectors: 999,
+      fragmentUniformVectors: 999,
+      vertexSamplers: 99,
+      fragmentSamplers: 99,
+    });
+    const errors = renderBudgetFindings(huge, huge).errors;
+    const warnings = renderBudgetFindings(budget(), huge).warnings;
+    expect(errors).toHaveLength(6);
+    expect(warnings).toHaveLength(6);
+    for (const finding of [...errors, ...warnings]) {
+      const template = (errorsEn as Record<string, { message: string } | undefined>)[finding.code];
+      expect(template, finding.code).toBeDefined();
+      expect(interpolate("en", template?.message ?? "", finding.params ?? {})).toBe(
+        finding.message,
+      );
+    }
+  });
+});
+
+describe("each tier's artifact, counted on its own", () => {
+  /** An unlit render whose fragment stage reads `count` vec4 parameters. */
+  const parameters = (count: number): FXRenderArtifact => {
+    const names = Array.from({ length: count }, (_, index) => `u_param_p${String(index)}`);
+    return unlitArtifact({
+      uniformDeclarations: names.map((name) => `uniform vec4 ${name};`),
+      outputs: { albedo: names.join(" + ") },
+    });
+  };
+
+  it("warns on what Baseline runs, not on what Standard does", () => {
+    // Standard lifted 70 vectors' worth to uniforms; Baseline, short of room, kept them on the GPU.
+    const findings = emitterRenderBudgetFindings(
+      { standard: parameters(70), baseline: unlitArtifact() },
+      kernelSlot([]),
+      false,
+      undefined,
+    );
+    expect(findings).toEqual({ errors: [], warnings: [] });
+  });
+
+  it("errs on what Standard runs and warns on what Baseline does", () => {
+    const { errors, warnings } = emitterRenderBudgetFindings(
+      { standard: parameters(230), baseline: parameters(70) },
+      kernelSlot([]),
+      false,
+      undefined,
+    );
+    expect(errors.map((error) => error.code)).toEqual(["render-fragment-uniform-budget"]);
+    expect(warnings).toEqual([]);
+    const baselineOnly = emitterRenderBudgetFindings(
+      { standard: unlitArtifact(), baseline: parameters(70) },
+      kernelSlot([]),
+      false,
+      undefined,
+    );
+    expect(baselineOnly.warnings.map((warning) => warning.code)).toEqual([
+      "render-fragment-uniform-budget-baseline",
+    ]);
   });
 });
 
@@ -130,7 +232,7 @@ describe("trailRenderBudgetFindings", () => {
     name: `a${String(index)}`,
     components: 4 as const,
   }));
-  const render = reading(decls);
+  const render = bothTiers(reading(decls));
 
   it("measures a JS-only emitter's trail on the JS history alone", () => {
     const { errors, warnings } = trailRenderBudgetFindings(render, kernelSlot(decls), undefined);
@@ -156,7 +258,7 @@ describe("trailRenderBudgetFindings", () => {
     // kernel's slot, where they pack four to a view.
     const many = floats(12);
     const { errors, warnings } = trailRenderBudgetFindings(
-      reading(many),
+      bothTiers(reading(many)),
       kernelSlot(many),
       kernelSlot(many),
     );
@@ -165,7 +267,7 @@ describe("trailRenderBudgetFindings", () => {
   });
 
   it("finds nothing for a light trail on either backend", () => {
-    const light = unlitArtifact();
+    const light = bothTiers(unlitArtifact());
     expect(trailRenderBudgetFindings(light, kernelSlot([]), kernelSlot([]))).toEqual({
       errors: [],
       warnings: [],

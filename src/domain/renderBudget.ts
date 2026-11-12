@@ -1,21 +1,27 @@
 /**
- * What the editor makes of a render artifact's {@link FXRenderBudget} - the vertex attributes and
- * varying vectors its materials take, counted by the runtime off the very shaders it builds.
- * Measured against the least each GLSL tier guarantees: past Standard's (WebGL2's) minimum the
- * effect is an error - some WebGL2 GPU would refuse to link it, and the editor promises any
- * WebGL2 browser. Past Baseline's (WebGL1's, far lower) it is only a warning: the Baseline tier
- * shares Standard's material templates, so the same count applies, and real WebGL1 GPUs mostly
- * offer more than the minimum.
+ * What the editor makes of a render artifact's {@link FXRenderBudget} - the attributes, varying
+ * vectors, uniform vectors and texture units its materials take, counted by the runtime off the
+ * very shaders it builds. Each tier's artifact is measured against the least that tier
+ * guarantees: past Standard's (WebGL2's) minimum the effect is an error - some WebGL2 GPU would
+ * refuse to link it, and the editor promises any WebGL2 browser. Past Baseline's (WebGL1's, far
+ * lower) it is only a warning: real WebGL1 GPUs mostly offer more than the minimum. The tiers'
+ * artifacts differ - each lifts what it can afford to the draw stage - so each is counted on its
+ * own.
  */
 
 import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
 import {
   FX_RENDER_BUDGET_MINIMUMS,
   fxEmitterRenderBudget,
+  fxMeshRenderBudget,
   fxTrailRenderBudget,
   type FXRenderBudget,
 } from "sparcoon/editor";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+
+/** One material's render artifact, assembled for each GLSL tier. */
+export type FXRenderArtifactsByTier = Readonly<Record<FXGLSLRenderTier, FXRenderArtifact>>;
 
 export interface RenderBudgetFindings {
   /** Past Standard's minimums: the effect must not ship as it is. */
@@ -24,84 +30,106 @@ export interface RenderBudgetFindings {
   readonly warnings: readonly FXCompilerError[];
 }
 
-/** One resource of a budget: what it takes, each tier's minimum, its codes and wording. */
+/** One resource of a budget: its codes and wording. */
 interface FXBudgetResource {
-  /** What the material takes on Standard. */
-  readonly used: number;
-  /** What it takes on Baseline - the same as `used`, but for an emitter with a GPU kernel. */
-  readonly baselineUsed: number;
-  readonly standard: number;
-  readonly baseline: number;
+  readonly key: keyof FXRenderBudget;
   readonly noun: string;
   readonly error: FXCompilerError["code"];
   readonly warning: FXCompilerError["code"];
   readonly advice: string;
+  /**
+   * How Baseline's minimum reads in a warning: WebGL1's own guarantee (`"webgl1"`), or the least
+   * device the tier supports offers (`"device"`) - see `FX_RENDER_BUDGET_MINIMUMS`.
+   */
+  readonly baselineFloor: "webgl1" | "device";
 }
 
-/**
- * The resources a budget measures, worded as in `errors.en.json`: what `budget` takes is measured
- * against Standard's minimums, what `baselineBudget` takes against Baseline's.
- */
-function resources(
-  budget: FXRenderBudget,
-  baselineBudget: FXRenderBudget,
-): readonly FXBudgetResource[] {
-  const { standard, baseline } = FX_RENDER_BUDGET_MINIMUMS;
-  return [
-    {
-      used: budget.attributes,
-      baselineUsed: baselineBudget.attributes,
-      standard: standard.attributes,
-      baseline: baseline.attributes,
-      noun: "vertex attributes",
-      error: "render-attribute-budget",
-      warning: "render-attribute-budget-baseline",
-      advice: "drop particle attributes the render does not need",
-    },
-    {
-      used: budget.varyingVectors,
-      baselineUsed: baselineBudget.varyingVectors,
-      standard: standard.varyingVectors,
-      baseline: baseline.varyingVectors,
-      noun: "varying vectors",
-      error: "render-varying-budget",
-      warning: "render-varying-budget-baseline",
-      advice:
-        "read fewer particle attributes in the fragment stage, or pass fewer values from the " +
-        "vertex stage",
-    },
-  ];
-}
+/** The resources a budget measures, worded as in `errors.en.json`. */
+const RESOURCES: readonly FXBudgetResource[] = [
+  {
+    key: "attributes",
+    noun: "vertex attributes",
+    error: "render-attribute-budget",
+    warning: "render-attribute-budget-baseline",
+    advice: "drop particle attributes the render does not need",
+    baselineFloor: "webgl1",
+  },
+  {
+    key: "varyingVectors",
+    noun: "varying vectors",
+    error: "render-varying-budget",
+    warning: "render-varying-budget-baseline",
+    advice:
+      "read fewer particle attributes in the fragment stage, or pass fewer values from the " +
+      "vertex stage",
+    baselineFloor: "webgl1",
+  },
+  {
+    key: "vertexUniformVectors",
+    noun: "vertex uniform vectors",
+    error: "render-vertex-uniform-budget",
+    warning: "render-vertex-uniform-budget-baseline",
+    advice: "declare fewer parameters or pass fewer values to the vertex stage",
+    baselineFloor: "device",
+  },
+  {
+    key: "fragmentUniformVectors",
+    noun: "fragment uniform vectors",
+    error: "render-fragment-uniform-budget",
+    warning: "render-fragment-uniform-budget-baseline",
+    advice: "declare fewer parameters",
+    baselineFloor: "device",
+  },
+  {
+    key: "vertexSamplers",
+    noun: "vertex texture units",
+    error: "render-vertex-sampler-budget",
+    warning: "render-vertex-sampler-budget-baseline",
+    advice: "sample fewer textures in the vertex stage",
+    baselineFloor: "device",
+  },
+  {
+    key: "fragmentSamplers",
+    noun: "fragment texture units",
+    error: "render-fragment-sampler-budget",
+    warning: "render-fragment-sampler-budget-baseline",
+    advice: "sample fewer textures",
+    baselineFloor: "device",
+  },
+];
 
 /**
- * Each resource past Standard's minimum is an error; one within it but past Baseline's is a
- * warning - never both for the same resource. `baselineBudget` is what the Baseline tier runs,
- * when that differs from what Standard does (an emitter with a GPU kernel - see
- * {@link emitterRenderBudgetFindings}).
+ * Each resource past Standard's minimum in `budget` (what the Standard tier runs) is an error; one
+ * within it but past Baseline's in `baselineBudget` (what the Baseline tier runs) is a warning -
+ * never both for the same resource.
  */
 export function renderBudgetFindings(
   budget: FXRenderBudget,
-  baselineBudget: FXRenderBudget = budget,
+  baselineBudget: FXRenderBudget,
 ): RenderBudgetFindings {
+  const { standard, baseline } = FX_RENDER_BUDGET_MINIMUMS;
   const errors: FXCompilerError[] = [];
   const warnings: FXCompilerError[] = [];
-  for (const resource of resources(budget, baselineBudget)) {
-    const { used, baselineUsed, standard, baseline, noun, error, warning, advice } = resource;
-    if (used > standard) {
+  for (const { key, noun, error, warning, advice, baselineFloor } of RESOURCES) {
+    const used = budget[key];
+    const baselineUsed = baselineBudget[key];
+    if (used > standard[key]) {
       errors.push({
         code: error,
         message:
           `the material needs ${String(used)} ${noun}; every WebGL2 GPU guarantees ` +
-          `${String(standard)} - ${advice}`,
-        params: { used, limit: standard },
+          `${String(standard[key])} - ${advice}`,
+        params: { used, limit: standard[key] },
       });
-    } else if (baselineUsed > baseline) {
+    } else if (baselineUsed > baseline[key]) {
+      const floor =
+        baselineFloor === "webgl1"
+          ? `the Baseline tier on a WebGL1 GPU guarantees only ${String(baseline[key])}`
+          : `the least WebGL1 device the Baseline tier supports offers ${String(baseline[key])}`;
       warnings.push({
         code: warning,
-        message:
-          `the material needs ${String(baselineUsed)} ${noun}; the Baseline tier on a WebGL1 GPU ` +
-          `guarantees only ${String(baseline)}, so it may not draw there`,
-        params: { used: baselineUsed, limit: baseline },
+        message: `the material needs ${String(baselineUsed)} ${noun}; ${floor}, so it may not draw there`,
+        params: { used: baselineUsed, limit: baseline[key] },
       });
     }
   }
@@ -131,26 +159,25 @@ export class RenderBudgetMemo {
 }
 
 /**
- * The findings for an emitter's particle material. Both backends read a particle slot through its
- * packed views - several adjacent fields per attribute, laid out by the editor in the runtime's
- * packing order (`buildParticleBehaviorTargets`); a read nothing writes is a constant zero, free.
- * Each is measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and
- * `kernelBuffers` (the emitter's GPU kernel's, when it has one). A Standard (WebGL2) error is
- * measured on the GPU mesh when there is one, which is what WebGL2 runs; a Baseline (WebGL1)
- * warning is always measured on the JS mesh - the only one WebGL1 ever runs.
+ * The findings for an emitter's particle material, each tier's artifact of `renders` measured on
+ * its own. Both backends read a particle slot through its packed views - several adjacent fields
+ * per attribute, laid out by the editor in the runtime's packing order
+ * (`buildParticleBehaviorTargets`); a read nothing writes is a constant zero, free. Each is
+ * measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and `kernelBuffers`
+ * (the emitter's GPU kernel's, when it has one). A Standard (WebGL2) error is measured on the GPU
+ * mesh when there is one, which is what WebGL2 runs; a Baseline (WebGL1) warning is always
+ * measured on the JS mesh - the only one WebGL1 ever runs.
  */
 export function emitterRenderBudgetFindings(
-  render: FXRenderArtifact,
+  renders: FXRenderArtifactsByTier,
   behaviorBuffers: readonly FXBufferLayout[],
   castShadow: boolean,
   kernelBuffers: readonly FXBufferLayout[] | undefined,
 ): RenderBudgetFindings {
-  const js = fxEmitterRenderBudget(render, behaviorBuffers, { castShadow });
-  if (kernelBuffers === undefined) {
-    return renderBudgetFindings(js);
-  }
-  const gpu = fxEmitterRenderBudget(render, kernelBuffers, { castShadow });
-  return renderBudgetFindings(gpu, js);
+  return renderBudgetFindings(
+    fxEmitterRenderBudget(renders.standard, kernelBuffers ?? behaviorBuffers, { castShadow }),
+    fxEmitterRenderBudget(renders.baseline, behaviorBuffers, { castShadow }),
+  );
 }
 
 /**
@@ -160,14 +187,25 @@ export function emitterRenderBudgetFindings(
  * Baseline warning is always measured on the JS history.
  */
 export function trailRenderBudgetFindings(
-  render: FXRenderArtifact,
+  renders: FXRenderArtifactsByTier,
   behaviorBuffers: readonly FXBufferLayout[],
   kernelBuffers: readonly FXBufferLayout[] | undefined,
 ): RenderBudgetFindings {
-  const js = fxTrailRenderBudget(render, behaviorBuffers);
-  if (kernelBuffers === undefined) {
-    return renderBudgetFindings(js);
-  }
-  const gpu = fxTrailRenderBudget(render, kernelBuffers, { backend: "gpu" });
-  return renderBudgetFindings(gpu, js);
+  return renderBudgetFindings(
+    kernelBuffers === undefined
+      ? fxTrailRenderBudget(renders.standard, behaviorBuffers)
+      : fxTrailRenderBudget(renders.standard, kernelBuffers, { backend: "gpu" }),
+    fxTrailRenderBudget(renders.baseline, behaviorBuffers),
+  );
+}
+
+/** The findings for a mesh's material, each tier's artifact of `renders` measured on its own. */
+export function meshRenderBudgetFindings(
+  renders: FXRenderArtifactsByTier,
+  castShadow: boolean,
+): RenderBudgetFindings {
+  return renderBudgetFindings(
+    fxMeshRenderBudget(renders.standard, { castShadow }),
+    fxMeshRenderBudget(renders.baseline, { castShadow }),
+  );
 }

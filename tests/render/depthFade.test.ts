@@ -46,7 +46,6 @@ describe("depth-fade", () => {
     const shader = new FXCompilerBaseline().compile(fadeGraph(), FX_MESH_TARGET);
     const body = renderArtifactBody(
       shader,
-      collectRenderCapabilities(fadeGraph()),
       { type: "primitive", primitive: "plane" },
       [],
       "blending",

@@ -1,4 +1,3 @@
-import type { FXRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import type {
   FXAttributeDecl,
   FXBehaviorArtifact,
@@ -11,14 +10,16 @@ import type {
 } from "sparcoon";
 import type { Texture } from "three";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
+import { buildDrawCompute } from "../core/codegen/drawStageBuild.Internal";
 import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import { zeroValue } from "../render/compiler/FXCompiledShader";
 import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
 } from "../behavior/FXParticleBehaviorKernel.Internal";
-import { fragmentStageSource, stageSource, uniformTypes, varyingDecls } from "./artifactLiterals";
+import { fragmentStageSource, stageSource, varyingDecls } from "./artifactLiterals";
 
 /**
  * In-memory assembler: turns the compiler's IR into the runtime's {@link FXRenderArtifact} /
@@ -54,12 +55,10 @@ function toUniformInit(value: unknown, type: string): FXUniformInit {
 /** Assembles the render artifact from a compiled shader (fresh uniform value slots). */
 export function assembleRenderArtifact(
   shader: FXCompiledShader,
-  capabilities: FXRenderCapabilities,
   geometry: FXGeometrySource,
   attributes: readonly FXAttributeRequest[],
   renderMode: FXRenderMode,
 ): FXRenderArtifact {
-  const types = uniformTypes(shader.uniformDeclarations);
   const uniforms: Record<string, FXUniformInit> = {};
   for (const [name, handle] of Object.entries(shader.uniforms)) {
     if (handle.external !== undefined) {
@@ -68,22 +67,24 @@ export function assembleRenderArtifact(
       uniforms[name] = { type: "sampler2D", external: handle.external };
       continue;
     }
-    // A fresh slot snapshotting the handle's current value (number/vector/texture); the
-    // material binds this object, and applyValues scrubs it - the editor handle is not shared.
-    uniforms[name] = toUniformInit(handle.value, types.get(name) ?? "float");
+    // A fresh slot snapshotting the handle's current value (number/vector/texture): the editor
+    // handle is not shared, and each runtime instance seeds its own slot from this one.
+    uniforms[name] = toUniformInit(handle.value, handle.type.glslTypeName);
   }
   return {
-    lightingIntrinsics: capabilities.lightingIntrinsics,
-    sceneDepth: capabilities.sceneDepth,
+    lightingIntrinsics: shader.capabilities.lightingIntrinsics,
+    sceneDepth: shader.capabilities.sceneDepth,
     geometry,
     options: { renderMode },
-    uniformDeclarations: [...shader.uniformDeclarations],
     varyings: varyingDecls(shader),
     vertex: stageSource(shader.vertex),
     fragment: fragmentStageSource(shader.fragment),
     outputs: { ...shader.outputs },
     uniforms,
     attributeReads: attributeDecls(attributes),
+    ...(shader.draw === undefined
+      ? {}
+      : { compute: buildDrawCompute<NonNullable<FXRenderArtifact["compute"]>>(shader.draw) }),
   };
 }
 
@@ -132,9 +133,13 @@ export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorAr
 export function assembleGpuKernelArtifact(
   program: FXFusedProgramStandard,
 ): FXParticleKernelArtifact {
-  const bindings: Record<string, FXValueSlot<number | Float32Array>> = {};
+  const bindings: FXParticleKernelArtifact["bindings"] = {};
   for (const [name, handle] of Object.entries(program.bindings)) {
     bindings[name] = { value: handle.value };
+  }
+  // The draw uniforms, seeded at zero: `compute` writes them every pass.
+  for (const [name, type] of Object.entries(program.draw?.uniforms ?? {})) {
+    bindings[name] = { value: zeroValue(type) };
   }
   return {
     vertexSource: program.vertexSource,
@@ -142,5 +147,12 @@ export function assembleGpuKernelArtifact(
     buffers: program.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
     transformFeedbackVaryings: [...program.transformFeedbackVaryings],
     bindings,
+    ...(program.draw === undefined
+      ? {}
+      : {
+          compute: buildDrawCompute<NonNullable<FXParticleKernelArtifact["compute"]>>(
+            program.draw.stage,
+          ),
+        }),
   };
 }

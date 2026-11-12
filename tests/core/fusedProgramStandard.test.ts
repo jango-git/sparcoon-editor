@@ -203,7 +203,7 @@ describe("fused transform-feedback program assembly", () => {
     // the "no spawn phase at all" guard for a genuinely update-only host target.
     const emptyPhase: FXCompiledPhaseStandard = {
       helpers: [],
-      uniformDeclarations: [],
+      uniforms: [],
       body: [],
       writes: [],
       bindings: {},

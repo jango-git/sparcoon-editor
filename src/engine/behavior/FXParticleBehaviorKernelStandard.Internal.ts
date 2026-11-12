@@ -26,7 +26,7 @@ import { FX_FUNCTIONS, signaturesFrom } from "../core/ir/FXFunctions.Internal";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
 import { printGLSLStandard } from "../core/codegen/printGLSLStandard.Internal";
-import { uniqueIdentifier } from "../core/codegen/uniqueName.Internal";
+import { FXGLSLNames } from "../core/codegen/uniqueName.Internal";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type {
@@ -49,17 +49,24 @@ import {
 } from "./FXKernelValidation.Internal";
 import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
+import { liftDrawStage } from "../core/codegen/drawStage.Internal";
+import type { FXCompiledDrawStage, FXTypedLocal } from "../core/codegen/drawStage.Internal";
+import { classifyRates } from "../core/codegen/rates.Internal";
+import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
+import {
+  transformFeedbackUniformBudget,
+  type FXKernelUniform,
+} from "./FXKernelUniformsStandard.Internal";
 
 /**
  * The standard-tier (WebGL2 / GLSL-ES-3.00, transform-feedback) behavior compiler: an independent
  * sibling of `FXParticleBehaviorKernel.Internal.ts`, not a shared-with-JS abstraction below the IR
  * - the same independence the render backend's own standard pipeline already established
  * (`FXCompilePipelineStandard.Internal.ts`'s doc comment). Unlike the JS backend, this one does
- * NOT scalarize or run a separate CSE/loop-invariant pass: GLSL handles vectors natively, and
- * anything invariant across the whole draw (dt, the emitter transform, bindings) is already a
- * uniform - evaluated once by the driver, not per-invocation - so there is no host-side loop to
- * hoist out of. This mirrors the render-standard pipeline's shape (print each node's output
- * inline as its `build()` runs), not the JS behavior pipeline's.
+ * NOT scalarize its GLSL: the language handles vectors natively. What depends only on the pass
+ * (dt, the emitter transform, bindings) is lifted into the draw stage: computed once per pass on
+ * the CPU and read as a uniform, not per particle. This mirrors the render-standard pipeline's
+ * shape (print each node's output inline as its `build()` runs), not the JS behavior pipeline's.
  *
  * Produces one {@link FXCompiledPhaseStandard} per phase (spawn/update compiled independently, as
  * on the JS side); fusing the two into one transform-feedback program with a birth-branch is the
@@ -108,7 +115,8 @@ const SYNTHESIZED_UNIFORM_NAMES: Readonly<
  *  declarations are tracked as real text here, not derived later from a value's runtime shape). */
 export interface FXCompiledPhaseStandard {
   readonly helpers: readonly string[];
-  readonly uniformDeclarations: readonly string[];
+  /** The uniforms this phase declares: its bindings, then its draw uniforms. */
+  readonly uniforms: readonly FXKernelUniform[];
   readonly body: readonly string[];
   readonly writes: readonly FXKernelWrite[];
   /** The bound kill value (a float variable); update phase only. */
@@ -116,6 +124,23 @@ export interface FXCompiledPhaseStandard {
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly writtenBuffers: readonly string[];
+  /** What is one for the whole pass, computed once per pass on the CPU (see `liftDrawStage`). */
+  readonly draw?: FXCompiledKernelDrawStage;
+}
+
+/** A phase's draw stage: `compute`'s body, and the draw uniforms it fills, by type. */
+export interface FXCompiledKernelDrawStage {
+  readonly stage: FXCompiledDrawStage;
+  readonly uniforms: Readonly<Record<string, FXValueType>>;
+}
+
+/** A buffer write a phase's output slot makes, before placement names what it reads. */
+interface FXPendingWrite {
+  readonly buffer: string;
+  readonly offset: number;
+  readonly variable: string;
+  /** The component of `variable` written, for a vector slot; none for a scalar one. */
+  readonly channel?: string | undefined;
 }
 
 export interface FXCompiledKernelStandard {
@@ -125,23 +150,31 @@ export interface FXCompiledKernelStandard {
 }
 
 /** Mutable accumulator for one phase's compilation - the standard-tier analog of `FXKernelState`,
- *  shaped like render's `FXCompileState` instead (no CSE/invariant-partition, see the module doc). */
+ *  shaped like render's `FXCompileState`: locals kept as IR, printed once the phase is built. */
 class FXKernelStateStandard {
-  private counter = 0;
-  private readonly bodyLines: string[] = [];
+  /** Each local as its node emitted it: kept as IR until {@link assemblePhase} prints it. */
+  private readonly locals: FXTypedLocal[] = [];
   private readonly helperMap = new Map<string, string>();
-  private readonly uniformDeclarations: string[] = [];
+  private readonly uniforms: FXKernelUniform[] = [];
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
-  private readonly namedBindingTypes = new Map<string, string>();
 
-  public uniqueName(hint: string): string {
-    const name = uniqueIdentifier(hint, "_", this.counter);
-    this.counter += 1;
-    return name;
+  /** `names` is the fused program's: shared with the other phase, whose uniforms sit beside
+   *  this phase's in one program. */
+  constructor(private readonly names: FXGLSLNames) {}
+
+  /** The uniforms declared so far: the bindings, then (once placed) the draw uniforms. */
+  public get declared(): readonly FXKernelUniform[] {
+    return this.uniforms;
   }
 
-  public emit(statement: string): void {
-    this.bodyLines.push(statement);
+  /** Allocates a collision-free, compact GLSL identifier (see {@link FXGLSLNames}). */
+  public uniqueName(): string {
+    return this.names.next();
+  }
+
+  /** Adds a local; {@link assemblePhase} prints it. */
+  public emitLocal(name: string, expr: FXExpr): void {
+    this.locals.push({ name, expr, type: expr.type });
   }
 
   public emitHelper(key: string, source: string): void {
@@ -159,7 +192,9 @@ class FXKernelStateStandard {
     if (descriptor.name !== undefined) {
       const existing = this.bindingHandles.find((handle) => handle.name === descriptor.name);
       if (existing !== undefined) {
-        const priorType = this.namedBindingTypes.get(descriptor.name);
+        const priorType = this.uniforms.find(
+          (uniform) => uniform.name === descriptor.name,
+        )?.glslTypeName;
         if (priorType !== undefined && priorType !== glslTypeName) {
           throw new Error(
             `FXKernelStateStandard.allocateBinding: uniform "${descriptor.name}" is declared as ` +
@@ -171,21 +206,71 @@ class FXKernelStateStandard {
       this.declareUniform(descriptor.name, glslTypeName);
       const handle: FXKernelBindingHandle = { name: descriptor.name, value: descriptor.value };
       this.bindingHandles.push(handle);
-      this.namedBindingTypes.set(descriptor.name, glslTypeName);
       return handle;
     }
-    const name = this.uniqueName(`u_${descriptor.hint ?? "binding"}`);
+    const name = this.uniqueName();
     this.declareUniform(name, glslTypeName);
     const handle: FXKernelBindingHandle = { name, value: descriptor.value };
     this.bindingHandles.push(handle);
     return handle;
   }
 
+  /**
+   * Places the phase's locals and prints them: what is one for the whole pass goes to the draw
+   * stage, computed once per pass on the CPU, as far as the program's uniforms allow beside
+   * `otherDeclarations` (the uniforms the other phase declares); the rest runs per particle.
+   */
   public assemblePhase(
-    writes: readonly FXKernelWrite[],
+    target: FXKernelTarget,
+    pendingWrites: readonly FXPendingWrite[],
     buffers: readonly FXKernelBufferLayout[],
-    kill: string | undefined,
+    killVariable: string | undefined,
+    otherUniforms: readonly FXKernelUniform[],
   ): FXCompiledPhaseStandard {
+    const drawUniforms: Record<string, FXValueType> = {};
+    const lifted = liftDrawStage(
+      [this.locals],
+      [
+        new Set([
+          ...pendingWrites.map((write) => write.variable),
+          ...(killVariable === undefined ? [] : [killVariable]),
+        ]),
+      ],
+      classifyRates(this.locals, kernelRatePolicy(target)),
+      {
+        ...kernelDrawInputs(target),
+        rate: KERNEL_RATE.pass,
+        // A pass runs the kernel once a particle, as often as a vertex stage runs per draw.
+        minimumCost: [3],
+        fits: transformFeedbackUniformBudget([...otherUniforms, ...this.uniforms]),
+        declareUniform: (type) => {
+          const name = this.uniqueName();
+          this.declareUniform(name, type.glslTypeName);
+          drawUniforms[name] = type;
+          return name;
+        },
+      },
+    );
+    const read = (variable: string): string => lifted.renamed.get(variable) ?? variable;
+    const writes: FXKernelWrite[] = pendingWrites.map((write) => ({
+      buffer: write.buffer,
+      offset: write.offset,
+      expr:
+        write.channel === undefined
+          ? read(write.variable)
+          : `${read(write.variable)}.${write.channel}`,
+    }));
+    const kill = killVariable === undefined ? undefined : read(killVariable);
+    const [locals = []] = lifted.stages;
+    const body = locals.map((local) => {
+      const { code, helpers } = printGLSLStandard(local.expr, FX_FUNCTIONS, (candidate) =>
+        resolveKernelRefStandard(target, candidate),
+      );
+      for (const [key, source] of helpers) {
+        this.emitHelper(key, source);
+      }
+      return `${local.type.glslTypeName} ${local.name} = ${code};`;
+    });
     const bindings: Record<string, FXKernelBindingHandle> = {};
     for (const handle of this.bindingHandles) {
       bindings[handle.name] = handle;
@@ -196,18 +281,21 @@ class FXKernelStateStandard {
     }
     return {
       helpers: [...this.helperMap.values()],
-      uniformDeclarations: this.uniformDeclarations,
-      body: this.bodyLines,
+      uniforms: this.uniforms,
+      body,
       writes,
       ...(kill === undefined ? {} : { kill }),
       bindings,
       buffers,
       writtenBuffers: [...written],
+      ...(lifted.stage === undefined
+        ? {}
+        : { draw: { stage: lifted.stage, uniforms: drawUniforms } }),
     };
   }
 
   private declareUniform(name: string, glslTypeName: string): void {
-    this.uniformDeclarations.push(`uniform ${glslTypeName} ${name};`);
+    this.uniforms.push({ name, glslTypeName });
   }
 }
 
@@ -242,26 +330,20 @@ class FXParticleKernelContextStandard
         `FXKernelContextStandard.setOutput: node "${this.nodeId}" has no output socket "${socketKey}"`,
       );
     }
-    const { code, helpers } = printGLSLStandard(expression, FX_FUNCTIONS, (candidate) =>
-      resolveKernelRefStandard(this.target, candidate),
-    );
-    for (const [key, source] of helpers) {
-      this.state.emitHelper(key, source);
+    const key = socketRefKey({ nodeId: this.nodeId, socketKey });
+    if (expression.kind === "ref" && expression.ref === "local") {
+      // Already a local: consumers read it, with no alias of it in between.
+      this.outputVariables.set(key, expression.name);
+      return;
     }
-    const name = this.state.uniqueName(this.outputHint(socketKey));
-    this.state.emit(`${expression.type.glslTypeName} ${name} = ${code};`);
-    this.outputVariables.set(socketRefKey({ nodeId: this.nodeId, socketKey }), name);
+    const name = this.state.uniqueName();
+    this.state.emitLocal(name, expression);
+    this.outputVariables.set(key, name);
   }
 
-  public defineLocal(hint: string, expression: FXExpr): FXExpr {
-    const { code, helpers } = printGLSLStandard(expression, FX_FUNCTIONS, (candidate) =>
-      resolveKernelRefStandard(this.target, candidate),
-    );
-    for (const [key, source] of helpers) {
-      this.state.emitHelper(key, source);
-    }
-    const name = this.state.uniqueName(hint);
-    this.state.emit(`${expression.type.glslTypeName} ${name} = ${code};`);
+  public defineLocal(_hint: string, expression: FXExpr): FXExpr {
+    const name = this.state.uniqueName();
+    this.state.emitLocal(name, expression);
     return ref("local", name, expression.type);
   }
 
@@ -277,8 +359,8 @@ class FXParticleKernelContextStandard
     return ref("targetInput", name, input.type);
   }
 
-  public uniqueName(hint: string): string {
-    return this.state.uniqueName(hint);
+  public uniqueName(): string {
+    return this.state.uniqueName();
   }
 
   public emitHelper(key: string, source: string): void {
@@ -343,13 +425,22 @@ class FXParticleKernelContextStandard
   }
 }
 
-/** Compiles one already-isolated phase view into its {@link FXCompiledPhaseStandard}. */
-function compilePhaseStandard(
+/** One phase built but not yet placed: its own uniforms so far, and how to place and print it. */
+interface FXBuiltPhaseStandard {
+  /** Its bindings; placement adds its draw uniforms. */
+  readonly uniforms: readonly FXKernelUniform[];
+  /** Places and prints the phase beside `otherUniforms`, the other phase's uniforms. */
+  assemble(otherUniforms: readonly FXKernelUniform[]): FXCompiledPhaseStandard;
+}
+
+/** Builds one already-isolated phase view's nodes; {@link FXBuiltPhaseStandard.assemble} places them. */
+function buildPhaseStandard(
   view: FXGraph<FXBehaviorNode>,
   target: FXKernelTarget,
-): FXCompiledPhaseStandard {
+  names: FXGLSLNames,
+): FXBuiltPhaseStandard {
   const { order, resolution } = prepareCompile(view);
-  const state = new FXKernelStateStandard();
+  const state = new FXKernelStateStandard(names);
   const outputVariables = new Map<string, string>();
 
   buildNodes(view, order, (node, id) => {
@@ -369,7 +460,7 @@ function compilePhaseStandard(
   const outputBySlot = new Map<string, FXKernelTargetOutput>(
     target.outputs.map((output): [string, FXKernelTargetOutput] => [output.slot, output]),
   );
-  const writes: FXKernelWrite[] = [];
+  const writes: FXPendingWrite[] = [];
   let kill: string | undefined;
   for (const binding of view.outputBindings) {
     const producerVariable = outputVariables.get(socketRefKey(binding.from));
@@ -399,20 +490,20 @@ function compilePhaseStandard(
     const buffer = output.buffer ?? BUILTIN_BUFFER;
     if (output.offsets.length === 1) {
       output.offsets.forEach((offset) => {
-        writes.push({ buffer, offset, expr: variable });
+        writes.push({ buffer, offset, variable });
       });
     } else {
       output.offsets.forEach((offset, i) => {
-        writes.push({
-          buffer,
-          offset,
-          expr: `${variable}.${SWIZZLE_CHANNELS[i]}`,
-        });
+        writes.push({ buffer, offset, variable, channel: SWIZZLE_CHANNELS[i] });
       });
     }
   }
 
-  return state.assemblePhase(writes, target.buffers, kill);
+  return {
+    uniforms: state.declared,
+    assemble: (otherUniforms) =>
+      state.assemblePhase(target, writes, target.buffers, kill, otherUniforms),
+  };
 }
 
 /** Adapts a producer variable to an output slot's declared type (pad/truncate/splat), emitting a
@@ -423,15 +514,8 @@ function coerceOutputVariable(
   fromType: FXValueType,
   toType: FXValueType,
 ): string {
-  const { code, helpers } = printGLSLStandard(
-    coerceNumeric(ref("local", variable, fromType), toType),
-    FX_FUNCTIONS,
-  );
-  for (const [key, source] of helpers) {
-    state.emitHelper(key, source);
-  }
-  const name = state.uniqueName(`slot_${toType.glslTypeName}`);
-  state.emit(`${toType.glslTypeName} ${name} = ${code};`);
+  const name = state.uniqueName();
+  state.emitLocal(name, coerceNumeric(ref("local", variable, fromType), toType));
   return name;
 }
 
@@ -452,14 +536,25 @@ export function compileBehaviorStandard(
   const phaseOf = (id: string): FXBehaviorPhase =>
     phases.get(id) ?? graph.getNode(id)?.phase ?? FXBehaviorPhase.UPDATE;
 
-  const spawn =
+  // One fused program holds both phases: both draw their names from one source, and each
+  // phase's draw uniforms fit beside every uniform of the other - spawn's beside update's
+  // bindings, update's beside all of spawn's.
+  const names = new FXGLSLNames();
+  const builtSpawn =
     targets.spawn !== undefined
-      ? compilePhaseStandard(buildPhaseView(graph, FXBehaviorPhase.SPAWN, phaseOf), targets.spawn)
+      ? buildPhaseStandard(
+          buildPhaseView(graph, FXBehaviorPhase.SPAWN, phaseOf),
+          targets.spawn,
+          names,
+        )
       : undefined;
-  const update = compilePhaseStandard(
+  const builtUpdate = buildPhaseStandard(
     buildPhaseView(graph, FXBehaviorPhase.UPDATE, phaseOf),
     targets.update,
+    names,
   );
+  const spawn = builtSpawn?.assemble(builtUpdate.uniforms);
+  const update = builtUpdate.assemble(spawn?.uniforms ?? []);
 
   const hash = structuralHash(
     graph,
@@ -478,12 +573,13 @@ export function resolveKernelRefStandard(
   candidate: Extract<FXExpr, { kind: "ref" }>,
 ): string {
   switch (candidate.ref) {
+    // A draw uniform is the draw stage's, computed once per pass.
     case "local":
     case "binding":
+    case "uniform":
       return candidate.name;
     case "targetInput":
       return resolveTargetInputStandard(target, candidate.name);
-    case "uniform":
     case "attribute":
       throw new Error(
         `resolveKernelRefStandard: ref kind "${candidate.ref}" is not valid in the behavior backend`,

@@ -10,6 +10,7 @@ import {
 } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
+import { GLSL_NAME, drawUniformNames } from "../helpers/glslNames";
 
 const reg = renderRegistry();
 const white = (): FXRenderNode => reg.create("constant", { type: "color", value: [1, 1, 1, 1] });
@@ -170,7 +171,7 @@ describe("standard render nodes - uv and mask content", () => {
     const offset = /vec2 (\w+) = \(p_uv - vec2\(0\.25, 0\.75\)\);/.exec(body)?.[1];
     expect(offset).toBeDefined();
     expect(body).toContain(
-      `vec2(((atan((${offset}).y, (${offset}).x) / 6.283185307179586) + 0.5), (length(${offset}) * 2.0))`,
+      `vec2(((atan((${offset}).y, (${offset}).x) / 6.2831853) + 0.5), (length(${offset}) * 2.0))`,
     );
   });
 
@@ -183,8 +184,8 @@ describe("standard render nodes - uv and mask content", () => {
       );
       return programText(compiler.compile(graph, FX_PARTICLE_TARGET));
     };
-    expect(glslOf("greater")).toContain("((0.0 > 0.5 ? 1.0 : 0.0) != 0.0 ? 0.75 : 0.25)");
-    expect(glslOf("not-equal")).toContain("((0.0 == 0.5 ? 1.0 : 0.0) != 0.0 ? 0.25 : 0.75)");
+    expect(glslOf("greater")).toContain("(0.0 > 0.5 ? 0.75 : 0.25)");
+    expect(glslOf("not-equal")).toContain("(0.0 == 0.5 ? 0.25 : 0.75)");
   });
 
   it("distance and reflect print as GLSL length/dot over the uv", () => {
@@ -203,8 +204,9 @@ describe("standard render nodes - uv and mask content", () => {
       [bind("albedo", "c", "out"), bind("alphaThreshold", "d", "out")],
     );
     const body = programText(compiler.compile(graph, FX_PARTICLE_TARGET));
-    expect(body).toContain("(uv_uv_0 - (uv_uv_0 * (dot(uv_uv_0, uv_uv_0) * 2.0)))");
-    expect(body).toContain("length((reflect_out_1 - vec2(0.5, 0.5)))");
+    const uv = new RegExp(`vec2 (${GLSL_NAME}) = p_uv;`).exec(body)?.[1] ?? "";
+    expect(body).toContain(`(${uv} - (${uv} * (dot(${uv}, ${uv}) * 2.0)))`);
+    expect(body).toMatch(new RegExp(String.raw`length\(\(${GLSL_NAME} - vec2\(0\.5, 0\.5\)\)\)`));
   });
 
   it("flow-uv drifts two half-cycle-apart phases along the flow, crossfaded so no snap is seen", () => {
@@ -230,16 +232,21 @@ describe("standard render nodes - uv and mask content", () => {
       ],
       [bind("albedo", "c", "out"), bind("alphaThreshold", "w", "out")],
     );
-    // The phase reads only the clock, so it is computed per vertex and carried across: read the
-    // whole program, each carried value under the name it was computed as.
-    const body = programText(compiler.compile(graph, FX_PARTICLE_TARGET));
-    const phase = /float (\w+) = fract\(\(u_time \* 2\.0\)\);/.exec(body)?.[1];
-    expect(phase).toBeDefined();
+    // The phase, both drifts and uvB's weight read only the clock: the draw stage computes them
+    // once per tick (the phase, `fract(t * 2)`, off `inputs.time`), the shader only offsets the uv.
+    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    const compute = shader.draw?.statements.join("\n") ?? "";
+    expect(compute).toContain("fxFract((inputs.time * 2))");
+    // uvB's weight: 1 as uvA snaps back (phase 0), 0 as uvB does (phase 0.5) - on the CPU too.
+    expect(compute).toMatch(/Math\.abs\(\(1 - \(2 \* \w+\)\)\)/);
+    const body = programText(shader);
+    expect(body).not.toContain("u_time");
     // uvA drifts with the phase, uvB with the phase half a cycle on.
-    expect(body).toContain(`(p_uv - (vec2(0.5, -1.0) * (${phase} * 0.3)))`);
+    const phase = new RegExp(
+      String.raw`\(p_uv - \(vec2\(0\.5, -1\.0\) \* \((${GLSL_NAME}) \* 0\.3\)\)\)`,
+    ).exec(body)?.[1];
+    expect(drawUniformNames(shader)).toContain(phase);
     expect(body).toContain(`(p_uv - (vec2(0.5, -1.0) * (fract((${phase} + 0.5)) * 0.3)))`);
-    // uvB's weight: 1 as uvA snaps back (phase 0), 0 as uvB does (phase 0.5).
-    expect(body).toContain(`abs((1.0 - (2.0 * ${phase})))`);
   });
 
   it("flow-uv runs on a wired time instead of the scene clock, on a VFX mesh too", () => {
@@ -253,7 +260,7 @@ describe("standard render nodes - uv and mask content", () => {
       [bind("albedo", "c", "out"), bind("alphaThreshold", "f", "blend")],
     );
     const body = compiler.compile(graph, FX_MESH_TARGET).fragment.body.join("\n");
-    expect(body).toMatch(/fract\(\(constant_out_\d+ \* 1\.0\)\)/);
+    expect(body).toMatch(new RegExp(String.raw`fract\(\(${GLSL_NAME} \* 1\.0\)\)`));
     expect(body).not.toContain("u_time");
   });
 

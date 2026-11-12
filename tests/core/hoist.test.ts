@@ -70,7 +70,7 @@ function place(
 ): ReturnType<typeof hoistToEarlyStage<FXRatedLocal>> {
   return hoistToEarlyStage(
     { early, late, lateRoots },
-    { rates: classifyRates([...early, ...late], POLICY), maxRate: 2, fits },
+    { rates: classifyRates([...early, ...late], POLICY), maxRate: 2, sharedRate: 1, fits },
   );
 }
 
@@ -116,6 +116,53 @@ describe("hoistToEarlyStage", () => {
     expect(names(placed.early)).toEqual(["scaled"]);
     expect(names(placed.late)).toEqual(["alias", "out"]);
     expect(names(placed.crossing)).toEqual(["scaled"]);
+  });
+
+  it("defines an alias of a uniform in each stage that reads it, never carrying it", () => {
+    // The Dome's case: a moved chain reads the alias, and the late stage reads it directly too.
+    const placed = place(
+      [],
+      [
+        define("clock", input("time")),
+        define("sweep", mul(local("clock"), lit(0.5))),
+        define("out", add(mul(local("sweep"), local("clock")), swizzle(input("uv", VEC2), "x"))),
+      ],
+      ["out"],
+    );
+    expect(names(placed.early)).toEqual(["clock", "sweep"]);
+    expect(names(placed.late)).toEqual(["clock", "out"]);
+    expect(names(placed.crossing)).toEqual(["sweep"]);
+  });
+
+  it("defines nothing in a stage for a value it only reads across the boundary", () => {
+    const placed = place(
+      [],
+      [
+        define("k", mul(lit(2), lit(3))),
+        define("fade", mul(local("k"), input("age"))),
+        define("out", mul(local("fade"), swizzle(input("uv", VEC2), "x"))),
+      ],
+      ["out"],
+    );
+    expect(names(placed.crossing)).toEqual(["fade"]);
+    expect(names(placed.late)).toEqual(["out"]);
+  });
+
+  it("carries a free alias of a computed value: only what reads uniforms alone is shared", () => {
+    const placed = place(
+      [],
+      [
+        define("scaled", mul(input("time"), lit(3))),
+        define("alias", local("scaled")),
+        define("lifted", mul(local("alias"), input("age"))),
+        define("out", add(mul(local("lifted"), local("alias")), swizzle(input("uv", VEC2), "x"))),
+      ],
+      ["out"],
+    );
+    // `alias` is free and draw-rate but reads a computed local, which the late stage does not
+    // have: it is not defined everywhere, and crosses like any moved value.
+    expect(names(placed.late)).toEqual(["out"]);
+    expect(names(placed.crossing)).toEqual(["alias", "lifted"]);
   });
 
   it("defines a constant in each stage that reads it instead of carrying it", () => {

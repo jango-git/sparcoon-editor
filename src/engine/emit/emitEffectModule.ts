@@ -6,15 +6,14 @@ import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
 import { FX_GLSL_RENDER_COMPILERS } from "../render/compiler/FXRenderCompilers";
 import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
-import { collectRenderCapabilities } from "../core/compiler/collectRenderCapabilities";
 import { compileBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
-  renderArtifactBody,
-  renderArtifactDeclarations,
+  collectDrawHelpers,
 } from "./artifactLiterals";
+import { FXRenderModuleWriter } from "./FXRenderModuleWriter";
 
 /** Options for {@link emitEffectModule}. */
 export interface FXEmitModuleOptions {
@@ -55,7 +54,6 @@ export function emitEffectModule(
       ([id, compiler]) => [id, compiler.compile(renderGraph, renderTarget)] as const,
     ),
   ) as Readonly<Record<keyof typeof FX_GLSL_RENDER_COMPILERS, FXCompiledShader>>;
-  const capabilities = collectRenderCapabilities(renderGraph);
 
   const behaviorAttributes = collectAttributeRequests(behaviorGraph).requests;
   const kernel = compileBehavior(behaviorGraph, buildParticleBehaviorTargets(behaviorAttributes));
@@ -65,17 +63,28 @@ export function emitEffectModule(
     `import { type FXRenderArtifact, type FXBehaviorArtifact } from ${JSON.stringify(importSpecifier)};`,
   );
   lines.push("");
-  for (const helper of collectBehaviorHelpers(kernel)) {
+  // The behavior's helpers and the draw stage's, each once.
+  const helpers = new Set([
+    ...collectBehaviorHelpers(kernel),
+    ...collectDrawHelpers(shaders.baseline),
+    ...collectDrawHelpers(shaders.standard),
+  ]);
+  for (const helper of helpers) {
     lines.push(helper);
     lines.push("");
   }
-  for (const declaration of renderArtifactDeclarations(
+  const renderWriter = new FXRenderModuleWriter("export const");
+  const renderDeclarations = renderWriter.tierDeclarations(
     (["baseline", "standard"] as const).map((tier) => ({
       name: RENDER_EXPORT_NAMES[tier],
-      body: renderArtifactBody(shaders[tier], capabilities, geometry, renderAttributes, renderMode),
+      shader: shaders[tier],
     })),
-    "export const",
-  )) {
+    geometry,
+    renderAttributes,
+    renderMode,
+  );
+  // The helpers first: the artifacts below name them.
+  for (const declaration of [...renderWriter.helperDeclarations(), ...renderDeclarations]) {
     lines.push(declaration);
     lines.push("");
   }

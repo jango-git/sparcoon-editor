@@ -2,8 +2,8 @@ import type { FXExpr } from "../ir/FXExpr";
 import { childrenOf } from "../ir/visit.Internal";
 
 /**
- * How often a value changes, as a rank a backend defines (render: constant < draw < primitive <
- * vertex < fragment; behavior: invariant < per-particle). A value changes at the highest rate of
+ * How often a value changes, as a rank a backend defines (render: constant < frame < view <
+ * primitive < vertex < fragment; GPU behavior kernel: constant < pass < particle). A value changes at the highest rate of
  * anything it reads - a lattice join - so rates only ever compare by `>`/`max`.
  */
 export type FXRate = number;
@@ -91,4 +91,31 @@ export function operationCount(expression: FXExpr): number {
     }
   })();
   return childrenOf(expression).reduce((sum, child) => sum + operationCount(child), own);
+}
+
+/**
+ * The locals that cost nothing to define wherever they are read, so a placement defines them there
+ * instead of carrying or lifting them: each constant (rate 0), and each free alias (no operation)
+ * of at most `maxRate` that reads only such locals. `reads` are each local's local reads.
+ */
+export function freeEverywhere(
+  locals: readonly FXRatedLocal[],
+  reads: ReadonlyMap<string, ReadonlySet<string>>,
+  rates: ReadonlyMap<string, FXRate>,
+  maxRate: FXRate,
+): Set<string> {
+  const free = new Set<string>();
+  // Definition order: a local's reads are decided before it.
+  for (const local of locals) {
+    const rate = rates.get(local.name) ?? Infinity;
+    if (
+      rate === 0 ||
+      (rate <= maxRate &&
+        operationCount(local.expr) === 0 &&
+        [...(reads.get(local.name) ?? [])].every((name) => free.has(name)))
+    ) {
+      free.add(local.name);
+    }
+  }
+  return free;
 }

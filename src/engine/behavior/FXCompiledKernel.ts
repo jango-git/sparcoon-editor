@@ -7,6 +7,8 @@ import type { FXExpr } from "../core/ir/FXExpr";
  */
 export interface FXKernelBindingDescriptor {
   value: number | Float32Array;
+  /** Names the binding in the JS kernel, whose names the end build minifies; the GPU kernel ships
+   *  its GLSL as strings and uses a compact generated name instead. */
   hint?: string;
   /**
    * Forces a **stable, verbatim** binding name (a param node's user-chosen slot) instead

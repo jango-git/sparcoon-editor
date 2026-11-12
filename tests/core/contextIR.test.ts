@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { FXConnection } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { add, construct, lit, litVec, mul } from "../../src/engine/core/ir/FXExprBuilder";
+import { FX_VALUE_TYPES, type FXValueType } from "../../src/engine/core/socket/FXValueType";
+import { add, construct, lit, litVec, mul, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
 import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
@@ -15,6 +15,7 @@ import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
 import { fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
+import { GLSL_NAME } from "../helpers/glslNames";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;
@@ -92,12 +93,14 @@ describe("render context IR path", () => {
     });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
 
-    expect(shader.outputs["albedo"]).toMatch(/^\w+_\d+$/);
+    expect(shader.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
     const body = shader.fragment.body.join("\n");
     // uv materialized from the builtin
-    expect(body).toMatch(/vec2 \w+_\d+ = p_uv;/);
+    expect(body).toMatch(new RegExp(`vec2 ${GLSL_NAME} = p_uv;`));
     // vec4 assembled from the splat multiply and two literals
-    expect(body).toMatch(/vec4 \w+_\d+ = vec4\(\(\w+_\d+ \* u_time\), 0\.0, 1\.0\);/);
+    expect(body).toMatch(
+      new RegExp(String.raw`vec4 ${GLSL_NAME} = vec4\(\(${GLSL_NAME} \* u_time\), 0\.0, 1\.0\);`),
+    );
   });
 
   it("chains SSA outputs across nodes", () => {
@@ -118,7 +121,7 @@ describe("render context IR path", () => {
       outputBindings: [{ slot: "albedo", from: { nodeId: "tail", socketKey: "color" } }],
     });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toMatch(/^\w+_\d+$/);
+    expect(shader.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
     expect(shader.fragment.body.join("\n")).toContain("* 2.0)");
   });
 });
@@ -149,6 +152,45 @@ describe("behavior context IR path", () => {
     const buffers = core();
     fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
     expect(buffers.lifecycle[FX_LIFETIME]).toBe(2.5);
+  });
+
+  it("names spawn's and update's bindings apart: they merge into one set by name", () => {
+    const bindingNode = (phase: FXBehaviorPhase, value: number, type: FXValueType) =>
+      new TestBehaviorNode(`ir-binding-${phase}`, phase, [], [socket("out", type)], (ctx) => {
+        const read = ref("binding", ctx.allocateBinding({ value, hint: "k" }).name, FLOAT);
+        ctx.setOutput("out", type === FLOAT ? read : construct(type, read, read, read));
+      });
+    const graph = new FXGraph<FXBehaviorNode>();
+    graph.ingest({
+      nodes: new Map(
+        Object.entries({
+          spawn: bindingNode(FXBehaviorPhase.SPAWN, 1, FLOAT),
+          update: bindingNode(FXBehaviorPhase.UPDATE, 2, VEC3),
+        }),
+      ),
+      connections: [],
+      outputBindings: [
+        {
+          slot: "lifetime",
+          from: { nodeId: "spawn", socketKey: "out" },
+          phase: FXBehaviorPhase.SPAWN,
+        },
+        {
+          slot: "position",
+          from: { nodeId: "update", socketKey: "out" },
+          phase: FXBehaviorPhase.UPDATE,
+        },
+      ],
+    });
+    const compiled = compileParticleBehavior(graph);
+    const values = (bindings: Readonly<Record<string, { value: unknown }>> = {}) =>
+      Object.values(bindings).map((handle) => handle.value);
+    expect(values(compiled.spawn?.bindings)).toEqual([1]);
+    expect(values(compiled.update.bindings)).toEqual([2]);
+    const spawnNames = Object.keys(compiled.spawn?.bindings ?? {});
+    expect(Object.keys(compiled.update.bindings).some((name) => spawnNames.includes(name))).toBe(
+      false,
+    );
   });
 
   it("vector setOutput scalarizes into the core vec3 position slot", () => {

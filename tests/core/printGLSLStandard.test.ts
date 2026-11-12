@@ -3,11 +3,8 @@ import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCom
 import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
-import {
-  glslFloat,
-  glslInt,
-  printGLSLStandard,
-} from "../../src/engine/core/codegen/printGLSLStandard.Internal";
+import { glslFloat, glslInt } from "../../src/engine/core/codegen/printGLSL.Internal";
+import { printGLSLStandard } from "../../src/engine/core/codegen/printGLSLStandard.Internal";
 import {
   column,
   construct,
@@ -70,7 +67,8 @@ describe("operators and structure", () => {
       "vec3(1.0, (v).yz)",
     );
     expect(glsl(column(m, 2))).toBe("(m)[2]");
-    expect(glsl(select(ge(a, b), a, b))).toBe("((a >= b ? 1.0 : 0.0) != 0.0 ? a : b)");
+    expect(glsl(select(ge(a, b), a, b))).toBe("(a >= b ? a : b)");
+    expect(glsl(select(a, a, b))).toBe("(a != 0.0 ? a : b)");
   });
 
   it("substitutes raw GLSL deps and rejects JS or an out-of-range dep", () => {

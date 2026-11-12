@@ -31,10 +31,7 @@ import {
   FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
-import {
-  collectRenderCapabilities,
-  type FXRenderCapabilities,
-} from "../engine/core/compiler/collectRenderCapabilities";
+import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
@@ -52,14 +49,14 @@ import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
 import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
 import { FX_JS_SEED_HASH } from "../engine/core/ir/noise/FXSeedHash.Internal";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
-import type { FXBufferLayout, FXGeometrySource } from "sparcoon";
-import { fxMeshRenderBudget } from "sparcoon/editor";
+import type { FXBufferLayout, FXGeometrySource, FXRenderMode } from "sparcoon";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
 import {
   emitterRenderBudgetFindings,
-  renderBudgetFindings,
+  meshRenderBudgetFindings,
   trailRenderBudgetFindings,
+  type FXRenderArtifactsByTier,
   type RenderBudgetFindings,
 } from "../domain/renderBudget";
 import { gpuSortWarnings } from "../domain/sortChecks";
@@ -139,9 +136,21 @@ function compileForEveryGLSLTier(
   return Object.fromEntries(entries) as CompiledShadersByGLSLTier;
 }
 
+/** `shaders` assembled into the render artifact each tier runs - what its budget is counted on. */
+function assembleForEveryGLSLTier(
+  shaders: CompiledShadersByGLSLTier,
+  geometry: FXGeometrySource,
+  attributes: readonly FXAttributeRequest[],
+  renderMode: FXRenderMode,
+): FXRenderArtifactsByTier {
+  return {
+    baseline: assembleRenderArtifact(shaders.baseline, geometry, attributes, renderMode),
+    standard: assembleRenderArtifact(shaders.standard, geometry, attributes, renderMode),
+  };
+}
+
 export interface EmitterIR {
   readonly shaders: CompiledShadersByGLSLTier;
-  readonly capabilities: FXRenderCapabilities;
   readonly renderAttributes: readonly FXAttributeRequest[];
   readonly kernel: FXCompiledKernel;
   readonly behaviorAttributes: readonly FXAttributeRequest[];
@@ -175,7 +184,6 @@ export interface EmitterIR {
 /** An emitter's trail graph, compiled through every GLSL tier like its render graph. */
 export interface TrailIR {
   readonly shaders: CompiledShadersByGLSLTier;
-  readonly capabilities: FXRenderCapabilities;
   readonly renderAttributes: readonly FXAttributeRequest[];
   readonly renderMode: RenderMode;
   readonly frames: number;
@@ -220,15 +228,8 @@ function compileTrail(
     fail(depthFadeError.message);
   }
   const shaders = compileForEveryGLSLTier(graph, buildTrailTarget(renderAttributes));
-  const capabilities = collectRenderCapabilities(graph);
   const [budgetError] = trailRenderBudgetFindings(
-    assembleRenderArtifact(
-      shaders.standard,
-      capabilities,
-      TRAIL_GEOMETRY,
-      renderAttributes,
-      config.renderMode,
-    ),
+    assembleForEveryGLSLTier(shaders, TRAIL_GEOMETRY, renderAttributes, config.renderMode),
     kernel.update.buffers,
     kernelBuffers,
   ).errors;
@@ -237,7 +238,6 @@ function compileTrail(
   }
   return {
     shaders,
-    capabilities,
     renderAttributes,
     renderMode: config.renderMode,
     frames: config.frames,
@@ -290,7 +290,6 @@ export function compileEmitter(
     throw new Error(`exportTypeScript: ${emitter.name}: ${depthFadeError.message}`);
   }
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
-  const capabilities = collectRenderCapabilities(renderGraph);
 
   // Compiled before the budget is counted: the GPU kernel's slot layout, when there is one,
   // decides what the Standard tier's particle mesh takes.
@@ -302,9 +301,8 @@ export function compileEmitter(
   requireWithinRenderBudget(
     emitter.name,
     emitterRenderBudgetFindings(
-      assembleRenderArtifact(
-        shaders.standard,
-        capabilities,
+      assembleForEveryGLSLTier(
+        shaders,
         toArtifactGeometrySource(config.geometry),
         renderAttributes,
         config.renderMode,
@@ -317,7 +315,6 @@ export function compileEmitter(
 
   return {
     shaders,
-    capabilities,
     renderAttributes,
     kernel: bundle.kernel,
     behaviorAttributes,
@@ -356,7 +353,6 @@ export function compileEmitter(
 
 export interface MeshIR {
   readonly shaders: CompiledShadersByGLSLTier;
-  readonly capabilities: FXRenderCapabilities;
   readonly geometry: FXGeometrySource;
   readonly renderMode: "blending" | "alphaHash" | "alphaTest" | "opaque";
   readonly castShadow: boolean;
@@ -371,25 +367,20 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
     throw new Error(`exportTypeScript: ${mesh.name}: ${depthFadeError.message}`);
   }
   const shaders = compileForEveryGLSLTier(renderGraph, FX_MESH_TARGET);
-  const capabilities = collectRenderCapabilities(renderGraph);
   requireWithinRenderBudget(
     mesh.name,
-    renderBudgetFindings(
-      fxMeshRenderBudget(
-        assembleRenderArtifact(
-          shaders.standard,
-          capabilities,
-          toArtifactGeometrySource(config.geometry),
-          [],
-          config.renderMode,
-        ),
-        { castShadow: config.castShadow },
+    meshRenderBudgetFindings(
+      assembleForEveryGLSLTier(
+        shaders,
+        toArtifactGeometrySource(config.geometry),
+        [],
+        config.renderMode,
       ),
+      config.castShadow,
     ),
   );
   return {
     shaders,
-    capabilities,
     geometry: toArtifactGeometrySource(config.geometry),
     renderMode: config.renderMode,
     castShadow: config.castShadow,

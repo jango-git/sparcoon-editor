@@ -5,23 +5,28 @@ import {
   FX_LIFETIME,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_RAND_SEED_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM,
 } from "sparcoon";
 import { floatGLSLType } from "sparcoon/editor";
+import type { FXValueType } from "../core/socket/FXValueType";
 import type {
   FXKernelBindingHandle,
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
-import type { FXCompiledKernelStandard } from "./FXParticleBehaviorKernelStandard.Internal";
+import type {
+  FXCompiledKernelDrawStage,
+  FXCompiledKernelStandard,
+} from "./FXParticleBehaviorKernelStandard.Internal";
 import { glslBufferAttributeName } from "./FXParticleBehaviorKernelStandard.Internal";
 import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
+import {
+  FIXED_UNIFORMS,
+  kernelUniformDeclaration,
+  type FXKernelUniform,
+} from "./FXKernelUniformsStandard.Internal";
 
 /**
  * The `new Function`-assembly layer's standard-tier sibling: turns a {@link FXCompiledKernelStandard}
@@ -32,22 +37,6 @@ import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
  * and write the same buffer, and splitting `update`'s range around a wrapping spawn cursor
  * compounds badly.
  */
-
-// Fixed, contract uniform names (sourced from sparcoon's behaviorTransformFeedbackLayout.ts, not
-// re-derived here) every fused program declares unconditionally, regardless of whether this
-// particular graph reads them - mirrors how `u_fxRandSeed` (rand's own contract, core/ir/
-// FXFunctions.Internal.ts) is always declared too.
-const FIXED_UNIFORM_DECLARATIONS: readonly string[] = [
-  `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM};`,
-  `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM};`,
-  `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM};`,
-  `uniform int ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM};`,
-  `uniform int ${FX_TRANSFORM_FEEDBACK_RAND_SEED_UNIFORM};`,
-  `uniform float ${FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM};`,
-  `uniform mat4 ${FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM};`,
-  `uniform vec3 ${FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM};`,
-  `uniform vec3 ${FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM};`,
-];
 
 /** A minimal, valid fragment shader - WebGL2 requires one to link any program, even a
  *  transform-feedback-only one never actually rasterized (`RASTERIZER_DISCARD` at draw time). */
@@ -68,6 +57,8 @@ export interface FXFusedProgramStandard {
    *  is its attribute location and its place in the slot. */
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
+  /** Both phases' draw stages as one `compute`, and every draw uniform it fills, by type. */
+  readonly draw?: FXCompiledKernelDrawStage;
 }
 
 /** Deterministic `out` (transform-feedback) varying name for a state buffer. */
@@ -79,30 +70,27 @@ function glslTypeForBuffer(buffer: FXKernelBufferLayout): string {
   return floatGLSLType(buffer.stride, `assembleTransformFeedbackProgram: buffer "${buffer.name}"`);
 }
 
-/** Merges the two phases' graph-authored uniform declarations, deduped by exact text (two phases
- *  sharing a forced-name param produce identical text); a same-name different-type collision is a
- *  real authoring conflict and throws, the same way `compileToArtifacts.ts`'s `collectPhaseBindings`
- *  throws on a cross-phase binding value conflict for the JS backend. */
-function mergeUniformDeclarations(spawn: readonly string[], update: readonly string[]): string[] {
-  const byName = new Map<string, string>();
-  const merged: string[] = [];
-  for (const declaration of [...spawn, ...update]) {
-    const name = declaration.split(" ")[2]?.replace(";", "");
-    if (name === undefined) {
-      throw new Error(`mergeUniformDeclarations: malformed declaration "${declaration}"`);
-    }
-    const existing = byName.get(name);
+/** Merges the two phases' graph-authored uniforms by name (two phases sharing a forced-name param
+ *  declare it twice, alike); a same-name different-type collision is a real authoring conflict and
+ *  throws, the same way `compileToArtifacts.ts`'s `collectPhaseBindings` throws on a cross-phase
+ *  binding value conflict for the JS backend. */
+function mergeUniforms(
+  spawn: readonly FXKernelUniform[],
+  update: readonly FXKernelUniform[],
+): FXKernelUniform[] {
+  const byName = new Map<string, FXKernelUniform>();
+  for (const uniform of [...spawn, ...update]) {
+    const existing = byName.get(uniform.name);
     if (existing === undefined) {
-      byName.set(name, declaration);
-      merged.push(declaration);
-    } else if (existing !== declaration) {
+      byName.set(uniform.name, uniform);
+    } else if (existing.glslTypeName !== uniform.glslTypeName) {
       throw new Error(
-        `mergeUniformDeclarations: uniform "${name}" declared differently across spawn/update ` +
-          `("${existing}" vs "${declaration}")`,
+        `mergeUniforms: uniform "${uniform.name}" declared differently across spawn/update ` +
+          `(${existing.glslTypeName} vs ${uniform.glslTypeName})`,
       );
     }
   }
-  return merged;
+  return [...byName.values()];
 }
 
 /** Merges the two phases' live binding handles by name, verifying a shared name (a param node
@@ -181,9 +169,9 @@ export function assembleTransformFeedbackProgram(
     (buffer) => `out ${glslTypeForBuffer(buffer)} ${glslOutVaryingName(buffer.name)};`,
   );
   const uniformDeclarations = [
-    ...FIXED_UNIFORM_DECLARATIONS,
-    ...mergeUniformDeclarations(spawn.uniformDeclarations, update.uniformDeclarations),
-  ];
+    ...FIXED_UNIFORMS,
+    ...mergeUniforms(spawn.uniforms, update.uniforms),
+  ].map(kernelUniformDeclaration);
   const helpers = [...new Set([...spawn.helpers, ...update.helpers])];
 
   const lifecycleAgeOverride = new Map([
@@ -262,11 +250,41 @@ ${[...update.body.map((line) => `    ${line}`), ...updateAssignments].join("\n")
 }
 `;
 
+  const draw = fuseDrawStages([spawn.draw, update.draw]);
   return {
     vertexSource,
     fragmentSource: FX_TRANSFORM_FEEDBACK_FRAGMENT_SOURCE,
     transformFeedbackVaryings: buffers.map((buffer) => glslOutVaryingName(buffer.name)),
     buffers,
     bindings: mergeBindings(spawn.bindings, update.bindings),
+    ...(draw === undefined ? {} : { draw }),
+  };
+}
+
+/**
+ * The phases' draw stages as one: each computed every pass (a spawn-only pass reads the spawn
+ * half's, the cost of the update half's is a handful of operations), each phase's statements in a
+ * block of its own - the phases name their locals apart from each other only within themselves.
+ */
+function fuseDrawStages(
+  stages: readonly (FXCompiledKernelDrawStage | undefined)[],
+): FXCompiledKernelDrawStage | undefined {
+  const present = stages.filter((stage): stage is FXCompiledKernelDrawStage => stage !== undefined);
+  if (present.length === 0) {
+    return undefined;
+  }
+  return {
+    stage: {
+      statements: present.flatMap(({ stage }) => [
+        "{",
+        ...stage.statements.map((statement) => `  ${statement}`),
+        "}",
+      ]),
+      helpers: [...new Set(present.flatMap(({ stage }) => stage.helpers))],
+    },
+    uniforms: Object.assign({}, ...present.map(({ uniforms }) => uniforms)) as Record<
+      string,
+      FXValueType
+    >,
   };
 }

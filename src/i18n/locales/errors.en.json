@@ -176,6 +176,9 @@
   "unknown-render-input-rate": {
     "message": "target \"{targetName}\" input \"{inputName}\" names unknown rate \"{rate}\""
   },
+  "uniform-rate-input-not-in-both-stages": {
+    "message": "target \"{targetName}\" {rate}-rate input \"{inputName}\" must be readable in both stages"
+  },
   "unknown-render-output-stage": {
     "message": "target \"{targetName}\" output \"{outputSlot}\" names unknown stage \"{stage}\""
   },
@@ -301,6 +304,30 @@
   },
   "render-varying-budget-baseline": {
     "message": "the material needs {used} varying vectors; the Baseline tier on a WebGL1 GPU guarantees only {limit}, so it may not draw there"
+  },
+  "render-vertex-uniform-budget": {
+    "message": "the material needs {used} vertex uniform vectors; every WebGL2 GPU guarantees {limit} - declare fewer parameters or pass fewer values to the vertex stage"
+  },
+  "render-vertex-uniform-budget-baseline": {
+    "message": "the material needs {used} vertex uniform vectors; the least WebGL1 device the Baseline tier supports offers {limit}, so it may not draw there"
+  },
+  "render-fragment-uniform-budget": {
+    "message": "the material needs {used} fragment uniform vectors; every WebGL2 GPU guarantees {limit} - declare fewer parameters"
+  },
+  "render-fragment-uniform-budget-baseline": {
+    "message": "the material needs {used} fragment uniform vectors; the least WebGL1 device the Baseline tier supports offers {limit}, so it may not draw there"
+  },
+  "render-vertex-sampler-budget": {
+    "message": "the material needs {used} vertex texture units; every WebGL2 GPU guarantees {limit} - sample fewer textures in the vertex stage"
+  },
+  "render-vertex-sampler-budget-baseline": {
+    "message": "the material needs {used} vertex texture units; the least WebGL1 device the Baseline tier supports offers {limit}, so it may not draw there"
+  },
+  "render-fragment-sampler-budget": {
+    "message": "the material needs {used} fragment texture units; every WebGL2 GPU guarantees {limit} - sample fewer textures"
+  },
+  "render-fragment-sampler-budget-baseline": {
+    "message": "the material needs {used} fragment texture units; the least WebGL1 device the Baseline tier supports offers {limit}, so it may not draw there"
   },
   "mesh-ignores-transform": {
     "message": "this mesh never reads its world matrix, so its transform, its keyframes and the effect's placement do not move it - wire a World Matrix node into Vertex Transform"

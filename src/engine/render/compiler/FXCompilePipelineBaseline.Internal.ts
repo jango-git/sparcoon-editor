@@ -5,6 +5,8 @@ import {
   topologicalOrder,
 } from "../../core/compiler/FXGraphTraversal.Internal";
 import { resolvePlacement } from "../../core/compiler/placement.Internal";
+import { collectRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
+import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
 import { genericTypeTag, socketConcreteType } from "../../core/compiler/FXTypeResolve.Internal";
 import { buildNodes, prepareCompile } from "../../core/compiler/compileDriver.Internal";
 import { FXCompileContextBase } from "../../core/compiler/FXCompileContextBase";
@@ -22,22 +24,24 @@ import {
   isImpureFunction,
 } from "../../core/ir/FXFunctions.Internal";
 import { printGLSLBaseline } from "../../core/codegen/printGLSLBaseline.Internal";
-import { hoistToEarlyStage } from "../../core/codegen/hoist.Internal";
-import { classifyRates } from "../../core/codegen/rates.Internal";
 import type { FXRatedLocal } from "../../core/codegen/rates.Internal";
-import { refNamesIn } from "../../core/ir/visit.Internal";
-import { uniqueIdentifier } from "../../core/codegen/uniqueName.Internal";
+import { FXGLSLNames } from "../../core/codegen/uniqueName.Internal";
 import type { FXSocketRef } from "../../core/socket/FXSocket";
 import { socketRefKey } from "../../core/socket/FXSocket";
 import type { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXTarget, FXTargetOutput } from "../target/FXTarget";
-import { FX_INPUT_RATE_RANK, renderRatePolicy } from "../target/FXTarget";
-import { crossingBudget } from "../target/FXParticleRenderTarget";
 import { renderTargetSignature } from "../target/FXTargetSignature.Internal";
+import { placeRenderStages } from "./FXRenderStagePlacement.Internal";
+import { zeroValue } from "./FXCompiledShader";
+import {
+  finishRenderStages,
+  FXRenderUniforms,
+  type FXPrintedStage,
+  type FXSlotValue,
+} from "./FXRenderCompileShared.Internal";
 import type {
   FXCompiledShader,
-  FXCompiledStage,
   FXUniformDescriptor,
   FXUniformHandle,
   FXVarying,
@@ -53,7 +57,9 @@ import type { FXRenderContext } from "./FXRenderContext";
  * (`core/compiler/`) - the same degree of separation the future advanced (WebGPU/WGSL) tier would
  * have from either. Duplication with `FXCompilePipelineStandard.Internal.ts` is intentional: this
  * tier's declaration strategy, placement rules, and optimizations are free to diverge without ever
- * touching that file.
+ * touching that file. What is shading-language neutral - placement (`FXRenderStagePlacement`), the
+ * uniform table and the finishing of the placed stages (`FXRenderCompileShared`) - is called, not
+ * copied, while both tiers agree on it.
  */
 
 /** This tier's bound builders - baseline signatures only (`standardOnly` functions excluded, so
@@ -199,12 +205,6 @@ interface FXStageLocal extends FXRatedLocal {
   readonly owner: string | undefined;
 }
 
-/** What a target output slot reads: a local's name (or an opaque value's code), in its stage. */
-interface FXSlotValue {
-  readonly stage: FXShaderStage;
-  readonly value: string;
-}
-
 function addHelper(helpers: Map<string, string>, key: string, source: string): void {
   if (!helpers.has(key)) {
     helpers.set(key, source);
@@ -214,12 +214,9 @@ function addHelper(helpers: Map<string, string>, key: string, source: string): v
 /** Mutable accumulator for one compilation (identifiers, uniforms, varyings, helpers, per-stage
  *  locals). Nodes never see this directly - only through {@link FXNodeCompilerContext}. */
 class FXCompileState {
-  private counter = 0;
+  private readonly names = new FXGLSLNames();
 
-  private readonly uniformsByName = new Map<string, FXUniformHandle>();
-  /** Declared GLSL type per forced (param) uniform name, to catch a same-name type clash. */
-  private readonly namedUniformTypes = new Map<string, string>();
-  private readonly uniformDeclarations: string[] = [];
+  private readonly uniforms = new FXRenderUniforms(() => this.uniqueName());
   private readonly varyingList: FXVarying[] = [];
   /** Each stage's locals as their nodes emitted them, until {@link finalize} places and prints them. */
   private readonly locals: Record<FXShaderStage, FXStageLocal[]> = {
@@ -229,11 +226,9 @@ class FXCompileState {
   /** The helpers each node emitted, by key: they go wherever its locals end up. */
   private readonly ownerHelpers = new Map<string, Map<string, string>>();
 
-  /** Allocates a collision-free, GLSL-safe identifier from a hint. */
-  public uniqueName(hint: string): string {
-    const name = uniqueIdentifier(hint, "_", this.counter);
-    this.counter += 1;
-    return name;
+  /** Allocates a collision-free, compact GLSL identifier (see {@link FXGLSLNames}). */
+  public uniqueName(): string {
+    return this.names.next();
   }
 
   /** Adds a local to a stage - where its node runs; {@link finalize} may still move it. */
@@ -250,118 +245,81 @@ class FXCompileState {
   }
 
   public allocateUniform(descriptor: FXUniformDescriptor): FXUniformHandle {
-    // A forced name (a param slot) is used verbatim and deduped, so two param nodes of the
-    // same name share one uniform (and a name survives structural edits - timeline-addressable);
-    // a type clash between them is a compile error. Otherwise auto-number from the hint.
-    if (descriptor.name !== undefined) {
-      const glslType = descriptor.type.glslTypeName;
-      const existing = this.uniformsByName.get(descriptor.name);
-      if (existing !== undefined) {
-        const priorType = this.namedUniformTypes.get(descriptor.name);
-        if (priorType !== undefined && priorType !== glslType) {
-          throw new FXCompilerErrorException({
-            code: "param-uniform-type-conflict",
-            message: `param uniform "${descriptor.name}" is declared as both ${priorType} and ${glslType}`,
-            params: { name: descriptor.name, priorType, newType: glslType },
-          });
-        }
-        return existing;
-      }
-      this.uniformDeclarations.push(`uniform ${glslType} ${descriptor.name};`);
-      this.namedUniformTypes.set(descriptor.name, glslType);
-      const handle: FXUniformHandle =
-        descriptor.external === true
-          ? { name: descriptor.name, value: descriptor.value, external: descriptor.name }
-          : { name: descriptor.name, value: descriptor.value };
-      this.uniformsByName.set(descriptor.name, handle);
-      return handle;
-    }
-    const name = this.uniqueName(`u_${descriptor.hint ?? "uniform"}`);
-    this.uniformDeclarations.push(`uniform ${descriptor.type.glslTypeName} ${name};`);
-    const handle: FXUniformHandle = { name, value: descriptor.value };
-    this.uniformsByName.set(name, handle);
-    return handle;
+    return this.uniforms.allocate(descriptor);
   }
 
   /** Declares a vertex->fragment varying and returns its name. */
   public allocateVarying(
     type: FXValueType,
-    hint: string,
     interpolation: FXVarying["interpolation"] = "smooth",
   ): string {
-    const name = this.uniqueName(`v_${hint}`);
+    const name = this.uniqueName();
     this.varyingList.push({ name, type, interpolation });
     return name;
   }
 
   /**
-   * Places every local in its final stage and prints both. A fragment local whose value is the
-   * same at every fragment of a particle (see `renderRatePolicy`) moves to the vertex stage, so it
-   * is computed per vertex rather than per fragment, as far as this tier can carry the results
-   * between the stages (see `hoistToEarlyStage`). Then each vertex value the fragment stage reads -
-   * moved there or written there by its own node - crosses through one varying, marked `flat`
-   * when it is the same at all of a primitive's vertices: the runtime declares it `flat` where the
-   * context's GLSL has it, and this tier's GLSL ES 1.00 interpolates it back to itself (this tier
-   * has no integer types, which would need it).
+   * Places every local in its final stage (see `placeRenderStages`) and prints both. Each vertex
+   * value the fragment stage reads - moved there or written there by its own node - crosses through
+   * one varying, marked `flat` when it is the same at all of a primitive's vertices: the runtime
+   * declares it `flat` where the context's GLSL has it, and this tier's GLSL ES 1.00 interpolates it
+   * back to itself (this tier has no integer types, which would need it).
    */
   public finalize(
     target: FXTarget,
     slots: ReadonlyMap<string, FXSlotValue>,
+    capabilities: FXRenderCapabilities,
     hash: string,
   ): FXCompiledShader {
-    const vertexLocals = this.locals[FXShaderStage.VERTEX];
-    const fragmentLocals = this.locals[FXShaderStage.FRAGMENT];
-    const policy = renderRatePolicy(target, isImpureFunction);
-    const rates = classifyRates([...vertexLocals, ...fragmentLocals], policy);
-    const fragmentRoots = [...slots.values()]
-      .filter((slot) => slot.stage === FXShaderStage.FRAGMENT)
-      .map((slot) => slot.value);
-    const targetReads = (locals: readonly FXStageLocal[]): string[] =>
-      refNamesIn(
-        locals.map((local) => local.expr),
-        "targetInput",
-      );
-    const fits = crossingBudget(target, "baseline", targetReads(fragmentLocals));
-    const plan = hoistToEarlyStage(
-      { early: vertexLocals, late: fragmentLocals, lateRoots: fragmentRoots },
+    const slotReads = (stage: FXShaderStage): string[] =>
+      [...slots.values()].filter((slot) => slot.stage === stage).map((slot) => slot.value);
+    const placement = placeRenderStages(
       {
-        rates,
-        maxRate: FX_INPUT_RATE_RANK.primitive,
-        fits: (crossing, late) =>
-          fits(
-            crossing.map((local) => local.type),
-            targetReads(late),
-          ),
+        vertex: this.locals[FXShaderStage.VERTEX],
+        fragment: this.locals[FXShaderStage.FRAGMENT],
+        vertexSlotReads: slotReads(FXShaderStage.VERTEX),
+        fragmentSlotReads: slotReads(FXShaderStage.FRAGMENT),
+      },
+      {
+        target,
+        tier: "baseline",
+        lightingIntrinsics: capabilities.lightingIntrinsics,
+        uniforms: this.uniforms.handles,
+        isImpureCall: isImpureFunction,
+        declareDrawUniform: (type) => this.allocateUniform({ type, value: zeroValue(type) }).name,
       },
     );
 
     const carried = new Map<string, string>();
     const writes: string[] = [];
-    for (const local of plan.crossing) {
-      const flat = (rates.get(local.name) ?? policy.pinned) <= FX_INPUT_RATE_RANK.primitive;
-      const varying = this.allocateVarying(local.type, "bridge", flat ? "flat" : "smooth");
+    for (const { local, perPrimitive } of placement.crossing) {
+      const varying = this.allocateVarying(local.type, perPrimitive ? "flat" : "smooth");
       carried.set(local.name, varying);
       writes.push(`${varying} = ${local.name};`);
     }
-    const vertex = this.printStage(plan.early, new Map());
-    const fragment = this.printStage(plan.late, carried);
+    const vertexStage = this.printStage(placement.vertex, new Map());
+    const fragmentStage = this.printStage(placement.fragment, carried);
 
-    const uniforms: Record<string, FXUniformHandle> = {};
-    for (const [name, handle] of this.uniformsByName) {
-      uniforms[name] = handle;
-    }
-    const outputs: Record<string, string> = {};
-    for (const [slot, { stage, value }] of slots) {
-      outputs[slot] = stage === FXShaderStage.FRAGMENT ? (carried.get(value) ?? value) : value;
-    }
+    const { vertex, fragment, outputs } = finishRenderStages(
+      {
+        vertex: vertexStage,
+        fragment: fragmentStage,
+        varyingWrites: writes,
+        carried,
+        renamed: placement.renamed,
+      },
+      slots,
+      this.uniforms.handles,
+    );
 
     return {
-      uniforms,
-      uniformDeclarations: this.uniformDeclarations,
+      uniforms: this.uniforms.record(),
       varyings: this.varyingList,
-      vertex: { ...vertex, body: [...vertex.body, ...writes] },
+      vertex,
       fragment,
       outputs,
+      capabilities,
+      ...(placement.draw === undefined ? {} : { draw: placement.draw }),
       hash,
     };
   }
@@ -371,7 +329,7 @@ class FXCompileState {
   private printStage(
     locals: readonly FXStageLocal[],
     carried: ReadonlyMap<string, string>,
-  ): FXCompiledStage {
+  ): FXPrintedStage {
     const helpers = new Map<string, string>();
     const targetReads = new Set<string>();
     const body: string[] = [];
@@ -446,8 +404,15 @@ class FXNodeCompilerContext
     }
 
     const key = socketRefKey({ nodeId: this.nodeId, socketKey });
-    if (socketType.instantiable) {
-      const name = this.state.uniqueName(this.outputHint(socketKey));
+    if (
+      expression.kind === "ref" &&
+      expression.ref === "local" &&
+      expression.type.glslTypeName === socketType.glslTypeName
+    ) {
+      // Already a local of the socket's type: consumers read it, with no alias of it in between.
+      this.outputVariables.set(key, expression.name);
+    } else if (socketType.instantiable) {
+      const name = this.state.uniqueName();
       this.state.emitLocal(this.stage, {
         name,
         type: socketType,
@@ -461,8 +426,8 @@ class FXNodeCompilerContext
     }
   }
 
-  public defineLocal(hint: string, expression: FXExpr): FXExpr {
-    const name = this.state.uniqueName(hint);
+  public defineLocal(_hint: string, expression: FXExpr): FXExpr {
+    const name = this.state.uniqueName();
     this.state.emitLocal(this.stage, {
       name,
       type: expression.type,
@@ -494,8 +459,8 @@ class FXNodeCompilerContext
     return ref("targetInput", name, input.type);
   }
 
-  public uniqueName(hint: string): string {
-    return this.state.uniqueName(hint);
+  public uniqueName(): string {
+    return this.state.uniqueName();
   }
 
   public allocateUniform(descriptor: FXUniformDescriptor): FXUniformHandle {
@@ -506,12 +471,11 @@ class FXNodeCompilerContext
   public allocateValueParam(
     type: FXValueType,
     value: number | readonly number[],
-    hint: string,
+    _hint: string,
   ): FXValueParam {
     const handle = this.allocateUniform({
       type,
       value: typeof value === "number" ? value : value.slice(),
-      hint,
     });
     return {
       expr: ref("uniform", handle.name, type),
@@ -523,7 +487,7 @@ class FXNodeCompilerContext
     };
   }
 
-  public allocateVarying(type: FXValueType, hint: string): string {
+  public allocateVarying(type: FXValueType): string {
     if (this.stage === FXShaderStage.FRAGMENT) {
       // A varying is written in vertex and read in fragment; allocating one from a fragment
       // node would emit an illegal fragment-body assignment.
@@ -534,7 +498,7 @@ class FXNodeCompilerContext
         params: { nodeId: this.nodeId },
       });
     }
-    return this.state.allocateVarying(type, hint);
+    return this.state.allocateVarying(type);
   }
 
   public emitHelper(key: string, source: string): void {
@@ -576,7 +540,7 @@ function coerceSlotOutput(
   if (fromType === undefined || fromType.id === toType.id) {
     return variable;
   }
-  const name = state.uniqueName(`slot_${toType.glslTypeName}`);
+  const name = state.uniqueName();
   state.emitLocal(stage, {
     name,
     type: toType,
@@ -680,6 +644,7 @@ export function compileGraphBaseline(
   return state.finalize(
     target,
     slots,
+    collectRenderCapabilities(graph),
     structuralHash(
       graph,
       renderTargetSignature(target),
