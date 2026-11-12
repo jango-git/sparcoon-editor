@@ -1,9 +1,9 @@
-import { FXGraph } from "../engine/core/FXGraph";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
-import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
+import { FXGraph } from "../engine/core/FXGraph";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
+import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import { FX_GLSL_RENDER_COMPILERS } from "../engine/render/compiler/FXRenderCompilers";

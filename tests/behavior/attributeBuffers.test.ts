@@ -5,6 +5,7 @@ import {
   FX_LIFETIME,
 } from "sparcoon";
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import type {

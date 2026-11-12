@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { gpuSortWarnings } from "../../src/domain/sortChecks";
+
 import { RENDER_SINK_ID } from "../../src/domain/sinkMeta";
+import { gpuSortWarnings } from "../../src/domain/sortChecks";
 
 describe("gpuSortWarnings", () => {
   it("warns, on the render sink, when a GPU-simulated emitter asks for a depth sort", () => {

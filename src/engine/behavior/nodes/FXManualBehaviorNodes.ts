@@ -2,13 +2,13 @@ import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import type { FXNodeRegistry } from "../../core/live/FXNodeRegistry";
 import type { FXGLSLTypeName } from "../../core/socket/FXValueType";
 import { resolveValueType } from "../../core/socket/FXValueType";
+import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
 import type { FXBehaviorNode } from "../FXBehaviorNode";
 import { FXBehaviorPhase } from "../FXBehaviorPhase";
-import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
-import { FXBehaviorNodeStoreAttribute } from "./FXBehaviorNodeStoreAttribute";
+import { FXBehaviorNodeBuiltinAttribute } from "./FXBehaviorNodeBuiltinAttribute";
 import { FXBehaviorNodeCustomAttribute } from "./FXBehaviorNodeCustomAttribute";
 import { FXBehaviorNodeCustomAttributeSplit } from "./FXBehaviorNodeCustomAttributeSplit";
-import { FXBehaviorNodeBuiltinAttribute } from "./FXBehaviorNodeBuiltinAttribute";
+import { FXBehaviorNodeStoreAttribute } from "./FXBehaviorNodeStoreAttribute";
 import { FXBehaviorNodeTimelineValue } from "./FXBehaviorNodeTimelineValue";
 
 /**

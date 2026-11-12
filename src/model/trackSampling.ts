@@ -4,6 +4,7 @@
  */
 
 import { sampleTrack as sharedSampleTrack } from "sparcoon/editor";
+
 import type { AnimationTrack } from "./editorState";
 
 /** The interpolated value of `track` at time `time`, or `undefined` if the track has no keys. */

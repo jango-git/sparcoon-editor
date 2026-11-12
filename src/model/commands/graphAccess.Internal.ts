@@ -4,12 +4,12 @@
  * only the sibling graph command modules import it.
  */
 
-import { createEmptyGraph } from "../../domain/graphModel";
 import type { EditorGraph, GraphOutputBinding } from "../../domain/graphModel";
+import { createEmptyGraph } from "../../domain/graphModel";
 import { resolveGraphOwner, type SourceState } from "../editorState";
 import type { GraphSlot } from "../graphSlots";
 
-export { kindForSlot, type GraphSlot } from "../graphSlots";
+export { type GraphSlot, kindForSlot } from "../graphSlots";
 
 /**
  * The active owner's graph for `slot`. A VFX mesh is render-only, so its behavior slot resolves to

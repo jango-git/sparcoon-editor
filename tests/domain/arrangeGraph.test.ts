@@ -1,16 +1,18 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
+import { ROUTE_TYPE } from "../../src/domain/fakeNodes";
 import { bindingSinkId } from "../../src/domain/graphEdges";
 import type { EditorGraph } from "../../src/domain/graphModel";
 import { arrangeGraph, type NodeMetrics } from "../../src/domain/layout/arrangeGraph";
 import { GraphKind } from "../../src/domain/nodePalette";
 import { serializeGraph } from "../../src/domain/serialize";
-import { ROUTE_TYPE } from "../../src/domain/fakeNodes";
 import {
+  addCatalogNode,
   addComment,
   arrangeActiveGraph,
   connectSockets,
-  addCatalogNode,
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";

@@ -6,7 +6,7 @@
  * conversion at this boundary.
  */
 
-import { parseHex, srgbToLinearRgba, type Rgba } from "../ui/components/color";
+import { parseHex, type Rgba, srgbToLinearRgba } from "../ui/components/color";
 import { asBoolean, asFiniteNumber, isRecord } from "../util/guards";
 import { PersistedStore } from "./persistedStore";
 

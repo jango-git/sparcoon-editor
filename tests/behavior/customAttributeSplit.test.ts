@@ -1,12 +1,12 @@
+import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
 import { describe, expect, it } from "vitest";
+
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
   compileParticleBehavior,
   validateParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
-import { behaviorRegistry } from "../helpers/stdRegistry";
 import { attributeSlot, readAttrComponents, storeAttr } from "../helpers/attr";
 import {
   bind,
@@ -16,6 +16,7 @@ import {
   fieldUpdateKernel,
   graphOf,
 } from "../helpers/graphBuild";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 const FLOAT = FX_VALUE_TYPES.float;

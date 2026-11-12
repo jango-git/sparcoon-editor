@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
+
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
+import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
-import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 const VEC4 = FX_VALUE_TYPES.vec4;

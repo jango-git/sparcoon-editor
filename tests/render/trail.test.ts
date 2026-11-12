@@ -1,29 +1,30 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Mesh, ShaderMaterial } from "three";
-import type { FXEmitter } from "sparcoon/editor";
 import { FXWorld } from "sparcoon";
-import { createEditApi } from "../../src/agent/editApi";
+import type { FXEmitter } from "sparcoon/editor";
+import type { Mesh, ShaderMaterial } from "three";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { parseGraphName, resolveGraph } from "../../src/agent/address.Internal";
+import { createEditApi } from "../../src/agent/editApi";
 import { readStatus } from "../../src/agent/status.Internal";
 import { liveSession } from "../../src/agent/transaction.Internal";
 import type { EditorGraph } from "../../src/domain/graphModel";
-import { trailAttributeErrors } from "../../src/domain/trailChecks";
-import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import {
+  GraphKind,
   isTrailExcludedRenderNode,
   metaFor,
-  GraphKind,
+  readTrailSinkConfig,
   RENDER_CAST_SHADOW_PARAM,
   RENDER_SINK_ID,
   RENDER_SORT_INTERVAL_PARAM,
-  readTrailSinkConfig,
-  timelineValueConflicts,
-  TIMELINE_VALUE_TYPE,
-  TRAIL_FRAMES_PARAM_KEY,
-  TRAIL_INTERVAL_PARAM_KEY,
   SPAWN_EXPECTED_CAPACITY_PARAM,
   SPAWN_SINK_ID,
+  TIMELINE_VALUE_TYPE,
+  timelineValueConflicts,
+  TRAIL_FRAMES_PARAM_KEY,
+  TRAIL_INTERVAL_PARAM_KEY,
 } from "../../src/domain/nodePalette";
+import { trailAttributeErrors } from "../../src/domain/trailChecks";
+import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import {
   addCatalogNode,
   connectSockets,
@@ -33,17 +34,17 @@ import {
 import {
   createDefaultEmitter,
   createDefaultTrailGraph,
-  emitterGraphs,
   type EditorState,
   type EmitterDoc,
+  emitterGraphs,
 } from "../../src/model/editorState";
 import { emitterEntity } from "../../src/model/entity";
+import { Pipeline } from "../../src/model/pipeline";
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
-import { normalizeSource } from "../../src/persistence/loadState";
-import { Pipeline } from "../../src/model/pipeline";
-import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { compileEmitter } from "../../src/persistence/exportCompile";
+import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { normalizeSource } from "../../src/persistence/loadState";
 import { EmitterTrail } from "../../src/render/emitterTrail.Internal";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";

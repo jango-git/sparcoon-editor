@@ -9,11 +9,12 @@ import {
   type FXRenderArtifact,
   type FXShaderStageSource,
 } from "sparcoon";
+
 import {
   particleReadsOf,
   surfaceReadsOf,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { overSlots, type FieldBuffers } from "./slots";
+import { type FieldBuffers, overSlots } from "./slots";
 
 /**
  * Hand-written artifact builders for the runtime executor tests. They stand in for the

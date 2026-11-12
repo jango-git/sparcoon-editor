@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
 import nodesEn from "../../src/i18n/locales/nodes.en.json" with { type: "json" };

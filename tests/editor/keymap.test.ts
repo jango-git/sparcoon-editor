@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { matchesBinding, runKeymap, type KeyBinding } from "../../src/ui/focus/keymap";
+
+import { type KeyBinding, matchesBinding, runKeymap } from "../../src/ui/focus/keymap";
 
 /**
  * The keymap matcher is the pure core of the hotkey router: it decides whether a keystroke

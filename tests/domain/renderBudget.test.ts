@@ -1,20 +1,21 @@
-import { describe, expect, it } from "vitest";
-import { interpolate } from "../../src/i18n/interpolate";
-import errorsEn from "../../src/i18n/locales/errors.en.json" with { type: "json" };
 import type { FXAttributeDecl, FXBufferLayout, FXRenderArtifact } from "sparcoon";
-import { packingOrder, type FXRenderBudget } from "sparcoon/editor";
+import { type FXRenderBudget, packingOrder } from "sparcoon/editor";
+import { describe, expect, it } from "vitest";
+
 import {
   emitterRenderBudgetFindings,
-  RenderBudgetMemo,
-  renderBudgetFindings,
-  trailRenderBudgetFindings,
   type FXRenderArtifactsByTier,
+  renderBudgetFindings,
+  RenderBudgetMemo,
+  trailRenderBudgetFindings,
 } from "../../src/domain/renderBudget";
-import { unlitArtifact } from "../helpers/artifacts";
+import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
+import { interpolate } from "../../src/i18n/interpolate";
+import errorsEn from "../../src/i18n/locales/errors.en.json" with { type: "json" };
+import type { EmitterDoc } from "../../src/model/editorState";
 import { createDefaultEmitter } from "../../src/model/editorState";
 import { compileEmitter } from "../../src/persistence/exportCompile";
-import type { EmitterDoc } from "../../src/model/editorState";
-import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
+import { unlitArtifact } from "../helpers/artifacts";
 
 /** `render` as the artifact of both tiers. */
 function bothTiers(render: FXRenderArtifact): FXRenderArtifactsByTier {

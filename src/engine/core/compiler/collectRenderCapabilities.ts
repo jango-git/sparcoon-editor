@@ -1,4 +1,5 @@
 import type { FXRenderArtifact } from "sparcoon";
+
 import type { FXGraph } from "../FXGraph";
 import type { FXGraphNode } from "../FXGraphNode";
 import { collectReachableNodeIds } from "./FXGraphTraversal.Internal";

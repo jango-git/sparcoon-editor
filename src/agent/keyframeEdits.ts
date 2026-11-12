@@ -10,7 +10,8 @@
 
 import type { FXKeyEase } from "sparcoon";
 import { asKeyEase, FX_KEY_EASES } from "sparcoon/editor";
-import { isKeyframeValue, type EditorGraph } from "../domain/graphModel";
+
+import { type EditorGraph, isKeyframeValue } from "../domain/graphModel";
 import { timelineValueDeclarations } from "../domain/nodePalette";
 import {
   type ChannelValue,
@@ -28,19 +29,21 @@ import {
   setTransformKeyframeValue,
 } from "../model/commands";
 import {
-  emitterGraphs,
   type AnimationTrack,
+  emitterGraphs,
   type Keyframe,
   type SourceState,
 } from "../model/editorState";
-import { KEY_EPSILON, snapTime } from "../model/keyframeTrackOps";
 import type { SceneEntity } from "../model/entity";
+import { KEY_EPSILON, snapTime } from "../model/keyframeTrackOps";
 import {
   eulerToQuat,
   TRANSFORM_CHANNELS,
   type TransformChannel,
   type TransformTrack,
 } from "../model/transform";
+import { isRecord } from "../util/guards";
+import { resolveEntity } from "./address.Internal";
 import {
   requireBoolean,
   requireFiniteNumber,
@@ -48,8 +51,6 @@ import {
   requireVector,
   requireVector3,
 } from "./arguments.Internal";
-import { isRecord } from "../util/guards";
-import { resolveEntity } from "./address.Internal";
 import { AgentError } from "./errors";
 import type { EditSession } from "./transaction.Internal";
 

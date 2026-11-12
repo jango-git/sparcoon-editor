@@ -1,6 +1,6 @@
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { defineNode } from "../../core/nodes/defineNode";
 import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { VELOCITY_INPUT } from "./common";
 

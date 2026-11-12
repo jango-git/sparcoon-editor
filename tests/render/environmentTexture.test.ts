@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { downsampleEquirect, wrapBackgroundTexture } from "../../src/render/environmentTexture";
 
 const BACKGROUND_WIDTH = 128;

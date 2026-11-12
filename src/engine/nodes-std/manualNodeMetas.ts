@@ -1,8 +1,8 @@
-import type { FXNodeMeta, FXSocketMeta } from "../core/nodes/FXSocketSpec";
 import { deepFreeze } from "../core/nodes/deepFreeze.Internal";
+import type { FXNodeMeta, FXSocketMeta } from "../core/nodes/FXSocketSpec";
+import { FX_READABLE_CORE_BUILTINS } from "../core/socket/FXReadableBuiltins";
 import type { FXGLSLTypeName } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../core/socket/FXValueType";
-import { FX_READABLE_CORE_BUILTINS } from "../core/socket/FXReadableBuiltins";
 
 /**
  * Machine-readable palette metadata for the **hand-written** node classes that are not

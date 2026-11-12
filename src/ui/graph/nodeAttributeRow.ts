@@ -2,11 +2,11 @@ import type { GraphNode } from "../../domain/graphModel";
 import type { AttributeTypeName } from "../../domain/graphModel";
 import { ATTRIBUTE_TYPES } from "../../domain/nodePalette";
 import { t } from "../../i18n";
+import { attachCountdownConfirm } from "../components/countdownConfirm";
+import { Dropdown } from "../components/dropdown";
+import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import { actionIcons } from "../icons";
-import { attachCountdownConfirm } from "../components/countdownConfirm";
-import { attachTooltip } from "../components/tooltip";
-import { Dropdown } from "../components/dropdown";
 import type { NodeRow } from "./nodeGrid";
 import type { NodeWidgets } from "./nodeWidgets";
 

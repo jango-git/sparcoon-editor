@@ -1,6 +1,6 @@
+import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE } from "sparcoon";
+
 import type { FXCompilerError } from "../core/compiler/FXCompilerError";
-import type { FXExpr } from "../core/ir/FXExpr";
-import { childrenOf } from "../core/ir/visit.Internal";
 import {
   IDENTIFIER_PATTERN,
   isRecord,
@@ -8,7 +8,8 @@ import {
   shapeError,
   valueTypeError,
 } from "../core/compiler/targetLint.Internal";
-import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE } from "sparcoon";
+import type { FXExpr } from "../core/ir/FXExpr";
+import { childrenOf } from "../core/ir/visit.Internal";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
 

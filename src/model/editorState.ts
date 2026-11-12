@@ -8,8 +8,7 @@
  */
 
 import type { FXEmissionBasis, FXKeyEase, FXSpawnAction } from "sparcoon";
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+
 import type {
   EditorGraph,
   GraphConnection,
@@ -19,6 +18,8 @@ import type {
 import { createEmptyGraph } from "../domain/graphModel";
 import { DEFAULT_RENDER_HOST, GraphKind, type RenderHost } from "../domain/nodePalette";
 import { ensureSinks } from "../domain/sinks";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import { authoredGraphs } from "./graphSlots";
 import {
   IDENTITY_TRANSFORM,

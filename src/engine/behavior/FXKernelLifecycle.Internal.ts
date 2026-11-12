@@ -1,6 +1,7 @@
 import { FX_AGE, FX_CORE_LIFECYCLE, FX_LIFETIME } from "sparcoon";
-import type { FXValidatableOutput } from "../core/compiler/FXValidation.Internal";
+
 import { glslFloat } from "../core/codegen/printGLSL.Internal";
+import type { FXValidatableOutput } from "../core/compiler/FXValidation.Internal";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
 import { bufferAccess } from "./FXKernelShared.Internal";
 

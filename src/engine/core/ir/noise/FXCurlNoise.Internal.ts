@@ -1,9 +1,9 @@
 import type { FXHelperModule } from "../FXHelperModule.Internal";
 import {
+  type FXFixedOctaves,
   glslOctaveSumUnrolled,
   jsNormalized,
   jsOctaveLoop,
-  type FXFixedOctaves,
 } from "./FXFractalNoise.Internal";
 import { jsMemoized } from "./FXNoiseJSMemo.Internal";
 import { FX_JS_NOISED } from "./FXValueNoise.Internal";

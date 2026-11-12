@@ -10,8 +10,8 @@
  * plus commits the header text on edit.
  */
 
-import { createElement } from "../dom";
 import { t } from "../../i18n";
+import { createElement } from "../dom";
 
 /**
  * Which edge or corner a resize gesture grabbed. A corner (`nw`/`ne`/`sw`/`se`) drags two

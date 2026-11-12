@@ -14,9 +14,10 @@ import {
   FX_RENDER_BUDGET_MINIMUMS,
   fxEmitterRenderBudget,
   fxMeshRenderBudget,
-  fxTrailRenderBudget,
   type FXRenderBudget,
+  fxTrailRenderBudget,
 } from "sparcoon/editor";
+
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 

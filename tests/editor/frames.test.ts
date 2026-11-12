@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { frameCount, frameOf, snapTimeToFrame, timeOfFrame } from "../../src/model/frames";
 
 describe("frame helpers", () => {

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
-import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
-import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
+import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
+import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
+import { FXBehaviorNodeTimelineValue } from "../../src/engine/behavior/nodes/FXBehaviorNodeTimelineValue";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
 import type {
@@ -20,12 +22,11 @@ import { FX_VALUE_TYPES, isGenericType } from "../../src/engine/core/socket/FXVa
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
-import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
-import { FXRenderNodeTimelineValue } from "../../src/engine/render/nodes/FXRenderNodeTimelineValue";
 import { FXRenderNodeTexture } from "../../src/engine/render/nodes/FXRenderNodeTexture";
-import { FXBehaviorNodeTimelineValue } from "../../src/engine/behavior/nodes/FXBehaviorNodeTimelineValue";
+import { FXRenderNodeTimelineValue } from "../../src/engine/render/nodes/FXRenderNodeTimelineValue";
 import {
   buildParticleTarget,
   FX_PARTICLE_TARGET,

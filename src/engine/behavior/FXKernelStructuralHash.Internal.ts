@@ -8,13 +8,13 @@
 import { prepareCompile } from "../core/compiler/compileDriver.Internal";
 import { structuralHash } from "../core/compiler/FXStructuralHash.Internal";
 import { genericTypeTag } from "../core/compiler/FXTypeResolve.Internal";
-import type { FXBehaviorNode } from "./FXBehaviorNode";
-import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type { FXGraph } from "../core/FXGraph";
 import type { FXValueType } from "../core/socket/FXValueType";
-import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
+import type { FXBehaviorNode } from "./FXBehaviorNode";
+import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import { phaseTag, resolvePlacementPhases } from "./FXKernelValidation.Internal";
+import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
 
 /**
  * A behavior node's `phase` is instance-variable (a `const` node may be SPAWN or

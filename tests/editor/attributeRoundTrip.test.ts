@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
-import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+
 import { createEmptyGraph } from "../../src/domain/graphModel";
 import { GraphKind } from "../../src/domain/nodePalette";
-import { ensureSinks } from "../../src/domain/sinks";
 import { serializeGraph } from "../../src/domain/serialize";
+import { ensureSinks } from "../../src/domain/sinks";
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
+import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
+import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
 
 /**
  * End-to-end: an editor attribute write (a wire into a behavior sink's `attr:<name>` slot)

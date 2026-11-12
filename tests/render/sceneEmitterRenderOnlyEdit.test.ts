@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
 import { FXWorld } from "sparcoon";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
   RENDER_MODE_PARAM_KEY,
   RENDER_SINK_ID,
@@ -9,6 +8,8 @@ import {
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";

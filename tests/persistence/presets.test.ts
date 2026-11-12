@@ -1,8 +1,10 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
-import { deserializeProject } from "../../src/persistence/projectFile";
-import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
+
 import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
+import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
+import { deserializeProject } from "../../src/persistence/projectFile";
 
 /**
  * `loadPresetSource` fetches its bundled JSON at runtime (`import.meta.url`-relative), which

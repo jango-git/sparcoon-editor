@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
+import { depthFadeModeErrors } from "../../src/domain/depthFadeChecks";
 import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
-import { compileMeshArtifact } from "../../src/engine/emit/compileMeshArtifact";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { renderArtifactBody } from "../../src/engine/emit/artifactLiterals";
+import { compileMeshArtifact } from "../../src/engine/emit/compileMeshArtifact";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FX_MESH_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { depthFadeModeErrors } from "../../src/domain/depthFadeChecks";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 /** albedo = vec4(1, 1, 1, fade): soft by Depth Fade; `wired: false` leaves the fade unreachable. */

@@ -1,18 +1,18 @@
-import { FXRenderNode } from "../FXRenderNode";
-import { FXShaderStage } from "../FXShaderStage";
-import type { FXRenderContext } from "../compiler/FXRenderContext";
+import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
-import { attributeVaryingName } from "../target/FXParticleRenderTarget";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { CUSTOM_ATTRIBUTE_SPLIT_META } from "../../nodes-std/manualNodeMetas";
 import {
   checkAttributeStructuralParams,
   resolveAttributeSource,
 } from "../../nodes-std/attributeSupport.Internal";
-import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
+import { CUSTOM_ATTRIBUTE_SPLIT_META } from "../../nodes-std/manualNodeMetas";
+import type { FXRenderContext } from "../compiler/FXRenderContext";
+import { FXRenderNode } from "../FXRenderNode";
+import { FXShaderStage } from "../FXShaderStage";
+import { attributeVaryingName } from "../target/FXParticleRenderTarget";
 
 /** Swizzle channel per output socket key, in declared order. */
 const COMPONENTS = ["x", "y", "z", "w"] as const;

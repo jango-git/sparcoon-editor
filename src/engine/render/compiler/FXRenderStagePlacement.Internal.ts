@@ -1,14 +1,14 @@
+import type { FXCompiledDrawStage, FXTypedLocal } from "../../core/codegen/drawStage.Internal";
+import { liftDrawStage } from "../../core/codegen/drawStage.Internal";
 import { hoistToEarlyStage } from "../../core/codegen/hoist.Internal";
 import { classifyRates } from "../../core/codegen/rates.Internal";
 import { refNamesIn } from "../../core/ir/visit.Internal";
 import type { FXValueType } from "../../core/socket/FXValueType";
-import type { FXUniformHandle } from "./FXCompiledShader";
+import { crossingBudget, drawUniformBudget } from "../target/FXParticleRenderTarget";
 import type { FXTarget } from "../target/FXTarget";
 import { FX_INPUT_RATE_RANK, renderRatePolicy } from "../target/FXTarget";
-import { crossingBudget, drawUniformBudget } from "../target/FXParticleRenderTarget";
+import type { FXUniformHandle } from "./FXCompiledShader";
 import type { FXGLSLRenderTier } from "./FXRenderCompilers";
-import { liftDrawStage } from "../../core/codegen/drawStage.Internal";
-import type { FXCompiledDrawStage, FXTypedLocal } from "../../core/codegen/drawStage.Internal";
 import { RENDER_DRAW_INPUTS } from "./FXRenderDrawInputs.Internal";
 
 /**

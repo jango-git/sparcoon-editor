@@ -4,6 +4,7 @@
  */
 
 import type { FXEmissionBasis } from "sparcoon";
+
 import { t, type TKey } from "../../i18n";
 import type { DeathReaction, PlayAction, TimelineEvent } from "../../model/editorState";
 import type { TransformChannel } from "../../model/transform";

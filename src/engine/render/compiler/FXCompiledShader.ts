@@ -1,6 +1,6 @@
+import type { FXCompiledDrawStage } from "../../core/codegen/drawStage.Internal";
 import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
 import type { FXValueType } from "../../core/socket/FXValueType";
-import type { FXCompiledDrawStage } from "../../core/codegen/drawStage.Internal";
 
 /** Describes a uniform a node wants to declare. The `value` is kept `unknown` so the IR stays
  *  three-independent; the material adapter turns it into an actual `THREE.IUniform`. */

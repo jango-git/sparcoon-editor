@@ -1,16 +1,17 @@
-import { describe, expect, it } from "vitest";
-import * as three from "three";
-import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import * as sparcoon from "sparcoon";
-import { createDefaultVfxMesh, type SourceState } from "../../src/model/editorState";
+import { FX_RUNTIME_VERSION } from "sparcoon/editor";
+import * as three from "three";
+import { describe, expect, it } from "vitest";
+
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
-import { ensureSinks } from "../../src/domain/sinks";
 import {
   GraphKind,
   RENDER_SINK_ID,
   SPAWN_SINK_ID,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
+import { ensureSinks } from "../../src/domain/sinks";
+import { createDefaultVfxMesh, type SourceState } from "../../src/model/editorState";
 import { eventsLiteral } from "../../src/persistence/exportLiterals";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { loadModule } from "../helpers/loadModule";

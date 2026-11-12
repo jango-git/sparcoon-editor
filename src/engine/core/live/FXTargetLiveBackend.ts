@@ -1,8 +1,8 @@
-import type { FXValidationResult } from "../compiler/FXCompilerError";
 import { collectAttributeRequests } from "../compiler/collectAttributeRequests";
-import type { FXAttributeRequest } from "../socket/FXAttribute";
+import type { FXValidationResult } from "../compiler/FXCompilerError";
 import type { FXGraph } from "../FXGraph";
 import type { FXGraphNode } from "../FXGraphNode";
+import type { FXAttributeRequest } from "../socket/FXAttribute";
 import type { FXLiveBackend } from "./FXLiveBackend";
 
 /**

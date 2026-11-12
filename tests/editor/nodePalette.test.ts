@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
+
 import {
-  GraphKind,
-  NODE_PALETTE,
-  RENDER_MODE_PARAM_KEY,
-  RENDER_SORT_INTERVAL_PARAM,
-  RENDER_SINK_TYPE,
   coerceRenderMode,
   coerceSortInterval,
   defaultParametersFor,
+  GraphKind,
   isMeshExcludedRenderNode,
   metaFor,
+  NODE_PALETTE,
   paletteForKind,
+  RENDER_MODE_PARAM_KEY,
+  RENDER_SINK_TYPE,
+  RENDER_SORT_INTERVAL_PARAM,
   sinkMeta,
   socketLabel,
 } from "../../src/domain/nodePalette";

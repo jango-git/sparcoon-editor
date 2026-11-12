@@ -3,14 +3,14 @@ import { isReservedAttributeName } from "../../domain/nodePalette";
 import { attributeSlot } from "../../engine/behavior/FXParticleBehaviorTarget";
 import { isValidAttributeName } from "../../engine/core/socket/FXAttribute";
 import type { Store } from "../store";
-import { nextIdentifier } from "./identifier";
 import {
   activeGraph,
   activeOwnerHasBehaviorGraph,
   activeOwnerHasGraph,
-  withGraph,
   type GraphSlot,
+  withGraph,
 } from "./graphAccess.Internal";
+import { nextIdentifier } from "./identifier";
 
 /**
  * Every node type that reads a custom attribute by name (render/GPU + behavior/CPU twins, plus

@@ -5,7 +5,7 @@
 
 import { arrangeGraph, type LayoutGeometry } from "../../domain/layout/arrangeGraph";
 import type { Store } from "../store";
-import { activeGraph, kindForSlot, withGraph, type GraphSlot } from "./graphAccess.Internal";
+import { activeGraph, type GraphSlot, kindForSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
 
 export function arrangeActiveGraph(store: Store, slot: GraphSlot, geometry: LayoutGeometry): void {

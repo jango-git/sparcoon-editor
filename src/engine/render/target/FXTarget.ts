@@ -1,7 +1,7 @@
-import type { FXShaderStage } from "../FXShaderStage";
-import type { FXValueType } from "../../core/socket/FXValueType";
-import type { FXExpr } from "../../core/ir/FXExpr";
 import type { FXRatePolicy } from "../../core/codegen/rates.Internal";
+import type { FXExpr } from "../../core/ir/FXExpr";
+import type { FXValueType } from "../../core/socket/FXValueType";
+import type { FXShaderStage } from "../FXShaderStage";
 
 /**
  * A value the host makes available to the graph (a "builtin"): particle age, uv,

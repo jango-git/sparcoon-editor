@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+
 import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
 
 const REQUIRED = [

@@ -5,14 +5,14 @@
  * than an emitter/mesh) is selected, the canvas gives way to a "no graph" hint instead.
  */
 
-import { t } from "../../i18n";
 import { computeGraphStats } from "../../domain/graphStats";
-import type { LiveApplyStatus } from "../../model/editorState";
+import { t } from "../../i18n";
 import { setEmitterTrail } from "../../model/commands";
+import type { LiveApplyStatus } from "../../model/editorState";
 import { authoredGraphs, GRAPH_SLOTS } from "../../model/graphSlots";
 import { selectActiveGraphOwner, selectGraphStatus } from "../../model/selectors";
-import type { Store } from "../../model/store";
 import type { SignalBus } from "../../model/signals";
+import type { Store } from "../../model/store";
 import { attachCountdownConfirm } from "../components/countdownConfirm";
 import { attachTooltip, clearTooltip } from "../components/tooltip";
 import { createElement } from "../dom";

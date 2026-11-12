@@ -1,22 +1,23 @@
+import { FX_LIFETIME } from "sparcoon";
 import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import {
   buildBehaviorGraph,
   buildRenderGraph,
   FXGraphBuilder,
 } from "../../src/engine/builder/FXGraphBuilder";
-import { FX_SNAPSHOT_VERSION } from "../../src/engine/core/live/FXSnapshotData";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
+import { FX_SNAPSHOT_VERSION } from "../../src/engine/core/live/FXSnapshotData";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
-import { FX_LIFETIME } from "sparcoon";
-import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
+import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot } from "../helpers/attr";
 import { fieldSpawnKernel } from "../helpers/graphBuild";
+import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 describe("FXGraphBuilder - deterministic ids + wiring", () => {
   it("generates ids as `${type}#${index}` with a per-type counter", () => {

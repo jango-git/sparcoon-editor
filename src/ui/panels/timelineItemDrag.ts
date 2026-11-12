@@ -19,7 +19,7 @@ import { beginPointerDrag } from "../primitives/drag";
 import { clamp } from "../primitives/math";
 import { fraction, rangeSpan, spanFraction } from "./timelineFormat";
 import { emitterIdOf, findEvent, itemTime } from "./timelineQueries";
-import { DRAG_THRESHOLD, selectionKey, type ItemRef, type Marker } from "./timelineTypes";
+import { DRAG_THRESHOLD, type ItemRef, type Marker, selectionKey } from "./timelineTypes";
 
 export interface ItemDragContext {
   readonly element: HTMLElement;

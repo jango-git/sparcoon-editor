@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+
+import { serializeGraph } from "../../src/domain/serialize";
 import {
+  addCatalogNode,
   addComment,
   moveCommentGroup,
   removeComment,
   renameComment,
   resizeComment,
-  addCatalogNode,
 } from "../../src/model/commands";
+import { createInitialState } from "../../src/model/editorState";
 import { selectRenderGraph } from "../../src/model/selectors";
-import { serializeGraph } from "../../src/domain/serialize";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 
 const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
 

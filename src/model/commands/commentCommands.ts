@@ -3,8 +3,8 @@
 
 import type { EditorGraph, GraphComment, GraphPosition, GraphSize } from "../../domain/graphModel";
 import type { Store } from "../store";
+import { type GraphSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
-import { withGraph, type GraphSlot } from "./graphAccess.Internal";
 
 /** The current graph's comment list (loadState normalizes an older document's missing field). */
 export function comments(graph: EditorGraph): readonly GraphComment[] {

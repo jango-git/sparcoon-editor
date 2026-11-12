@@ -1,24 +1,25 @@
-import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import type { FXCompiledPhaseStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
-import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
-import { resolveValueType, type FXValueTypeId } from "../../src/engine/core/socket/FXValueType";
-import { assembleGpuKernelArtifact } from "../../src/engine/emit/assembleArtifacts";
-import { gpuKernelArtifactBody } from "../../src/engine/emit/artifactLiterals";
-import { packingOrder } from "sparcoon/editor";
 import {
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM,
 } from "sparcoon";
+import { packingOrder } from "sparcoon/editor";
+import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import type { FXCompiledPhaseStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
+import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
+import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
+import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
+import { type FXValueTypeId, resolveValueType } from "../../src/engine/core/socket/FXValueType";
+import { gpuKernelArtifactBody } from "../../src/engine/emit/artifactLiterals";
+import { assembleGpuKernelArtifact } from "../../src/engine/emit/assembleArtifacts";
+import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
 
 // Fuses a graph that exercises both host-owned rules the assembler must inject (spawn zero-
 // defaults every buffer before the graph's own writes; update passes every buffer through

@@ -1,5 +1,5 @@
-import { createElement } from "../dom";
 import { attachTooltip } from "../components/tooltip";
+import { createElement } from "../dom";
 
 /**
  * A node header's help "?" (inline SVG) that shows the node's documentation in the shared hover

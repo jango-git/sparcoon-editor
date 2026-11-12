@@ -1,20 +1,20 @@
-import { FXGraphNode } from "../FXGraphNode";
 import type { FXCompilerContext, FXValueParamHandle } from "../compiler/FXCompilerContext";
 import { FXCompilerErrorException } from "../compiler/FXCompilerError";
+import { FXGraphNode } from "../FXGraphNode";
 import type { FXExpr } from "../ir/FXExpr";
-import * as fxExprBuilders from "../ir/FXExprBuilder";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
+import * as fxExprBuilders from "../ir/FXExprBuilder";
 import type { FXSocketDescriptor } from "../socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, literalGenericType, resolveValueType } from "../socket/FXValueType";
+import type { FXBehaviorPhaseName, FXNodeCost, FXRenderStageName } from "./defineNode";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
+import type { FXSocketSpec } from "./FXSocketSpec";
 import {
   finiteScalar,
   finiteScalarOrVector,
   finiteVectorOrSplat,
 } from "./paramValidators.Internal";
-import type { FXBehaviorPhaseName, FXNodeCost, FXRenderStageName } from "./defineNode";
-import type { FXSocketSpec } from "./FXSocketSpec";
 import { isTargetInputDefault, toSocketDescriptors } from "./socketDescriptors.Internal";
 
 /** An {@link FXSocketSpec} known (by construction) to carry an editable inline default. */
@@ -22,9 +22,8 @@ type FXEditableSocketSpec = FXSocketSpec & { readonly value: number | readonly n
 
 // Public types living in the sibling `defineNode.ts`, re-exported so internal
 // consumers keep importing them alongside the impl.
-export type { FXBehaviorPhaseName, FXNodeBackend, FXRenderStageName } from "./defineNode";
-
 export type { FXExprBuilderApi } from "../ir/FXExprBuilder";
+export type { FXBehaviorPhaseName, FXNodeBackend, FXRenderStageName } from "./defineNode";
 
 /**
  * The narrowest type a node's generic `T` may resolve to - `float` if its constraint allows

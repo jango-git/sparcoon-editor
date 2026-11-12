@@ -6,6 +6,7 @@
 
 import type { Texture } from "three";
 import { DataTexture, SRGBColorSpace, TextureLoader } from "three";
+
 import type { TextureAsset } from "../model/editorState";
 
 /** One cached entry: the source data URL (to detect a changed image) and its texture. */

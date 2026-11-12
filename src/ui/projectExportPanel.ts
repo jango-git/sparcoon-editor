@@ -9,12 +9,12 @@ import { setProjectName } from "../model/commands";
 import type { Store } from "../model/store";
 import { emitProjectModule } from "../persistence/exportTypeScript";
 import {
+  EFFECT_PRESETS,
   EMPTY_PRESET,
   loadPresetSource,
-  EFFECT_PRESETS,
   PROJECT_PRESETS,
-  SPARKS_PRESET,
   type ProjectPreset,
+  SPARKS_PRESET,
 } from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
 import { replaceDocument } from "../persistence/replaceDocument";

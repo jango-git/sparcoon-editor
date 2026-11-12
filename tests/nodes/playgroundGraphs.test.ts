@@ -1,13 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_LIFETIME } from "sparcoon";
+import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
 import { bind, edge, fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";

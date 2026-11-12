@@ -1,21 +1,22 @@
 import type { FXCallSignature } from "../FXExprBuilder";
 import type { FXFunctionDef } from "../FXFunctions.Internal";
 import {
-  FX_JS_CURL,
   fixedCurlGLSLName,
   fixedCurlName,
+  FX_JS_CURL,
   glslFixedCurlModule,
 } from "./FXCurlNoise.Internal";
 import {
+  fixedFbmGLSLName,
+  fixedFbmName,
   FX_FIXED_OCTAVE_COUNTS,
   FX_GLSL_BASELINE_FBM,
   FX_GLSL_STANDARD_FBM,
   FX_JS_FBM,
-  fixedFbmGLSLName,
-  fixedFbmName,
-  glslFixedFbmModule,
   type FXFixedOctaves,
+  glslFixedFbmModule,
 } from "./FXFractalNoise.Internal";
+import type { FXSeedHashComponents } from "./FXNoiseHash.Internal";
 import { FX_GLSL_BASELINE_NOISE_HASH, FX_GLSL_STANDARD_NOISE_HASH } from "./FXNoiseHash.Internal";
 import {
   FX_JS_SEED_HASH,
@@ -25,7 +26,6 @@ import {
   seedHashFunctionName,
   seedHashGLSLName,
 } from "./FXSeedHash.Internal";
-import type { FXSeedHashComponents } from "./FXNoiseHash.Internal";
 import {
   FX_GLSL_BASELINE_NOISE,
   FX_GLSL_BASELINE_NOISED,
@@ -37,11 +37,11 @@ import {
   FX_JS_VORONOI,
   FX_VORONOI_METRICS,
   FX_VORONOI_QUALITIES,
+  type FXVoronoiVariant,
   glslVoronoiModule,
   voronoiFunctionName,
   voronoiGLSLName,
   voronoiJSCodes,
-  type FXVoronoiVariant,
 } from "./FXVoronoiNoise.Internal";
 
 /** Registry entries of the noise family: signatures and spellings; sources live in sibling files. */

@@ -4,10 +4,12 @@
  * No engine/compiler dependency - every function here takes data in and returns a string.
  */
 
+import { FX_RUNTIME_VERSION } from "sparcoon/editor";
+
 import {
-  emissionBasisField,
   type AnimationTrack,
   type DeathReaction,
+  emissionBasisField,
   type EmitterDoc,
   type Keyframe,
   type SourceState,
@@ -16,12 +18,11 @@ import {
   type VfxMeshDoc,
 } from "../model/editorState";
 import {
-  TRANSFORM_CHANNELS,
   type Transform,
+  TRANSFORM_CHANNELS,
   type TransformChannel,
   type TransformTrack,
 } from "../model/transform";
-import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import type { EmitterIR, MeshIR } from "./exportCompile";
 
 export function transformLiteral(transform: Transform): string {

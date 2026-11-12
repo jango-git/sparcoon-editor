@@ -6,24 +6,24 @@
  */
 
 import type { GraphConnection, GraphNode, GraphPosition } from "../../domain/graphModel";
+import { nodeFamily, pruneStaleFamilyComponents } from "../../domain/nodeFamilies";
 import {
-  TIMELINE_VALUE_TYPE,
   defaultParametersFor,
   metaFor,
+  TIMELINE_VALUE_TYPE,
   timelineValueNames,
 } from "../../domain/nodePalette";
-import { nodeFamily, pruneStaleFamilyComponents } from "../../domain/nodeFamilies";
 import { isSink } from "../../domain/sinks";
 import { emitterGraphs, resolveGraphOwner, type SourceState } from "../editorState";
 import type { Store } from "../store";
-import { nextIdentifier } from "./identifier";
 import {
   activeGraph,
   bindingMatches,
+  type GraphSlot,
   kindForSlot,
   withGraph,
-  type GraphSlot,
 } from "./graphAccess.Internal";
+import { nextIdentifier } from "./identifier";
 
 /**
  * Creates a node of a catalog `type` at `position` with its default parameters and

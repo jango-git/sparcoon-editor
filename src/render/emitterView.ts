@@ -5,9 +5,13 @@
  * rebind. The trail graph's own live compile and built state live in {@link EmitterTrail}.
  */
 
-import { everyTierShaders } from "./everyTierShaders";
-import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
-import { FXEmitter } from "sparcoon/editor";
+import type {
+  FXBehaviorArtifact,
+  FXGeometrySource,
+  FXParticleKernelArtifact,
+  FXRenderArtifact,
+  FXUniformValue,
+} from "sparcoon";
 import type {
   FXApplyValues,
   FXDeathSource,
@@ -17,63 +21,64 @@ import type {
   FXParticleDeathListener,
   FXSpawnTarget,
 } from "sparcoon/editor";
-import type {
-  FXBehaviorArtifact,
-  FXParticleKernelArtifact,
-  FXGeometrySource,
-  FXRenderArtifact,
-  FXUniformValue,
-} from "sparcoon";
-import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
-import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
-import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
+import { FXEmitter } from "sparcoon/editor";
+import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
+
+import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
+import type { EditorAttribute } from "../domain/graphModel";
+import { unboundedLifetimeWarnings } from "../domain/lifetimeBound";
+import {
+  encodeGeometrySource,
+  type RenderMode,
+  type RenderSinkConfig,
+  type SpawnSinkConfig,
+  toArtifactGeometrySource,
+} from "../domain/nodePalette";
+import {
+  emitterRenderBudgetFindings,
+  type FXRenderArtifactsByTier,
+  type RenderBudgetFindings,
+  RenderBudgetMemo,
+} from "../domain/renderBudget";
+import { undeclaredAttributeErrors } from "../domain/serialize";
+import { gpuSortWarnings } from "../domain/sortChecks";
+import { trailSortError } from "../domain/trailChecks";
+import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
+import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
+import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
+import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
+import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorLiveBackend } from "../engine/behavior/live/FXBehaviorLiveBackend";
 import {
   collectAttributeRequests,
   mergeAttributeCollections,
 } from "../engine/core/compiler/collectAttributeRequests";
-import {
-  PARAM_COMPONENTS,
-  paramBindingName,
-  paramUniformName,
-} from "../engine/nodes-std/paramSupport.Internal";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
+import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
+import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
-import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
-import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
-import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
-import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { FXBehaviorLiveBackend } from "../engine/behavior/live/FXBehaviorLiveBackend";
-import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
-import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
-import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
-import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
-import type { FXRenderNode } from "../engine/render/FXRenderNode";
-import { buildParticleTarget } from "../engine/render/target/FXParticleRenderTarget";
 import {
   assembleBehaviorArtifact,
   assembleGpuKernelArtifact,
   assembleRenderArtifact,
 } from "../engine/emit/assembleArtifacts";
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import type { EditorAttribute } from "../domain/graphModel";
 import {
-  encodeGeometrySource,
-  toArtifactGeometrySource,
-  type RenderMode,
-  type RenderSinkConfig,
-  type SpawnSinkConfig,
-} from "../domain/nodePalette";
-import {
-  emitterRenderBudgetFindings,
-  RenderBudgetMemo,
-  type FXRenderArtifactsByTier,
-  type RenderBudgetFindings,
-} from "../domain/renderBudget";
-import { undeclaredAttributeErrors } from "../domain/serialize";
-import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
+  PARAM_COMPONENTS,
+  paramBindingName,
+  paramUniformName,
+} from "../engine/nodes-std/paramSupport.Internal";
+import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
+import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
+import { buildParticleTarget } from "../engine/render/target/FXParticleRenderTarget";
 import type { LiveApplyStatus } from "../model/editorState";
+import type { GraphApplier, GraphApplyResult, TrailApplyInput } from "../model/pipeline";
 import type { Transform } from "../model/transform";
 import { normalizeQuat } from "../model/transform";
-import type { GraphApplier, GraphApplyResult, TrailApplyInput } from "../model/pipeline";
 import {
   blocked,
   invalid,
@@ -83,13 +88,9 @@ import {
   withWarnings,
 } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
+import { type AssembledTrail, EmitterTrail } from "./emitterTrail.Internal";
+import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
-import { EmitterTrail, type AssembledTrail } from "./emitterTrail.Internal";
-import { gpuSortWarnings } from "../domain/sortChecks";
-import { unboundedLifetimeWarnings } from "../domain/lifetimeBound";
-import { trailSortError } from "../domain/trailChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
 export type TextureResolver = (paramName: string) => Texture;

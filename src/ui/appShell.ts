@@ -18,13 +18,13 @@ import type { EditorContext } from "./editorContext";
 import { EditorPanel } from "./focus/panelFocus";
 import { graphModeFor, GraphViewState } from "./graphViewState";
 import { createWorkspace } from "./layout/panelLayout";
+import { createMiddlebar } from "./middlebar";
 import { createGraphPanel } from "./panels/graphPanel";
 import { createPreviewPanel } from "./panels/previewPanel";
 import { createTimelinePanel } from "./panels/timelinePanel";
 import { createViewportObjects } from "./panels/viewportObjects";
 import { createViewportStats } from "./panels/viewportStats";
 import { createViewportTransform } from "./panels/viewportTransform";
-import { createMiddlebar } from "./middlebar";
 
 export interface ApplicationShell {
   readonly canvas: HTMLCanvasElement;

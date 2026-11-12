@@ -1,3 +1,4 @@
+import { ROUTE_TYPE } from "../../domain/fakeNodes";
 import type {
   GraphComment,
   GraphConnection,
@@ -10,13 +11,12 @@ import {
   isTrailExcludedRenderNode,
   metaFor,
 } from "../../domain/nodePalette";
-import { ROUTE_TYPE } from "../../domain/fakeNodes";
 import { isSink } from "../../domain/sinks";
 import { resolveGraphOwner } from "../editorState";
 import type { Store } from "../store";
-import { nextIdentifier } from "./identifier";
 import { comments } from "./commentCommands";
-import { kindForSlot, withGraph, type GraphSlot } from "./graphAccess.Internal";
+import { type GraphSlot, kindForSlot, withGraph } from "./graphAccess.Internal";
+import { nextIdentifier } from "./identifier";
 
 /** A detached fragment of a graph - cloned nodes, their internal edges, and comments. */
 export interface GraphFragment {

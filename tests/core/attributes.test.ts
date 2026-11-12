@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
+import { glslBufferAttributeName } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
+import { attributeInputName } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import {
   collectAttributeRequests,
   collectUndeclaredAttributeErrors,
   mergeAttributeCollections,
 } from "../../src/engine/core/compiler/collectAttributeRequests";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
 import {
   assertValidAttributeName,
   isValidAttributeName,
 } from "../../src/engine/core/socket/FXAttribute";
-import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { glslBufferAttributeName } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { attributeInputName } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { attributeVaryingName } from "../../src/engine/render/target/FXParticleRenderTarget";
 import {
   PARAM_COMPONENTS,
   paramBindingName,
   paramUniformName,
 } from "../../src/engine/nodes-std/paramSupport.Internal";
+import { attributeVaryingName } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { FakeNode, socket } from "../helpers/fakeNodes";
 
 const VEC4 = FX_VALUE_TYPES.vec4;

@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { FXMesh } from "sparcoon/editor";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
-import { createTestState } from "../helpers/testDocument";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
 import {
   addCatalogNode,
   addVfxMesh,
@@ -11,8 +10,10 @@ import {
   toggleVfxMeshHidden,
   updateNodeParam,
 } from "../../src/model/commands";
-import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
+import { createTestState } from "../helpers/testDocument";
 
 afterEach(() => {
   vi.restoreAllMocks();

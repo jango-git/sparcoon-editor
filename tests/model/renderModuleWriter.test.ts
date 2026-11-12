@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
 import type { FXRenderArtifact } from "sparcoon";
-import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { describe, expect, it } from "vitest";
+
 import { FXRenderModuleWriter } from "../../src/engine/emit/FXRenderModuleWriter";
 import { lineDeltaLiteral } from "../../src/engine/emit/lineDelta";
+import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 
 const PLANE = { type: "primitive", primitive: "plane" } as const;
 const HELPER = "float fxSquare(float x){return x*x;}";

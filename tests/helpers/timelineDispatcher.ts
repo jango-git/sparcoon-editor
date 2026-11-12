@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+
 import { createInitialState, type TimelineEvent } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";

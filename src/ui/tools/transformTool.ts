@@ -10,16 +10,17 @@
  */
 
 import type { Object3D } from "three";
-import { Quaternion, Raycaster, Vector2, Vector3, type PerspectiveCamera } from "three";
+import { type PerspectiveCamera, Quaternion, Raycaster, Vector2, Vector3 } from "three";
+
 import { setEntityBaseChannel } from "../../model/commands";
 import type { SceneEntity } from "../../model/entity";
 import type { SelectionStore } from "../../model/selectionStore";
 import type { Store } from "../../model/store";
-import type { GizmoSettingsStore } from "../../settings/gizmoSettings";
 import type { SceneEmitters } from "../../render/sceneEmitters";
 import type { TransformGuides } from "../../render/transformGuides";
+import type { GizmoSettingsStore } from "../../settings/gizmoSettings";
 import type { EditorContext } from "../editorContext";
-import { WrappedPointer, wrapIntoRect } from "./pointerWrap";
+import { wrapIntoRect, WrappedPointer } from "./pointerWrap";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 /** Grab is plane-cast from the cursor, so a fast mouse move can imply a huge jump; cap it per drag. */

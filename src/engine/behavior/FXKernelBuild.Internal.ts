@@ -1,3 +1,5 @@
+import { slotLayout } from "sparcoon/editor";
+
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
@@ -6,9 +8,8 @@ import type {
   FXKernelWrite,
 } from "./FXCompiledKernel";
 import { killStatementJS } from "./FXKernelLifecycle.Internal";
-import { slotLayout } from "sparcoon/editor";
-import { bufferAccess, bufferBaseName, SLOTS_PARAMETER } from "./FXKernelShared.Internal";
 import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
+import { bufferAccess, bufferBaseName, SLOTS_PARAMETER } from "./FXKernelShared.Internal";
 
 /**
  * The `new Function` assembly layer: turns a compiled {@link FXCompiledKernel} into executable

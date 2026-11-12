@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXConnection } from "../../src/engine/core/FXGraph";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import {
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
-import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { drawUniformNames } from "../helpers/glslNames";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
-import { drawUniformNames } from "../helpers/glslNames";
 
 // `object-velocity` / `object-angular-velocity` are shared nodes: in render they read the
 // `objectVelocity`/`objectAngularVelocity` builtins - host state FXEmitter/FXEffect push each

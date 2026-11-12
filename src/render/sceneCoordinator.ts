@@ -7,9 +7,12 @@
  * every emitter and VFX mesh (via `FXWorld.update`), updates the orbit controls, then renders.
  */
 
+import { FXWorld } from "sparcoon";
 import {
+  type Camera,
   Color,
   Fog,
+  type Object3D,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
@@ -19,20 +22,18 @@ import {
   WebGL1Renderer,
   WebGLRenderer,
   WebGLRenderTarget,
-  type Camera,
-  type Object3D,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { FXWorld } from "sparcoon";
+
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
 import { EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
+import type { DecodedEnvironment } from "./environmentTexture";
 import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
-import type { DecodedEnvironment } from "./environmentTexture";
 
 /**
  * Builds the preview's `WebGLRenderer`, forcing an actual WebGL1 context for the `baseline`

@@ -4,9 +4,9 @@
  * stay in sync.
  */
 
+import { t } from "../i18n";
 import type { GraphName } from "../model/graphSlots";
 import { createSignal, type Signal } from "./primitives/signal";
-import { t } from "../i18n";
 
 /** The graph shown, by its graph name - so a mode indexes `GRAPH_SLOTS` (model/graphSlots.ts). */
 export enum GraphMode {

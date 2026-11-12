@@ -13,15 +13,15 @@
 import type { GraphNode } from "../../domain/graphModel";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../../domain/nodePalette";
 import { humanizeKey } from "../../domain/nodePalette";
-import { createElement } from "../dom";
 import { t } from "../../i18n";
-import type { UiComponent } from "../primitives/component";
-import { NumberControl } from "../components/numberControl";
-import { Dropdown } from "../components/dropdown";
+import type { Rgba } from "../components/color";
 import { ColorPicker, type PaletteAccess } from "../components/colorPicker";
 import { ColorRamp, type RampGradient } from "../components/colorRamp";
-import { CurveEditor, type CurveData } from "../components/curveEditor";
-import type { Rgba } from "../components/color";
+import { type CurveData, CurveEditor } from "../components/curveEditor";
+import { Dropdown } from "../components/dropdown";
+import { NumberControl } from "../components/numberControl";
+import { createElement } from "../dom";
+import type { UiComponent } from "../primitives/component";
 import type { ParamChangeHandler } from "./nodeView";
 
 /**

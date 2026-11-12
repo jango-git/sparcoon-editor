@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
+
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
 import { GraphKind } from "../../src/domain/nodePalette";
 import { serializeGraph } from "../../src/domain/serialize";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { fieldSpawnKernel } from "../helpers/graphBuild";
+import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 // End-to-end proof of the combine/split matrix facades through the WHOLE pipeline: an authored
 // editor graph -> serializeGraph (facade expansion) -> reconstruct the engine graph from the

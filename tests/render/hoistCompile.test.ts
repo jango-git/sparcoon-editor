@@ -1,18 +1,19 @@
+import { fxGraphVaryingAllowance, fxPackedShape, packedVectors } from "sparcoon/editor";
 import { describe, expect, it } from "vitest";
-import { fxGraphVaryingAllowance, packedVectors, fxPackedShape } from "sparcoon/editor";
+
 import type { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import {
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,
   FX_TRAIL_TARGET,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { drawUniformNames, GLSL_NAME, readsName } from "../helpers/glslNames";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { fullRenderRegistry } from "../helpers/stdRegistry";
-import { GLSL_NAME, drawUniformNames, readsName } from "../helpers/glslNames";
 
 /**
  * The compiler computes a fragment-stage value that is the same at every fragment of a particle

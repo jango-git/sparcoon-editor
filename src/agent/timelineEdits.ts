@@ -5,28 +5,29 @@
  * in the editor.
  */
 
+import type { FXEmissionBasis } from "sparcoon";
+import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
+
+import { canReact } from "../domain/deathReactions";
 import {
   addBurstEvent,
   addPlayEvent,
   addReaction,
+  type EventPatch,
+  type ReactionPatch,
   removeEvent,
   removeReaction,
+  setLiveEvents,
   setTimelineDuration,
   setTimelineFps,
-  setLiveEvents,
   setTimelineLoop,
   updateEvent,
   updateReaction,
-  type EventPatch,
-  type ReactionPatch,
 } from "../model/commands";
-import type { FXEmissionBasis } from "sparcoon";
-import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
-import { canReact } from "../domain/deathReactions";
 import type { DeathReaction, SourceState, TimelineEvent } from "../model/editorState";
 import { isRecord } from "../util/guards";
-import { requireBoolean, requireFiniteNumber } from "./arguments.Internal";
 import { resolveOwner } from "./address.Internal";
+import { requireBoolean, requireFiniteNumber } from "./arguments.Internal";
 import { AgentError } from "./errors";
 import { createKeyframeEdits, type KeyframeEdits } from "./keyframeEdits";
 import type { EditSession } from "./transaction.Internal";

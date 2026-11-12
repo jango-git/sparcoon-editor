@@ -5,7 +5,7 @@
  */
 
 import { beginPointerDrag } from "../primitives/drag";
-import { viewsInRect, type ScreenRect } from "./graphHitTest";
+import { type ScreenRect, viewsInRect } from "./graphHitTest";
 
 /** Pointer travel (px) past which a press is a marquee drag rather than a plain click. */
 const DRAG_THRESHOLD = 3;

@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
 import { Euler, Vector3 } from "three";
-import type { FXConnection } from "../../src/engine/core/FXGraph";
+import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { bind, graphOf, edge, runKernel } from "../helpers/graphBuild";
+import type { FXConnection } from "../../src/engine/core/FXGraph";
+import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // The transform-pipeline matrix nodes are `domain: "shared"`, so they compile for the CPU

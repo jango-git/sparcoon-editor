@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+
 import type { EditorGraph } from "../../src/domain/graphModel";
 import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../../src/domain/lifetimeBound";
-import { serializeGraph } from "../../src/domain/serialize";
 import { GraphKind } from "../../src/domain/nodePalette";
+import { serializeGraph } from "../../src/domain/serialize";
 import { createDefaultEmitter } from "../../src/model/editorState";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";

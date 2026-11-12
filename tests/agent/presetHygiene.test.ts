@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { resolveGraph, targetGraph } from "../../src/agent/address.Internal";
 import { placedNodeMeta, requireParameterKeys } from "../../src/agent/references.Internal";
 import { deserializeProject } from "../../src/persistence/projectFile";

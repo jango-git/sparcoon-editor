@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
   compileBehavior,

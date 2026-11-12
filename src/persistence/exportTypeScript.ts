@@ -9,7 +9,12 @@
  * not part of the export).
  */
 
+import type { FXGeometrySource, FXRenderMode } from "sparcoon";
+import { FX_RUNTIME_VERSION } from "sparcoon/editor";
+
 import { effectiveSpawnConfig } from "../domain/deathReactions";
+import { TRAIL_GEOMETRY } from "../domain/trailChecks";
+import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
@@ -18,12 +23,8 @@ import {
 } from "../engine/emit/artifactLiterals";
 import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
-import type { CompiledShadersByGLSLTier } from "./exportCompile";
-import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
-import type { FXGeometrySource, FXRenderMode } from "sparcoon";
-import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import type { SourceState } from "../model/editorState";
-import { TRAIL_GEOMETRY } from "../domain/trailChecks";
+import type { CompiledShadersByGLSLTier } from "./exportCompile";
 import {
   compileEmitter,
   compileMesh,

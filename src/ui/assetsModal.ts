@@ -13,14 +13,14 @@
 
 import { t } from "../i18n";
 import { selectTextureAssetUsage } from "../model/selectors";
+import { HDRI_EXTENSIONS, ingestFiles, MESH_EXTENSIONS } from "./assetIngestion";
+import { environmentRows, fillColumn, meshRows, textureRows } from "./assetRows";
 import { attachTooltip } from "./components/tooltip";
 import { helpBlock } from "./contentHelpPanel";
 import { createElement } from "./dom";
 import type { EditorContext } from "./editorContext";
 import { assetIcons, glyphIcons, icon } from "./icons";
-import { HDRI_EXTENSIONS, MESH_EXTENSIONS, ingestFiles } from "./assetIngestion";
 import { exportBlock } from "./projectExportPanel";
-import { environmentRows, fillColumn, meshRows, textureRows } from "./assetRows";
 
 export interface AssetsModal {
   readonly element: HTMLElement;

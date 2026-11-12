@@ -1,7 +1,7 @@
-import type { FXShaderStage } from "../FXShaderStage";
-import type { FXValueType } from "../../core/socket/FXValueType";
-import type { FXUniformDescriptor, FXUniformHandle } from "./FXCompiledShader";
 import type { FXCompilerContext } from "../../core/compiler/FXCompilerContext";
+import type { FXValueType } from "../../core/socket/FXValueType";
+import type { FXShaderStage } from "../FXShaderStage";
+import type { FXUniformDescriptor, FXUniformHandle } from "./FXCompiledShader";
 
 /** {@link FXCompilerContext} for the render backend: adds the shader stage plus uniform and
  *  varying allocation. Cross-stage reads are routed through varyings automatically. */

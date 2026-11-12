@@ -1,14 +1,14 @@
-import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
-import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
-import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
-import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeBuiltinAttribute";
+import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
+import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
+import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
+import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
+import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
-import { FXRenderNodeBuiltinAttribute } from "../../src/engine/render/nodes/FXRenderNodeBuiltinAttribute";
-import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
-import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
 
 /**
  * Test helpers for the executor-model attribute channel. In the reworked node set,

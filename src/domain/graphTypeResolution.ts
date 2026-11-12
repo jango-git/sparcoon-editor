@@ -3,17 +3,17 @@
  * mirrors the engine's `resolveGenerics` at compile time, without a live compile.
  */
 
+import { genericWinner } from "../engine/core/compiler/FXTypeResolve.Internal";
+import { type FXGLSLTypeName, literalGenericType } from "../engine/core/socket/FXValueType";
 import {
-  incomingConnection,
   type EditorAttribute,
   type EditorGraph,
   type GraphNode,
+  incomingConnection,
 } from "./graphModel";
-import { genericWinner } from "../engine/core/compiler/FXTypeResolve.Internal";
-import { literalGenericType, type FXGLSLTypeName } from "../engine/core/socket/FXValueType";
+import { nodeFamily, type ResolveWired } from "./nodeFamilies";
 import type { FXNodeMeta, GraphKind } from "./nodePalette";
 import { metaForNode } from "./nodePalette";
-import { nodeFamily, type ResolveWired } from "./nodeFamilies";
 
 /**
  * The concrete type a generic node resolves its `"T"` to: its structural `valueType` parameter when it

@@ -9,9 +9,9 @@
  * and the emitter read it. Nothing outside the layout sees these objects.
  */
 
+import { isFakeNodeType, ROUTE_TYPE } from "../fakeNodes";
 import { bindingSinkId } from "../graphEdges";
 import type { EditorGraph, GraphOutputBinding, GraphSocketReference } from "../graphModel";
-import { isFakeNodeType, ROUTE_TYPE } from "../fakeNodes";
 import type { GraphKind } from "../nodePalette";
 import { isSink } from "../sinks";
 

@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
+
+import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../src/domain/fakeNodes";
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
 import { GraphKind } from "../../src/domain/nodePalette";
-import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../src/domain/fakeNodes";
-import { ensureSinks } from "../../src/domain/sinks";
 import { serializeGraph } from "../../src/domain/serialize";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+import { ensureSinks } from "../../src/domain/sinks";
 import {
   addCatalogNode,
   addConnection,
@@ -15,7 +13,10 @@ import {
   insertRouteOnConnection,
   nextIdentifier,
 } from "../../src/model/commands";
+import { createInitialState } from "../../src/model/editorState";
 import { selectRenderGraph } from "../../src/model/selectors";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 
 /** A render node with an output, placed so wires can be authored between two of them. */
 function makeNode(id: string, type: string): EditorGraph["nodes"][string] {

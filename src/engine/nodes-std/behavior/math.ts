@@ -1,5 +1,5 @@
-import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
 
 /**
  * Behavior-only math nodes: they read per-particle builtin state, so they cannot compile against

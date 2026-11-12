@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { tracksLiteral, transformTracksLiteral } from "../../src/persistence/exportLiterals";
 
 describe("export key curves", () => {

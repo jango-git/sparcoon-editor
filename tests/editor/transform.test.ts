@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
+
 import type { Keyframe } from "../../src/model/editorState";
 import {
   eulerToQuat,
   IDENTITY_TRANSFORM,
   normalizeQuat,
+  type Quat,
   quatToEuler,
   sampleTransform,
   slerpQuat,
-  type Quat,
   type Transform,
   type TransformTrack,
 } from "../../src/model/transform";

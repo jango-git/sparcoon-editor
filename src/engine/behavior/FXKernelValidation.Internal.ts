@@ -3,20 +3,20 @@ import {
   collectReachableNodeIds,
   topologicalOrder,
 } from "../core/compiler/FXGraphTraversal.Internal";
-import { resolvePlacement } from "../core/compiler/placement.Internal";
 import type { FXValidatableOutput } from "../core/compiler/FXValidation.Internal";
 import { validateGraph } from "../core/compiler/FXValidation.Internal";
-import { killSlotOutput } from "./FXKernelLifecycle.Internal";
+import { resolvePlacement } from "../core/compiler/placement.Internal";
 import { FXGraph } from "../core/FXGraph";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import { FXBehaviorPhase } from "./FXBehaviorPhase";
+import { killSlotOutput } from "./FXKernelLifecycle.Internal";
+import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
+import { kernelTargetShapeErrors, validateKernelTarget } from "./FXKernelTargetValidation.Internal";
 import type {
   FXBehaviorTargets,
   FXKernelTarget,
   FXKernelTargetOutput,
 } from "./FXParticleBehaviorTarget";
-import { kernelTargetShapeErrors, validateKernelTarget } from "./FXKernelTargetValidation.Internal";
-import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
 
 /**
  * Phase placement inference and the behavior-graph validators, plus the whole-graph

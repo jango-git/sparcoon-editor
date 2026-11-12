@@ -1,20 +1,20 @@
-import { FXBehaviorNode } from "../FXBehaviorNode";
-import { FXBehaviorPhase } from "../FXBehaviorPhase";
-import type { FXKernelContext } from "../FXKernelContext";
-import type { FXKernelBindingHandle } from "../FXCompiledKernel";
+import { construct, ref } from "../../core/ir/FXExprBuilder";
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
 import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import { construct, ref } from "../../core/ir/FXExprBuilder";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
 import { TIMELINE_VALUE_BEHAVIOR_META } from "../../nodes-std/manualNodeMetas";
 import {
+  coerceParamValue,
   FXTimelineValueState,
   PARAM_COMPONENTS,
   PARAM_VALUE_TYPES,
   paramBindingName,
-  coerceParamValue,
 } from "../../nodes-std/paramSupport.Internal";
+import { FXBehaviorNode } from "../FXBehaviorNode";
+import { FXBehaviorPhase } from "../FXBehaviorPhase";
+import type { FXKernelBindingHandle } from "../FXCompiledKernel";
+import type { FXKernelContext } from "../FXKernelContext";
 
 const FLOAT = FX_VALUE_TYPES.float;
 

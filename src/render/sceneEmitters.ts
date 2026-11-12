@@ -3,55 +3,56 @@
  * scene model each recompute. Surfaces the active graph owner's snapshot/status to the pipeline.
  */
 
+import { connectDeathReaction, fireSpawnAction } from "sparcoon/editor";
 import type { Vector2 } from "three";
 import {
-  Group,
-  Raycaster,
   type BufferGeometry,
   type Camera,
+  Group,
   type Object3D,
   type Quaternion,
+  Raycaster,
   type Scene,
   type Vector3,
   type WebGLRenderer,
 } from "three";
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
-import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
-import {
-  registerStandardBehaviorNodes,
-  registerStandardRenderNodes,
-} from "../engine/nodes-std/index";
-import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
-import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
-import type { FXRenderNode } from "../engine/render/FXRenderNode";
-import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
-import { serializeGraph } from "../domain/serialize";
+
+import { effectiveSpawnConfig } from "../domain/deathReactions";
 import {
   GraphKind,
   readRenderSinkConfig,
   readTrailSinkConfig,
   timelineValueConflicts,
 } from "../domain/nodePalette";
+import { serializeGraph } from "../domain/serialize";
+import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
+import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
+import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import {
-  resolveGraphOwner,
+  registerStandardBehaviorNodes,
+  registerStandardRenderNodes,
+} from "../engine/nodes-std/index";
+import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
+import {
   type EmitterDoc,
   type LiveApplyStatus,
+  resolveGraphOwner,
   type SceneModel,
   type SpawnAction,
   type VfxMeshDoc,
 } from "../model/editorState";
-import { effectiveSpawnConfig } from "../domain/deathReactions";
-import { connectDeathReaction, fireSpawnAction } from "sparcoon/editor";
-import { entityKey, VFX_ENTITY, type SceneEntity } from "../model/entity";
+import { entityKey, type SceneEntity, VFX_ENTITY } from "../model/entity";
 import { authoredGraphs, type GraphName } from "../model/graphSlots";
 import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
+import { blocked, invalidFromErrors } from "./applyStatus.Internal";
 import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
-import { blocked, invalidFromErrors } from "./applyStatus.Internal";
 
 const IDLE: LiveApplyStatus = { status: "invalid", messages: [] };
 // The placeholder snapshot for a graph half that doesn't apply (no emitters yet, or a mesh's

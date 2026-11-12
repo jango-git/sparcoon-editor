@@ -1,8 +1,8 @@
+import { checkStructuralParam } from "../core/nodes/structuralParams.Internal";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import { assertValidAttributeName } from "../core/socket/FXAttribute";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../core/socket/FXValueType";
-import { checkStructuralParam } from "../core/nodes/structuralParams.Internal";
 
 /**
  * Shared support for the `custom-attribute` twins (render/GPU, behavior/CPU): name

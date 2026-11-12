@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+
 import { shortestFloat32 } from "../../src/engine/core/codegen/float32.Internal";
+import { glslFloat } from "../../src/engine/core/codegen/printGLSL.Internal";
 import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
 import { lit } from "../../src/engine/core/ir/FXExprBuilder";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { glslFloat } from "../../src/engine/core/codegen/printGLSL.Internal";
 
 describe("shortestFloat32", () => {
   it("spells a double by the shortest decimal of the same 32-bit float", () => {

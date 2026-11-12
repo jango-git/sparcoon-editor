@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
-import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
+
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
 import { printGLSLStandard } from "../../src/engine/core/codegen/printGLSLStandard.Internal";
+import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
+import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
+import type { FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { construct, ref } from "../../src/engine/core/ir/FXExprBuilder";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";

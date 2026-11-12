@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXEmitterTransform } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";

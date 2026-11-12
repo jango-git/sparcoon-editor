@@ -9,7 +9,7 @@ import type { EditorGraph } from "../../domain/graphModel";
 import { distanceToSegment } from "../primitives/geometry";
 import type { GraphPoint } from "./graphViewport";
 import type { SocketSide } from "./nodeView";
-import { wirePoints, type SinkNodeId, type SocketCenter } from "./wireRenderer";
+import { type SinkNodeId, type SocketCenter, wirePoints } from "./wireRenderer";
 
 /** How a drawn wire is addressed for removal / route-insertion - a connection or a sink binding. */
 export type EdgeDescriptor =

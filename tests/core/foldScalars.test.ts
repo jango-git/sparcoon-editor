@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { foldScalarLocals } from "../../src/engine/core/codegen/foldScalars.Internal";
 import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import { add, lit, mul, ref, sub } from "../../src/engine/core/ir/FXExprBuilder";

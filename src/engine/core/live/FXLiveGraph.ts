@@ -2,11 +2,11 @@ import type { FXCompilerError } from "../compiler/FXCompilerError";
 import { isFXCompilerErrorException } from "../compiler/FXCompilerError";
 import { collectReachableNodeIds } from "../compiler/FXGraphTraversal.Internal";
 import { wiringFingerprint } from "../compiler/FXStructuralHash.Internal";
-import { FXGraph } from "../FXGraph";
 import type { FXGraphDiff } from "../FXGraph";
+import { FXGraph } from "../FXGraph";
 import type { FXGraphNode } from "../FXGraphNode";
-import type { FXLiveBackend } from "./FXLiveBackend";
 import type { FXGraphReconciler } from "./FXGraphReconciler";
+import type { FXLiveBackend } from "./FXLiveBackend";
 import type { FXGraphSnapshotData } from "./FXSnapshotData";
 
 /**

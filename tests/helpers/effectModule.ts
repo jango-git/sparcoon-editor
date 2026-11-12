@@ -1,5 +1,6 @@
-import * as sparcoon from "sparcoon";
 import type { FXBehaviorArtifact, FXRenderArtifact } from "sparcoon";
+import * as sparcoon from "sparcoon";
+
 import { loadModule } from "./loadModule";
 
 /** The three artifacts an `emitEffectModule` module exports. */

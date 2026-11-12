@@ -1,7 +1,7 @@
 import type { GraphNode } from "../../domain/graphModel";
 import { t } from "../../i18n";
-import { createElement } from "../dom";
 import { AssetPicker } from "../components/assetPicker";
+import { createElement } from "../dom";
 import { COL_END, COL_IN_DOT, type NodeRow } from "./nodeGrid";
 import type { NodeWidgets } from "./nodeWidgets";
 

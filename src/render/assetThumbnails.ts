@@ -8,6 +8,7 @@
  */
 
 import {
+  type BufferGeometry,
   FloatType,
   Mesh,
   MeshNormalMaterial,
@@ -16,9 +17,9 @@ import {
   Sphere,
   Vector3,
   WebGLRenderer,
-  type BufferGeometry,
 } from "three";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+
 import type { EnvironmentAsset, MeshAsset } from "../model/editorState";
 import { downsampleEquirect } from "./environmentTexture";
 import { buildGeometryFromArrays } from "./meshGeometryBaking";

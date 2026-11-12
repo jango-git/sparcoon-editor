@@ -1,11 +1,12 @@
 import type { FXKernelDrawInputs } from "sparcoon";
+
 import type { FXDrawStagePolicy } from "../core/codegen/drawStage.Internal";
 import { componentJS, uniformValueJS } from "../core/codegen/drawStage.Internal";
 import type { FXRatePolicy } from "../core/codegen/rates.Internal";
 import { isImpureFunction } from "../core/ir/FXFunctions.Internal";
+import { isInvariantKernelRef } from "./FXKernelRefResolve.Internal";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD } from "./FXParticleBehaviorTarget";
-import { isInvariantKernelRef } from "./FXKernelRefResolve.Internal";
 
 /** A GPU kernel's rate ranks: a literal, what is one for the whole pass, what varies by particle. */
 export const KERNEL_RATE = { constant: 0, pass: 1, particle: 2 } as const;

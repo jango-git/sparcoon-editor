@@ -1,5 +1,5 @@
 import type { FXBufferLayout } from "sparcoon";
-import { slotLayout, type FXSlotLayout } from "sparcoon/editor";
+import { type FXSlotLayout, slotLayout } from "sparcoon/editor";
 
 /**
  * Per-field views of a JS kernel's slots, for tests: a kernel indexes one interleaved array

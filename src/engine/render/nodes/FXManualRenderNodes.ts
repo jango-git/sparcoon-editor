@@ -2,14 +2,14 @@ import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import type { FXNodeRegistry } from "../../core/live/FXNodeRegistry";
 import type { FXGLSLTypeName } from "../../core/socket/FXValueType";
 import { resolveValueType } from "../../core/socket/FXValueType";
+import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
 import type { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
-import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
+import { FXRenderNodeBuiltinAttribute } from "./FXRenderNodeBuiltinAttribute";
 import { FXRenderNodeCustomAttribute } from "./FXRenderNodeCustomAttribute";
 import { FXRenderNodeCustomAttributeSplit } from "./FXRenderNodeCustomAttributeSplit";
-import { FXRenderNodeBuiltinAttribute } from "./FXRenderNodeBuiltinAttribute";
-import { FXRenderNodeTimelineValue } from "./FXRenderNodeTimelineValue";
 import { FXRenderNodeTexture } from "./FXRenderNodeTexture";
+import { FXRenderNodeTimelineValue } from "./FXRenderNodeTimelineValue";
 
 function attributeType(
   params: Readonly<Record<string, unknown>> | undefined,

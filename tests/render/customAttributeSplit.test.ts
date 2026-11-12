@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { FXRenderNodeCustomAttributeSplit } from "../../src/engine/render/nodes/FXRenderNodeCustomAttributeSplit";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 const VEC3 = FX_VALUE_TYPES.vec3;

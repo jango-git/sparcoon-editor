@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXGraphSnapshot, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type {
   FXCompilerErrorCode,
   FXValidationResult,
 } from "../../src/engine/core/compiler/FXCompilerError";
 import type { FXValidatableTarget } from "../../src/engine/core/compiler/FXValidation.Internal";
 import { validateGraph } from "../../src/engine/core/compiler/FXValidation.Internal";
+import type { FXConnection, FXGraphSnapshot, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import { FakeNode, socket } from "../helpers/fakeNodes";
 

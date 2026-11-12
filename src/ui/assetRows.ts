@@ -2,13 +2,14 @@
 
 import { Mesh } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+
 import { t } from "../i18n";
 import { removeEnvironmentAsset, removeMeshAsset, removeTextureAsset } from "../model/commands";
 import type { EnvironmentAsset, MeshAsset, TextureAsset } from "../model/editorState";
-import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
-import { buildGeometryFromArrays } from "../render/meshGeometryBaking";
 import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
 import type { Store } from "../model/store";
+import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
+import { buildGeometryFromArrays } from "../render/meshGeometryBaking";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";

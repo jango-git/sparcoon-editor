@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXFusedProgramStandard } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { FXKernelModuleWriter } from "../../src/engine/emit/FXKernelModuleWriter";
 

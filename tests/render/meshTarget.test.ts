@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
+
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_MESH_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import {
   compileMeshArtifact,
   validateMeshArtifact,
 } from "../../src/engine/emit/compileMeshArtifact";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
+import { FX_MESH_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 const VEC4 = FX_VALUE_TYPES.vec4;

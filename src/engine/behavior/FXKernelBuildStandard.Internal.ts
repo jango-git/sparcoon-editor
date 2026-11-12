@@ -10,23 +10,24 @@ import {
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM,
 } from "sparcoon";
 import { floatGLSLType } from "sparcoon/editor";
+
 import type { FXValueType } from "../core/socket/FXValueType";
 import type {
   FXKernelBindingHandle,
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
+import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
+import {
+  FIXED_UNIFORMS,
+  type FXKernelUniform,
+  kernelUniformDeclaration,
+} from "./FXKernelUniformsStandard.Internal";
 import type {
   FXCompiledKernelDrawStage,
   FXCompiledKernelStandard,
 } from "./FXParticleBehaviorKernelStandard.Internal";
 import { glslBufferAttributeName } from "./FXParticleBehaviorKernelStandard.Internal";
-import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
-import {
-  FIXED_UNIFORMS,
-  kernelUniformDeclaration,
-  type FXKernelUniform,
-} from "./FXKernelUniformsStandard.Internal";
 
 /**
  * The `new Function`-assembly layer's standard-tier sibling: turns a {@link FXCompiledKernelStandard}

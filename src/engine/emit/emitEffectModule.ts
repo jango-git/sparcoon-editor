@@ -1,13 +1,14 @@
-import type { FXGraph } from "../core/FXGraph";
-import type { FXRenderNode } from "../render/FXRenderNode";
-import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
-import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
-import { FX_GLSL_RENDER_COMPILERS } from "../render/compiler/FXRenderCompilers";
-import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
-import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
+
+import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
 import { compileBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
+import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
+import type { FXGraph } from "../core/FXGraph";
+import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import { FX_GLSL_RENDER_COMPILERS } from "../render/compiler/FXRenderCompilers";
+import type { FXRenderNode } from "../render/FXRenderNode";
+import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,

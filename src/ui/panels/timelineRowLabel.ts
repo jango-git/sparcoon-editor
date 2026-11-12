@@ -16,8 +16,8 @@ import {
 import type { EmitterDoc, VfxMeshDoc } from "../../model/editorState";
 import type { Store } from "../../model/store";
 import { attachCountdownConfirm } from "../components/countdownConfirm";
-import { attachTooltip } from "../components/tooltip";
 import { createToggleButton } from "../components/toggleButton";
+import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import { actionIcons, icon, timelineIcons, viewportIcons } from "../icons";
 

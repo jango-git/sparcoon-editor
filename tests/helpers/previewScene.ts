@@ -1,4 +1,5 @@
 import { type BufferGeometry, PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
+
 import { SceneEmitters } from "../../src/render/sceneEmitters";
 
 export interface PreviewOptions {

@@ -7,9 +7,9 @@
 import { frameOf, timeOfFrame } from "../model/frames";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
-import { EditorPanel } from "./focus/panelFocus";
 import type { HotkeyRouter } from "./focus/hotkeyRouter";
 import type { Keymap } from "./focus/keymap";
+import { EditorPanel } from "./focus/panelFocus";
 import { saveProjectJson } from "./projectExportPanel";
 
 export function installHotkeys(

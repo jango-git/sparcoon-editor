@@ -6,28 +6,29 @@
  */
 
 import type { FXKeyEase } from "sparcoon";
+
 import { bindingSinkId } from "../domain/graphEdges";
 import type { AttributeTypeName, GraphComment, GraphPosition } from "../domain/graphModel";
 import { isSinkType } from "../domain/nodePalette";
 import type {
   AnimationTrack,
+  DeathReaction,
   LiveApplyStatus,
   SourceState,
   TimelineEvent,
-  DeathReaction,
 } from "../model/editorState";
 import { resolveGraphOwner } from "../model/editorState";
+import type { GraphName } from "../model/graphSlots";
 import {
-  quatToEuler,
   type Quat,
+  quatToEuler,
   type Transform,
   type TransformChannel,
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
 import { renderGraphLighting } from "../persistence/exportCompile";
-import { targetGraph, type GraphTarget } from "./address.Internal";
-import type { GraphName } from "../model/graphSlots";
+import { type GraphTarget, targetGraph } from "./address.Internal";
 
 /** Which of an owner's graphs: the material (render), the simulation (behavior), or an emitter's
  *  trail (render-kind, on the trail host) - see `model/graphSlots.ts`. */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXScalarLocal } from "../../src/engine/core/codegen/cse.Internal";
 import {
   commonSubexpressionElimination,

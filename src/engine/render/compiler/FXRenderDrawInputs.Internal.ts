@@ -1,4 +1,5 @@
 import { FX_DRAW_INPUTS } from "sparcoon/editor";
+
 import type { FXDrawStagePolicy } from "../../core/codegen/drawStage.Internal";
 import { componentJS, CPU_TYPES, uniformValueJS } from "../../core/codegen/drawStage.Internal";
 

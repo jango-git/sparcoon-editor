@@ -6,9 +6,9 @@
  * eased/continuous position), so a drag snaps between modes exactly like a click would.
  */
 
-import type { ValueComponent } from "../primitives/component";
 import { createElement } from "../dom";
 import { icon } from "../icons";
+import type { ValueComponent } from "../primitives/component";
 import { beginPointerDrag } from "../primitives/drag";
 import { attachTooltip } from "./tooltip";
 

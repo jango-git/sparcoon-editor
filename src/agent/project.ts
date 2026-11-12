@@ -7,9 +7,9 @@ import { setProjectName } from "../model/commands";
 import { emitProjectModule } from "../persistence/exportTypeScript";
 import { loadPresetSource, PROJECT_PRESETS } from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
-import { replaceDocument, type DocumentReplaceTarget } from "../persistence/replaceDocument";
+import { type DocumentReplaceTarget, replaceDocument } from "../persistence/replaceDocument";
 import { AgentError } from "./errors";
-import { sceneView, type SceneView } from "./views";
+import { type SceneView, sceneView } from "./views";
 
 export interface ProjectApi {
   /** The project file (`.json`) text, assets inlined. */

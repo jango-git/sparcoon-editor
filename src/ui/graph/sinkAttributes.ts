@@ -15,11 +15,11 @@
 
 import type { AttributeTypeName } from "../../domain/graphModel";
 import { ATTRIBUTE_TYPES } from "../../domain/nodePalette";
-import { createElement } from "../dom";
 import { t } from "../../i18n";
-import { glyphIcons, icon } from "../icons";
-import { attachTooltip } from "../components/tooltip";
 import { Dropdown } from "../components/dropdown";
+import { attachTooltip } from "../components/tooltip";
+import { createElement } from "../dom";
+import { glyphIcons, icon } from "../icons";
 
 export interface SinkAttributeHandlers {
   /** Declares a new attribute; returns `false` when the name is invalid or a duplicate. */

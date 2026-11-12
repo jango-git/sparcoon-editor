@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXGraphSnapshot, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
 import {
   collectReachableNodeIds,
   topologicalOrder,
 } from "../../src/engine/core/compiler/FXGraphTraversal.Internal";
+import type { FXConnection, FXGraphSnapshot, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FakeNode, socket } from "../helpers/fakeNodes";
 
 function build(

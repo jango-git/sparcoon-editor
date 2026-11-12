@@ -1,10 +1,10 @@
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXNodeDefinition, FXExprBuilderApi } from "../../core/nodes/defineNode";
+import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { litVec } from "../../core/ir/FXExprBuilder";
-import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
-import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
+import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
+import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
  * Standard-library render effect nodes (fragment): compositing, masks, normals. GLSL with no IR

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
 import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 
 describe("Store: undo/redo re-announce the original commit kind", () => {
   it.each([

@@ -1,4 +1,5 @@
 import eslint from "@eslint/js";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import globals from "globals";
 import typescriptEslint from "typescript-eslint";
 
@@ -150,6 +151,13 @@ export default typescriptEslint.config(
     files: ["scripts/**/*.mjs"],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    plugins: { "simple-import-sort": simpleImportSort },
+    rules: {
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
     },
   },
 );

@@ -1,5 +1,5 @@
-import type { LiveApplyStatus } from "../../model/editorState";
 import { t } from "../../i18n";
+import type { LiveApplyStatus } from "../../model/editorState";
 import { attachTooltip, clearTooltip } from "../components/tooltip";
 import type { NodeView } from "./nodeView";
 

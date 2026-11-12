@@ -4,7 +4,6 @@
  * are `"view"` (ADR-0004: no compiled graph reads either).
  */
 
-import { nextIdentifier } from "./identifier";
 import type {
   EnvironmentAsset,
   MeshAsset,
@@ -13,6 +12,7 @@ import type {
   TextureAsset,
 } from "../editorState";
 import type { Store } from "../store";
+import { nextIdentifier } from "./identifier";
 
 /** Adds a texture asset. `name` is expected already unique (see {@link uniqueAssetName}); a duplicate is a no-op so a double-fire can't shadow an existing asset. */
 export function addTextureAsset(store: Store, asset: TextureAsset): void {

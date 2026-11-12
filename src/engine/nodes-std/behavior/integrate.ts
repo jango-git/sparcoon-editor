@@ -1,5 +1,5 @@
-import { defineNode } from "../../core/nodes/defineNode";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
 import { DT_INPUT, VELOCITY_INPUT } from "./common";
 
 /**

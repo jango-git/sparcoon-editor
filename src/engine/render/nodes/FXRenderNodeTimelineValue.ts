@@ -1,18 +1,18 @@
-import { FXRenderNode } from "../FXRenderNode";
-import { FXShaderStage } from "../FXShaderStage";
-import type { FXRenderContext } from "../compiler/FXRenderContext";
-import type { FXUniformHandle } from "../compiler/FXCompiledShader";
-import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
-import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
 import { ref } from "../../core/ir/FXExprBuilder";
 import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
+import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
 import { TIMELINE_VALUE_RENDER_META } from "../../nodes-std/manualNodeMetas";
 import {
+  coerceParamValue,
   FXTimelineValueState,
   PARAM_VALUE_TYPES,
   paramUniformName,
-  coerceParamValue,
 } from "../../nodes-std/paramSupport.Internal";
+import type { FXUniformHandle } from "../compiler/FXCompiledShader";
+import type { FXRenderContext } from "../compiler/FXRenderContext";
+import { FXRenderNode } from "../FXRenderNode";
+import { FXShaderStage } from "../FXShaderStage";
 
 /** Render node: a named, runtime-tunable value exposed as a shader uniform. Unlike `constant`
  *  (which bakes an inline literal), this allocates a uniform under a stable slot derived from

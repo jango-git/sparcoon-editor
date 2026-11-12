@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXEmitterTransform } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import type { EditorGraph } from "../../src/domain/graphModel";
 import { meshTransformWarnings } from "../../src/domain/meshDiagnostics";
 import { serializeGraph } from "../../src/domain/serialize";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import type { EditorGraph } from "../../src/domain/graphModel";
 import { createDefaultVfxMesh } from "../../src/model/editorState";
 import { fullRenderRegistry } from "../helpers/stdRegistry";
 

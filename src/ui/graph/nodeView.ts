@@ -13,13 +13,24 @@
 import type { AttributeTypeName, GraphNode } from "../../domain/graphModel";
 import type { NodeMetrics } from "../../domain/layout/arrangeGraph";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../../domain/nodePalette";
-import { humanizeKey, attributeNameFromSlot } from "../../domain/nodePalette";
-import { createElement } from "../dom";
+import { attributeNameFromSlot, humanizeKey } from "../../domain/nodePalette";
 import { t } from "../../i18n";
 import { nodeDescription, nodeLabel, nodeParamLabel, nodeSocketLabel } from "../../i18n/nodeText";
+import type { PaletteAccess } from "../components/colorPicker";
+import { attachTooltip } from "../components/tooltip";
+import { createElement } from "../dom";
 import { clamp } from "../primitives/math";
 import { GRID_SIZE } from "./grid";
 import {
+  type AttributeNodeConfig,
+  buildAttributeName,
+  buildAttributeRemove,
+  buildAttributeRow,
+  buildAttributeType,
+} from "./nodeAttributeRow";
+import {
+  type Cell,
+  centerCell,
   COL_CENTER,
   COL_END,
   COL_IN_DOT,
@@ -28,23 +39,12 @@ import {
   COL_OUT_LABEL,
   MAX_NODE_CELLS,
   MIN_NODE_CELLS,
-  NODE_WIDTH_CLIP_GUARD,
-  centerCell,
   mountBody,
-  type Cell,
+  NODE_WIDTH_CLIP_GUARD,
   type NodeRow,
 } from "./nodeGrid";
 import { buildHelpIcon } from "./nodeHelpIcon";
-import { attachTooltip } from "../components/tooltip";
-import {
-  buildAttributeRow,
-  buildAttributeName,
-  buildAttributeRemove,
-  buildAttributeType,
-  type AttributeNodeConfig,
-} from "./nodeAttributeRow";
 import { buildTextureAssetRows, type TextureAssetOption } from "./nodeTextureRow";
-import type { PaletteAccess } from "../components/colorPicker";
 import { NodeWidgets } from "./nodeWidgets";
 import { socketTypeColor } from "./socketColors";
 

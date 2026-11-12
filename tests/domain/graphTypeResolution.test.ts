@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { EditorGraph, GraphNode } from "../../src/domain/graphModel";
 import { resolveSocketType } from "../../src/domain/graphTypeResolution";
 import { GraphKind } from "../../src/domain/nodePalette";

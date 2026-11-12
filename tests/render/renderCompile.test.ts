@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
+
+import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
+import { add, construct, lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { add, construct, lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
-import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
 import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FXRenderNodeTexture } from "../../src/engine/render/nodes/FXRenderNodeTexture";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { renderRegistry } from "../helpers/stdRegistry";
 import { GLSL_NAME } from "../helpers/glslNames";
+import { renderRegistry } from "../helpers/stdRegistry";
 
 const reg = renderRegistry();
 

@@ -5,11 +5,11 @@
  */
 
 import {
+  type FXNodeMeta,
   isMeshExcludedRenderNode,
   isTrailExcludedRenderNode,
   metaFor,
   paletteForKind,
-  type FXNodeMeta,
 } from "../domain/nodePalette";
 import { nodeDescription, nodeLabel } from "../i18n/nodeText";
 import { graphKindFor, parseGraphName } from "./address.Internal";

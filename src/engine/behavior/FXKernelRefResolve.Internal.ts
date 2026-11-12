@@ -4,12 +4,12 @@
  * Pure over a {@link FXKernelTarget} - no dependency on the SSA accumulator or the per-node context.
  */
 
-import type { FXKernelIntegration } from "./FXCompiledKernel";
-import type { FXExpr } from "../core/ir/FXExpr";
 import { printJS } from "../core/codegen/printJS.Internal";
+import type { FXExpr } from "../core/ir/FXExpr";
+import type { FXKernelIntegration } from "./FXCompiledKernel";
+import { bufferAccess, BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
-import { BUILTIN_BUFFER, bufferAccess, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
 
 /** Prints a ref to its JS access string for {@link printJS} (phase-level: depends only on the target). */
 export function resolveKernelRef(

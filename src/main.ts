@@ -1,44 +1,45 @@
 /** Composition root: wires the layers UI -> command -> model -> event -> render; store+signals is the single source of truth. */
 
 import { Vector2 } from "three";
-import { Pipeline } from "./model/pipeline";
+
+import { installAgentApi } from "./agent";
+import { getLocale, initI18n } from "./i18n";
 import { insertTransformKeyframes } from "./model/commands";
+import { type SceneEntity, VFX_ENTITY } from "./model/entity";
 import { snapTimeToFrame } from "./model/frames";
-import { TRANSFORM_CHANNELS } from "./model/transform";
-import { VFX_ENTITY, type SceneEntity } from "./model/entity";
-import { hasInfinitePlay, selectActiveGraphOwner } from "./model/selectors";
+import { Pipeline } from "./model/pipeline";
 import { SelectionStore } from "./model/selectionStore";
-import { commitEntitySelection } from "./ui/selection";
+import { hasInfinitePlay, selectActiveGraphOwner } from "./model/selectors";
 import { SignalBus } from "./model/signals";
 import { Store } from "./model/store";
+import { TRANSFORM_CHANNELS } from "./model/transform";
 import { TransportStore } from "./model/transport";
-import { GizmoSettingsStore } from "./settings/gizmoSettings";
 import { createAutosave } from "./persistence/autosave";
-import { saveSource } from "./persistence/localStore";
 import { loadInitialState } from "./persistence/loadState";
+import { saveSource } from "./persistence/localStore";
 import { DEFAULT_PROJECT_PRESET, loadPresetSource } from "./persistence/presets";
+import { type DecodedEnvironment, EnvironmentTextureRegistry } from "./render/environmentTexture";
+import { MeshGeometryRegistry } from "./render/meshGeometryRegistry";
+import { SceneCoordinator } from "./render/sceneCoordinator";
+import { SceneEmitters } from "./render/sceneEmitters";
+import { TextureRegistry } from "./render/textureRegistry";
+import { TimelineDispatcher } from "./render/timelineDispatcher";
+import { TransformGuides } from "./render/transformGuides";
+import { GizmoSettingsStore } from "./settings/gizmoSettings";
 import { PreviewSettingsStore } from "./settings/previewSettings";
 import { detectRenderBackend } from "./settings/renderBackend";
 import { initTheme } from "./settings/theme";
-import { getLocale, initI18n } from "./i18n";
-import { SceneEmitters } from "./render/sceneEmitters";
-import { SceneCoordinator } from "./render/sceneCoordinator";
-import { EnvironmentTextureRegistry, type DecodedEnvironment } from "./render/environmentTexture";
-import { TimelineDispatcher } from "./render/timelineDispatcher";
-import { TextureRegistry } from "./render/textureRegistry";
-import { MeshGeometryRegistry } from "./render/meshGeometryRegistry";
 import { mountApplicationShell } from "./ui/appShell";
 import type { EditorContext } from "./ui/editorContext";
-import { EditorPanel } from "./ui/focus/panelFocus";
 import { HotkeyRouter } from "./ui/focus/hotkeyRouter";
+import { EditorPanel } from "./ui/focus/panelFocus";
 import { PanelFocus } from "./ui/focus/panelFocus";
 import { PanelFocusTracker } from "./ui/focus/panelFocusTracker";
 import { installHotkeys } from "./ui/hotkeys";
 import { InputMode, InputModeState } from "./ui/inputMode";
+import { commitEntitySelection } from "./ui/selection";
 import { installPreviewContextMenu } from "./ui/tools/previewContextMenu";
 import { TransformTool } from "./ui/tools/transformTool";
-import { TransformGuides } from "./render/transformGuides";
-import { installAgentApi } from "./agent";
 
 async function bootstrap(): Promise<void> {
   const root = document.getElementById("application") ?? undefined;

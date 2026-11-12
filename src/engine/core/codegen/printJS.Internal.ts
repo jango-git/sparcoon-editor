@@ -1,8 +1,8 @@
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
 import { collectHelper } from "../ir/FXHelperModule.Internal";
-import type { FXRefResolver } from "./printGLSL.Internal";
 import { shortestFloat32 } from "./float32.Internal";
+import type { FXRefResolver } from "./printGLSL.Internal";
 
 /**
  * Mirrors `printGLSLBaseline` but only ever sees scalarized (float-only) trees - `scalarize` has

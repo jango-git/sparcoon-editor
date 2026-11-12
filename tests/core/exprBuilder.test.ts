@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
 import type { FXCallSignature } from "../../src/engine/core/ir/FXExprBuilder";
 import {
@@ -24,6 +23,8 @@ import {
   toFloat,
   toInt,
 } from "../../src/engine/core/ir/FXExprBuilder";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 
 describe("literals and refs", () => {
   it("litVec sizes the type by component count", () => {

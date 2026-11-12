@@ -1,18 +1,18 @@
-import { FXBehaviorNode } from "../FXBehaviorNode";
-import { FXBehaviorPhase } from "../FXBehaviorPhase";
-import type { FXKernelContext } from "../FXKernelContext";
+import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META } from "../../nodes-std/manualNodeMetas";
 import {
   checkAttributeStructuralParams,
   resolveAttributeSource,
 } from "../../nodes-std/attributeSupport.Internal";
+import { BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META } from "../../nodes-std/manualNodeMetas";
+import { FXBehaviorNode } from "../FXBehaviorNode";
+import { FXBehaviorPhase } from "../FXBehaviorPhase";
+import type { FXKernelContext } from "../FXKernelContext";
 import { attributeInputName } from "../FXParticleBehaviorTarget";
-import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 
 /** Swizzle channel per output socket key, in declared order. */
 const COMPONENTS = ["x", "y", "z", "w"] as const;

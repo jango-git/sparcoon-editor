@@ -3,7 +3,7 @@
  * and hotkeys target. Transient like the transport - editor focus, never in the model/history/saved doc.
  */
 
-import { emitterEntity, sameEntity, vfxMeshEntity, VFX_ENTITY, type SceneEntity } from "./entity";
+import { emitterEntity, sameEntity, type SceneEntity, VFX_ENTITY, vfxMeshEntity } from "./entity";
 
 export type SelectionListener = () => void;
 

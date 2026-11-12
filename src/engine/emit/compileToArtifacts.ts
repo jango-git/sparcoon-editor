@@ -1,8 +1,3 @@
-import type { FXGraph } from "../core/FXGraph";
-import type { FXRenderNode } from "../render/FXRenderNode";
-import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
-import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
-import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
 import type {
   FXBehaviorArtifact,
   FXGeometrySource,
@@ -11,18 +6,24 @@ import type {
 } from "sparcoon";
 import type { FXApplyValues } from "sparcoon/editor";
 import type { Texture } from "three";
-import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import type { FXCompilerError } from "../core/compiler/FXCompilerError";
-import { FXCompilerErrorException } from "../core/compiler/FXCompilerError";
-import { FXCompilerBaseline } from "../render/compiler/FXCompilerBaseline";
-import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
+
+import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
+import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
+import { compileBehavior, validateBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
+import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
 import type { FXAttributeCollection } from "../core/compiler/collectAttributeRequests";
 import {
   collectAttributeRequests,
   mergeAttributeCollections,
 } from "../core/compiler/collectAttributeRequests";
-import { compileBehavior, validateBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
-import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
+import type { FXCompilerError } from "../core/compiler/FXCompilerError";
+import { FXCompilerErrorException } from "../core/compiler/FXCompilerError";
+import type { FXGraph } from "../core/FXGraph";
+import type { FXAttributeRequest } from "../core/socket/FXAttribute";
+import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import { FXCompilerBaseline } from "../render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../render/FXRenderNode";
+import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
 import { assembleBehaviorArtifact, assembleRenderArtifact } from "./assembleArtifacts";
 
 /**

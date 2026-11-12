@@ -4,6 +4,7 @@
  */
 
 import type { BufferGeometry } from "three";
+
 import type { MeshAsset } from "../model/editorState";
 import { buildGeometryFromArrays } from "./meshGeometryBaking";
 

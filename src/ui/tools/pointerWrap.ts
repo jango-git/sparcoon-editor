@@ -8,6 +8,7 @@
  */
 
 import { Vector2 } from "three";
+
 import { createElement } from "../dom";
 
 /** Wraps `point` (client px) into `rect`, so leaving one edge re-enters from the opposite one. */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { MeshAsset, TextureAsset } from "../../src/model/editorState";
 import type { BlobBackend } from "../../src/persistence/assetBlobStore";
 import {

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { createCatalogApi } from "../../src/agent/catalog";
 import { createProjectApi } from "../../src/agent/project";
 import { readStatus } from "../../src/agent/status.Internal";
-import { isMeshExcludedRenderNode, metaFor, GraphKind } from "../../src/domain/nodePalette";
+import { GraphKind, isMeshExcludedRenderNode, metaFor } from "../../src/domain/nodePalette";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";

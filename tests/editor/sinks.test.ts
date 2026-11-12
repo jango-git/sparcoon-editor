@@ -1,29 +1,27 @@
 import { describe, expect, it } from "vitest";
+
+import { bindingSinkId } from "../../src/domain/graphEdges";
+import { createEmptyGraph } from "../../src/domain/graphModel";
 import {
   GraphKind,
+  isSinkType,
+  metaForNode,
+  paletteForKind,
+  readRenderSinkConfig,
+  readSpawnSinkConfig,
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
+  sinkMeta,
+  sinkPhase,
   SPAWN_EXPECTED_CAPACITY_PARAM,
   SPAWN_SINK_ID,
   SPAWN_SINK_TYPE,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
-  isSinkType,
-  metaForNode,
-  paletteForKind,
-  readRenderSinkConfig,
-  readSpawnSinkConfig,
-  sinkMeta,
-  sinkPhase,
 } from "../../src/domain/nodePalette";
-import { createEmptyGraph } from "../../src/domain/graphModel";
-import { bindingSinkId } from "../../src/domain/graphEdges";
-import { createRenderSink, ensureSinks } from "../../src/domain/sinks";
 import { serializeGraph } from "../../src/domain/serialize";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+import { createRenderSink, ensureSinks } from "../../src/domain/sinks";
 import {
   addAttribute,
   addConnection,
@@ -33,7 +31,10 @@ import {
   renameAttribute,
   setAttributeType,
 } from "../../src/model/commands";
+import { createInitialState } from "../../src/model/editorState";
 import { selectBehaviorGraph, selectRenderGraph } from "../../src/model/selectors";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { nodeTextEntry } from "../helpers/nodeTextDictionary";
 
 describe("output sink nodes", () => {

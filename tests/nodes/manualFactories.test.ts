@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
 import { fullBehaviorRegistry, fullRenderRegistry } from "../helpers/stdRegistry";
 

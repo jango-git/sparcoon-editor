@@ -1,15 +1,3 @@
-import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
-import { zeroValue } from "../render/compiler/FXCompiledShader";
-import type { FXValueType } from "../core/socket/FXValueType";
-import type { FXCompiledDrawStage } from "../core/codegen/drawStage.Internal";
-import { DRAW_COMPUTE_PARAMETERS } from "../core/codegen/drawStageBuild.Internal";
-import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
-import type {
-  FXCompiledKernel,
-  FXCompiledKernelPhase,
-  FXKernelBindingHandle,
-} from "../behavior/FXCompiledKernel";
 import type {
   FXFragmentStageSource,
   FXGeometrySource,
@@ -17,13 +5,26 @@ import type {
   FXShaderStageSource,
   FXVaryingDecl,
 } from "sparcoon";
+
+import type {
+  FXCompiledKernel,
+  FXCompiledKernelPhase,
+  FXKernelBindingHandle,
+} from "../behavior/FXCompiledKernel";
+import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
+import { SLOTS_PARAMETER } from "../behavior/FXKernelShared.Internal";
 import {
   assembleKernelBody,
   SPAWN_LOOP_HEADER,
   UPDATE_LOOP_HEADER,
 } from "../behavior/FXParticleBehaviorKernel.Internal";
-import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
-import { SLOTS_PARAMETER } from "../behavior/FXKernelShared.Internal";
+import type { FXCompiledDrawStage } from "../core/codegen/drawStage.Internal";
+import { DRAW_COMPUTE_PARAMETERS } from "../core/codegen/drawStageBuild.Internal";
+import type { FXAttributeRequest } from "../core/socket/FXAttribute";
+import type { FXValueType } from "../core/socket/FXValueType";
+import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
+import { zeroValue } from "../render/compiler/FXCompiledShader";
+import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
 
 /** Serializes the compiler IR into TypeScript object literals, shared by {@link emitEffectModule}
  *  and {@link emitProjectModule}. Every function returns a bare `{ ... }` body, so the caller

@@ -4,12 +4,13 @@
  */
 
 import type { FXEmissionBasis, FXKeyEase } from "sparcoon";
+
 import { canReact, deathSourceIds } from "../../domain/deathReactions";
 import { sameElements } from "../../util/arrays";
 import {
-  emissionBasisField,
   type AnimationTrack,
   type DeathReaction,
+  emissionBasisField,
   type EmitterDoc,
   type Keyframe,
   type PlayEvent,

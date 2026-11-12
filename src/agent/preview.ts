@@ -7,7 +7,8 @@
  * composition and timing but not pixel for pixel.
  */
 
-import { Color, Vector3, type Object3D } from "three";
+import { Color, type Object3D, Vector3 } from "three";
+
 import type { SourceState } from "../model/editorState";
 import type { SceneEntity } from "../model/entity";
 import { VFX_ENTITY } from "../model/entity";
@@ -18,13 +19,13 @@ import type {
   FrameCaptureOptions,
   SceneCoordinator,
 } from "../render/sceneCoordinator";
+import { resolveEntity } from "./address.Internal";
 import {
   requireFiniteNumber,
   requireInteger,
   requireKnownKeys,
   requireVector3,
 } from "./arguments.Internal";
-import { resolveEntity } from "./address.Internal";
 import { AgentError } from "./errors";
 import { settle } from "./settle.Internal";
 

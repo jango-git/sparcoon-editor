@@ -3,24 +3,24 @@
  * throwaway engine node instances and delegates to the engine's `collectGraphStats` for the answer.
  */
 
+import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
+import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
+import { collectGraphStats, type FXGraphStats } from "../engine/core/compiler/collectGraphStats";
 import { FXGraph } from "../engine/core/FXGraph";
 import type { FXGraphNode } from "../engine/core/FXGraphNode";
 import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { FXValueTypeId } from "../engine/core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../engine/core/socket/FXValueType";
-import { collectGraphStats, type FXGraphStats } from "../engine/core/compiler/collectGraphStats";
 import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../engine/nodes-std/index";
-import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
-import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
-import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
+import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
 import type { EditorGraph } from "./graphModel";
-import { GraphKind, metaForNode } from "./nodePalette";
 import { resolveNodeType } from "./graphTypeResolution";
+import { GraphKind, metaForNode } from "./nodePalette";
 import { serializeGraph } from "./serialize";
 
 export type { FXGraphStats } from "../engine/core/compiler/collectGraphStats";

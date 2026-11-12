@@ -1,9 +1,9 @@
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXNodeDefinition, FXExprBuilderApi } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { FX_FBM_MAX_OCTAVES } from "../../core/ir/noise/FXFractalNoise.Internal";
 import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
+import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
+import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { DT_INPUT, rand, TWO_PI, VELOCITY_INPUT } from "./common";
 
 const VEC3 = FX_VALUE_TYPES.vec3;

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+
+import { eulerToQuat } from "../../src/model/transform";
 import {
   describeEvent,
   describeReaction,
@@ -11,7 +13,6 @@ import {
   timeAtFraction,
   trimNumber,
 } from "../../src/ui/panels/timelineFormat";
-import { eulerToQuat } from "../../src/model/transform";
 
 // The runtime `t()` fetches its dictionary over HTTP, unavailable under node; resolve keys from
 // the bundled English dictionary instead, through the real placeholder substitution.

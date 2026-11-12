@@ -6,24 +6,25 @@
 
 import {
   BoxGeometry,
+  type BufferGeometry,
   Color,
   EdgesGeometry,
   LineBasicMaterial,
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  type Object3D,
   OctahedronGeometry,
   SRGBColorSpace,
   TetrahedronGeometry,
-  type BufferGeometry,
-  type Object3D,
 } from "three";
-import { markEditorOverlay } from "./editorOverlay";
+
 import {
   ENTITY_ACCENT_HUE,
   ENTITY_ACCENT_LIGHTNESS,
   ENTITY_ACCENT_SATURATION,
 } from "../theme/entityAccent";
+import { markEditorOverlay } from "./editorOverlay";
 
 /** The kind of object a marker stands for - picks its outline shape. */
 export type MarkerKind = "vfx" | "emitter" | "vfxMesh";

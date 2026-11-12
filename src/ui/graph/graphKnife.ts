@@ -5,13 +5,13 @@
  * canvas's core state.
  */
 
+import type { GraphPosition } from "../../domain/graphModel";
 import {
+  type GraphSlot,
   insertRouteOnBinding,
   insertRouteOnConnection,
   removeEdges,
-  type GraphSlot,
 } from "../../model/commands";
-import type { GraphPosition } from "../../domain/graphModel";
 import type { Store } from "../../model/store";
 import { beginPointerDrag } from "../primitives/drag";
 import { strokeCrossesPolyline } from "../primitives/geometry";

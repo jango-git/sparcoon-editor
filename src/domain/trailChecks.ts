@@ -5,6 +5,7 @@
  */
 
 import type { FXGeometrySource } from "sparcoon";
+
 import { mergeAttributeCollections } from "../engine/core/compiler/collectAttributeRequests";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+
 import {
   addBurstEvent,
   addPlayEvent,
@@ -15,8 +14,10 @@ import {
   setTimelineFps,
   updateEvent,
 } from "../../src/model/commands";
-import { emitterEntity } from "../../src/model/entity";
 import type { PlayEvent } from "../../src/model/editorState";
+import { emitterEntity } from "../../src/model/entity";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { createTestState } from "../helpers/testDocument";
 
 const freshStore = (): Store => new Store(createTestState(), new SignalBus());

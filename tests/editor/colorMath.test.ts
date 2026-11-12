@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
+
 import {
   hslToRgb,
   hsvToRgb,
   linearToSrgb,
   linearToSrgbRgba,
   parseHex,
+  type Rgba,
   rgbToHex,
   rgbToHsl,
   rgbToHsv,
   srgbToLinear,
   srgbToLinearRgba,
-  type Rgba,
 } from "../../src/ui/components/color";
 
 /**

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
+import { construct, lit, litVec, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { construct, lit, litVec, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
 import { FXRenderNode } from "../../src/engine/render/FXRenderNode";

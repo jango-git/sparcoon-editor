@@ -1,10 +1,10 @@
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import { FX_READABLE_CORE_BUILTINS } from "../../core/socket/FXReadableBuiltins";
+import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
+import { BUILTIN_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
+import type { FXRenderContext } from "../compiler/FXRenderContext";
 import { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
-import type { FXRenderContext } from "../compiler/FXRenderContext";
-import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BUILTIN_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
-import { FX_READABLE_CORE_BUILTINS } from "../../core/socket/FXReadableBuiltins";
 
 /**
  * Render node: reads all four host builtins (position/age/lifetime/id) at once, one output

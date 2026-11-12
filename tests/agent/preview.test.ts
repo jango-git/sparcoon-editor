@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Color, Object3D, Vector3 } from "three";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { createPreviewApi } from "../../src/agent/preview";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";

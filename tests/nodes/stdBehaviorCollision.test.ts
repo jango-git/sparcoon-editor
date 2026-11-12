@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";

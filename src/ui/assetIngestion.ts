@@ -5,11 +5,12 @@
 
 import { Mesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+
 import { addEnvironmentAsset, addMeshAsset, addTextureAsset } from "../model/commands";
 import type { MeshAsset } from "../model/editorState";
-import { bakeGeometryArrays } from "../render/meshGeometryBaking";
 import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
 import type { Store } from "../model/store";
+import { bakeGeometryArrays } from "../render/meshGeometryBaking";
 
 /** Loaded image bytes plus intrinsic size - everything a texture asset needs beyond its name. */
 interface LoadedImage {

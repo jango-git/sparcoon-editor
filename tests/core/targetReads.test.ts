@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXValidationResult } from "../../src/engine/core/compiler/FXCompilerError";
 import {
   collectReachableNodeIds,
@@ -9,8 +10,8 @@ import type { FXValidatableTarget } from "../../src/engine/core/compiler/FXValid
 import { validateGraph } from "../../src/engine/core/compiler/FXValidation.Internal";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
-import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
 import type { FXLiveBackend } from "../../src/engine/core/live/FXLiveBackend";
+import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
 import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import type { FakeArtifact } from "../helpers/fakeNodes";

@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+
 import {
   addBurstEvent,
   addPlayEvent,
   addVfxMesh,
   clipboardItemTime,
+  type ClipboardTimelineItem,
   pasteTimelineItems,
   setKeyframe,
   setTransformKeyframe,
-  type ClipboardTimelineItem,
 } from "../../src/model/commands";
-import { emitterEntity, vfxMeshEntity, VFX_ENTITY } from "../../src/model/entity";
+import { emitterEntity, VFX_ENTITY, vfxMeshEntity } from "../../src/model/entity";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { createTestState } from "../helpers/testDocument";
 
 const freshStore = (): Store => new Store(createTestState(), new SignalBus());

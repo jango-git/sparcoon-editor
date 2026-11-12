@@ -1,11 +1,11 @@
-import type { FXValidationResult } from "./FXCompilerError";
-import { FXCompilerErrorException } from "./FXCompilerError";
-import { tagNodeBuildError } from "./FXNodeBuildError.Internal";
-import { collectReachableNodeIds, topologicalOrder } from "./FXGraphTraversal.Internal";
-import type { FXTypeResolution } from "./FXTypeResolve.Internal";
-import { resolveGenerics } from "./FXTypeResolve.Internal";
 import type { FXGraph } from "../FXGraph";
 import type { FXGraphNode } from "../FXGraphNode";
+import type { FXValidationResult } from "./FXCompilerError";
+import { FXCompilerErrorException } from "./FXCompilerError";
+import { collectReachableNodeIds, topologicalOrder } from "./FXGraphTraversal.Internal";
+import { tagNodeBuildError } from "./FXNodeBuildError.Internal";
+import type { FXTypeResolution } from "./FXTypeResolve.Internal";
+import { resolveGenerics } from "./FXTypeResolve.Internal";
 
 /**
  * Backend-neutral compile-driver spine shared by the render and behavior backends; placement,

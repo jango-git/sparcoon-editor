@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 /**

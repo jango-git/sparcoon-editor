@@ -17,11 +17,11 @@ import {
 } from "../model/commands";
 import { canRemoveObject } from "../model/editorState";
 import { eulerToQuat } from "../model/transform";
-import { requireKnownKeys, requireVector3 } from "./arguments.Internal";
 import { resolveEntity, resolveOwner } from "./address.Internal";
+import { requireKnownKeys, requireVector3 } from "./arguments.Internal";
 import { AgentError } from "./errors";
 import type { EditSession } from "./transaction.Internal";
-import { sceneView, type SceneView } from "./views";
+import { type SceneView, sceneView } from "./views";
 
 export interface TransformPatch {
   readonly position?: readonly number[];

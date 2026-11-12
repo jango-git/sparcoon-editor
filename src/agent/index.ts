@@ -18,16 +18,17 @@
  */
 
 import type { Object3D } from "three";
+
 import type { SceneEntity } from "../model/entity";
-import type { SceneCoordinator } from "../render/sceneCoordinator";
+import type { GraphName } from "../model/graphSlots";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
+import type { SceneCoordinator } from "../render/sceneCoordinator";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
-import type { GraphName } from "../model/graphSlots";
 import { arrangeOwnerGraph } from "./arrange.Internal";
-import { createAssetsApi, type AssetsApi } from "./assets";
-import { createCatalogApi, type CatalogApi } from "./catalog";
+import { type AssetsApi, createAssetsApi } from "./assets";
+import { type CatalogApi, createCatalogApi } from "./catalog";
 import { createEditApi, type EditApi } from "./editApi";
 import { createPreviewApi, type PreviewApi } from "./preview";
 import { createProjectApi, type ProjectApi } from "./project";

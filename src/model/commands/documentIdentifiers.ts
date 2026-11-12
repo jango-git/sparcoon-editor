@@ -4,9 +4,9 @@
  */
 
 import type { EditorGraph } from "../../domain/graphModel";
+import { isRecord } from "../../util/guards";
 import { emitterGraphs, type SourceState } from "../editorState";
 import type { TransformTrack } from "../transform";
-import { isRecord } from "../../util/guards";
 import { seedIdentifierCounter } from "./identifier";
 
 export function seedIdentifierCounterFromSource(source: SourceState): void {

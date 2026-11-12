@@ -2,8 +2,8 @@ import type { FXGLSLTypeName } from "../socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../socket/FXValueType";
 import type { FXCallSignature } from "./FXExprBuilder";
 import type { FXHelper, FXHelperModule } from "./FXHelperModule.Internal";
-import { FX_GLSL_STANDARD_NOISE_HASH } from "./noise/FXNoiseHash.Internal";
 import { noiseFunctionDefinitions } from "./noise/FXNoiseFunctions.Internal";
+import { FX_GLSL_STANDARD_NOISE_HASH } from "./noise/FXNoiseHash.Internal";
 
 /**
  * The backend-neutral function registry: each entry names a function, its signatures, and how

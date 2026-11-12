@@ -3,7 +3,7 @@
 // count too. Vendored/generated directories are skipped since they are not our stylesheet.
 // Use counts apply a trailing (?![\w-]) word boundary so --accent does not match
 // --accent-hue, then subtract declaration-site matches so declaring alone isn't a "use".
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import {
   compileParticleBehavior,
   previewParticleBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { bind, fieldUpdateKernel } from "../helpers/graphBuild";
 import { fullBehaviorRegistry, fullRenderRegistry } from "../helpers/stdRegistry";
 

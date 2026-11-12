@@ -4,34 +4,35 @@
  * from - so {@link EmitterView} only decides when to build, swap or drop the trail, not how.
  */
 
-import { everyTierShaders } from "./everyTierShaders";
-import type { FXTrailOptions } from "sparcoon/editor";
 import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
+import type { FXTrailOptions } from "sparcoon/editor";
+
+import { unwrittenAttributeWarnings } from "../domain/attributeChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
+import type { EditorAttribute } from "../domain/graphModel";
+import type { TrailSinkConfig } from "../domain/nodePalette";
+import {
+  type FXRenderArtifactsByTier,
+  type RenderBudgetFindings,
+  RenderBudgetMemo,
+  trailRenderBudgetFindings,
+} from "../domain/renderBudget";
+import type { RenderMode } from "../domain/sinkMeta";
+import { TRAIL_GEOMETRY, trailAttributeErrors } from "../domain/trailChecks";
+import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph, type FXLiveResult } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
-import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import { buildTrailTarget } from "../engine/render/target/FXParticleRenderTarget";
-import type { EditorAttribute } from "../domain/graphModel";
-import type { TrailSinkConfig } from "../domain/nodePalette";
-import {
-  RenderBudgetMemo,
-  trailRenderBudgetFindings,
-  type FXRenderArtifactsByTier,
-  type RenderBudgetFindings,
-} from "../domain/renderBudget";
-import { TRAIL_GEOMETRY, trailAttributeErrors } from "../domain/trailChecks";
-import { unwrittenAttributeWarnings } from "../domain/attributeChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
-import type { RenderMode } from "../domain/sinkMeta";
+import { everyTierShaders } from "./everyTierShaders";
 
 /** Everything about a trail its live IR hash does not see. */
 function configKey(config: TrailSinkConfig): string {

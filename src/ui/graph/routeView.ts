@@ -10,12 +10,12 @@
  * dragging, selection and reconciliation (it lives in `graph.nodes`).
  */
 
+import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";
 import type { RouteGeometry } from "../../domain/layout/arrangeGraph";
 import { createElement } from "../dom";
 import { GRID_SIZE } from "./grid";
-import { socketTypeColor } from "./socketColors";
-import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";
 import type { SocketPointerHandler, SocketRef, SocketSide } from "./nodeView";
+import { socketTypeColor } from "./socketColors";
 
 /** Three grid cells wide, one tall; both dots sit on the middle of that one row. Also what the
  *  auto-layout (`domain/layout/arrangeGraph.ts`) places routes by. */

@@ -6,8 +6,8 @@
  */
 
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
-import { collectReachableNodeIds } from "../engine/core/compiler/FXGraphTraversal.Internal";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import { collectReachableNodeIds } from "../engine/core/compiler/FXGraphTraversal.Internal";
 import type { FXGraph } from "../engine/core/FXGraph";
 import type { FXGraphNode } from "../engine/core/FXGraphNode";
 import type { EditorAttribute } from "./graphModel";

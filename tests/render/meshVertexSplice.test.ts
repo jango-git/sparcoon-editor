@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { FXEmitter } from "sparcoon/editor";
 import type { FXBehaviorArtifact, FXRenderArtifact } from "sparcoon";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXConnection } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXEmitter } from "sparcoon/editor";
+import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import type { FXConnection } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 // End-to-end: the engine compiles a graph whose `particleTransform` is a camera-facing

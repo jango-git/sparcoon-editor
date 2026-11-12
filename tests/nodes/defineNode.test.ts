@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
-import { defineNode } from "../../src/engine/core/nodes/defineNode";
-import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import {
   compileBehavior,
   previewBehaviorHash,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
+import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
+import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
 import { bind, edge, fieldUpdateKernel, graphOf } from "../helpers/graphBuild";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 
 // velocity is a user attribute now: the node reads it via custom-attribute, and its
 // result is persisted via store-attribute bound to `attr:velocity` (asserted on the

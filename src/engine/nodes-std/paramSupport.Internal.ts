@@ -1,6 +1,6 @@
+import { assertValidAttributeName } from "../core/socket/FXAttribute";
 import type { FXGLSLTypeName, FXValueType } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES, resolveValueType } from "../core/socket/FXValueType";
-import { assertValidAttributeName } from "../core/socket/FXAttribute";
 
 /**
  * Shared support for the named-**param** nodes (`timeline-value` render/behavior, `texture`): a

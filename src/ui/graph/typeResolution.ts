@@ -17,22 +17,22 @@
  * `"T"` replaced by the resolved type (left as `"T"` when it cannot be determined).
  */
 
-import type { EditorAttribute, EditorGraph, GraphNode } from "../../domain/graphModel";
-import type { FXGLSLTypeName } from "../../engine/core/socket/FXValueType";
-import type { FXNodeMeta, FXParamMeta, FXSocketMeta, GraphKind } from "../../domain/nodePalette";
-import {
-  DEFAULT_RENDER_HOST,
-  metaForNode,
-  ROUTE_TYPE,
-  type RenderHost,
-} from "../../domain/nodePalette";
 import { ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";
-import { nodeFamily, type ResolveWired } from "../../domain/nodeFamilies";
+import type { EditorAttribute, EditorGraph, GraphNode } from "../../domain/graphModel";
 import {
   resolveInputType,
   resolveNodeType,
   resolveSocketType,
 } from "../../domain/graphTypeResolution";
+import { nodeFamily, type ResolveWired } from "../../domain/nodeFamilies";
+import type { FXNodeMeta, FXParamMeta, FXSocketMeta, GraphKind } from "../../domain/nodePalette";
+import {
+  DEFAULT_RENDER_HOST,
+  metaForNode,
+  type RenderHost,
+  ROUTE_TYPE,
+} from "../../domain/nodePalette";
+import type { FXGLSLTypeName } from "../../engine/core/socket/FXValueType";
 
 /**
  * The node's metadata reshaped for display: a family facade (combine/split) takes its whole socket

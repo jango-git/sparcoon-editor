@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
+
+import { RENDER_SINK_ID, SPAWN_SINK_ID, UPDATE_SINK_ID } from "../../src/domain/nodePalette";
+import { serializeGraph } from "../../src/domain/serialize";
+import { isSink } from "../../src/domain/sinks";
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
 import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
+import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
 import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
-import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
-import { serializeGraph } from "../../src/domain/serialize";
-import { RENDER_SINK_ID, SPAWN_SINK_ID, UPDATE_SINK_ID } from "../../src/domain/nodePalette";
-import { isSink } from "../../src/domain/sinks";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 
 /**

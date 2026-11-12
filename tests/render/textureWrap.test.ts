@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
+
+import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import type { FXConnection } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
-import { FX_GLSL_RENDER_COMPILERS } from "../../src/engine/render/compiler/FXRenderCompilers";
+import { TEXTURE_META } from "../../src/engine/nodes-std/manualNodeMetas";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { FX_GLSL_RENDER_COMPILERS } from "../../src/engine/render/compiler/FXRenderCompilers";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { FXRenderNodeTexture } from "../../src/engine/render/nodes/FXRenderNodeTexture";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { TEXTURE_META } from "../../src/engine/nodes-std/manualNodeMetas";
-import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 // The std registry plus the hand-written nodes, so "texture" goes through its real factory.

@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { FX_RENDER_CONTENT_NODES } from "../../src/engine/nodes-std/render/content";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+
 import { literalGenericType } from "../../src/engine/core/socket/FXValueType";
+import { FX_RENDER_CONTENT_NODES } from "../../src/engine/nodes-std/render/content";
+import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import {
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { drawUniformNames, GLSL_NAME } from "../helpers/glslNames";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
-import { GLSL_NAME, drawUniformNames } from "../helpers/glslNames";
 
 const reg = renderRegistry();
 const white = (): FXRenderNode => reg.create("constant", { type: "color", value: [1, 1, 1, 1] });

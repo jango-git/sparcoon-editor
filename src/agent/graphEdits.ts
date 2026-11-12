@@ -8,8 +8,8 @@ import type { AttributeTypeName, EditorGraph, GraphPosition } from "../domain/gr
 import {
   ATTRIBUTE_TYPES,
   isMeshExcludedRenderNode,
-  isTrailExcludedRenderNode,
   isSinkType,
+  isTrailExcludedRenderNode,
   metaFor,
 } from "../domain/nodePalette";
 import {
@@ -23,8 +23,8 @@ import {
   replaceNodeParams,
   updateNodeParam,
 } from "../model/commands";
-import { copyPlainData, requireFiniteNumber, requireKnownKeys } from "./arguments.Internal";
 import { focusOwner, parseGraphName, resolveGraph, targetGraph } from "./address.Internal";
+import { copyPlainData, requireFiniteNumber, requireKnownKeys } from "./arguments.Internal";
 import { describeNodeType, type NodeTypeInfo } from "./catalog";
 import { AgentError } from "./errors";
 import {
@@ -34,7 +34,7 @@ import {
   requireSocket,
 } from "./references.Internal";
 import type { EditSession } from "./transaction.Internal";
-import { graphView, type GraphName, type GraphView, type SocketAddress } from "./views";
+import { type GraphName, type GraphView, graphView, type SocketAddress } from "./views";
 
 export interface AddNodeOptions {
   readonly params?: Readonly<Record<string, unknown>>;

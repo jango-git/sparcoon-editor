@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
   compileBehavior,
   validateBehavior,
@@ -9,10 +11,9 @@ import type {
   FXKernelTarget,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
-import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXCompilerErrorCode } from "../../src/engine/core/compiler/FXCompilerError";
 import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import { FXGraph } from "../../src/engine/core/FXGraph";

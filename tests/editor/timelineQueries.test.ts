@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { createEmptyGraph, type EditorGraph, type GraphNode } from "../../src/domain/graphModel";
 import { addBurstEvent, setKeyframe, setTransformKeyframe } from "../../src/model/commands";
 import type { AnimationTrack } from "../../src/model/editorState";

@@ -14,11 +14,11 @@ import {
   setEntityBaseChannel,
   setProjectName,
 } from "../../model/commands";
-import type { SceneEntity } from "../../model/entity";
 import { projectDisplayName } from "../../model/editorState";
+import type { SceneEntity } from "../../model/entity";
 import { selectEntityDoc } from "../../model/selectors";
 import type { Store } from "../../model/store";
-import { sampleTransform, IDENTITY_TRANSFORM, type Transform } from "../../model/transform";
+import { IDENTITY_TRANSFORM, sampleTransform, type Transform } from "../../model/transform";
 import { NumberControl } from "../components/numberControl";
 import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";

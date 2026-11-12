@@ -5,28 +5,31 @@ import {
   FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
 } from "sparcoon";
-import type { FXValidationResult } from "../core/compiler/FXCompilerError";
-import { FXCompileContextBase } from "../core/compiler/FXCompileContextBase";
+
+import type { FXCompiledDrawStage, FXTypedLocal } from "../core/codegen/drawStage.Internal";
+import { liftDrawStage } from "../core/codegen/drawStage.Internal";
+import { printGLSLStandard } from "../core/codegen/printGLSLStandard.Internal";
+import { classifyRates } from "../core/codegen/rates.Internal";
+import { FXGLSLNames } from "../core/codegen/uniqueName.Internal";
 import {
   buildNodes,
   prepareCompile,
   throwIfInvalid,
 } from "../core/compiler/compileDriver.Internal";
-import { outputSocket } from "../core/compiler/FXSocketIndex.Internal";
-import { socketConcreteType } from "../core/compiler/FXTypeResolve.Internal";
-import { structuralHash } from "../core/compiler/FXStructuralHash.Internal";
-import type { FXKernelContext } from "./FXKernelContext";
+import { FXCompileContextBase } from "../core/compiler/FXCompileContextBase";
 import type { FXValueParam } from "../core/compiler/FXCompilerContext";
+import type { FXValidationResult } from "../core/compiler/FXCompilerError";
+import { outputSocket } from "../core/compiler/FXSocketIndex.Internal";
+import { structuralHash } from "../core/compiler/FXStructuralHash.Internal";
+import { socketConcreteType } from "../core/compiler/FXTypeResolve.Internal";
 import type { FXGraph } from "../core/FXGraph";
-import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXExpr } from "../core/ir/FXExpr";
-import { coerceNumeric, construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import type { FXExprBuilderApi } from "../core/ir/FXExprBuilder";
+import { coerceNumeric, construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { FX_FUNCTIONS, signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
-import { printGLSLStandard } from "../core/codegen/printGLSLStandard.Internal";
-import { FXGLSLNames } from "../core/codegen/uniqueName.Internal";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type {
@@ -35,28 +38,26 @@ import type {
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
+import type { FXKernelContext } from "./FXKernelContext";
+import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
+import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
+import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
+import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
+import {
+  type FXKernelUniform,
+  transformFeedbackUniformBudget,
+} from "./FXKernelUniformsStandard.Internal";
+import {
+  buildPhaseView,
+  resolvePlacementPhases,
+  validateBehavior,
+} from "./FXKernelValidation.Internal";
 import type {
   FXBehaviorTargets,
   FXKernelTarget,
   FXKernelTargetOutput,
 } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
-import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
-import {
-  buildPhaseView,
-  resolvePlacementPhases,
-  validateBehavior,
-} from "./FXKernelValidation.Internal";
-import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
-import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
-import { liftDrawStage } from "../core/codegen/drawStage.Internal";
-import type { FXCompiledDrawStage, FXTypedLocal } from "../core/codegen/drawStage.Internal";
-import { classifyRates } from "../core/codegen/rates.Internal";
-import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
-import {
-  transformFeedbackUniformBudget,
-  type FXKernelUniform,
-} from "./FXKernelUniformsStandard.Internal";
 
 /**
  * The standard-tier (WebGL2 / GLSL-ES-3.00, transform-feedback) behavior compiler: an independent

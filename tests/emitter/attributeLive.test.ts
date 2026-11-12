@@ -1,28 +1,29 @@
-import { describe, expect, it } from "vitest";
 import { FXEmitter } from "sparcoon/editor";
-import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
-import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
-import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
-import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
-import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
+import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
   attributeSlot,
   buildParticleBehaviorTargets,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
-import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
+import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
+import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
+import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
 import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
-import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import type { FXGLSLTypeName } from "../../src/engine/core/socket/FXValueType";
+import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
+import { FXRenderNodeCustomAttribute } from "../../src/engine/render/nodes/FXRenderNodeCustomAttribute";
+import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { behaviorArtifact, unlitArtifact } from "../helpers/artifacts";
 
 function behaviorReg(): FXNodeRegistry<FXBehaviorNode> {

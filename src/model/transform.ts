@@ -3,7 +3,6 @@
  * math). Rotation is a quaternion (three's native form) edited as Euler degrees via {@link quatToEuler}/{@link eulerToQuat}, the sole conversion point.
  */
 
-import type { Keyframe } from "./editorState";
 import {
   normalizeQuaternion,
   quaternionFromValue,
@@ -11,6 +10,8 @@ import {
   slerpQuaternion,
   vectorFromValue,
 } from "sparcoon/editor";
+
+import type { Keyframe } from "./editorState";
 
 export type Vec3 = readonly [number, number, number];
 /** A rotation quaternion in `[x, y, z, w]` order (three's component order). */

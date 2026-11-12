@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
-import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
-import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+
 import { glslFloat, glslInt } from "../../src/engine/core/codegen/printGLSL.Internal";
 import { printGLSLStandard } from "../../src/engine/core/codegen/printGLSLStandard.Internal";
+import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
+import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import {
   column,
   construct,
@@ -19,6 +18,8 @@ import {
   sub,
   swizzle,
 } from "../../src/engine/core/ir/FXExprBuilder";
+import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
 

@@ -9,16 +9,17 @@ import type {
   FXValueSlot,
 } from "sparcoon";
 import type { Texture } from "three";
-import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import { buildDrawCompute } from "../core/codegen/drawStageBuild.Internal";
-import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
-import { zeroValue } from "../render/compiler/FXCompiledShader";
+
 import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
 } from "../behavior/FXParticleBehaviorKernel.Internal";
+import { buildDrawCompute } from "../core/codegen/drawStageBuild.Internal";
+import type { FXAttributeRequest } from "../core/socket/FXAttribute";
+import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import { zeroValue } from "../render/compiler/FXCompiledShader";
 import { fragmentStageSource, stageSource, varyingDecls } from "./artifactLiterals";
 
 /**

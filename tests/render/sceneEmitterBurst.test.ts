@@ -1,15 +1,16 @@
-import { afterEach, describe, expect, it } from "vitest";
 import { FXWorld } from "sparcoon";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
-import { createTestState } from "../helpers/testDocument";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
   SPAWN_EXPECTED_CAPACITY_PARAM,
   SPAWN_SINK_ID,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
+import { createTestState } from "../helpers/testDocument";
 
 afterEach(destroyPreviews);
 

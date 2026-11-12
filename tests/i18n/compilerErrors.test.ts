@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { interpolate } from "../../src/i18n/interpolate";
+
 import { compilerErrorMessage } from "../../src/i18n/compilerErrors";
+import { interpolate } from "../../src/i18n/interpolate";
 import errorsEn from "../../src/i18n/locales/errors.en.json" with { type: "json" };
 import errorsRu from "../../src/i18n/locales/errors.ru.json" with { type: "json" };
 import errorsUk from "../../src/i18n/locales/errors.uk.json" with { type: "json" };

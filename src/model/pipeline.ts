@@ -3,9 +3,9 @@
  * {@link SceneApplier} (the render layer), which drives one runtime emitter/mesh per doc and reports back snapshots + live-apply status.
  */
 
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { EditorAttribute } from "../domain/graphModel";
 import type { RenderSinkConfig, SpawnSinkConfig, TrailSinkConfig } from "../domain/nodePalette";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
 import type { LiveApplyStatus, SceneModel } from "./editorState";
 import type { Store } from "./store";
 

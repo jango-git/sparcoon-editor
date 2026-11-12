@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
+
+import { GraphKind, metaFor } from "../../src/domain/nodePalette";
+import type { SocketRef } from "../../src/ui/graph/nodeView";
 import {
   acceptedGenericTypesForMeta,
   inputAcceptsSource,
   socketsCompatible,
   typesConnectable,
 } from "../../src/ui/graph/socketCompat";
-import type { SocketRef } from "../../src/ui/graph/nodeView";
-import { GraphKind, metaFor } from "../../src/domain/nodePalette";
 
 const VECTORS_AND_MATS = ["vec2", "vec3", "vec4", "mat2", "mat3", "mat4"];
 

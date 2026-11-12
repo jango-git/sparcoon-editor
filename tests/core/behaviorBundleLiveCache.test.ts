@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
-import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
-import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
-import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import type { FXCompiledBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXCompiledBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
+import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
+import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
+import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
+import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
+import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
 
 // The "standard" (GLSL/transform-feedback) simulation family must go through the same
 // recompile-vs-rebind gate the JS kernel already does, instead of re-running on every unrelated

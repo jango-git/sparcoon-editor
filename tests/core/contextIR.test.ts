@@ -1,21 +1,22 @@
+import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
 import { describe, expect, it } from "vitest";
+
+import { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
+import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import type { FXConnection } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
+import { add, construct, lit, litVec, mul, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
 import { FX_VALUE_TYPES, type FXValueType } from "../../src/engine/core/socket/FXValueType";
-import { add, construct, lit, litVec, mul, ref } from "../../src/engine/core/ir/FXExprBuilder";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
 import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
-import { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { FX_LIFETIME, FX_POSITION_X, FX_POSITION_Y, FX_POSITION_Z } from "sparcoon";
-import { fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
 import { GLSL_NAME } from "../helpers/glslNames";
+import { fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;

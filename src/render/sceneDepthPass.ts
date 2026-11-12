@@ -4,17 +4,17 @@
  * pre-pass, rendered just before its frame - and only while some shown effect reads it.
  */
 
+import { fxSetCameraDepth } from "sparcoon";
 import {
+  type Camera,
   DepthTexture,
   MeshBasicMaterial,
-  WebGLRenderTarget,
-  Vector2,
-  type Camera,
   type Object3D,
   type Scene,
+  Vector2,
   type WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
-import { fxSetCameraDepth } from "sparcoon";
 
 /** What the pre-pass asks of the previewed effects. */
 export interface SceneDepthSource {

@@ -1,6 +1,10 @@
 import type { FXGraphNode } from "../FXGraphNode";
 import type { FXExpr } from "../ir/FXExpr";
+import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
+import { deepFreeze } from "./deepFreeze.Internal";
+import type { FXDescriptorBuild } from "./defineNode.Internal";
+import { FXDescriptorNode, narrowestGenericType } from "./defineNode.Internal";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
 import type {
   FXNodeCategory,
@@ -10,10 +14,6 @@ import type {
   FXSocketSpec,
   FXTargetInputDefault,
 } from "./FXSocketSpec";
-import type { FXDescriptorBuild } from "./defineNode.Internal";
-import { FXDescriptorNode, narrowestGenericType } from "./defineNode.Internal";
-import { deepFreeze } from "./deepFreeze.Internal";
-import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
 
 /** Backend a descriptor instance is compiled against. */
 export type FXNodeBackend = "render" | "behavior";

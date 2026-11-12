@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { behaviorRegistry } from "../helpers/stdRegistry";
+import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { fieldSpawnKernel } from "../helpers/graphBuild";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // The behavior kernel runs a whole-phase CSE pass before printing (see cse.Internal.ts): a
 // subtree shared across scalarized components is emitted once. These assert the two things

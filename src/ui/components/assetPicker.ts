@@ -12,8 +12,8 @@
  * paramSyncer contract the node view uses for its other widgets.
  */
 
-import { clearChildren, createElement } from "../dom";
 import { t } from "../../i18n";
+import { clearChildren, createElement } from "../dom";
 import { glyphIcons, icon } from "../icons";
 import type { ValueComponent } from "../primitives/component";
 import { openPopover, type PopoverHandle } from "../primitives/popover";

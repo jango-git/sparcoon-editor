@@ -8,21 +8,22 @@
 //   2. the compiled update kernel is ~an order of magnitude faster than the
 //      CSP-fallback interpreter on a 10k-particle step.
 
+import { FX_LIFETIME } from "sparcoon";
 import { bench, describe } from "vitest";
-import { buildBehaviorGraph } from "../src/engine/builder/FXGraphBuilder";
-import { FXGraphReconciler } from "../src/engine/core/live/FXGraphReconciler";
-import { FXLiveGraph } from "../src/engine/core/live/FXLiveGraph";
-import { FXBehaviorLiveBackend } from "../src/engine/behavior/live/FXBehaviorLiveBackend";
-import { buildParticleBehaviorTargets } from "../src/engine/behavior/FXParticleBehaviorTarget";
-import { FXGraph } from "../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../src/engine/behavior/FXBehaviorNode";
 import {
   buildParticleUpdateKernel,
   compileParticleBehavior,
 } from "../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { FX_LIFETIME } from "sparcoon";
-import { behaviorRegistry } from "./helpers/stdRegistry";
+import { buildParticleBehaviorTargets } from "../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorLiveBackend } from "../src/engine/behavior/live/FXBehaviorLiveBackend";
+import { buildBehaviorGraph } from "../src/engine/builder/FXGraphBuilder";
+import { FXGraph } from "../src/engine/core/FXGraph";
+import { FXGraphReconciler } from "../src/engine/core/live/FXGraphReconciler";
+import { FXLiveGraph } from "../src/engine/core/live/FXLiveGraph";
 import { slotOf } from "./helpers/slots";
+import { behaviorRegistry } from "./helpers/stdRegistry";
 
 // 1. rebind-path apply() on a ~50-node graph
 

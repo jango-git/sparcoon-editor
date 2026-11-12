@@ -11,12 +11,13 @@ import {
   FloatType,
   LinearFilter,
   LinearSRGBColorSpace,
-  RGBAFormat,
   RepeatWrapping,
+  RGBAFormat,
 } from "three";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+
 import type { EnvironmentAsset } from "../model/editorState";
-import { deriveSunFromEquirect, type DerivedSun } from "./sunFromEnvironment";
+import { type DerivedSun, deriveSunFromEquirect } from "./sunFromEnvironment";
 
 /** Fixed background resolution (ADR-0004: "a small fixed resolution", not a tunable blur amount). */
 const BACKGROUND_WIDTH = 128;

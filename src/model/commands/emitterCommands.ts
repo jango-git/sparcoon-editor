@@ -4,14 +4,14 @@
  */
 
 import type { EditorGraph, GraphNode } from "../../domain/graphModel";
-import { isSink } from "../../domain/sinks";
 import { timelineValueNames } from "../../domain/nodePalette";
+import { isSink } from "../../domain/sinks";
 import {
   canRemoveObject,
-  emitterGraphs,
   createDefaultEmitter,
   createDefaultTrailGraph,
   type EmitterDoc,
+  emitterGraphs,
   type SceneModel,
 } from "../editorState";
 import type { Store } from "../store";

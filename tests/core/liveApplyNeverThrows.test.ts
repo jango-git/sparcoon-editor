@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
 import type { FXCompilerErrorCode } from "../../src/engine/core/compiler/FXCompilerError";
 import { FXGraphReconciler } from "../../src/engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
 import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
 import { assertValidAttributeName } from "../../src/engine/core/socket/FXAttribute";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
-import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
-import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
+import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { FakeBackend, FakeNode, socket } from "../helpers/fakeNodes";
 import { CHAIN_PAIR, CHAIN_SINGLE } from "../helpers/liveSnapshots";
 

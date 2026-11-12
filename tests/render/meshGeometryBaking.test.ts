@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
 import {
   BufferAttribute,
   BufferGeometry,
   InterleavedBuffer,
   InterleavedBufferAttribute,
 } from "three";
+import { describe, expect, it } from "vitest";
+
 import { bakeGeometryArrays, buildGeometryFromArrays } from "../../src/render/meshGeometryBaking";
 
 /** A unit-square (2 triangles), non-interleaved position/normal/uv + index. */

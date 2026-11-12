@@ -3,15 +3,16 @@
  * scrubbable number / vector editors. Pure DOM factories over {@link NumberControl}.
  */
 
-import { asKeyEase, FX_KEY_EASES } from "sparcoon/editor";
 import type { FXKeyEase } from "sparcoon";
+import { asKeyEase, FX_KEY_EASES } from "sparcoon/editor";
+
 import { t, type TKey } from "../../i18n";
 import type { ChannelValue } from "../../model/commands";
 import type { TransformChannel } from "../../model/transform";
 import { Dropdown, type DropdownOption } from "../components/dropdown";
 import { NumberControl } from "../components/numberControl";
-import { attachTooltip } from "../components/tooltip";
 import { createToggleButton } from "../components/toggleButton";
+import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import { timelineIcons } from "../icons";
 import { field } from "../primitives/field";

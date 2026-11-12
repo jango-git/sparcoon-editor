@@ -4,6 +4,9 @@
  * can never crash startup - it falls back to a fresh document instead.
  */
 
+import { asEmissionBasis, asKeyEase } from "sparcoon/editor";
+
+import { withValidReactions } from "../domain/deathReactions";
 import { createEmptyGraph, type EditorGraph } from "../domain/graphModel";
 import {
   DEFAULT_RENDER_HOST,
@@ -13,7 +16,6 @@ import {
   RENDER_SINK_ID,
   type RenderHost,
 } from "../domain/nodePalette";
-import { withValidReactions } from "../domain/deathReactions";
 import { ensureSinks } from "../domain/sinks";
 import {
   seedIdentifierCounterFromRawSource,
@@ -21,12 +23,12 @@ import {
 } from "../model/commands/documentIdentifiers";
 import { nextIdentifier } from "../model/commands/identifier";
 import {
-  createDefaultVfx,
-  DEFAULT_TIMELINE,
-  emissionBasisField,
   type AnimationTrack,
+  createDefaultVfx,
   type DeathReaction,
+  DEFAULT_TIMELINE,
   type EditorState,
+  emissionBasisField,
   type EmitterDoc,
   type EnvironmentAsset,
   type Keyframe,
@@ -42,14 +44,13 @@ import {
 } from "../model/editorState";
 import {
   IDENTITY_TRANSFORM,
-  TRANSFORM_CHANNELS,
   type Quat,
   type Transform,
+  TRANSFORM_CHANNELS,
   type TransformChannel,
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
-import { asEmissionBasis, asKeyEase } from "sparcoon/editor";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
 import { migrateRenamedInputs } from "./renamedInputs";

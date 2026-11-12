@@ -1,6 +1,6 @@
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXNodeDefinition, FXExprBuilderApi } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
+import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
 import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import { FX_VALUE_TYPES, NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { RANDOM_RANGE } from "../shared/noise";

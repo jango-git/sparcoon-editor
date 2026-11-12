@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { AnimationTrack, Keyframe } from "../../src/model/editorState";
 import { sampleTrack } from "../../src/model/trackSampling";
 

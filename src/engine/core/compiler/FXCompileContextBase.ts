@@ -1,7 +1,7 @@
-import type { FXExpr } from "../ir/FXExpr";
-import { coerceNumeric } from "../ir/FXExprBuilder";
 import type { FXGraph } from "../FXGraph";
 import type { FXGraphNode } from "../FXGraphNode";
+import type { FXExpr } from "../ir/FXExpr";
+import { coerceNumeric } from "../ir/FXExprBuilder";
 import type { FXSocketRef } from "../socket/FXSocket";
 import { socketRefKey } from "../socket/FXSocket";
 import type { FXValueType } from "../socket/FXValueType";

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { timeOfFrame } from "../../src/model/frames";
 import { dispatcherHarness, stubAnimationFrames } from "../helpers/timelineDispatcher";
 

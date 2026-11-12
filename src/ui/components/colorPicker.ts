@@ -15,9 +15,9 @@
  * every intermediate slider step instead (omit it for no live preview at all during a drag).
  */
 
-import { createElement } from "../dom";
 import { t } from "../../i18n";
 import type { PaletteSwatch } from "../../model/editorState";
+import { createElement } from "../dom";
 import { actionIcons, glyphIcons, icon } from "../icons";
 import type { ValueComponent } from "../primitives/component";
 import { beginPointerDrag } from "../primitives/drag";
@@ -29,11 +29,11 @@ import {
   hsvToRgb,
   linearToSrgbRgba,
   parseHex,
+  type Rgba,
   rgbToHex,
   rgbToHsl,
   rgbToHsv,
   srgbToLinearRgba,
-  type Rgba,
 } from "./color";
 import { attachCountdownConfirm } from "./countdownConfirm";
 import { NumberControl } from "./numberControl";

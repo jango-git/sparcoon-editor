@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import {
   add,
   div,
@@ -14,6 +13,8 @@ import {
   toFloat,
   toInt,
 } from "../../src/engine/core/ir/FXExprBuilder";
+import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
 import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";

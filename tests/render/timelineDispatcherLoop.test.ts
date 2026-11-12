@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import type { SpawnAction, TimelineEvent } from "../../src/model/editorState";
 import { dispatcherHarness, stubAnimationFrames } from "../helpers/timelineDispatcher";
 

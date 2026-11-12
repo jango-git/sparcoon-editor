@@ -1,17 +1,18 @@
 import { fxExternalSampleFunction } from "sparcoon/editor";
-import { FXRenderNode } from "../FXRenderNode";
-import { FXShaderStage } from "../FXShaderStage";
-import type { FXRenderContext } from "../compiler/FXRenderContext";
-import type { FXUniformHandle } from "../compiler/FXCompiledShader";
-import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
-import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import type { FXExpr } from "../../core/ir/FXExpr";
+
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
+import type { FXExpr } from "../../core/ir/FXExpr";
 import { litVec, raw } from "../../core/ir/FXExprBuilder";
 import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { TEXTURE_META, TEXTURE_WRAP_MODES } from "../../nodes-std/manualNodeMetas";
+import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
+import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import type { FXTextureWrapMode } from "../../nodes-std/manualNodeMetas";
+import { TEXTURE_META, TEXTURE_WRAP_MODES } from "../../nodes-std/manualNodeMetas";
 import { assertValidParamName, paramUniformName } from "../../nodes-std/paramSupport.Internal";
+import type { FXUniformHandle } from "../compiler/FXCompiledShader";
+import type { FXRenderContext } from "../compiler/FXRenderContext";
+import { FXRenderNode } from "../FXRenderNode";
+import { FXShaderStage } from "../FXShaderStage";
 
 /** An unset (or empty) texture name is a valid, quiescent state (samples nothing => transparent),
  *  not an error; a present name still has to be a legal slot identifier. */

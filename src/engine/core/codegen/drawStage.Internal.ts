@@ -1,16 +1,16 @@
-import { commonSubexpressionElimination } from "./cse.Internal";
-import { foldScalarLocals } from "./foldScalars.Internal";
-import type { FXScalarLocal } from "./cse.Internal";
-import { printJSLocals } from "./printJS.Internal";
-import type { FXRate, FXRatedLocal } from "./rates.Internal";
-import { freeEverywhere, operationCount } from "./rates.Internal";
-import { scalarComponentIndex, scalarComponentName, scalarize } from "./scalarize.Internal";
 import type { FXExpr, FXRefKind } from "../ir/FXExpr";
 import { ref } from "../ir/FXExprBuilder";
 import { FX_FUNCTIONS } from "../ir/FXFunctions.Internal";
 import { childrenOf, refNames, replaceRefs } from "../ir/visit.Internal";
 import type { FXValueType } from "../socket/FXValueType";
 import { isIntType } from "../socket/FXValueType";
+import type { FXScalarLocal } from "./cse.Internal";
+import { commonSubexpressionElimination } from "./cse.Internal";
+import { foldScalarLocals } from "./foldScalars.Internal";
+import { printJSLocals } from "./printJS.Internal";
+import type { FXRate, FXRatedLocal } from "./rates.Internal";
+import { freeEverywhere, operationCount } from "./rates.Internal";
+import { scalarComponentIndex, scalarComponentName, scalarize } from "./scalarize.Internal";
 
 /**
  * The draw stage of a compiled graph: what is one for the whole draw (or simulation pass) and

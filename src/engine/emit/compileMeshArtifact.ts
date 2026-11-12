@@ -1,8 +1,9 @@
-import type { FXGraph } from "../core/FXGraph";
-import type { FXRenderNode } from "../render/FXRenderNode";
 import type { FXGeometrySource, FXRenderArtifact, FXRenderMode } from "sparcoon";
+
 import type { FXCompilerError } from "../core/compiler/FXCompilerError";
+import type { FXGraph } from "../core/FXGraph";
 import { FXCompilerBaseline } from "../render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../render/FXRenderNode";
 import { FX_MESH_TARGET } from "../render/target/FXParticleRenderTarget";
 import { assembleRenderArtifact } from "./assembleArtifacts";
 

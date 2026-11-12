@@ -1,52 +1,52 @@
+import { printGLSLBaseline } from "../../core/codegen/printGLSLBaseline.Internal";
+import type { FXRatedLocal } from "../../core/codegen/rates.Internal";
+import { FXGLSLNames } from "../../core/codegen/uniqueName.Internal";
+import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
+import { collectRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
+import { buildNodes, prepareCompile } from "../../core/compiler/compileDriver.Internal";
+import { FXCompileContextBase } from "../../core/compiler/FXCompileContextBase";
+import type { FXValueParam } from "../../core/compiler/FXCompilerContext";
 import type { FXCompilerError } from "../../core/compiler/FXCompilerError";
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import {
   collectReachableNodeIds,
   topologicalOrder,
 } from "../../core/compiler/FXGraphTraversal.Internal";
-import { resolvePlacement } from "../../core/compiler/placement.Internal";
-import { collectRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
-import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
-import { genericTypeTag, socketConcreteType } from "../../core/compiler/FXTypeResolve.Internal";
-import { buildNodes, prepareCompile } from "../../core/compiler/compileDriver.Internal";
-import { FXCompileContextBase } from "../../core/compiler/FXCompileContextBase";
 import { outputSocket } from "../../core/compiler/FXSocketIndex.Internal";
 import { structuralHash } from "../../core/compiler/FXStructuralHash.Internal";
-import type { FXValueParam } from "../../core/compiler/FXCompilerContext";
+import { genericTypeTag, socketConcreteType } from "../../core/compiler/FXTypeResolve.Internal";
+import { resolvePlacement } from "../../core/compiler/placement.Internal";
 import type { FXGraph } from "../../core/FXGraph";
-import type { FXValueType } from "../../core/socket/FXValueType";
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { coerceNumeric, createBuilders, ref } from "../../core/ir/FXExprBuilder";
 import type { FXExprBuilderApi } from "../../core/ir/FXExprBuilder";
+import { coerceNumeric, createBuilders, ref } from "../../core/ir/FXExprBuilder";
 import {
-  FX_FUNCTIONS,
   baselineSignaturesFrom,
+  FX_FUNCTIONS,
   isImpureFunction,
 } from "../../core/ir/FXFunctions.Internal";
-import { printGLSLBaseline } from "../../core/codegen/printGLSLBaseline.Internal";
-import type { FXRatedLocal } from "../../core/codegen/rates.Internal";
-import { FXGLSLNames } from "../../core/codegen/uniqueName.Internal";
 import type { FXSocketRef } from "../../core/socket/FXSocket";
 import { socketRefKey } from "../../core/socket/FXSocket";
+import type { FXValueType } from "../../core/socket/FXValueType";
 import type { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXTarget, FXTargetOutput } from "../target/FXTarget";
 import { renderTargetSignature } from "../target/FXTargetSignature.Internal";
-import { placeRenderStages } from "./FXRenderStagePlacement.Internal";
-import { zeroValue } from "./FXCompiledShader";
-import {
-  finishRenderStages,
-  FXRenderUniforms,
-  type FXPrintedStage,
-  type FXSlotValue,
-} from "./FXRenderCompileShared.Internal";
 import type {
   FXCompiledShader,
   FXUniformDescriptor,
   FXUniformHandle,
   FXVarying,
 } from "./FXCompiledShader";
+import { zeroValue } from "./FXCompiledShader";
+import {
+  finishRenderStages,
+  type FXPrintedStage,
+  FXRenderUniforms,
+  type FXSlotValue,
+} from "./FXRenderCompileShared.Internal";
 import type { FXRenderContext } from "./FXRenderContext";
+import { placeRenderStages } from "./FXRenderStagePlacement.Internal";
 
 /**
  * The baseline (WebGL1 / GLSL-ES-1.00) render compiler pipeline: deliberately independent of the

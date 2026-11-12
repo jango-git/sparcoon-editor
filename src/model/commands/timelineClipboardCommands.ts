@@ -8,10 +8,10 @@ import type { EmitterDoc, Keyframe, TimelineEvent, VfxDoc, VfxMeshDoc } from "..
 import type { SceneEntity } from "../entity";
 import { cloneValue, snapTime } from "../keyframeTrackOps";
 import type { Store } from "../store";
-import { withTrackKey } from "./transformCommands";
 import type { TransformChannel } from "../transform";
 import { nextIdentifier } from "./identifier";
 import { sortedByTime, withNamedTrackKey } from "./timelineCommands";
+import { withTrackKey } from "./transformCommands";
 
 /** A copied Timeline Value keyframe, transform keyframe, or spawn event. */
 export type ClipboardTimelineItem =

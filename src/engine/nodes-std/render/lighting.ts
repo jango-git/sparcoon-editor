@@ -1,11 +1,12 @@
 import { FX_LIGHTING_INTRINSIC, type FXLightingIntrinsicName } from "sparcoon/editor";
-import { defineNode } from "../../core/nodes/defineNode";
+
+import type { FXExpr } from "../../core/ir/FXExpr";
 import type {
   FXExprBuilderApi,
   FXNodeDefinition,
   FXResolvedInputs,
 } from "../../core/nodes/defineNode";
-import type { FXExpr } from "../../core/ir/FXExpr";
+import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**

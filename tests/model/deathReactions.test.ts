@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import type * as three from "three";
 import * as sparcoon from "sparcoon";
+import type * as three from "three";
+import { describe, expect, it } from "vitest";
+
 import {
   canReact,
   deathSourceIds,
@@ -24,8 +25,8 @@ import {
 } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
-import { normalizeSource } from "../../src/persistence/loadState";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { normalizeSource } from "../../src/persistence/loadState";
 import { loadModule } from "../helpers/loadModule";
 import { createTestState } from "../helpers/testDocument";
 

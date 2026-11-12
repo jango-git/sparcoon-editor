@@ -1,11 +1,3 @@
-import { describe, expect, it } from "vitest";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import {
-  compileParticleBehavior,
-  previewParticleBehaviorHash,
-  validateParticleBehavior,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import {
   FX_CORE_LIFECYCLE_STRIDE,
   FX_LIFETIME,
@@ -13,9 +5,17 @@ import {
   FX_POSITION_Y,
   FX_POSITION_Z,
 } from "sparcoon";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { behaviorRegistry } from "../helpers/stdRegistry";
+import {
+  compileParticleBehavior,
+  previewParticleBehaviorHash,
+  validateParticleBehavior,
+} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import {
   attributeSlot,
   readAttr,
@@ -31,6 +31,7 @@ import {
   fieldUpdateKernel,
   graphOf,
 } from "../helpers/graphBuild";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const reg = behaviorRegistry();
 const VEC3 = FX_VALUE_TYPES.vec3;

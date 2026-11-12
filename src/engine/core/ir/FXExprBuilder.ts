@@ -1,4 +1,5 @@
-import type { FXBinOp, FXExpr, FXRefKind, FXUnOp } from "./FXExpr";
+import type { FXCompilerError, FXCompilerErrorCode } from "../compiler/FXCompilerError";
+import { FXCompilerErrorException } from "../compiler/FXCompilerError";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import {
   FX_VALUE_TYPES,
@@ -7,8 +8,7 @@ import {
   matrixDimension,
   resolveValueType,
 } from "../socket/FXValueType";
-import type { FXCompilerError, FXCompilerErrorCode } from "../compiler/FXCompilerError";
-import { FXCompilerErrorException } from "../compiler/FXCompilerError";
+import type { FXBinOp, FXExpr, FXRefKind, FXUnOp } from "./FXExpr";
 
 /**
  * Typed constructors for {@link FXExpr} - the only sanctioned way to build the IR. Each

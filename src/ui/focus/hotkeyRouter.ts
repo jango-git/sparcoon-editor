@@ -7,8 +7,8 @@
  * every keystroke, so switching panels switches keymaps with no re-registration.
  */
 
+import { type KeyBinding, type Keymap, runKeymap } from "./keymap";
 import type { EditorPanel, PanelFocus } from "./panelFocus";
-import { runKeymap, type KeyBinding, type Keymap } from "./keymap";
 
 /** Whether the focused element is a text field that owns its own keystrokes. */
 export function isEditableTarget(target: EventTarget | undefined): boolean {

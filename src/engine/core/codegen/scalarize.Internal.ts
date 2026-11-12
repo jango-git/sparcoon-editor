@@ -1,7 +1,7 @@
 import type { FXExpr } from "../ir/FXExpr";
+import { FX_FUNCTIONS } from "../ir/FXFunctions.Internal";
 import type { FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, isMatrixType, matrixDimension } from "../socket/FXValueType";
-import { FX_FUNCTIONS } from "../ir/FXFunctions.Internal";
 
 /**
  * Lowers a vector/matrix expr into one scalar expr per component (JS has no vectors). Names

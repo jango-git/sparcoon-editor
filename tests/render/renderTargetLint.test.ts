@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type {
   FXCompilerErrorCode,
   FXValidationResult,
@@ -10,17 +11,17 @@ import { FXLiveGraph } from "../../src/engine/core/live/FXLiveGraph";
 import type { FXGraphSnapshotData } from "../../src/engine/core/live/FXSnapshotData";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
-import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { FXRenderLiveBackend } from "../../src/engine/render/live/FXRenderLiveBackend";
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,
   FX_TRAIL_TARGET,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { validateRenderTarget } from "../../src/engine/render/target/FXTargetValidation.Internal";
 import type { FXInputRate, FXTarget } from "../../src/engine/render/target/FXTarget";
+import { validateRenderTarget } from "../../src/engine/render/target/FXTargetValidation.Internal";
 import { renderRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;

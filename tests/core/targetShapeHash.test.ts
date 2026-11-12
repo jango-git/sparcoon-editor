@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { previewBehaviorHash } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import type {
@@ -6,12 +7,12 @@ import type {
   FXKernelTarget,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import type { FXTarget } from "../../src/engine/render/target/FXTarget";
-import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;

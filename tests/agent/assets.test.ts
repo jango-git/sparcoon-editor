@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { createAssetsApi } from "../../src/agent/assets";
 import { createInitialState } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../src/domain/fakeNodes";
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
+import { nodeFamily, pruneStaleFamilyComponents } from "../../src/domain/nodeFamilies";
 import { GraphKind } from "../../src/domain/nodePalette";
 import { serializeGraph } from "../../src/domain/serialize";
-import { nodeFamily, pruneStaleFamilyComponents } from "../../src/domain/nodeFamilies";
 import { resolveNodeMeta } from "../../src/ui/graph/typeResolution";
-import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../src/domain/fakeNodes";
 
 // The `combine` facade is a node family: its `type` param picks a variant whose socket shape
 // differs (N floats for a vecN, N vecN columns for a matN). The editor reshapes its meta for

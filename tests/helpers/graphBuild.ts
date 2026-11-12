@@ -1,9 +1,5 @@
-import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
-import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type {
   FXEmitterTransform,
   FXParticleSpawnKernel,
@@ -15,7 +11,11 @@ import {
   compileBehavior,
   compileParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { fieldsFor, overFields, type FieldBuffers, type FieldKernel } from "./slots";
+import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
+import { type FieldBuffers, type FieldKernel, fieldsFor, overFields } from "./slots";
 
 /**
  * Graph-building and CPU-kernel helpers shared by the node and behavior tests: the

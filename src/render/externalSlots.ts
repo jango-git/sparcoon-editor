@@ -1,4 +1,5 @@
 import type { FXRenderArtifact } from "sparcoon";
+
 import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
 
 /** The `u_param_` prefix an external sampler slot carries; stripped to recover the param name. */

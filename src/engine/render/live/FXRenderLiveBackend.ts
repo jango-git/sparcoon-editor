@@ -1,8 +1,8 @@
-import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import { FXTargetLiveBackend } from "../../core/live/FXTargetLiveBackend";
+import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
+import type { FXCompiledShader } from "../compiler/FXCompiledShader";
 import { FXCompilerBaseline } from "../compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../compiler/FXCompilerStandard";
-import type { FXCompiledShader } from "../compiler/FXCompiledShader";
 import type { FXGLSLRenderTier } from "../compiler/FXRenderCompilers";
 import type { FXRenderNode } from "../FXRenderNode";
 import type { FXTarget } from "../target/FXTarget";

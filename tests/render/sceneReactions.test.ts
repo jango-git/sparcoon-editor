@@ -1,5 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
 import { FXWorld } from "sparcoon";
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  RENDER_SINK_ID,
+  SPAWN_EXPECTED_CAPACITY_PARAM,
+  SPAWN_SINK_ID,
+} from "../../src/domain/nodePalette";
+import { RENDER_MODE_PARAM_KEY } from "../../src/domain/sinkMeta";
 import {
   addReaction,
   removeEmitter,
@@ -11,12 +18,6 @@ import { createDefaultEmitter, type EmitterDoc } from "../../src/model/editorSta
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
-import {
-  RENDER_SINK_ID,
-  SPAWN_EXPECTED_CAPACITY_PARAM,
-  SPAWN_SINK_ID,
-} from "../../src/domain/nodePalette";
-import { RENDER_MODE_PARAM_KEY } from "../../src/domain/sinkMeta";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
 

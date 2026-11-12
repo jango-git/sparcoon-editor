@@ -10,8 +10,8 @@ import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXNodeMeta, FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 import { FX_READABLE_CORE_BUILTINS } from "../engine/core/socket/FXReadableBuiltins";
 import { FX_STANDARD_NODES } from "../engine/nodes-std/index";
-import { coerceParamValue, resolveParamType } from "../engine/nodes-std/paramSupport.Internal";
 import { FX_MANUAL_NODE_METAS } from "../engine/nodes-std/manualNodeMetas";
+import { coerceParamValue, resolveParamType } from "../engine/nodes-std/paramSupport.Internal";
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
@@ -23,12 +23,11 @@ import {
   coerceRenderMode,
   DEFAULT_RENDER_HOST,
   isSinkType,
-  sinkMeta,
   type RenderHost,
+  sinkMeta,
 } from "./sinkMeta";
 
 export type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
-
 export {
   coerceGeometry,
   coerceGeometrySource,
@@ -38,6 +37,8 @@ export {
   DEFAULT_RENDER_HOST,
   DEFAULT_RENDER_MODE,
   encodeGeometrySource,
+  type GeometryKind,
+  type GeometrySource,
   isSinkType,
   readRenderSinkConfig,
   readSpawnSinkConfig,
@@ -48,25 +49,23 @@ export {
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
   RENDER_SORT_INTERVAL_PARAM,
+  type RenderHost,
+  type RenderMode,
+  type RenderSinkConfig,
   sinkMeta,
+  type SinkMetaOptions,
   sinkPhase,
   SPAWN_EXPECTED_CAPACITY_PARAM,
   SPAWN_SINK_ID,
   SPAWN_SINK_TYPE,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
+  type SpawnSinkConfig,
   toArtifactGeometrySource,
   TRAIL_FRAMES_PARAM_KEY,
   TRAIL_INTERVAL_PARAM_KEY,
+  type TrailSinkConfig,
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
-  type GeometryKind,
-  type GeometrySource,
-  type RenderHost,
-  type RenderMode,
-  type RenderSinkConfig,
-  type SinkMetaOptions,
-  type SpawnSinkConfig,
-  type TrailSinkConfig,
 } from "./sinkMeta";
 
 /** Which authored graph a node belongs to. Maps to the engine node `domain`. */

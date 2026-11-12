@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
+
 import type { FXNodeDefinition } from "../../src/engine/core/nodes/defineNode";
+import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 
 function def(type: string): FXNodeDefinition {
   const found = FX_STANDARD_NODES.find((d) => d.type === type);

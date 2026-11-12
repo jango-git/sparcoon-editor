@@ -1,4 +1,5 @@
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
+
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
 import type { FXRenderStageKey, FXStagePrinter } from "./artifactLiterals";

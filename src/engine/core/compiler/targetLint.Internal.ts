@@ -1,6 +1,6 @@
-import type { FXCompilerError } from "./FXCompilerError";
 import type { FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES } from "../socket/FXValueType";
+import type { FXCompilerError } from "./FXCompilerError";
 
 /**
  * A plain identifier: what a target input/buffer `name` must be. Both backends splice it verbatim

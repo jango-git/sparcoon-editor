@@ -1,6 +1,6 @@
-import * as ts from "typescript";
-import * as three from "three";
 import * as sparcoon from "sparcoon";
+import * as three from "three";
+import * as ts from "typescript";
 
 /** What an emitted project module may import: the real `three` and `sparcoon`. */
 const PROJECT_IMPORTS: Readonly<Record<string, unknown>> = { three, sparcoon };

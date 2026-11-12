@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXGeometryPrimitive, FXGeometrySource } from "sparcoon";
+import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { compileToArtifacts } from "../../src/engine/emit/compileToArtifacts";
 import { emitEffectModule } from "../../src/engine/emit/emitEffectModule";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { evaluateEffectModule } from "../helpers/effectModule";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 

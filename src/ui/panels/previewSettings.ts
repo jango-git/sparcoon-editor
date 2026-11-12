@@ -6,20 +6,20 @@
 
 import { t } from "../../i18n";
 import { setActiveEnvironment } from "../../model/commands";
-import type { SignalBus } from "../../model/signals";
 import { selectEnvironmentAssets } from "../../model/selectors";
+import type { SignalBus } from "../../model/signals";
 import type { Store } from "../../model/store";
 import { environmentThumbnails } from "../../render/assetThumbnails";
 import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../../settings/previewSettings";
 import { AssetPicker, type AssetPickerOption } from "../components/assetPicker";
+import type { Rgba } from "../components/color";
 import { ColorPicker, type PaletteAccess } from "../components/colorPicker";
 import { NumberControl } from "../components/numberControl";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { createSegmentedControl } from "../components/segmentedControl";
 import { createSwitchControl } from "../components/switchControl";
 import { createToggleButton } from "../components/toggleButton";
-import type { Rgba } from "../components/color";
 import { createElement } from "../dom";
 import { assetIcons, controlIcons, viewportIcons } from "../icons";
 import { field } from "../primitives/field";

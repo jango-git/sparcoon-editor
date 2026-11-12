@@ -1,24 +1,25 @@
-import { describe, expect, it } from "vitest";
 import type { FXParticleKernelArtifact } from "sparcoon";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
-import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
+import { describe, expect, it } from "vitest";
+
 import { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
+import { transformFeedbackUniformBudget } from "../../src/engine/behavior/FXKernelUniformsStandard.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
-import { assembleGpuKernelArtifact } from "../../src/engine/emit/assembleArtifacts";
-import { gpuKernelArtifactBody } from "../../src/engine/emit/artifactLiterals";
-import { GLSL_NAME } from "../helpers/glslNames";
+import { FX_OBJECT_VELOCITY_INPUT } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import { add, lit, mul, ref } from "../../src/engine/core/ir/FXExprBuilder";
+import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
 import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
-import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
-import { FX_OBJECT_VELOCITY_INPUT } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { transformFeedbackUniformBudget } from "../../src/engine/behavior/FXKernelUniformsStandard.Internal";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { gpuKernelArtifactBody } from "../../src/engine/emit/artifactLiterals";
+import { assembleGpuKernelArtifact } from "../../src/engine/emit/assembleArtifacts";
+import { registerStandardBehaviorNodes } from "../../src/engine/nodes-std/index";
+import { GLSL_NAME } from "../helpers/glslNames";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC3 = FX_VALUE_TYPES.vec3;

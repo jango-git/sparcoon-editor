@@ -1,6 +1,6 @@
+import type { FXCompilerContext } from "../core/compiler/FXCompilerContext";
 import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type { FXKernelBindingDescriptor, FXKernelBindingHandle } from "./FXCompiledKernel";
-import type { FXCompilerContext } from "../core/compiler/FXCompilerContext";
 
 /**
  * {@link FXCompilerContext} for the CPU behavior backend: nodes emit JS over particle state

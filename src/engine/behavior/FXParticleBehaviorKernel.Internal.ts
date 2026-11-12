@@ -1,3 +1,33 @@
+import { FX_CORE_LIFECYCLE } from "sparcoon";
+
+import {
+  commonSubexpressionElimination,
+  partitionByInvariance,
+} from "../core/codegen/cse.Internal";
+import { printJSLocals } from "../core/codegen/printJS.Internal";
+import { scalarComponentName, scalarize } from "../core/codegen/scalarize.Internal";
+import { FXJSNames } from "../core/codegen/uniqueName.Internal";
+import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
+import {
+  buildNodes,
+  prepareCompile,
+  throwIfInvalid,
+} from "../core/compiler/compileDriver.Internal";
+import { FXCompileContextBase } from "../core/compiler/FXCompileContextBase";
+import type { FXValueParam } from "../core/compiler/FXCompilerContext";
+import type { FXValidationResult } from "../core/compiler/FXCompilerError";
+import { FXCompilerErrorException } from "../core/compiler/FXCompilerError";
+import { outputSocket } from "../core/compiler/FXSocketIndex.Internal";
+import { structuralHash } from "../core/compiler/FXStructuralHash.Internal";
+import type { FXGraph } from "../core/FXGraph";
+import type { FXExpr } from "../core/ir/FXExpr";
+import { construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
+import { signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import { socketRefKey } from "../core/socket/FXSocket";
+import type { FXValueType } from "../core/socket/FXValueType";
+import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
+import type { FXBehaviorNode } from "./FXBehaviorNode";
+import { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
@@ -8,64 +38,29 @@ import type {
   FXKernelLocal,
   FXKernelWrite,
 } from "./FXCompiledKernel";
-import type { FXValidationResult } from "../core/compiler/FXCompilerError";
-import { FXCompilerErrorException } from "../core/compiler/FXCompilerError";
-import { FXCompileContextBase } from "../core/compiler/FXCompileContextBase";
-import {
-  buildNodes,
-  prepareCompile,
-  throwIfInvalid,
-} from "../core/compiler/compileDriver.Internal";
 import type { FXKernelContext } from "./FXKernelContext";
-import type { FXValueParam } from "../core/compiler/FXCompilerContext";
-import { outputSocket } from "../core/compiler/FXSocketIndex.Internal";
-import { structuralHash } from "../core/compiler/FXStructuralHash.Internal";
-import type { FXBehaviorNode } from "./FXBehaviorNode";
-import { FXBehaviorPhase } from "./FXBehaviorPhase";
-import type { FXGraph } from "../core/FXGraph";
-import { socketRefKey } from "../core/socket/FXSocket";
-import type { FXExpr } from "../core/ir/FXExpr";
-import { construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
-import { signaturesFrom } from "../core/ir/FXFunctions.Internal";
-import type { FXValueType } from "../core/socket/FXValueType";
-import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
-import { scalarize, scalarComponentName } from "../core/codegen/scalarize.Internal";
 import {
-  commonSubexpressionElimination,
-  partitionByInvariance,
-} from "../core/codegen/cse.Internal";
-import { printJSLocals } from "../core/codegen/printJS.Internal";
-import { FXJSNames } from "../core/codegen/uniqueName.Internal";
+  generateEpilogue,
+  isInvariantKernelRef,
+  resolveKernelRef,
+} from "./FXKernelRefResolve.Internal";
+import { BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
+import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
+import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
+import {
+  buildPhaseView,
+  resolvePlacementPhases,
+  validateBehavior,
+} from "./FXKernelValidation.Internal";
 import type {
   FXBehaviorTargets,
   FXKernelTarget,
   FXKernelTargetOutput,
 } from "./FXParticleBehaviorTarget";
 import { buildParticleBehaviorTargets } from "./FXParticleBehaviorTarget";
-import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
-import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
-import { FX_CORE_LIFECYCLE } from "sparcoon";
-import { BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
-import {
-  buildPhaseView,
-  resolvePlacementPhases,
-  validateBehavior,
-} from "./FXKernelValidation.Internal";
-import {
-  generateEpilogue,
-  isInvariantKernelRef,
-  resolveKernelRef,
-} from "./FXKernelRefResolve.Internal";
-import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
 
 // This module is the behavior compile family's entry point; re-export the public symbols that
 // moved to the split files so existing importers keep their one import path.
-export type {
-  FXEmitterTransform,
-  FXParticleUpdateKernel,
-  FXParticleSpawnKernel,
-} from "./FXKernelShared.Internal";
-export { resolvePlacementPhases, validateBehavior } from "./FXKernelValidation.Internal";
 export {
   assembleKernelBody,
   buildParticleSpawnKernel,
@@ -73,7 +68,13 @@ export {
   SPAWN_LOOP_HEADER,
   UPDATE_LOOP_HEADER,
 } from "./FXKernelBuild.Internal";
+export type {
+  FXEmitterTransform,
+  FXParticleSpawnKernel,
+  FXParticleUpdateKernel,
+} from "./FXKernelShared.Internal";
 export { previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
+export { resolvePlacementPhases, validateBehavior } from "./FXKernelValidation.Internal";
 
 /** Component suffixes for a vector value param's per-component binding hints (`positionx`, ...). */
 const VEC_COMPONENT_NAMES = ["x", "y", "z", "w"] as const;

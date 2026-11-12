@@ -1,16 +1,17 @@
-import { describe, expect, it } from "vitest";
 import { FX_AGE, FX_CORE_LIFECYCLE, FX_LIFETIME } from "sparcoon";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
+import { describe, expect, it } from "vitest";
+
+import { sinkMeta, UPDATE_SINK_TYPE } from "../../src/domain/sinkMeta";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import { FX_KILL_SLOT } from "../../src/engine/behavior/FXKernelLifecycle.Internal";
+import { validateKernelTarget } from "../../src/engine/behavior/FXKernelTargetValidation.Internal";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
-import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXKernelTarget } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { validateKernelTarget } from "../../src/engine/behavior/FXKernelTargetValidation.Internal";
-import { FX_KILL_SLOT } from "../../src/engine/behavior/FXKernelLifecycle.Internal";
-import { sinkMeta, UPDATE_SINK_TYPE } from "../../src/domain/sinkMeta";
+import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { readAttr } from "../helpers/attr";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";

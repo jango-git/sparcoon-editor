@@ -5,9 +5,9 @@
  * wires to itself or to another on the same side / node. Purely domain rules - no graph, no DOM.
  */
 
-import { isNumericSocketType } from "../../domain/socketTypes";
 import { nodeFamily } from "../../domain/nodeFamilies";
 import type { FXNodeMeta } from "../../domain/nodePalette";
+import { isNumericSocketType } from "../../domain/socketTypes";
 import type { SocketRef } from "./nodeView";
 
 /**

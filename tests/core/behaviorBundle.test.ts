@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { FXOutputBinding } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import type { FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { jsOnlyBehaviorGraph } from "../helpers/behaviorTestGraphs";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 

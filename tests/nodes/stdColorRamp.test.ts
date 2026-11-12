@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXGradientData } from "../../src/engine/core/nodes/FXParamSpec";
 import { DEFAULT_GRADIENT } from "../../src/engine/core/nodes/FXParamSpec";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";

@@ -1,5 +1,5 @@
-import type { FXRenderContext } from "./compiler/FXRenderContext";
 import { FXGraphNode } from "../core/FXGraphNode";
+import type { FXRenderContext } from "./compiler/FXRenderContext";
 import type { FXShaderStage } from "./FXShaderStage";
 
 /** Base for render-backend nodes: an {@link FXGraphNode} bound to an {@link FXRenderContext} that

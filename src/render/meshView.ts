@@ -4,34 +4,34 @@
  * gate and geometry/render-mode rebuild tracking as an emitter's.
  */
 
-import { everyTierShaders } from "./everyTierShaders";
-import type { BufferGeometry, Object3D, Texture } from "three";
-import { FXMesh } from "sparcoon/editor";
 import type { FXRenderArtifact } from "sparcoon";
+import { FXMesh } from "sparcoon/editor";
+import type { BufferGeometry, Object3D, Texture } from "three";
+
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
+import { meshTransformWarnings } from "../domain/meshDiagnostics";
+import {
+  encodeGeometrySource,
+  type GeometrySource,
+  type RenderMode,
+  toArtifactGeometrySource,
+} from "../domain/nodePalette";
+import {
+  meshRenderBudgetFindings,
+  type RenderBudgetFindings,
+  RenderBudgetMemo,
+} from "../domain/renderBudget";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
+import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
 import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
-import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import { FX_MESH_TARGET } from "../engine/render/target/FXParticleRenderTarget";
-import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import {
-  encodeGeometrySource,
-  toArtifactGeometrySource,
-  type GeometrySource,
-  type RenderMode,
-} from "../domain/nodePalette";
-import { meshTransformWarnings } from "../domain/meshDiagnostics";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
-import {
-  RenderBudgetMemo,
-  meshRenderBudgetFindings,
-  type RenderBudgetFindings,
-} from "../domain/renderBudget";
 import type { LiveApplyStatus } from "../model/editorState";
 import type { Transform } from "../model/transform";
 import {
@@ -43,6 +43,7 @@ import {
 } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, type TextureResolver } from "./emitterView";
+import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
 
 function describeError(error: unknown): string {

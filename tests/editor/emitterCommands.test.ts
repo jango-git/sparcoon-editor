@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+
+import { createEmptyGraph } from "../../src/domain/graphModel";
 import { isSink } from "../../src/domain/sinks";
 import {
   addCatalogNode,
@@ -13,9 +12,7 @@ import {
   selectEmitter,
 } from "../../src/model/commands";
 import { withFreshIds } from "../../src/model/commands/emitterCommands";
-import { createEmptyGraph } from "../../src/domain/graphModel";
-import { emitProjectModule } from "../../src/persistence/exportTypeScript";
-import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
+import { createInitialState } from "../../src/model/editorState";
 import {
   selectActiveEmitter,
   selectActiveEmitterId,
@@ -23,6 +20,10 @@ import {
   selectBehaviorGraph,
   selectEmitters,
 } from "../../src/model/selectors";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
+import { emitProjectModule } from "../../src/persistence/exportTypeScript";
+import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
 
 const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
 

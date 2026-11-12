@@ -5,8 +5,8 @@
  * as an editor preference (see {@link PersistedStore}) so the choice survives a reload.
  */
 
-import { isRecord } from "../util/guards";
 import { PersistedStore } from "../settings/persistedStore";
+import { isRecord } from "../util/guards";
 
 export enum InputMode {
   Mouse = "mouse",

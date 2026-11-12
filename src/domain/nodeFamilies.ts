@@ -3,6 +3,7 @@
  * unlike the engine's uniform generic `"T"`; serialize expands each to its concrete engine node.
  */
 
+import type { FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 import type { FXGLSLTypeName, FXValueType } from "../engine/core/socket/FXValueType";
 import {
   FX_VALUE_TYPES,
@@ -10,7 +11,6 @@ import {
   matrixDimension,
   NUMERIC_VALUE_TYPES,
 } from "../engine/core/socket/FXValueType";
-import type { FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 
 /** The concrete type wired into one of a placed node's inputs (undefined if unconnected). */
 export type ResolveWired = (inputKey: string) => FXGLSLTypeName | undefined;

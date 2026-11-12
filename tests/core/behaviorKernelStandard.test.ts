@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { FXConnection } from "../../src/engine/core/FXGraph";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { defineNode } from "../../src/engine/core/nodes/defineNode";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
 import {
-  FX_PARTICLE_INDEX_INPUT,
   buildParticleBehaviorTargets,
+  FX_PARTICLE_INDEX_INPUT,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import type { FXConnection } from "../../src/engine/core/FXGraph";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import { jsOnlyBehaviorGraph, singleNodeBehaviorGraph } from "../helpers/behaviorTestGraphs";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 

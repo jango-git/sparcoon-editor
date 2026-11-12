@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
-import { SelectionStore } from "../../src/model/selectionStore";
+
 import {
   addAttribute,
   addCatalogNode,
@@ -10,13 +7,17 @@ import {
   removeVfxMesh,
   selectEmitter,
 } from "../../src/model/commands";
+import { createInitialState } from "../../src/model/editorState";
+import { vfxMeshEntity } from "../../src/model/entity";
+import { SelectionStore } from "../../src/model/selectionStore";
 import {
   selectActiveEmitter,
   selectActiveGraphOwner,
   selectMeshes,
 } from "../../src/model/selectors";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import { commitEntitySelection } from "../../src/ui/selection";
-import { vfxMeshEntity } from "../../src/model/entity";
 
 const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
 

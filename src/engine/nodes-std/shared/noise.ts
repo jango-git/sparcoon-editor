@@ -1,27 +1,27 @@
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
-import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
+import { fixedCurlName } from "../../core/ir/noise/FXCurlNoise.Internal";
+import {
+  fixedFbmName,
+  FX_FIXED_OCTAVE_COUNTS,
+  type FXFixedOctaves,
+} from "../../core/ir/noise/FXFractalNoise.Internal";
+import type { FXSeedHashComponents } from "../../core/ir/noise/FXNoiseHash.Internal";
+import {
+  FX_SEED_HASH_CALL_COST,
+  seedHashFunctionName,
+} from "../../core/ir/noise/FXSeedHash.Internal";
 import { FX_NOISE_CALL_COST, FX_NOISED_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
 import {
   FX_VORONOI_CALL_COST,
   FX_VORONOI_METRICS,
   FX_VORONOI_QUALITIES,
-  voronoiFunctionName,
   type FXVoronoiMetric,
   type FXVoronoiQuality,
+  voronoiFunctionName,
 } from "../../core/ir/noise/FXVoronoiNoise.Internal";
-import {
-  FX_FIXED_OCTAVE_COUNTS,
-  fixedFbmName,
-  type FXFixedOctaves,
-} from "../../core/ir/noise/FXFractalNoise.Internal";
-import { fixedCurlName } from "../../core/ir/noise/FXCurlNoise.Internal";
-import {
-  FX_SEED_HASH_CALL_COST,
-  seedHashFunctionName,
-} from "../../core/ir/noise/FXSeedHash.Internal";
-import type { FXSeedHashComponents } from "../../core/ir/noise/FXNoiseHash.Internal";
+import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
+import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES, NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**

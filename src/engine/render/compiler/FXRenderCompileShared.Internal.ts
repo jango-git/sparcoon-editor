@@ -1,4 +1,5 @@
 import { fxExternalSampleFunction } from "sparcoon/editor";
+
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXCompiledStage, FXUniformDescriptor, FXUniformHandle } from "./FXCompiledShader";

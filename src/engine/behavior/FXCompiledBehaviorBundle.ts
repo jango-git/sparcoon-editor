@@ -1,11 +1,11 @@
 import type { FXGraph } from "../core/FXGraph";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import type { FXCompiledKernel } from "./FXCompiledKernel";
-import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
-import { compileBehavior } from "./FXParticleBehaviorKernel.Internal";
-import { compileBehaviorStandard } from "./FXParticleBehaviorKernelStandard.Internal";
 import type { FXFusedProgramStandard } from "./FXKernelBuildStandard.Internal";
 import { assembleTransformFeedbackProgram } from "./FXKernelBuildStandard.Internal";
+import { compileBehavior } from "./FXParticleBehaviorKernel.Internal";
+import { compileBehaviorStandard } from "./FXParticleBehaviorKernelStandard.Internal";
+import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
 
 /**
  * The mandatory JS kernel plus whichever optional simulation families this compile attempted and

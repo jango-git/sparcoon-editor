@@ -30,6 +30,7 @@ import {
   type WebGLRenderer,
 } from "three";
 import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js";
+
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
 import { AXIS_COLORS } from "./axisColors";

@@ -8,8 +8,8 @@
  * empty cache, so there is nothing to keep in sync.
  */
 
-import { readString, writeString } from "../util/storage";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+import { readString, writeString } from "../util/storage";
 
 const STORAGE_KEY = "sparcoon-editor.renderBackend";
 

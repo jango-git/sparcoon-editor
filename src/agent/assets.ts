@@ -14,7 +14,7 @@ import type { SourceState } from "../model/editorState";
 import type { Store } from "../model/store";
 import { ingestFiles } from "../ui/assetIngestion";
 import { AgentError } from "./errors";
-import { assetsView, type AssetsView } from "./views";
+import { type AssetsView, assetsView } from "./views";
 
 export type AssetKind = "texture" | "mesh" | "environment";
 

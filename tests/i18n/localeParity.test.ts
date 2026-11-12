@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
+
 import uiEn from "../../src/i18n/locales/en.json" with { type: "json" };
-import uiRu from "../../src/i18n/locales/ru.json" with { type: "json" };
-import uiUk from "../../src/i18n/locales/uk.json" with { type: "json" };
 import errorsEn from "../../src/i18n/locales/errors.en.json" with { type: "json" };
 import errorsRu from "../../src/i18n/locales/errors.ru.json" with { type: "json" };
 import errorsUk from "../../src/i18n/locales/errors.uk.json" with { type: "json" };
 import nodesEn from "../../src/i18n/locales/nodes.en.json" with { type: "json" };
 import nodesRu from "../../src/i18n/locales/nodes.ru.json" with { type: "json" };
 import nodesUk from "../../src/i18n/locales/nodes.uk.json" with { type: "json" };
+import uiRu from "../../src/i18n/locales/ru.json" with { type: "json" };
+import uiUk from "../../src/i18n/locales/uk.json" with { type: "json" };
 
 /**
  * Every translated dictionary carries exactly the English key set, and each entry names the same

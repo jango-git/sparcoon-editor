@@ -4,6 +4,7 @@
  * (structural: it rewires).
  */
 
+import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../domain/fakeNodes";
 import type {
   GraphConnection,
   GraphNode,
@@ -11,10 +12,9 @@ import type {
   GraphPosition,
   GraphSocketReference,
 } from "../../domain/graphModel";
-import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../../domain/fakeNodes";
 import type { Store } from "../store";
+import { activeGraph, bindingMatches, type GraphSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
-import { activeGraph, bindingMatches, withGraph, type GraphSlot } from "./graphAccess.Internal";
 
 /** Builds a fresh route node at `position` (top-left in graph coordinates). */
 function makeRouteNode(position: GraphPosition): GraphNode {

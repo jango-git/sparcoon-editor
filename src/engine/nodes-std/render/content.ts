@@ -1,8 +1,8 @@
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXNodeDefinition } from "../../core/nodes/defineNode";
-import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import type { FXExpr } from "../../core/ir/FXExpr";
+import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
+import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { stageSource } from "../../src/engine/emit/artifactLiterals";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
@@ -9,7 +11,6 @@ import {
   buildTrailTarget,
   particleReadsOf,
 } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { stageSource } from "../../src/engine/emit/artifactLiterals";
 import { readAttrRender } from "../helpers/attr";
 
 const VEC4 = FX_VALUE_TYPES.vec4;

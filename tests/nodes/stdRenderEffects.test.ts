@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
+
+import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import {
   fxAmbientShading,
   fxHalfLitShading,
   fxLambertShading,
 } from "../../src/engine/nodes-std/render/lighting";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { renderRegistry } from "../helpers/stdRegistry";
 

@@ -1,9 +1,3 @@
-import { packingOrder } from "sparcoon/editor";
-import type { FXValueType } from "../core/socket/FXValueType";
-import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
-import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import { canonicalAttributeSuffix } from "../core/socket/FXAttribute";
-import type { FXKernelBufferLayout, FXKernelIntegration } from "./FXCompiledKernel";
 import {
   FX_AGE,
   FX_CORE_BUFFERS,
@@ -15,6 +9,13 @@ import {
   FX_POSITION_Y,
   FX_POSITION_Z,
 } from "sparcoon";
+import { packingOrder } from "sparcoon/editor";
+
+import type { FXAttributeRequest } from "../core/socket/FXAttribute";
+import { canonicalAttributeSuffix } from "../core/socket/FXAttribute";
+import type { FXValueType } from "../core/socket/FXValueType";
+import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
+import type { FXKernelBufferLayout, FXKernelIntegration } from "./FXCompiledKernel";
 import { FX_KILL_SLOT } from "./FXKernelLifecycle.Internal";
 
 /**

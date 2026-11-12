@@ -1,17 +1,17 @@
-import { FXBehaviorNode } from "../FXBehaviorNode";
-import { FXBehaviorPhase } from "../FXBehaviorPhase";
-import type { FXKernelContext } from "../FXKernelContext";
+import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
-import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BEHAVIOR_CUSTOM_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
 import {
   checkAttributeStructuralParams,
   resolveAttributeSource,
 } from "../../nodes-std/attributeSupport.Internal";
+import { BEHAVIOR_CUSTOM_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
+import { FXBehaviorNode } from "../FXBehaviorNode";
+import { FXBehaviorPhase } from "../FXBehaviorPhase";
+import type { FXKernelContext } from "../FXKernelContext";
 import { attributeInputName } from "../FXParticleBehaviorTarget";
-import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 
 /**
  * Behavior node: reads a named per-particle **attribute** buffer as its `value` output - the

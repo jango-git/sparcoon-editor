@@ -12,6 +12,7 @@
  * (heights), {@link planColumns} (column x and per-channel lanes), then the wiring below.
  */
 
+import { isFakeNodeType, ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../fakeNodes";
 import type {
   EditorGraph,
   GraphConnection,
@@ -19,7 +20,6 @@ import type {
   GraphOutputBinding,
   GraphSocketReference,
 } from "../graphModel";
-import { isFakeNodeType, ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../fakeNodes";
 import type { GraphKind } from "../nodePalette";
 import { isSink } from "../sinks";
 import { planColumns, type RouteGeometry } from "./channelRouting";
@@ -32,8 +32,8 @@ import {
 } from "./layeredGraph";
 import { placeRows, targetRow } from "./rowPlacement";
 
-export type { NodeMetrics } from "./layeredGraph";
 export type { RouteGeometry } from "./channelRouting";
+export type { NodeMetrics } from "./layeredGraph";
 
 /** What the layout knows of the canvas: its grid and the size of what it places. */
 export interface LayoutGeometry {

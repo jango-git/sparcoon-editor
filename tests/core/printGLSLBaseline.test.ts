@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+
 import { glslFloat } from "../../src/engine/core/codegen/printGLSL.Internal";
 import { printGLSLBaseline } from "../../src/engine/core/codegen/printGLSLBaseline.Internal";
+import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import {
   add,
   construct,
@@ -18,6 +16,9 @@ import {
   select,
   swizzle,
 } from "../../src/engine/core/ir/FXExprBuilder";
+import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
 
 function glsl(expr: Parameters<typeof printGLSLBaseline>[0]): string {

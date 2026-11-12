@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
 import { createEditApi } from "../../src/agent/editApi";
 import { liveSession } from "../../src/agent/transaction.Internal";
+import { sceneView } from "../../src/agent/views";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
-import { sceneView } from "../../src/agent/views";
 
 /** Two starter emitters, `emitter_a` and `emitter_b`, through the live agent API. */
 function setup(): { store: Store; api: ReturnType<typeof createEditApi> } {

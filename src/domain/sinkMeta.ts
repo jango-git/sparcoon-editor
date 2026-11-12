@@ -5,19 +5,20 @@
  * actually accepts.
  */
 
+import type { FXGeometrySource, FXRenderMode } from "sparcoon";
+import { FX_TRAIL_MAX_FRAMES } from "sparcoon/editor";
+
+import { killSlotOutput } from "../engine/behavior/FXKernelLifecycle.Internal";
 import {
   attributeSlot,
   buildParticleBehaviorTargets,
 } from "../engine/behavior/FXParticleBehaviorTarget";
-import { killSlotOutput } from "../engine/behavior/FXKernelLifecycle.Internal";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../engine/core/nodes/FXSocketSpec";
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
   FX_TRAIL_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
-import type { FXGeometrySource, FXRenderMode } from "sparcoon";
-import { FX_TRAIL_MAX_FRAMES } from "sparcoon/editor";
 import type { EditorAttribute, EditorGraph } from "./graphModel";
 
 /**

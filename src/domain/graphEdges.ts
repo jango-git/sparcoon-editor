@@ -5,7 +5,7 @@
  * agent API, the edge commands) resolves it here, so the connection/binding split has one owner.
  */
 
-import { incomingConnection, type EditorGraph, type GraphSocketReference } from "./graphModel";
+import { type EditorGraph, type GraphSocketReference, incomingConnection } from "./graphModel";
 import { GraphKind } from "./nodePalette";
 import { isSinkType, RENDER_SINK_ID, sinkPhase, SPAWN_SINK_ID, UPDATE_SINK_ID } from "./sinkMeta";
 

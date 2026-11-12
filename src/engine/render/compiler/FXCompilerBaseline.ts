@@ -1,6 +1,15 @@
+import { prepareCompile, throwIfInvalid } from "../../core/compiler/compileDriver.Internal";
+import type { FXValidationResult } from "../../core/compiler/FXCompilerError";
+import { structuralHash } from "../../core/compiler/FXStructuralHash.Internal";
+import { validateGraph } from "../../core/compiler/FXValidation.Internal";
 import type { FXGraph } from "../../core/FXGraph";
 import type { FXRenderNode } from "../FXRenderNode";
 import type { FXTarget } from "../target/FXTarget";
+import { renderTargetSignature } from "../target/FXTargetSignature.Internal";
+import {
+  renderTargetShapeErrors,
+  validateRenderTargetSemantics,
+} from "../target/FXTargetValidation.Internal";
 import type { FXCompiledShader } from "./FXCompiledShader";
 import {
   compileGraphBaseline,
@@ -8,15 +17,6 @@ import {
   resolvePlacementStages,
   validateStageDirection,
 } from "./FXCompilePipelineBaseline.Internal";
-import type { FXValidationResult } from "../../core/compiler/FXCompilerError";
-import { prepareCompile, throwIfInvalid } from "../../core/compiler/compileDriver.Internal";
-import { structuralHash } from "../../core/compiler/FXStructuralHash.Internal";
-import { validateGraph } from "../../core/compiler/FXValidation.Internal";
-import {
-  renderTargetShapeErrors,
-  validateRenderTargetSemantics,
-} from "../target/FXTargetValidation.Internal";
-import { renderTargetSignature } from "../target/FXTargetSignature.Internal";
 
 /** Turns an {@link FXGraph} into a Three-independent {@link FXCompiledShader} for a given
  *  {@link FXTarget}: validate, topo-sort, build each node through a context, then assemble. */

@@ -5,8 +5,8 @@
  */
 
 import type { DerivedState, EditorState, SourceState } from "./editorState";
-import { History } from "./history";
 import type { ChangeKind } from "./history";
+import { History } from "./history";
 import type { SignalBus } from "./signals";
 
 export type { ChangeKind };

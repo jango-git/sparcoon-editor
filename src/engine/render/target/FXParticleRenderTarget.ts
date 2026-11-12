@@ -1,16 +1,17 @@
 import type { FXParticleReads, FXSurfaceReads } from "sparcoon";
 import {
+  type FXGLSLRenderTier,
   fxGraphUniformAllowance,
   fxGraphVaryingAllowance,
   fxPackedShape,
   packedVectors,
-  type FXGLSLRenderTier,
 } from "sparcoon/editor";
-import type { FXValueType } from "../../core/socket/FXValueType";
-import { FXShaderStage } from "../FXShaderStage";
-import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
+
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import { canonicalAttributeSuffix } from "../../core/socket/FXAttribute";
+import type { FXValueType } from "../../core/socket/FXValueType";
+import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
+import { FXShaderStage } from "../FXShaderStage";
 import type { FXInputRate, FXTarget, FXTargetInput, FXTargetOutput } from "./FXTarget";
 
 const FLOAT = FX_VALUE_TYPES.float;

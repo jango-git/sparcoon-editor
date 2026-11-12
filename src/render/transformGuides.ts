@@ -13,6 +13,7 @@ import {
   LineBasicMaterial,
   type Scene,
 } from "three";
+
 import { AXIS_COLORS } from "./axisColors";
 import { markEditorOverlay } from "./editorOverlay";
 

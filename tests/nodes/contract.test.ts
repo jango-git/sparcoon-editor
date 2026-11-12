@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
+
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
+import {
+  compileParticleBehavior,
+  previewParticleBehaviorHash,
+} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
+import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { collectAttributeRequests } from "../../src/engine/core/compiler/collectAttributeRequests";
+import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
+import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
+import { construct, lit, swizzle } from "../../src/engine/core/ir/FXExprBuilder";
 import type { FXNodeDefinition } from "../../src/engine/core/nodes/defineNode";
 import type { FXParamSpec } from "../../src/engine/core/nodes/FXParamSpec";
-import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
-import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
 import type { FXSocketDescriptor } from "../../src/engine/core/socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../../src/engine/core/socket/FXValueType";
 import {
@@ -13,24 +24,14 @@ import {
   isMatrixType,
   resolveValueType,
 } from "../../src/engine/core/socket/FXValueType";
-import { construct, lit, swizzle } from "../../src/engine/core/ir/FXExprBuilder";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import {
-  compileParticleBehavior,
-  previewParticleBehaviorHash,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
-import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
-import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
-import { collectAttributeRequests } from "../../src/engine/core/compiler/collectAttributeRequests";
-import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
-import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
+import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
-import type { FXTarget } from "../../src/engine/render/target/FXTarget";
+import type { FXRenderContext } from "../../src/engine/render/compiler/FXRenderContext";
+import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
-import { isFXCompilerErrorException } from "../../src/engine/core/compiler/FXCompilerError";
+import type { FXTarget } from "../../src/engine/render/target/FXTarget";
 import { bind, edge } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
 

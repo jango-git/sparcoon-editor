@@ -3,25 +3,25 @@
  * library is a view). View-only data (node positions) is intentionally dropped here.
  */
 
+import { collectUndeclaredAttributeErrors } from "../engine/core/compiler/collectAttributeRequests";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXConnection, FXOutputBinding } from "../engine/core/FXGraph";
 import type { FXGraphSnapshotData, FXNodeData } from "../engine/core/live/FXSnapshotData";
 import { FX_SNAPSHOT_VERSION } from "../engine/core/live/FXSnapshotData";
-import type { FXGLSLTypeName } from "../engine/core/socket/FXValueType";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
-import { collectUndeclaredAttributeErrors } from "../engine/core/compiler/collectAttributeRequests";
+import type { FXGLSLTypeName } from "../engine/core/socket/FXValueType";
+import { isFakeNodeType, ROUTE_INPUT_KEY, ROUTE_TYPE } from "./fakeNodes";
 import type {
   AttributeTypeName,
   EditorAttribute,
   EditorGraph,
   GraphNode,
-  GraphSocketReference,
   GraphOutputBinding,
+  GraphSocketReference,
 } from "./graphModel";
-import { ROUTE_INPUT_KEY, ROUTE_TYPE, isFakeNodeType } from "./fakeNodes";
-import { attributeNameFromSlot, GraphKind, metaForNode } from "./nodePalette";
-import { expandFamilyNode, nodeFamily, type ResolveWired } from "./nodeFamilies";
 import { resolveInputType } from "./graphTypeResolution";
+import { expandFamilyNode, nodeFamily, type ResolveWired } from "./nodeFamilies";
+import { attributeNameFromSlot, GraphKind, metaForNode } from "./nodePalette";
 import { isSink } from "./sinks";
 
 /**

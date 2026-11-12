@@ -1,16 +1,17 @@
-import { describe, expect, it } from "vitest";
 import type { FXDrawInputs, FXRenderArtifact, FXValueSlot } from "sparcoon";
+import { describe, expect, it } from "vitest";
+
+import { liftDrawStage } from "../../src/engine/core/codegen/drawStage.Internal";
+import { buildDrawCompute } from "../../src/engine/core/codegen/drawStageBuild.Internal";
 import { classifyRates } from "../../src/engine/core/codegen/rates.Internal";
 import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import { add, lit, mul, ref, swizzle } from "../../src/engine/core/ir/FXExprBuilder";
 import { isImpureFunction } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
-import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
-import { liftDrawStage } from "../../src/engine/core/codegen/drawStage.Internal";
-import { RENDER_DRAW_INPUTS } from "../../src/engine/render/compiler/FXRenderDrawInputs.Internal";
-import { buildDrawCompute } from "../../src/engine/core/codegen/drawStageBuild.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
+import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
+import { RENDER_DRAW_INPUTS } from "../../src/engine/render/compiler/FXRenderDrawInputs.Internal";
 import {
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,

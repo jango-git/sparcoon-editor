@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
 import { FX_RENDER_MATRIX_NODES, resolveAlignAxes } from "../../src/engine/nodes-std/render/matrix";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
+import { drawUniformNames, readsName } from "../helpers/glslNames";
 import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { behaviorRegistry, renderRegistry } from "../helpers/stdRegistry";
-import { drawUniformNames, readsName } from "../helpers/glslNames";
 
 // Matrix nodes build/compose/apply mat2/mat3/mat4 transforms. These graphs are hand-built (the
 // generic contract harness cannot synthesize matrix inputs from a `constant`), binding a

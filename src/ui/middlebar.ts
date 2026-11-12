@@ -4,12 +4,12 @@
  * holds no document state. Compile failures surface in the graph region's own error frame, not here.
  */
 
+import { availableLocales, getLocale, LOCALE_NAMES, localeBadge, setLocale, t } from "../i18n";
 import { getThemeMode, onThemeChanged, setThemeMode, type ThemeMode } from "../settings/theme";
-import { availableLocales, getLocale, localeBadge, LOCALE_NAMES, setLocale, t } from "../i18n";
-import { createElement } from "./dom";
-import { createTriSwitchControl, type TriSwitchOption } from "./components/triSwitchControl";
 import { Dropdown } from "./components/dropdown";
 import { attachTooltip } from "./components/tooltip";
+import { createTriSwitchControl, type TriSwitchOption } from "./components/triSwitchControl";
+import { createElement } from "./dom";
 import type { EditorContext } from "./editorContext";
 import { actionIcons, graphModeIcons, icon, linkIcons, themeIcons } from "./icons";
 import { InputMode, type InputModeState } from "./inputMode";

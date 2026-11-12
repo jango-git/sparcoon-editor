@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
 import { isSink } from "../../src/domain/sinks";
 

@@ -7,8 +7,8 @@
  * without adopting that look.
  */
 
-import { icon } from "../icons";
 import { createElement } from "../dom";
+import { icon } from "../icons";
 import { attachTooltip } from "./tooltip";
 
 export interface ToggleButton {

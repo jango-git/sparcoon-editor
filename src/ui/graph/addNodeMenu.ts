@@ -8,8 +8,8 @@
  * the list, and Enter commits the first match. Appears instantly (no animation).
  */
 
-import { clearChildren, createElement } from "../dom";
 import { t } from "../../i18n";
+import { clearChildren, createElement } from "../dom";
 import { openPopover, type PopoverHandle } from "../primitives/popover";
 import { helpCard } from "./helpCard";
 

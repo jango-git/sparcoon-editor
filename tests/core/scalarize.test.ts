@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
-import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
+
 import { printJS } from "../../src/engine/core/codegen/printJS.Internal";
+import { scalarize } from "../../src/engine/core/codegen/scalarize.Internal";
 import {
   add,
   construct,
@@ -16,6 +15,8 @@ import {
   select,
   swizzle,
 } from "../../src/engine/core/ir/FXExprBuilder";
+import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
 
 /** Scalarize then print each component - exercises both files at once. */

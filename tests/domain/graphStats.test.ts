@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { createEmptyGraph, type EditorGraph } from "../../src/domain/graphModel";
-import { GraphKind } from "../../src/domain/nodePalette";
 import { computeGraphStats, computeNodeCosts, computeSinkCost } from "../../src/domain/graphStats";
+import { GraphKind } from "../../src/domain/nodePalette";
 
 function makeNode(
   id: string,

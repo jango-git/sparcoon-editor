@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { emitEffectModule } from "../../src/engine/emit/emitEffectModule";
 import { evaluateEffectModule } from "../helpers/effectModule";
 import {

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
+import { describe, expect, it } from "vitest";
+
 import { unwrittenAttributeWarnings } from "../../src/domain/attributeChecks";
 import type { EditorGraph } from "../../src/domain/graphModel";
 import { FXGraph } from "../../src/engine/core/FXGraph";

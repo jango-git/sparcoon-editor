@@ -1,6 +1,6 @@
-import type { FXKernelContext } from "./FXKernelContext";
-import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import { FXGraphNode } from "../core/FXGraphNode";
+import type { FXBehaviorPhase } from "./FXBehaviorPhase";
+import type { FXKernelContext } from "./FXKernelContext";
 
 /**
  * Base for CPU behavior-backend nodes: an {@link FXGraphNode} bound to {@link FXKernelContext},

@@ -1,9 +1,9 @@
-import { defineNode } from "../../core/nodes/defineNode";
-import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
+import * as fx from "../../core/ir/FXExprBuilder";
+import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
+import { defineNode } from "../../core/nodes/defineNode";
 import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import * as fx from "../../core/ir/FXExprBuilder";
 import {
   CAMERA_MODEL_PARAM,
   cameraDirectionForModel,

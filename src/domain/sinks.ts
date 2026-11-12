@@ -10,14 +10,14 @@ import {
   DEFAULT_RENDER_HOST,
   DEFAULT_RENDER_MODE,
   GraphKind,
+  isSinkType,
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
+  type RenderHost,
   SPAWN_SINK_ID,
   SPAWN_SINK_TYPE,
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
-  isSinkType,
-  type RenderHost,
 } from "./nodePalette";
 
 /** Default canvas placements: sinks sit to the right; the two behavior sinks stack. */

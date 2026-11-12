@@ -1,5 +1,5 @@
-import type { FXGraphNode } from "../FXGraphNode";
 import { FXCompilerErrorException } from "../compiler/FXCompilerError";
+import type { FXGraphNode } from "../FXGraphNode";
 
 /** Reconstructs a node instance of one registered type from its serialized params. */
 export type FXNodeFactory<N extends FXGraphNode> = (

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXConnection, FXGraphSnapshot } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FakeNode, socket } from "../helpers/fakeNodes";

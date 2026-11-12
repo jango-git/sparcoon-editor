@@ -5,9 +5,9 @@
  */
 
 import { readString, writeString } from "../util/storage";
-import { initNodeText } from "./nodeText";
 import { initCompilerErrors } from "./compilerErrors";
 import { interpolate, type Params } from "./interpolate";
+import { initNodeText } from "./nodeText";
 
 // `typeof import(...)` is the only way to get en.json's shape as a type without a value
 // import (see header comment).

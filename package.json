@@ -52,6 +52,7 @@
     "@types/three": "0.157.0",
     "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9.15.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "prettier": "^3.4.1",
     "rollup": "^4.27.4",
     "rollup-plugin-livereload": "^2.0.5",

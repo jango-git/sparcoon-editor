@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { defineNode } from "../../src/engine/core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";

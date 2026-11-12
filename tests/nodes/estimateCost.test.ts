@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+
 import type { FXNodeDefinition } from "../../src/engine/core/nodes/defineNode";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 import { FX_MANUAL_NODE_METAS } from "../../src/engine/nodes-std/manualNodeMetas";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 
 function backendOf(def: FXNodeDefinition): "render" | "behavior" {
   return def.domain === "render" ? "render" : "behavior";

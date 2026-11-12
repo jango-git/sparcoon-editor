@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
+
+import type { EditorGraph } from "../../src/domain/graphModel";
 import {
   addCatalogNode,
   addVfxMesh,
+  type GraphFragment,
   nextIdentifier,
   pasteFragment,
-  type GraphFragment,
 } from "../../src/model/commands";
+import { createInitialState } from "../../src/model/editorState";
 import { selectActiveGraphOwner, selectRenderGraph } from "../../src/model/selectors";
-import type { EditorGraph } from "../../src/domain/graphModel";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 
 const node = (id: string, type: string, x: number, y: number): EditorGraph["nodes"][string] => ({
   id,

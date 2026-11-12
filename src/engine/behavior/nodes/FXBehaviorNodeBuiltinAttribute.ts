@@ -1,10 +1,10 @@
+import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
+import { FX_READABLE_CORE_BUILTINS } from "../../core/socket/FXReadableBuiltins";
+import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
+import { BEHAVIOR_BUILTIN_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
 import { FXBehaviorNode } from "../FXBehaviorNode";
 import { FXBehaviorPhase } from "../FXBehaviorPhase";
 import type { FXKernelContext } from "../FXKernelContext";
-import type { FXSocketDescriptor } from "../../core/socket/FXSocket";
-import type { FXNodeMeta } from "../../core/nodes/FXSocketSpec";
-import { BEHAVIOR_BUILTIN_ATTRIBUTE_META } from "../../nodes-std/manualNodeMetas";
-import { FX_READABLE_CORE_BUILTINS } from "../../core/socket/FXReadableBuiltins";
 
 /**
  * Behavior node: reads all four host builtins (position/age/lifetime/id) at once, one output

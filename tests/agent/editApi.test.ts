@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { createEditApi } from "../../src/agent/editApi";
 import { liveSession, runTransaction, stagedSession } from "../../src/agent/transaction.Internal";
 import { RENDER_SINK_ID, SPAWN_SINK_ID } from "../../src/domain/nodePalette";

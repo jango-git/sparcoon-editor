@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { createInitialState } from "../../src/model/editorState";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
 import { Pipeline, type SceneApplier, type SceneApplyResult } from "../../src/model/pipeline";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 
 function result(recompiled: boolean): SceneApplyResult {
   const empty = {} as never;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { createInitialState, type SourceState } from "../../src/model/editorState";
 import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
 

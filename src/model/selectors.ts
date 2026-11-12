@@ -6,7 +6,6 @@
 import type { EditorGraph } from "../domain/graphModel";
 import { computeGraphStats } from "../domain/graphStats";
 import { GraphKind } from "../domain/nodePalette";
-import { resolveGraphOwner } from "./editorState";
 import type {
   AnimationTrack,
   EmitterDoc,
@@ -19,6 +18,7 @@ import type {
   VfxDoc,
   VfxMeshDoc,
 } from "./editorState";
+import { resolveGraphOwner } from "./editorState";
 import type { SceneEntity } from "./entity";
 import { GRAPH_SLOTS, type GraphName } from "./graphSlots";
 import type { Store } from "./store";

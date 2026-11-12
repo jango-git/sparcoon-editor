@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import { hoistToEarlyStage } from "../../src/engine/core/codegen/hoist.Internal";
+import type { FXRatedLocal, FXRatePolicy } from "../../src/engine/core/codegen/rates.Internal";
+import { classifyRates, operationCount } from "../../src/engine/core/codegen/rates.Internal";
 import type { FXExpr } from "../../src/engine/core/ir/FXExpr";
 import { add, lit, mul, pureRaw, raw, ref, swizzle } from "../../src/engine/core/ir/FXExprBuilder";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import type { FXRatePolicy, FXRatedLocal } from "../../src/engine/core/codegen/rates.Internal";
-import { classifyRates, operationCount } from "../../src/engine/core/codegen/rates.Internal";
-import { hoistToEarlyStage } from "../../src/engine/core/codegen/hoist.Internal";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;

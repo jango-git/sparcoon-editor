@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { FXGraph } from "../../src/engine/core/FXGraph";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
+import { FXGraph } from "../../src/engine/core/FXGraph";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { behaviorRegistry } from "../helpers/stdRegistry";
+import {
+  collectValues,
+  compileToArtifacts,
+  validateArtifacts,
+} from "../../src/engine/emit/compileToArtifacts";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { attributeSlot, readAttrRender, storeAttr } from "../helpers/attr";
 import { edge } from "../helpers/graphBuild";
 import {
@@ -14,11 +19,7 @@ import {
   expectPlumeSimulatesLikeDirectCompile,
   plumeGraphs,
 } from "../helpers/plumeGraphs";
-import {
-  compileToArtifacts,
-  collectValues,
-  validateArtifacts,
-} from "../../src/engine/emit/compileToArtifacts";
+import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 

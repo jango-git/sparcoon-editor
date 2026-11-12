@@ -7,7 +7,7 @@
 import { createElement } from "../dom";
 import { beginPointerDrag } from "../primitives/drag";
 import { pointInBounds } from "../primitives/geometry";
-import { DRAG_THRESHOLD, selectionKey, type Marker } from "./timelineTypes";
+import { DRAG_THRESHOLD, type Marker, selectionKey } from "./timelineTypes";
 
 export interface MarqueeContext {
   readonly element: HTMLElement;

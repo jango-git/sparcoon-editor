@@ -7,7 +7,7 @@
 
 import type { EditorGraph, GraphNode, GraphSocketReference } from "../domain/graphModel";
 import { nodeFamily } from "../domain/nodeFamilies";
-import { metaForNode, type FXNodeMeta, type FXSocketMeta } from "../domain/nodePalette";
+import { type FXNodeMeta, type FXSocketMeta, metaForNode } from "../domain/nodePalette";
 import type { SourceState } from "../model/editorState";
 import type { GraphTarget } from "./address.Internal";
 import { AgentError } from "./errors";

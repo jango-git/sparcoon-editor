@@ -1,5 +1,5 @@
-import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
 import type { FXExpr } from "../../core/ir/FXExpr";
+import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
 
 /**
  * Shared node-authoring fragments for the standard behavior nodes: the recurring velocity/`dt`

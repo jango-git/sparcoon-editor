@@ -4,9 +4,10 @@
  */
 
 import type { FXKeyEase } from "sparcoon";
+
+import { sameElements } from "../util/arrays";
 import type { Keyframe, SourceState } from "./editorState";
 import { snapTimeToFrame } from "./frames";
-import { sameElements } from "../util/arrays";
 
 /** Two keyframe times within this many seconds are the same key (a re-bake replaces it). */
 export const KEY_EPSILON = 1e-3;

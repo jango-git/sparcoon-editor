@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { deriveSunFromEquirect } from "../../src/render/sunFromEnvironment";
 
 const WIDTH = 32;

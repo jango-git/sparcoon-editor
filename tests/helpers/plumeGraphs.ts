@@ -1,8 +1,8 @@
-import { expect } from "vitest";
-import { FX_POSITION_Y, FXWorld, type FXBehaviorArtifact, type FXRenderArtifact } from "sparcoon";
+import { FX_POSITION_Y, type FXBehaviorArtifact, type FXRenderArtifact, FXWorld } from "sparcoon";
+import type { FXSlotLayout } from "sparcoon/editor";
 import { FXEmitter } from "sparcoon/editor";
-import { FXGraph } from "../../src/engine/core/FXGraph";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
+import { expect } from "vitest";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
@@ -10,14 +10,15 @@ import {
   buildParticleUpdateKernel,
   compileParticleBehavior,
 } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
+import { FXGraph } from "../../src/engine/core/FXGraph";
+import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
+import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot, readAttr, storeAttr } from "./attr";
 import { edge } from "./graphBuild";
+import { type FieldBuffers, slotOf, splitFields } from "./slots";
 import { behaviorRegistry, renderRegistry } from "./stdRegistry";
-import type { FXSlotLayout } from "sparcoon/editor";
-import { slotOf, splitFields, type FieldBuffers } from "./slots";
 
 /**
  * A deterministic gravity plume and the checks both artifact paths (`compileToArtifacts` in

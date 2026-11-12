@@ -3,27 +3,28 @@
  * {@link InspectorContext}; the panel calls it on every selection change.
  */
 
+import type { FXEmissionBasis } from "sparcoon";
+import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
+
+import { reactionSourceCandidates } from "../../domain/deathReactions";
+import { t, type TKey } from "../../i18n";
 import {
   DEFAULT_PLAY_DURATION,
   moveTrackKeyframes,
-  removeReaction,
   moveTransformKeyframes,
   removeEvent,
   removeKeyframe,
+  removeReaction,
   removeTransformKeyframe,
   setKeyframeEase,
   setKeyframeValue,
   setTransformKeyframeEase,
   setTransformKeyframeValue,
+  type SpawnActionPatch,
   updateEvent,
   updateReaction,
-  type SpawnActionPatch,
 } from "../../model/commands";
-import { reactionSourceCandidates } from "../../domain/deathReactions";
-import type { FXEmissionBasis } from "sparcoon";
-import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
 import type { DeathReaction, EmitterDoc, SpawnAction } from "../../model/editorState";
-import { t, type TKey } from "../../i18n";
 import { frameOf, timeOfFrame } from "../../model/frames";
 import type { Store } from "../../model/store";
 import { clearChildren } from "../dom";

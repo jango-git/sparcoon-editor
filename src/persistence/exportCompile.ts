@@ -7,75 +7,76 @@
  * baseline one).
  */
 
-import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import type { FXBufferLayout, FXGeometrySource, FXRenderMode } from "sparcoon";
+
+import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
+import { depthFadeModeErrors } from "../domain/depthFadeChecks";
+import type { EditorGraph } from "../domain/graphModel";
+import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../domain/lifetimeBound";
+import {
+  GraphKind,
+  readRenderSinkConfig,
+  readSpawnSinkConfig,
+  readTrailSinkConfig,
+  type RenderMode,
+  type SpawnSinkConfig,
+  timelineValueConflicts,
+  toArtifactGeometrySource,
+} from "../domain/nodePalette";
+import {
+  emitterRenderBudgetFindings,
+  type FXRenderArtifactsByTier,
+  meshRenderBudgetFindings,
+  type RenderBudgetFindings,
+  trailRenderBudgetFindings,
+} from "../domain/renderBudget";
+import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
+import { gpuSortWarnings } from "../domain/sortChecks";
+import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
-import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
-import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
+import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
-import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
-import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
-import { FXGraph } from "../engine/core/FXGraph";
-import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
-import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
-import {
-  registerStandardBehaviorNodes,
-  registerStandardRenderNodes,
-} from "../engine/nodes-std/index";
-import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
+import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
+import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
+import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
-import type { FXTarget } from "../engine/render/target/FXTarget";
-import { FX_GLSL_RENDER_COMPILERS } from "../engine/render/compiler/FXRenderCompilers";
-import {
-  buildParticleTarget,
-  buildTrailTarget,
-  FX_MESH_TARGET,
-} from "../engine/render/target/FXParticleRenderTarget";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
 import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
-import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
-import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
-import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
+import { FXGraph } from "../engine/core/FXGraph";
 import {
   FX_FRACT_HELPER,
   FX_MIX_HELPER,
   FX_MOD_HELPER,
   FX_SMOOTHSTEP_HELPER,
 } from "../engine/core/ir/FXFunctions.Internal";
-import { FX_JS_NOISE_HASH } from "../engine/core/ir/noise/FXNoiseHash.Internal";
-import { FX_JS_NOISE, FX_JS_NOISED } from "../engine/core/ir/noise/FXValueNoise.Internal";
-import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
 import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
-import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
+import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
+import { FX_JS_NOISE_HASH } from "../engine/core/ir/noise/FXNoiseHash.Internal";
 import { FX_JS_SEED_HASH } from "../engine/core/ir/noise/FXSeedHash.Internal";
-import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
-import type { FXBufferLayout, FXGeometrySource, FXRenderMode } from "sparcoon";
+import { FX_JS_NOISE, FX_JS_NOISED } from "../engine/core/ir/noise/FXValueNoise.Internal";
+import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
+import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
+import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
+import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
+import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
-import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
 import {
-  emitterRenderBudgetFindings,
-  meshRenderBudgetFindings,
-  trailRenderBudgetFindings,
-  type FXRenderArtifactsByTier,
-  type RenderBudgetFindings,
-} from "../domain/renderBudget";
-import { gpuSortWarnings } from "../domain/sortChecks";
-import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../domain/lifetimeBound";
-import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
-import type { EditorGraph } from "../domain/graphModel";
+  registerStandardBehaviorNodes,
+  registerStandardRenderNodes,
+} from "../engine/nodes-std/index";
+import { paramUniformName } from "../engine/nodes-std/paramSupport.Internal";
+import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShader";
+import { FX_GLSL_RENDER_COMPILERS } from "../engine/render/compiler/FXRenderCompilers";
+import type { FXRenderNode } from "../engine/render/FXRenderNode";
+import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
 import {
-  GraphKind,
-  readRenderSinkConfig,
-  readSpawnSinkConfig,
-  readTrailSinkConfig,
-  timelineValueConflicts,
-  toArtifactGeometrySource,
-  type RenderMode,
-  type SpawnSinkConfig,
-} from "../domain/nodePalette";
-import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
-import { emitterGraphs, type EmitterDoc, type VfxMeshDoc } from "../model/editorState";
+  buildParticleTarget,
+  buildTrailTarget,
+  FX_MESH_TARGET,
+} from "../engine/render/target/FXParticleRenderTarget";
+import type { FXTarget } from "../engine/render/target/FXTarget";
+import { type EmitterDoc, emitterGraphs, type VfxMeshDoc } from "../model/editorState";
 
 /**
  * Compiled helper source (matched by identity) -> the `sparcoon` export name(s) it corresponds to.

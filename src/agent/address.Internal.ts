@@ -8,9 +8,9 @@
 import type { EditorGraph } from "../domain/graphModel";
 import type { GraphKind, RenderHost } from "../domain/nodePalette";
 import { selectEmitter, selectVfxMesh } from "../model/commands";
-import { GRAPH_SLOTS, renderHostFor, type GraphSlot } from "../model/graphSlots";
 import type { GraphOwnerRef, SourceState } from "../model/editorState";
-import { emitterEntity, VFX_ENTITY, vfxMeshEntity, type SceneEntity } from "../model/entity";
+import { emitterEntity, type SceneEntity, VFX_ENTITY, vfxMeshEntity } from "../model/entity";
+import { GRAPH_SLOTS, type GraphSlot, renderHostFor } from "../model/graphSlots";
 import type { Store } from "../model/store";
 import { AgentError } from "./errors";
 import type { GraphName } from "./views";

@@ -3,12 +3,17 @@
  * label row + time lane, under one playhead. The transport is transient; length/fps are authored.
  */
 
+import { reactingEmitters, reactionSourceCandidates } from "../../domain/deathReactions";
+import type { EditorGraph } from "../../domain/graphModel";
+import { isKeyframeValue } from "../../domain/graphModel";
+import { isTimelineValueType } from "../../domain/nodePalette";
 import { t } from "../../i18n";
 import {
   addBurstEvent,
   addPlayEvent,
   addReaction,
   clipboardItemTime,
+  type ClipboardTimelineItem,
   defaultSpawnAction,
   pasteTimelineItems,
   removeEvent,
@@ -20,78 +25,73 @@ import {
   setLiveParam,
   setProjectName,
   setTransformKeyframe,
-  type ClipboardTimelineItem,
 } from "../../model/commands";
 import {
   canRemoveObject,
-  emitterGraphs,
-  projectDisplayName,
   type DeathReaction,
   type EmitterDoc,
+  emitterGraphs,
+  projectDisplayName,
   type VfxDoc,
   type VfxMeshDoc,
 } from "../../model/editorState";
 import {
   emitterEntity,
   sameEntity,
-  vfxMeshEntity,
-  VFX_ENTITY,
   type SceneEntity,
+  VFX_ENTITY,
+  vfxMeshEntity,
 } from "../../model/entity";
 import { snapTimeToFrame } from "../../model/frames";
 import { selectEmitters, selectMeshes, selectVfx } from "../../model/selectors";
+import { sampleTrack } from "../../model/trackSampling";
 import type { TransformChannel, TransformTrack } from "../../model/transform";
 import { TRANSFORM_CHANNELS } from "../../model/transform";
-import { sampleTrack } from "../../model/trackSampling";
-import { isTimelineValueType } from "../../domain/nodePalette";
-import { reactingEmitters, reactionSourceCandidates } from "../../domain/deathReactions";
-import type { EditorGraph } from "../../domain/graphModel";
-import { isKeyframeValue } from "../../domain/graphModel";
-import { openContextMenu, type ContextMenuItem } from "../components/contextMenu";
+import { type ContextMenuItem, openContextMenu } from "../components/contextMenu";
+import { clearChildren, createElement } from "../dom";
+import type { EditorContext } from "../editorContext";
+import { EditorPanel } from "../focus/panelFocus";
 import { attachDividerDrag } from "../primitives/dividerDrag";
 import { beginPointerDrag } from "../primitives/drag";
 import { fractionAcross } from "../primitives/geometry";
 import { clamp } from "../primitives/math";
-import { fraction, timeAtFraction } from "./timelineFormat";
-import { clearChildren, createElement } from "../dom";
-import type { EditorContext } from "../editorContext";
-import { EditorPanel } from "../focus/panelFocus";
-import {
-  channelValueAt,
-  emitterIdOf,
-  timelineValueRows,
-  type TimelineValueRow,
-} from "./timelineQueries";
+import { commitEntitySelection } from "../selection";
 import { copyTimelineSelection } from "./timelineClipboard";
-import { buildLabel, buildMeshLabel } from "./timelineRowLabel";
-import { beginPlayheadScrub } from "./timelineScrub";
+import { fraction, timeAtFraction } from "./timelineFormat";
+import {
+  type InspectorContext,
+  renderReactionInspector,
+  renderTimelineInspector,
+} from "./timelineInspector";
 import { beginItemDrag, type ItemDragContext } from "./timelineItemDrag";
 import { beginMarquee, type MarqueeContext } from "./timelineMarquee";
 import {
-  renderReactionInspector,
-  renderTimelineInspector,
-  type InspectorContext,
-} from "./timelineInspector";
+  channelValueAt,
+  emitterIdOf,
+  type TimelineValueRow,
+  timelineValueRows,
+} from "./timelineQueries";
+import { buildLabel, buildMeshLabel } from "./timelineRowLabel";
 import {
   appendSummaryKeys,
   buildChannelLabel,
   buildEntityLabel,
-  buildTrackLabel,
   buildReactionLabel,
+  buildTrackLabel,
   eventMarkers,
   keyframeMarkers,
   reactionBand,
   transformKeyMarkers,
 } from "./timelineRows";
+import { beginPlayheadScrub } from "./timelineScrub";
 import {
   DRAG_THRESHOLD,
-  selectionKey,
   type ItemPointerHandler,
   type ItemRef,
   type Marker,
+  selectionKey,
 } from "./timelineTypes";
 import { TimelineViewport } from "./timelineViewport";
-import { commitEntitySelection } from "../selection";
 
 export function createTimelinePanel(context: EditorContext): HTMLElement {
   const { store, signals, transport, router, selection: timelineSelection } = context;

@@ -1,6 +1,6 @@
-import type { FXKernelBindingHandle } from "./FXCompiledKernel";
 import { FX_FUNCTIONS } from "../core/ir/FXFunctions.Internal";
 import { FX_BEHAVIOR_FUNCTIONS } from "./FXBehaviorFunctions.Internal";
+import type { FXKernelBindingHandle } from "./FXCompiledKernel";
 
 /**
  * Primitives shared across the behavior-kernel compile family (validation, the compile driver,

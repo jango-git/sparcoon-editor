@@ -15,6 +15,7 @@
  * camera, handed to them by {@link GraphViewport}.
  */
 
+import { bindingSinkId, findIncomingEdge } from "../../domain/graphEdges";
 import type {
   AttributeTypeName,
   EditorAttribute,
@@ -23,27 +24,27 @@ import type {
   GraphPosition,
 } from "../../domain/graphModel";
 import { createEmptyGraph, isKeyframeValue } from "../../domain/graphModel";
-import { bindingSinkId, findIncomingEdge } from "../../domain/graphEdges";
+import { computeNodeCosts, computeSinkCost } from "../../domain/graphStats";
+import type { FXNodeMeta, FXSocketMeta, RenderHost } from "../../domain/nodePalette";
 import {
   GraphKind,
+  isFakeNodeType,
+  isMeshExcludedRenderNode,
+  isTimelineValueType,
+  isTrailExcludedRenderNode,
+  metaForNode,
+  paletteForKind,
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
   ROUTE_TYPE,
+  searchTagsFor,
   SPAWN_SINK_ID,
   SPAWN_SINK_TYPE,
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
-  isMeshExcludedRenderNode,
-  isTrailExcludedRenderNode,
-  isTimelineValueType,
-  isFakeNodeType,
-  metaForNode,
-  paletteForKind,
-  searchTagsFor,
 } from "../../domain/nodePalette";
-import type { FXNodeMeta, FXSocketMeta, RenderHost } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
-import { computeNodeCosts, computeSinkCost } from "../../domain/graphStats";
+import { nodeDescription, nodeLabel, nodeSearchTags } from "../../i18n/nodeText";
 import {
   addAttribute,
   addCatalogNode,
@@ -51,10 +52,11 @@ import {
   connectSockets,
   disconnectInput,
   dissolveRoute,
+  type GraphFragment,
+  type GraphSlot,
   moveCommentGroup,
   moveNodes,
   pasteFragment,
-  type GraphFragment,
   removeAttribute,
   removeComment,
   removeEdgesFromOutput,
@@ -65,9 +67,9 @@ import {
   setAttributeType,
   setKeyframe,
   updateNodeParam,
-  type GraphSlot,
 } from "../../model/commands";
-import { buildSinkAttributes } from "./sinkAttributes";
+import { emitterEntity, vfxMeshEntity } from "../../model/entity";
+import { GRAPH_SLOTS, renderHostFor } from "../../model/graphSlots";
 import {
   selectActiveGraphOwner,
   selectBehaviorGraph,
@@ -75,57 +77,55 @@ import {
   selectMeshAssets,
   selectTextureAssets,
 } from "../../model/selectors";
-import { emitterEntity, vfxMeshEntity } from "../../model/entity";
 import type { Store } from "../../model/store";
 import type { TransportStore } from "../../model/transport";
+import { createPaletteAccess } from "../components/paletteAccess";
 import { createElement } from "../dom";
-import { nodeDescription, nodeLabel, nodeSearchTags } from "../../i18n/nodeText";
+import type { EditorContext } from "../editorContext";
+import type { Keymap } from "../focus/keymap";
+import { EditorPanel } from "../focus/panelFocus";
+import { GraphMode, type GraphViewState } from "../graphViewState";
+import { InputMode, type InputModeState } from "../inputMode";
 import { beginPointerDrag } from "../primitives/drag";
 import { WheelDirectionLock } from "../primitives/wheelDirectionLock";
-import { EditorPanel } from "../focus/panelFocus";
-import type { Keymap } from "../focus/keymap";
-import { GraphMode, type GraphViewState } from "../graphViewState";
-import { GRAPH_SLOTS, renderHostFor } from "../../model/graphSlots";
-import { InputMode, type InputModeState } from "../inputMode";
-import type { EditorContext } from "../editorContext";
-import { createPaletteAccess } from "../components/paletteAccess";
 import { AddNodeMenu } from "./addNodeMenu";
-import { GRID_SIZE, snapToGrid } from "./grid";
+import { CommentGestures } from "./commentGestures";
+import { CommentView } from "./commentView";
+import { GraphCamera } from "./graphCamera";
+import { applyErrorHighlights as paintErrorHighlights } from "./graphErrorHighlights";
+import { GraphKnife, type KnifeContext } from "./graphKnife";
+import { GraphMarquee } from "./graphMarquee";
 import {
-  GraphViewport,
   dottedGridTarget,
-  htmlLayerTarget,
-  svgGroupTarget,
   type GraphPoint,
   type GraphRect,
+  GraphViewport,
+  htmlLayerTarget,
+  svgGroupTarget,
 } from "./graphViewport";
-import { GraphCamera } from "./graphCamera";
+import { GRID_SIZE, snapToGrid } from "./grid";
 import {
-  NodeView,
   type AttributeNodeConfig,
+  NodeView,
   type SocketRef,
   type TextureAssetOption,
 } from "./nodeView";
 import { ROUTE_GEOMETRY, RouteView } from "./routeView";
-import { CommentView } from "./commentView";
+import { buildSinkAttributes } from "./sinkAttributes";
+import {
+  acceptedGenericTypesForMeta,
+  type AcceptedTypes,
+  inputAcceptsSource,
+  socketsCompatible,
+} from "./socketCompat";
 import {
   carriedTypeForRoute,
   resolveNodeMeta,
   resolveSocketCarriedType,
   socketShapeSignature,
 } from "./typeResolution";
-import {
-  acceptedGenericTypesForMeta,
-  inputAcceptsSource,
-  socketsCompatible,
-  type AcceptedTypes,
-} from "./socketCompat";
-import { WireRenderer, type PendingWire } from "./wireRenderer";
 import { collectEdges, computeSocketFills, edgeNearPoint, type GraphEdge } from "./wireHitTest";
-import { GraphKnife, type KnifeContext } from "./graphKnife";
-import { GraphMarquee } from "./graphMarquee";
-import { CommentGestures } from "./commentGestures";
-import { applyErrorHighlights as paintErrorHighlights } from "./graphErrorHighlights";
+import { type PendingWire, WireRenderer } from "./wireRenderer";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

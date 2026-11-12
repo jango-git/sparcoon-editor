@@ -4,6 +4,7 @@
  */
 
 import type { FXKeyEase } from "sparcoon";
+
 import type {
   EmitterDoc,
   Keyframe,
@@ -25,8 +26,8 @@ import {
 import type { Store } from "../store";
 import {
   IDENTITY_QUAT,
-  sampleTransform,
   type Quat,
+  sampleTransform,
   type Transform,
   type TransformChannel,
   type TransformTrack,

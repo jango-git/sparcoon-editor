@@ -1,7 +1,7 @@
+import type { FXValidationResult } from "../../core/compiler/FXCompilerError";
 import type { FXGraph } from "../../core/FXGraph";
 import type { FXRenderNode } from "../FXRenderNode";
 import type { FXTarget } from "../target/FXTarget";
-import type { FXValidationResult } from "../../core/compiler/FXCompilerError";
 import type { FXCompiledShader } from "./FXCompiledShader";
 import { FXCompilerBaseline } from "./FXCompilerBaseline";
 import { FXCompilerStandard } from "./FXCompilerStandard";

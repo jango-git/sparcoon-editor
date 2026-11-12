@@ -1,12 +1,12 @@
+import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
+import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { FXNodeRegistry } from "../../src/engine/core/live/FXNodeRegistry";
 import type { FXNodeDefinition } from "../../src/engine/core/nodes/defineNode";
 import {
   registerStandardBehaviorNodes,
   registerStandardRenderNodes,
 } from "../../src/engine/nodes-std/index";
-import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
-import { registerManualBehaviorNodes } from "../../src/engine/behavior/nodes/FXManualBehaviorNodes";
 import { registerManualRenderNodes } from "../../src/engine/render/nodes/FXManualRenderNodes";
 
 /** A fresh registry preloaded with every standard behavior/shared node, plus `testNodes`. */

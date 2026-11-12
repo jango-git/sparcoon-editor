@@ -6,12 +6,12 @@
  */
 
 import type { EditorGraph, GraphComment, GraphPosition, GraphSize } from "../../domain/graphModel";
-import { addComment, moveCommentGroup, resizeComment, type GraphSlot } from "../../model/commands";
+import { addComment, type GraphSlot, moveCommentGroup, resizeComment } from "../../model/commands";
 import type { Store } from "../../model/store";
 import { beginPointerDrag } from "../primitives/drag";
 import type { CommentHandle } from "./commentView";
-import { GRID_SIZE, snapToGrid } from "./grid";
 import type { GraphPoint, GraphRect } from "./graphViewport";
+import { GRID_SIZE, snapToGrid } from "./grid";
 
 /** Pointer travel (px) past which a header press is a drag rather than a plain click. */
 const DRAG_THRESHOLD = 3;

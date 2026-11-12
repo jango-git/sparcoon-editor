@@ -4,8 +4,9 @@
  * mesh asset needs a live geometry again (preview, or the content sheet's GLB re-download).
  */
 
-import { BufferGeometry, Float32BufferAttribute } from "three";
 import type { BufferAttribute, InterleavedBufferAttribute } from "three";
+import { BufferGeometry, Float32BufferAttribute } from "three";
+
 import type { BakedMeshGeometry } from "../model/editorState";
 
 /** Read via `getX/getY`, not raw `.array` - a GLTFLoader attribute is often an

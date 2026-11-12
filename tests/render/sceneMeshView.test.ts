@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
 import type { LineBasicMaterial, LineSegments, Mesh } from "three";
 import { BufferGeometry } from "three";
-import { Store } from "../../src/model/store";
-import { SignalBus } from "../../src/model/signals";
-import { createTestState } from "../helpers/testDocument";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
 import {
   addVfxMesh,
   removeVfxMesh,
@@ -12,9 +11,11 @@ import {
   updateNodeParam,
 } from "../../src/model/commands";
 import { emitterEntity, VFX_ENTITY, vfxMeshEntity } from "../../src/model/entity";
-import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
+import { SignalBus } from "../../src/model/signals";
+import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
+import { createTestState } from "../helpers/testDocument";
 
 function harness(): { store: Store; emitters: SceneEmitters } {
   return { store: new Store(createTestState(), new SignalBus()), emitters: createPreview() };
