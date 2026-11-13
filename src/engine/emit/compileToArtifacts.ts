@@ -10,7 +10,7 @@ import type { Texture } from "three";
 import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
 import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
 import { compileBehavior, validateBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
-import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "../behavior/FXParticleBehaviorTarget";
 import type { FXAttributeCollection } from "../core/compiler/collectAttributeRequests";
 import {
   collectAttributeRequests,
@@ -97,7 +97,10 @@ function compileGraphs(
   const shader = new FXCompilerBaseline().compile(renderGraph, renderTarget);
 
   const behaviorAttributes = behaviorCollection.requests;
-  const kernel = compileBehavior(behaviorGraph, buildParticleBehaviorTargets(behaviorAttributes));
+  const kernel = compileBehavior(
+    behaviorGraph,
+    particleBehaviorTargetsFor(behaviorGraph, false, behaviorAttributes),
+  );
 
   return { shader, kernel, renderAttributes, behaviorAttributes };
 }
@@ -145,7 +148,11 @@ export function validateArtifacts(
   const renderCollection = collectAttributeRequests(renderGraph);
   const behaviorCollection = collectAttributeRequests(behaviorGraph);
   const renderTarget = buildParticleTarget(renderCollection.requests);
-  const behaviorTargets = buildParticleBehaviorTargets(behaviorCollection.requests);
+  const behaviorTargets = particleBehaviorTargetsFor(
+    behaviorGraph,
+    false,
+    behaviorCollection.requests,
+  );
   // A cross-graph attribute conflict belongs to neither graph's own validation; surface it so
   // the editor's error lights match what compileToArtifacts would throw on.
   const crossErrors = crossGraphAttributeErrors(renderCollection, behaviorCollection);

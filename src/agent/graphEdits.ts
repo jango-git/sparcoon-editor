@@ -175,10 +175,18 @@ export function createGraphHandle(
         requireParameterKeys(metadata, patch);
         focusOwner(store, target.owner);
         // Same policy as the canvas's attribute picker: the attribute choice can't change under a
-        // stable id, so it replaces the node.
-        const attributeKeys = (metadata.customParams ?? [])
-          .filter((parameter) => parameter.kind === "attribute-name")
-          .map((parameter) => parameter.key);
+        // stable id, so it replaces the node - for an inherited attribute, its source and type too.
+        const pickers = (metadata.customParams ?? []).filter(
+          (parameter) => parameter.kind === "attribute-name" || parameter.kind === "inherit-source",
+        );
+        const attributeKeys = [
+          ...pickers.map((parameter) => parameter.key),
+          ...(pickers.some((parameter) => parameter.kind === "inherit-source")
+            ? Object.entries(metadata.params)
+                .filter(([, parameter]) => parameter.kind === "structural")
+                .map(([key]) => key)
+            : []),
+        ];
         if (attributeKeys.some((key) => key in patch)) {
           const newId = replaceNodeParams(store, target.slot, nodeId, patch);
           if (newId === undefined) {

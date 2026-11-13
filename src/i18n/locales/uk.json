@@ -74,6 +74,7 @@
     "comment": "Коментар",
     "attribute": "Атрибут",
     "declareAttribute": "оголосити...",
+    "inheritBuiltin": "{field} (померлої частинки)",
     "paramName": "Ім'я",
     "paramNamePlaceholder": "ім'я...",
     "texture": "Текстура",

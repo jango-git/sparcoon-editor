@@ -43,7 +43,15 @@ import {
   UPDATE_SINK_ID,
   UPDATE_SINK_TYPE,
 } from "../../domain/nodePalette";
+import { type InheritCandidate, inheritCandidates } from "../../domain/reactionLinking";
 import { isSink } from "../../domain/sinks";
+import {
+  FX_INHERIT_BUILTIN_DEFAULTS,
+  FX_INHERIT_BUILTINS,
+  inheritSourceOf,
+} from "../../engine/behavior/FXInherit";
+import type { FXInheritBuiltin } from "../../engine/behavior/FXInheritPlan";
+import { t } from "../../i18n";
 import { nodeDescription, nodeLabel, nodeSearchTags } from "../../i18n/nodeText";
 import {
   addAttribute,
@@ -68,6 +76,7 @@ import {
   setKeyframe,
   updateNodeParam,
 } from "../../model/commands";
+import { resolveGraphOwner } from "../../model/editorState";
 import { emitterEntity, vfxMeshEntity } from "../../model/entity";
 import { GRAPH_SLOTS, renderHostFor } from "../../model/graphSlots";
 import {
@@ -1403,6 +1412,10 @@ export class GraphCanvas {
     if (isAttributeNode === true) {
       return `${base}|attrs:${JSON.stringify(this.ownerAttributes())}`;
     }
+    // An inherited-attribute node's picker lists what its emitter's reaction sources declare.
+    if (metadata?.customParams?.some((parameter) => parameter.kind === "inherit-source") === true) {
+      return `${base}|inherits:${JSON.stringify(this.inheritCandidates())}`;
+    }
     // A Texture's picker lists the library's assets and its body previews the chosen
     // one; rebuild when that set changes so a freshly-uploaded (or deleted) texture shows up in
     // the dropdown, and when an asset's dimensions change so a replaced image repaints the preview.
@@ -1424,6 +1437,9 @@ export class GraphCanvas {
     metadata: ReturnType<typeof metaForNode>,
     nodeId: string,
   ): AttributeNodeConfig | undefined {
+    if (metadata?.customParams?.some((parameter) => parameter.kind === "inherit-source") === true) {
+      return this.inheritConfigFor(nodeId);
+    }
     const isAttributeNode = metadata?.customParams?.some(
       (parameter) => parameter.kind === "attribute-name",
     );
@@ -1435,14 +1451,65 @@ export class GraphCanvas {
         name: attribute.name,
         type: attribute.type,
       })),
-      onSelect: (name, type): void => {
-        const newId = replaceNodeParams(this.store, this.activeSlot(), nodeId, { name, type });
-        if (newId !== undefined) {
-          this.selected.clear();
-          this.selected.add(newId);
-        }
+      onSelect: (option): void => {
+        this.replaceSelected(nodeId, { name: option.name, type: option.type });
       },
     };
+  }
+
+  /**
+   * For an `inherited-attribute` node: the picker config listing the core fields a dying particle
+   * hands over and every attribute its emitter's reaction sources declare. Choosing one is a
+   * structural edit, so it replaces the node (new id), its default reset to the field's.
+   */
+  private inheritConfigFor(nodeId: string): AttributeNodeConfig {
+    const builtins = FX_INHERIT_BUILTINS.map((field) => ({
+      name: field,
+      type: "float",
+      value: `builtin:${field}`,
+      label: t("graph.inheritBuiltin", { field }),
+    }));
+    const attributes = this.inheritCandidates().map((candidate) => ({
+      name: candidate.name,
+      type: candidate.type,
+      value: `attribute:${candidate.name}:${candidate.type}`,
+      label: `${candidate.name} (${candidate.type})`,
+    }));
+    const parameters = this.activeGraph().nodes[nodeId]?.parameters ?? {};
+    const source = inheritSourceOf(parameters);
+    const current =
+      source.kind === "builtin"
+        ? `builtin:${source.field}`
+        : `attribute:${source.name}:${String(parameters["type"])}`;
+    return {
+      options: [...builtins, ...attributes],
+      current,
+      onSelect: (option): void => {
+        const builtin = option.value?.startsWith("builtin:") === true;
+        this.replaceSelected(nodeId, {
+          source: builtin ? "builtin" : "attribute",
+          name: option.name,
+          type: option.type,
+          value: builtin ? FX_INHERIT_BUILTIN_DEFAULTS[option.name as FXInheritBuiltin] : 0,
+        });
+      },
+    };
+  }
+
+  /** What the active emitter can inherit from its reactions' sources (see `inheritCandidates`). */
+  private inheritCandidates(): readonly InheritCandidate[] {
+    const scene = this.store.getSource().scene;
+    const owner = resolveGraphOwner(scene);
+    return owner?.kind === "emitter" ? inheritCandidates(scene.emitters, owner.id) : [];
+  }
+
+  /** Replaces a node with `patch`ed params (a structural edit) and selects the replacement. */
+  private replaceSelected(nodeId: string, patch: Readonly<Record<string, unknown>>): void {
+    const newId = replaceNodeParams(this.store, this.activeSlot(), nodeId, patch);
+    if (newId !== undefined) {
+      this.selected.clear();
+      this.selected.add(newId);
+    }
   }
 
   /** The library's texture assets, offered to a Texture node's picker (empty otherwise). */

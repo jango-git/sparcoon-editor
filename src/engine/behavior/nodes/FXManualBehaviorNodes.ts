@@ -5,16 +5,18 @@ import { resolveValueType } from "../../core/socket/FXValueType";
 import { resolveParamType } from "../../nodes-std/paramSupport.Internal";
 import type { FXBehaviorNode } from "../FXBehaviorNode";
 import { FXBehaviorPhase } from "../FXBehaviorPhase";
+import { inheritSourceOf } from "../FXInherit";
 import { FXBehaviorNodeBuiltinAttribute } from "./FXBehaviorNodeBuiltinAttribute";
 import { FXBehaviorNodeCustomAttribute } from "./FXBehaviorNodeCustomAttribute";
 import { FXBehaviorNodeCustomAttributeSplit } from "./FXBehaviorNodeCustomAttributeSplit";
+import { FXBehaviorNodeInheritedAttribute } from "./FXBehaviorNodeInheritedAttribute";
 import { FXBehaviorNodeStoreAttribute } from "./FXBehaviorNodeStoreAttribute";
 import { FXBehaviorNodeTimelineValue } from "./FXBehaviorNodeTimelineValue";
 
 /**
  * Registers the hand-written **behavior** manual nodes: `store-attribute`/`custom-attribute`/
- * `custom-attribute-split`/`builtin-attribute` (the attribute channel) and
- * `timeline-value`. The attribute nodes carry an `attributeRequest` (so they cannot be
+ * `custom-attribute-split`/`builtin-attribute` (the attribute channel), `inherited-attribute`
+ * (what a newborn inherits) and `timeline-value`. The attribute nodes carry an `attributeRequest` (so they cannot be
  * `defineNode` descriptors), but need no `three` resource, so the factories rebuild straight
  * from snapshot params - no resolver required.
  */
@@ -47,6 +49,15 @@ export function registerManualBehaviorNodes(registry: FXNodeRegistry<FXBehaviorN
       ),
   );
   registry.register("builtin-attribute", () => new FXBehaviorNodeBuiltinAttribute());
+  registry.register(
+    "inherited-attribute",
+    (parameters) =>
+      new FXBehaviorNodeInheritedAttribute(
+        inheritSourceOf(parameters ?? {}),
+        resolveValueType((parameters?.["type"] as FXGLSLTypeName | undefined) ?? "float"),
+        parameters?.["value"],
+      ),
+  );
   // Timeline Value (behavior half): a named live binding - no resource, no resolver.
   registry.register(
     "timeline-value",

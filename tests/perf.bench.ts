@@ -16,7 +16,7 @@ import {
   buildParticleUpdateKernel,
   compileParticleBehavior,
 } from "../src/engine/behavior/FXParticleBehaviorKernel.Internal";
-import { buildParticleBehaviorTargets } from "../src/engine/behavior/FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../src/engine/behavior/live/FXBehaviorLiveBackend";
 import { buildBehaviorGraph } from "../src/engine/builder/FXGraphBuilder";
 import { FXGraph } from "../src/engine/core/FXGraph";
@@ -46,7 +46,10 @@ const wideSnapshot = buildBehaviorGraph((b) => {
 // drive it directly to measure the same value-edit rebind path.
 const liveGraph = new FXLiveGraph(
   new FXGraphReconciler(behaviorRegistry()),
-  new FXBehaviorLiveBackend(() => {}, buildParticleBehaviorTargets),
+  new FXBehaviorLiveBackend(
+    () => {},
+    (attributes, graph) => particleBehaviorTargetsFor(graph, false, attributes),
+  ),
 );
 liveGraph.apply(wideSnapshot); // prime: first apply compiles
 

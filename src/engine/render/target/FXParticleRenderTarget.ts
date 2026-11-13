@@ -9,6 +9,7 @@ import {
 
 import type { FXAttributeRequest } from "../../core/socket/FXAttribute";
 import { canonicalAttributeSuffix } from "../../core/socket/FXAttribute";
+import { FX_RANDOM_SEED_INPUT } from "../../core/socket/FXReadableBuiltins";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { FXShaderStage } from "../FXShaderStage";
@@ -42,6 +43,9 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "PARTICLE_AGE", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_LIFETIME", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_ID", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
+  // What a random seeds from by default: a particle's id (the runtime defines it as PARTICLE_ID).
+  // A VFX mesh, with no particles, has its own seed under the same name (see MESH_BUILTINS).
+  { name: FX_RANDOM_SEED_INPUT, type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "p_uv", type: VEC2, stages: [FXShaderStage.FRAGMENT], rate: "vertex" },
   // World-space surface frame + position, built by the runtime from the billboard transform:
   // geometryNormal (surface normal), geometryTangent (u-axis tangent, spans the TBN with the
@@ -86,6 +90,7 @@ const LIFECYCLE_INPUTS: ReadonlySet<string> = new Set([
   "PARTICLE_AGE",
   "PARTICLE_LIFETIME",
   "PARTICLE_ID",
+  FX_RANDOM_SEED_INPUT,
 ]);
 const ATTRIBUTE_INPUT_PREFIX = attributeVaryingName("");
 
@@ -309,14 +314,17 @@ const PARTICLE_ONLY_BUILTIN_NAMES: ReadonlySet<string> = new Set([
   "PARTICLE_AGE",
   "PARTICLE_LIFETIME",
   "PARTICLE_ID",
+  FX_RANDOM_SEED_INPUT,
   "p_cameraDistance",
 ]);
 
 /** The VFX-mesh render builtins: the particle builtins minus everything per-particle. A VFX mesh
- *  is a single, non-instanced mesh with no particle state and no user attributes. */
-const MESH_BUILTINS: readonly FXTargetInput[] = PARTICLE_BUILTINS.filter(
-  (input) => !PARTICLE_ONLY_BUILTIN_NAMES.has(input.name),
-);
+ *  is a single, non-instanced mesh with no particle state and no user attributes; it seeds its
+ *  randoms by a seed of its own, one for the whole mesh (`FXDrawInputs.seed`). */
+const MESH_BUILTINS: readonly FXTargetInput[] = [
+  ...PARTICLE_BUILTINS.filter((input) => !PARTICLE_ONLY_BUILTIN_NAMES.has(input.name)),
+  { name: FX_RANDOM_SEED_INPUT, type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
+];
 
 /** The VFX-mesh render target. No particle builtins and no per-particle attributes, so a render
  *  node reading one (`custom-attribute`, `life-ratio`, `dissolve`) fails validation against

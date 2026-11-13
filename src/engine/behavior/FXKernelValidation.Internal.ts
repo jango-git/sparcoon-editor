@@ -9,6 +9,7 @@ import { resolvePlacement } from "../core/compiler/placement.Internal";
 import { FXGraph } from "../core/FXGraph";
 import type { FXBehaviorNode } from "./FXBehaviorNode";
 import { FXBehaviorPhase } from "./FXBehaviorPhase";
+import { collectInheritRequests } from "./FXInherit";
 import { killSlotOutput } from "./FXKernelLifecycle.Internal";
 import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
 import { kernelTargetShapeErrors, validateKernelTarget } from "./FXKernelTargetValidation.Internal";
@@ -292,6 +293,7 @@ export function validateBehavior(
     phases.get(id) ?? graph.getNode(id)?.phase ?? FXBehaviorPhase.UPDATE;
   const updateView = buildPhaseView(graph, FXBehaviorPhase.UPDATE, phaseOf);
   const errors: FXCompilerError[] = [
+    ...collectInheritRequests(graph).errors,
     ...validateKernelTarget(targets.update, "update"),
     ...detectCrossPhaseErrors(graph, reachable, phaseOf),
     ...validateGraph(updateView, { ...targets.update, outputs: bindableSlots(targets.update) })

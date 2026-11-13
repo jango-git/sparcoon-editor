@@ -15,3 +15,9 @@ export const FX_READABLE_CORE_BUILTINS: Readonly<
   lifetime: { targetInput: "PARTICLE_LIFETIME", type: FX_VALUE_TYPES.float },
   id: { targetInput: "PARTICLE_ID", type: FX_VALUE_TYPES.float },
 };
+
+/**
+ * The target input a random seeds from by default - every target has it: a particle's id on a
+ * particle or trail and in a behavior kernel, the mesh's own seed on a VFX mesh.
+ */
+export const FX_RANDOM_SEED_INPUT = "RANDOM_SEED";

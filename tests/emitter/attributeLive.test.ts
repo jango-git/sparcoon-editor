@@ -5,7 +5,7 @@ import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
 import {
   attributeSlot,
-  buildParticleBehaviorTargets,
+  particleBehaviorTargetsFor,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
@@ -73,7 +73,10 @@ function renderLive(): FXLiveGraph<FXRenderNode> {
 function behaviorLive(): FXLiveGraph<FXBehaviorNode> {
   return new FXLiveGraph<FXBehaviorNode>(
     new FXGraphReconciler(behaviorReg()),
-    new FXBehaviorLiveBackend(() => {}, buildParticleBehaviorTargets),
+    new FXBehaviorLiveBackend(
+      () => {},
+      (attributes, graph) => particleBehaviorTargetsFor(graph, false, attributes),
+    ),
   );
 }
 

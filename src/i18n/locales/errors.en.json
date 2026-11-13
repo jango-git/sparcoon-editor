@@ -353,6 +353,24 @@
   "param-value-conflict": {
     "message": "Timeline Value \"{name}\" has a different default here than another declaration of it in this emitter"
   },
+  "inherit-type-conflict": {
+    "message": "inherited \"{source}\" is read as both {firstType} and {secondType}"
+  },
+  "inherit-input-not-in-spawn": {
+    "message": "target \"{targetName}\" declares inherited input \"{inputName}\", but only a spawn kernel's births inherit"
+  },
+  "inherit-input-out-of-layout": {
+    "message": "target \"{targetName}\" inherited input \"{inputName}\" does not lie inside its inherit layout of {stride} floats"
+  },
+  "inherit-missing": {
+    "message": "emitter \"{source}\" has no attribute \"{name}\" - births its deaths spawn read the default"
+  },
+  "inherit-mistyped": {
+    "message": "emitter \"{source}\" holds \"{name}\" as {found}, not {expected} - births its deaths spawn read the default"
+  },
+  "inherit-unwritten": {
+    "message": "emitter \"{source}\" never writes \"{name}\" - births its deaths spawn read the default"
+  },
   "attribute-never-written": {
     "message": "attribute \"{name}\" is read here but the behavior never writes it - it is always 0"
   },

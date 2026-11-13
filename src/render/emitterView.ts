@@ -19,6 +19,7 @@ import type {
   FXEmitterPlayOptions,
   FXParticleDeath,
   FXParticleDeathListener,
+  FXSlotLayout,
   FXSpawnTarget,
 } from "sparcoon/editor";
 import { FXEmitter } from "sparcoon/editor";
@@ -35,6 +36,7 @@ import {
   type SpawnSinkConfig,
   toArtifactGeometrySource,
 } from "../domain/nodePalette";
+import { type ReactionSource, reactionSourceOf } from "../domain/reactionLinking";
 import {
   emitterRenderBudgetFindings,
   type FXRenderArtifactsByTier,
@@ -47,8 +49,9 @@ import { trailSortError } from "../domain/trailChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
+import type { FXInheritEntry } from "../engine/behavior/FXInheritPlan";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../engine/behavior/live/FXBehaviorLiveBackend";
 import {
   collectAttributeRequests,
@@ -99,6 +102,9 @@ export type TextureResolver = (paramName: string) => Texture;
 interface PreviewArtifacts {
   readonly render: FXRenderArtifact;
   readonly behavior: FXBehaviorArtifact;
+  /** The compiled behavior `behavior` was assembled from: what its deaths hand out and what its
+   *  births inherit (see `reactionLinking.ts`). */
+  readonly kernel: FXCompiledKernel;
   readonly gpuBehavior?: FXParticleKernelArtifact;
   /** The trail's runtime options and the sink config they were assembled from, with the live
    *  trail graph they came from; absent when the emitter has no trail. */
@@ -132,6 +138,10 @@ function heldResult(hasTrail: boolean, statuses: HeldStatuses): GraphApplyResult
 
 // What burst/play return with no emitter built: never a scheduled handler.
 const NO_HANDLER = -1;
+
+// What a view with no running emitter inherits and hands out: nothing.
+const NOTHING_INHERITED = new Float32Array(0);
+const EMPTY_SLOT: FXSlotLayout = { stride: 0, fields: [] };
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -254,9 +264,34 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
           this.standardProgram = bundle.standardProgram;
           this.behaviorAttributes = collectAttributeRequests(this.behaviorLive.graphView).requests;
         },
-        (attributes) => buildParticleBehaviorTargets(attributes, this.currentTryGpuSimulation),
+        (attributes, graph) =>
+          particleBehaviorTargetsFor(graph, this.currentTryGpuSimulation, attributes),
       ),
     );
+  }
+
+  /** What the running emitter's births inherit when no death hands them anything; nothing while
+   *  none is built. */
+  public get inheritDefaults(): ArrayLike<number> {
+    return this.emitter?.inheritDefaults ?? NOTHING_INHERITED;
+  }
+
+  /** The running emitter's particle slot, as its deaths hand it out; empty while none is built. */
+  public get particleSlot(): FXSlotLayout {
+    return this.emitter?.particleSlot ?? EMPTY_SLOT;
+  }
+
+  /** What the running emitter's deaths hand out, for a reaction to link; none while none is
+   *  built. Read off the artifacts it was built from, so it matches {@link particleSlot}. */
+  public get reactionSource(): ReactionSource | undefined {
+    return this.emitter === undefined || this.artifacts === undefined
+      ? undefined
+      : reactionSourceOf(this.artifacts.kernel);
+  }
+
+  /** What the running emitter's births inherit, value by value; nothing while none is built. */
+  public get inheritEntries(): readonly FXInheritEntry[] {
+    return this.emitter === undefined ? [] : (this.artifacts?.kernel.inherit?.entries ?? []);
   }
 
   /** Currently alive particle count for this emitter (0 before an emitter is built). */
@@ -402,6 +437,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXDeathSource {
           renderMode,
         ),
         behavior: assembleBehaviorArtifact(this.kernel),
+        kernel: this.kernel,
         ...(this.standardProgram !== undefined
           ? { gpuBehavior: assembleGpuKernelArtifact(this.standardProgram) }
           : {}),

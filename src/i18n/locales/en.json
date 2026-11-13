@@ -74,6 +74,7 @@
     "comment": "Comment",
     "attribute": "Attribute",
     "declareAttribute": "declare one...",
+    "inheritBuiltin": "{field} (dying particle)",
     "paramName": "Name",
     "paramNamePlaceholder": "name...",
     "texture": "Texture",

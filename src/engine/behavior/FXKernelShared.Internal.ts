@@ -41,14 +41,29 @@ export type FXParticleUpdateKernel = (
   emitter?: FXEmitterTransform,
 ) => void;
 
-/** Compiled spawn kernel: initializes the freshly born particles in `[start, start + count)`. */
+/** Compiled spawn kernel: initializes the freshly born particles in `[start, start + count)`,
+ *  every one of them inheriting `inherited` (the target's inherit layout). */
 export type FXParticleSpawnKernel = (
   slots: Float32Array,
   start: number,
   count: number,
   bindings: Readonly<Record<string, FXKernelBindingHandle>>,
-  emitter?: FXEmitterTransform,
+  emitter: FXEmitterTransform,
+  inherited: Float32Array,
 ) => void;
+
+/** The spawn kernel's inherited values (see `FXKernelTargetInput.inheritOffset`). */
+export const INHERITED_PARAMETER = "inherited";
+
+/** The spawn kernel's parameters, in order - one list for every builder printing one. */
+export const SPAWN_KERNEL_PARAMETERS: readonly string[] = [
+  SLOTS_PARAMETER,
+  "start",
+  "count",
+  "bindings",
+  "emitter",
+  INHERITED_PARAMETER,
+];
 
 /** Per-particle offset local of a buffer's field in the slots (`const b_<name> = i * stride +
  *  field offset`). */

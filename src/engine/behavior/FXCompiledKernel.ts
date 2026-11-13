@@ -1,4 +1,5 @@
 import type { FXExpr } from "../core/ir/FXExpr";
+import type { FXInheritPlan } from "./FXInheritPlan";
 
 /**
  * A value captured from outside the kernel (the behavior analog of a render uniform); `value`
@@ -102,6 +103,8 @@ export interface FXCompiledKernel {
   readonly spawn?: FXCompiledKernelPhase;
   /** Phase run every frame. */
   readonly update: FXCompiledKernelPhase;
+  /** What the spawn phase's newborns inherit (the spawn target's plan); absent when nothing. */
+  readonly inherit?: FXInheritPlan;
   /** Deterministic structural hash of the whole graph, the recompile gate. */
   readonly hash: string;
 }

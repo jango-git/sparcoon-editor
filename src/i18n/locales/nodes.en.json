@@ -865,6 +865,21 @@
     },
     "searchTags": ["hue", "saturation", "lightness", "tint", "color"]
   },
+  "inherited-attribute": {
+    "description": "What a newborn inherits from the particle whose death spawned it: an attribute of that particle, matched by name and exact type, or its id or lifetime. A birth no death spawned, or one whose particle has no such attribute, reads the default. Spawn only.",
+    "label": "Inherited Attribute",
+    "outputs": {
+      "value": {
+        "label": "Value"
+      }
+    },
+    "params": {
+      "value": {
+        "label": "Default"
+      }
+    },
+    "searchTags": ["parent", "inherit", "death", "reaction", "sub-emitter"]
+  },
   "initial-velocity": {
     "description": "Seeds velocity as a direction scaled by a random speed.",
     "inputs": {
@@ -2209,7 +2224,7 @@
     "searchTags": ["cellular", "worley", "cells", "crackle"]
   },
   "hash": {
-    "description": "A stable random in [min, max) per seed (unconnected: the particle id), each component independent. Equal seeds give equal values; another salt gives an unrelated draw.",
+    "description": "A stable random in [min, max) per seed (unconnected: the particle id, or on a VFX mesh a seed of its own - another for every copy of the effect), each component independent. Equal seeds give equal values; another salt gives an unrelated draw.",
     "inputs": {
       "seed": {
         "label": "Seed"

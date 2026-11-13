@@ -45,6 +45,8 @@ import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import {
   type FXKernelUniform,
+  inheritedUniform,
+  inheritedUniformRead,
   transformFeedbackUniformBudget,
 } from "./FXKernelUniformsStandard.Internal";
 import {
@@ -301,6 +303,11 @@ class FXKernelStateStandard {
     };
   }
 
+  /** Declares a uniform of the runtime's contract this phase needs, such as the inherited one. */
+  public declareContractUniform(uniform: FXKernelUniform): void {
+    this.uniforms.push(uniform);
+  }
+
   private declareUniform(name: string, glslTypeName: string): void {
     this.uniforms.push({ name, glslTypeName });
   }
@@ -448,6 +455,10 @@ function buildPhaseStandard(
 ): FXBuiltPhaseStandard {
   const { order, resolution } = prepareCompile(view);
   const state = new FXKernelStateStandard(names);
+  const inherited = inheritedUniform(target.inherit?.layout.stride ?? 0);
+  if (inherited !== undefined) {
+    state.declareContractUniform(inherited);
+  }
   const outputVariables = new Map<string, string>();
 
   buildNodes(view, order, (node, id) => {
@@ -609,6 +620,9 @@ function resolveTargetInputStandard(target: FXKernelTarget, name: string): strin
   }
   if (input.atBirth === true) {
     return BIRTH_MODEL_MATRIX_LOCAL;
+  }
+  if (input.inheritOffset !== undefined) {
+    return inheritedUniformRead(input.inheritOffset, input.type.components);
   }
   if (input.offsets === undefined) {
     const field = FX_EMITTER_INPUT_FIELD[name];

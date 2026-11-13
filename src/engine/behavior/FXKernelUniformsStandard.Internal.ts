@@ -3,6 +3,7 @@ import {
   FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_INHERITED_UNIFORM,
   FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
@@ -13,15 +14,43 @@ import {
 } from "sparcoon";
 import { FX_RENDER_BUDGET_MINIMUMS, fxPackedShape, packedVectors } from "sparcoon/editor";
 
-/** One uniform a fused program declares: its name and GLSL type. */
+import { FX_INHERIT_VECTOR_COMPONENTS } from "./FXInherit";
+
+/** One uniform a fused program declares: its name and GLSL type, and its length when an array. */
 export interface FXKernelUniform {
   readonly name: string;
   readonly glslTypeName: string;
+  readonly length?: number;
 }
 
-/** `uniform <type> <name>;` of `uniform`. */
+/** `uniform <type> <name>;` of `uniform`, `uniform <type> <name>[<length>];` of an array. */
 export function kernelUniformDeclaration(uniform: FXKernelUniform): string {
-  return `uniform ${uniform.glslTypeName} ${uniform.name};`;
+  const length = uniform.length === undefined ? "" : `[${uniform.length.toString()}]`;
+  return `uniform ${uniform.glslTypeName} ${uniform.name}${length};`;
+}
+
+/**
+ * The inherited uniform of a program whose births inherit `stride` floats: whole vec4s (see
+ * `FX_TRANSFORM_FEEDBACK_INHERITED_UNIFORM`), the runtime's to set every pass. Absent when they
+ * inherit nothing - the runtime's upload then finds no uniform, and does nothing.
+ */
+export function inheritedUniform(stride: number): FXKernelUniform | undefined {
+  return stride === 0
+    ? undefined
+    : {
+        name: FX_TRANSFORM_FEEDBACK_INHERITED_UNIFORM,
+        glslTypeName: "vec4",
+        length: Math.ceil(stride / FX_INHERIT_VECTOR_COMPONENTS),
+      };
+}
+
+/** Float `offset` of the inherited uniform, `components` long, as one GLSL read: a value never
+ *  crosses a vec4 (see `planInherits`), so it is one element's swizzle. */
+export function inheritedUniformRead(offset: number, components: number): string {
+  const element = Math.floor(offset / FX_INHERIT_VECTOR_COMPONENTS);
+  const first = offset % FX_INHERIT_VECTOR_COMPONENTS;
+  const swizzle = "xyzw".slice(first, first + components);
+  return `${FX_TRANSFORM_FEEDBACK_INHERITED_UNIFORM}[${element.toString()}].${swizzle}`;
 }
 
 // Fixed, contract uniform names (sourced from sparcoon's behaviorTransformFeedbackLayout.ts, not
@@ -52,7 +81,7 @@ export function transformFeedbackUniformBudget(
   graphUniforms: readonly FXKernelUniform[],
 ): (drawUniforms: readonly { readonly glslTypeName: string }[]) => boolean {
   const declared = [...FIXED_UNIFORMS, ...graphUniforms]
-    .map((uniform) => uniform.glslTypeName)
+    .flatMap((uniform) => new Array<string>(uniform.length ?? 1).fill(uniform.glslTypeName))
     .filter((type) => !type.startsWith("sampler"));
   return (drawUniforms) =>
     packedVectors(

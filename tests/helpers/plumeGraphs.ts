@@ -124,6 +124,13 @@ export function expectPlumeBehaviorLayoutMatchesKernel(
   expect(artifact.buffers.map((buffer) => buffer.name)).toContain("velocity");
 }
 
+const IDENTITY_TRANSFORM = {
+  worldMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  velocity: [0, 0, 0],
+  angularVelocity: [0, 0, 0],
+};
+const NOTHING_INHERITED = new Float32Array(0);
+
 /** One spawn + one update through the artifact leaves the slots exactly as the direct kernel
  *  does, and the plume actually moved (position advanced, velocity accumulated). */
 export function expectPlumeSimulatesLikeDirectCompile(
@@ -133,11 +140,18 @@ export function expectPlumeSimulatesLikeDirectCompile(
   const kernel = compileParticleBehavior(behavior);
   const slot = slotOf(kernel.update.buffers);
   const direct = new Float32Array(slot.stride * COUNT);
-  buildParticleSpawnKernel(kernel)(direct, 0, COUNT, kernel.spawn?.bindings ?? {});
+  buildParticleSpawnKernel(kernel)(
+    direct,
+    0,
+    COUNT,
+    kernel.spawn?.bindings ?? {},
+    IDENTITY_TRANSFORM,
+    NOTHING_INHERITED,
+  );
   buildParticleUpdateKernel(kernel)(direct, COUNT, DT, kernel.update.bindings);
 
   const viaArtifact = new Float32Array(slot.stride * COUNT);
-  artifact.spawn?.(viaArtifact, 0, COUNT, artifact.bindings);
+  artifact.spawn?.(viaArtifact, 0, COUNT, artifact.bindings, IDENTITY_TRANSFORM, NOTHING_INHERITED);
   artifact.update(viaArtifact, COUNT, DT, artifact.bindings);
 
   expect([...viaArtifact]).toEqual([...direct]);

@@ -10,7 +10,7 @@ import {
 } from "../core/compiler/targetLint.Internal";
 import type { FXExpr } from "../core/ir/FXExpr";
 import { childrenOf } from "../core/ir/visit.Internal";
-import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
+import type { FXKernelTarget, FXKernelTargetInput } from "./FXParticleBehaviorTarget";
 import {
   FX_EMITTER_INPUT_FIELD,
   FX_MODEL_MATRIX_INPUT,
@@ -151,6 +151,10 @@ export function validateKernelTarget(
     }
     if (input.atBirth === true) {
       errors.push(...atBirthErrors(target, phase, input.name));
+    }
+    if (input.inheritOffset !== undefined) {
+      errors.push(...inheritInputErrors(target, phase, input));
+      continue;
     }
     if (input.offsets !== undefined) {
       if (input.offsets.length !== input.type.components) {
@@ -295,6 +299,44 @@ function hasCoreLifecycle(target: FXKernelTarget): boolean {
 }
 
 /** An at-birth input is a spawn target's model matrix, placed by the age in its lifecycle. */
+/**
+ * What is wrong with an inherited input: one outside a spawn target (only births inherit), or one
+ * whose floats do not lie inside the target's inherit layout.
+ */
+function inheritInputErrors(
+  target: FXKernelTarget,
+  phase: "spawn" | "update",
+  input: FXKernelTargetInput,
+): FXCompilerError[] {
+  const params = { targetName: target.name, inputName: input.name };
+  if (phase !== "spawn") {
+    return [
+      {
+        code: "inherit-input-not-in-spawn",
+        message: `target "${target.name}" declares inherited input "${input.name}", but only a spawn kernel's births inherit`,
+        params,
+      },
+    ];
+  }
+  const offset = input.inheritOffset ?? 0;
+  const stride = target.inherit?.layout.stride ?? 0;
+  if (
+    input.offsets !== undefined ||
+    !Number.isInteger(offset) ||
+    offset < 0 ||
+    offset + input.type.components > stride
+  ) {
+    return [
+      {
+        code: "inherit-input-out-of-layout",
+        message: `target "${target.name}" inherited input "${input.name}" does not lie inside its inherit layout of ${stride.toString()} floats`,
+        params: { ...params, stride },
+      },
+    ];
+  }
+  return [];
+}
+
 function atBirthErrors(
   target: FXKernelTarget,
   phase: "spawn" | "update",

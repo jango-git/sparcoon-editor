@@ -139,11 +139,12 @@ export interface FXNodeMeta {
 export interface FXCustomParamMeta {
   readonly key: string;
   /**
-   * `attribute-name` - a picker of declared attributes; `texture`/`gradient` - a resource
-   * picker / gradient editor; `param-name` - a free-text field naming a param's stable
-   * uniform/binding slot.
+   * `attribute-name` - a picker of declared attributes; `inherit-source` - a picker of what a
+   * dying particle hands its newborns (its emitter's attributes, and core fields);
+   * `texture`/`gradient` - a resource picker / gradient editor; `param-name` - a free-text field
+   * naming a param's stable uniform/binding slot.
    */
-  readonly kind: "attribute-name" | "texture" | "gradient" | "param-name";
+  readonly kind: "attribute-name" | "inherit-source" | "texture" | "gradient" | "param-name";
   readonly required: boolean;
 }
 

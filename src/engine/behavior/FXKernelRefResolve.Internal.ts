@@ -9,7 +9,12 @@ import { FX_AGE, FX_CORE_LIFECYCLE } from "sparcoon";
 import { printJS } from "../core/codegen/printJS.Internal";
 import type { FXExpr } from "../core/ir/FXExpr";
 import type { FXKernelIntegration } from "./FXCompiledKernel";
-import { bufferAccess, BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
+import {
+  bufferAccess,
+  BUILTIN_BUFFER,
+  FX_BEHAVIOR_ALL_FUNCTIONS,
+  INHERITED_PARAMETER,
+} from "./FXKernelShared.Internal";
 import type { FXKernelTarget, FXKernelTargetInput } from "./FXParticleBehaviorTarget";
 import {
   FX_EMITTER_INPUT_FIELD,
@@ -58,6 +63,9 @@ function resolveKernelTargetInputRef(target: FXKernelTarget, encoded: string): s
   const inputName = at === -1 ? encoded : encoded.slice(0, at);
   const component = at === -1 ? 0 : Number(encoded.slice(at + 1));
   const input = target.inputs.find((candidate) => candidate.name === inputName);
+  if (input?.inheritOffset !== undefined) {
+    return `${INHERITED_PARAMETER}[${(input.inheritOffset + component).toString()}]`;
+  }
   if (input?.offsets === undefined) {
     if (inputName === "dt") {
       return "dt";
@@ -128,6 +136,19 @@ export function isInvariantKernelRef(
     case "attribute":
       return false;
   }
+}
+
+/** Whether a `targetInput` ref (possibly `@component`-encoded) reads an inherited value. */
+export function isInheritedKernelRef(
+  target: FXKernelTarget,
+  ref: Extract<FXExpr, { kind: "ref" }>,
+): boolean {
+  if (ref.ref !== "targetInput") {
+    return false;
+  }
+  const at = ref.name.lastIndexOf("@");
+  const inputName = at === -1 ? ref.name : ref.name.slice(0, at);
+  return target.inputs.find((input) => input.name === inputName)?.inheritOffset !== undefined;
 }
 
 /** Resolves a target-input (or `dt`) to its buffer-aware JS accessor for the epilogue. */

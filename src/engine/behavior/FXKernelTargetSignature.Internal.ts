@@ -44,7 +44,14 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     // Array position, not an object key: JSON.stringify already turns an `undefined` element
     // into `null`, so no `?? null` fallback is needed to keep the encoding stable.
     inputs: target.inputs
-      .map((input) => [input.name, input.type.id, input.offsets, input.buffer, input.atBirth])
+      .map((input) => [
+        input.name,
+        input.type.id,
+        input.offsets,
+        input.buffer,
+        input.atBirth,
+        input.inheritOffset,
+      ])
       .sort(byJSON),
     outputs: target.outputs
       .map((output) => [
@@ -62,6 +69,10 @@ function kernelTargetSignature(target: FXKernelTarget): string {
       .map((step) => [step.offset, exprSignature(step.expr)])
       .sort(byJSON),
     killSlot: target.killSlot,
+    inherit:
+      target.inherit === undefined
+        ? undefined
+        : [target.inherit.layout.stride, target.inherit.layout.defaults],
   } satisfies Record<keyof FXKernelTarget, unknown>;
   return JSON.stringify([
     "kernel",
@@ -72,6 +83,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     parts.preamble,
     parts.integration,
     parts.killSlot,
+    parts.inherit,
   ]);
 }
 

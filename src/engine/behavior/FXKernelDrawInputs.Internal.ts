@@ -4,7 +4,7 @@ import type { FXDrawStagePolicy } from "../core/codegen/drawStage.Internal";
 import { componentJS, uniformValueJS } from "../core/codegen/drawStage.Internal";
 import type { FXRatePolicy } from "../core/codegen/rates.Internal";
 import { isImpureFunction } from "../core/ir/FXFunctions.Internal";
-import { isInvariantKernelRef } from "./FXKernelRefResolve.Internal";
+import { isInheritedKernelRef, isInvariantKernelRef } from "./FXKernelRefResolve.Internal";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
 import { FX_EMITTER_INPUT_FIELD } from "./FXParticleBehaviorTarget";
 
@@ -13,7 +13,8 @@ export const KERNEL_RATE = { constant: 0, pass: 1, particle: 2 } as const;
 
 /**
  * The rates of a GPU kernel phase's values against `target`: a binding (a parameter), the
- * timestep and the emitter's pose and motion are one for the whole pass; a particle's state, its
+ * timestep, the emitter's pose and motion and what the pass's births inherit are one for the
+ * whole pass; a particle's state, its
  * index, an impure call (`rand`) and a spawn's pose as of the particle's birth vary by particle
  * (`isInvariantKernelRef`).
  */
@@ -51,9 +52,13 @@ export function kernelDrawInputs(
   target: FXKernelTarget,
 ): Pick<FXDrawStagePolicy, "readsOnCPU" | "printInput"> {
   return {
+    // What a pass's births inherit is one for the pass too, but `inputs` never carries it: it
+    // stays a read of the GPU's own inherited uniform.
     readsOnCPU: (ref): boolean =>
       (ref.ref === "binding" && ref.type.glslTypeName === "float") ||
-      (ref.ref === "targetInput" && isInvariantKernelRef(target, ref)),
+      (ref.ref === "targetInput" &&
+        isInvariantKernelRef(target, ref) &&
+        !isInheritedKernelRef(target, ref)),
     printInput: (kind, base, index): string => {
       if (kind === "binding") {
         return uniformValueJS(base, index);

@@ -138,11 +138,14 @@ export function eventsLiteral(events: readonly TimelineEvent[], liveEvents?: tru
 
 /**
  * The death reactions as the runtime reads them, each source by its index in the exported emitter
- * list (`emitterIndex`, by emitter id) - the export keeps every emitter, in scene order.
+ * list (`emitterIndex`, by emitter id) - the export keeps every emitter, in scene order - with what
+ * its births inherit of the dying particle (`copiesOf`, see `reactionLinking.ts`), omitted when
+ * nothing.
  */
 export function reactionsLiteral(
   reactions: readonly DeathReaction[],
   emitterIndex: ReadonlyMap<string, number>,
+  copiesOf: (reaction: DeathReaction) => readonly number[],
 ): string {
   return JSON.stringify(
     reactions.map((reaction) => {
@@ -152,7 +155,8 @@ export function reactionsLiteral(
           `exportTypeScript: a reaction's source "${reaction.source}" is not exported`,
         );
       }
-      return { ...actionLiteral(reaction), source };
+      const copies = copiesOf(reaction);
+      return { ...actionLiteral(reaction), source, ...(copies.length > 0 ? { copies } : {}) };
     }),
   );
 }
@@ -171,6 +175,7 @@ export function emitterSpecLiteral(
   ir: EmitterIR,
   slots: readonly string[],
   emitterIndex: ReadonlyMap<string, number>,
+  copiesOf: (reaction: DeathReaction) => readonly number[],
   gpuKernelName?: string,
   trailNames?: RenderArtifactNames,
 ): string {
@@ -212,7 +217,7 @@ export function emitterSpecLiteral(
     `      events: ${eventsLiteral(emitter.events, emitter.liveEvents)},`,
     // Omitted when the emitter reacts to nothing, like the optional fields above.
     ...(emitter.reactions.length > 0
-      ? [`      reactions: ${reactionsLiteral(emitter.reactions, emitterIndex)},`]
+      ? [`      reactions: ${reactionsLiteral(emitter.reactions, emitterIndex, copiesOf)},`]
       : []),
     `      liveChannels: ${JSON.stringify(emitter.liveChannels)},`,
     `      liveParams: ${JSON.stringify(emitter.liveParams)},`,

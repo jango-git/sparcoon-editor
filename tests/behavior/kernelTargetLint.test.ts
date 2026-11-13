@@ -551,9 +551,10 @@ describe("compile and validate surfaces carry typed errors", () => {
       ],
     });
 
-    const result = new FXBehaviorLiveBackend(() => {}, buildParticleBehaviorTargets).validate(
-      graph,
-    );
+    const result = new FXBehaviorLiveBackend(
+      () => {},
+      (attributes) => buildParticleBehaviorTargets(attributes),
+    ).validate(graph);
     expect(result.ok).toBe(false);
     expect(result.errors.some((error) => error.code === "attribute-type-conflict")).toBe(true);
   });

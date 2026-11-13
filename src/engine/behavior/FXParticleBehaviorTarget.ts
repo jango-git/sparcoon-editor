@@ -11,11 +11,17 @@ import {
 } from "sparcoon";
 import { packingOrder } from "sparcoon/editor";
 
+import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
+import type { FXGraph } from "../core/FXGraph";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import { canonicalAttributeSuffix } from "../core/socket/FXAttribute";
+import { FX_RANDOM_SEED_INPUT } from "../core/socket/FXReadableBuiltins";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
+import type { FXBehaviorNode } from "./FXBehaviorNode";
 import type { FXKernelBufferLayout, FXKernelIntegration } from "./FXCompiledKernel";
+import { collectInheritRequests, planInherits } from "./FXInherit";
+import type { FXInheritPlan, FXInheritRequest } from "./FXInheritPlan";
 import { FX_KILL_SLOT } from "./FXKernelLifecycle.Internal";
 
 /**
@@ -38,6 +44,12 @@ export interface FXKernelTargetInput {
    * or lifted; needs the core `lifecycle` buffer, the age it reads.
    */
   readonly atBirth?: boolean;
+  /**
+   * Where in the target's {@link FXKernelTarget.inherit} layout this input's floats start: a value
+   * the newborns of one spawn call share, inherited from the particle whose death spawned them.
+   * Offset-less like the emitter transform, so hoisted; spawn targets only.
+   */
+  readonly inheritOffset?: number;
 }
 
 /**
@@ -78,6 +90,9 @@ export interface FXKernelTarget {
    * the core `lifecycle` buffer.
    */
   readonly killSlot?: string;
+  /** What the newborns inherit, its values read by the inputs with an `inheritOffset`; absent
+   *  when nothing. Spawn targets only. */
+  readonly inherit?: FXInheritPlan;
 }
 
 /**
@@ -95,12 +110,13 @@ export interface FXBehaviorTargets {
 }
 
 /**
- * Builds the phase targets for a set of requested attributes. Injected into the live compile
- * backend so the particle default ({@link buildParticleBehaviorTargets}) can be swapped for a
- * host's own target scheme.
+ * Builds the phase targets for a set of requested attributes and the graph requesting them.
+ * Injected into the live compile backend so the particle default
+ * ({@link particleBehaviorTargetsFor}) can be swapped for a host's own target scheme.
  */
 export type FXBehaviorTargetFactory = (
   attributes: readonly FXAttributeRequest[],
+  graph: FXGraph<FXBehaviorNode>,
 ) => FXBehaviorTargets;
 
 const FLOAT = FX_VALUE_TYPES.float;
@@ -176,6 +192,8 @@ const scalarReadInputs: readonly FXKernelTargetInput[] = [
   { name: "PARTICLE_AGE", type: FLOAT, offsets: [FX_AGE], buffer: LIFECYCLE_BUFFER },
   { name: "PARTICLE_LIFETIME", type: FLOAT, offsets: [FX_LIFETIME], buffer: LIFECYCLE_BUFFER },
   { name: "PARTICLE_ID", type: FLOAT, offsets: [FX_ID], buffer: LIFECYCLE_BUFFER },
+  // What a random seeds from by default: the particle's id, as on the render side.
+  { name: FX_RANDOM_SEED_INPUT, type: FLOAT, offsets: [FX_ID], buffer: LIFECYCLE_BUFFER },
 ];
 
 /** `PARTICLE_POSITION` readable as a single `vec3` (component-expanded by the kernel). */
@@ -311,16 +329,28 @@ function attributeSlots(
   }));
 }
 
+/** One spawn input per value of an inherit plan, at its offset. */
+function inheritInputs(plan: FXInheritPlan): readonly FXKernelTargetInput[] {
+  return plan.entries.map((entry) => ({
+    name: entry.inputName,
+    type: entry.request.type,
+    inheritOffset: entry.offset,
+  }));
+}
+
 /**
  * Builds the spawn/update phase targets for a particle behavior graph, extended with a
- * per-particle buffer/input/slot for each requested attribute. The attribute set is folded
- * into the target name so it participates in the structural hash.
+ * per-particle buffer/input/slot for each requested attribute, and with a spawn input for each
+ * value its newborns inherit. The attribute set is folded into the target names so it
+ * participates in the structural hash; the inherit layout is part of the spawn target's shape.
  */
 export function buildParticleBehaviorTargets(
   attributes: readonly FXAttributeRequest[] = [],
   tryGpuSimulation = false,
+  inherits: readonly FXInheritRequest[] = [],
 ): { spawn: FXKernelTarget; update: FXKernelTarget; tryGpuSimulation: boolean } {
   const suffix = canonicalAttributeSuffix(attributes);
+  const inheritPlan = planInherits(inherits);
   const buffers = slotOrder([...FX_CORE_BUFFERS, ...attributeBuffers(attributes)]);
   const attributeInputEntries = attributeInputs(attributes);
   const attributeSlotEntries = attributeSlots(attributes);
@@ -333,8 +363,10 @@ export function buildParticleBehaviorTargets(
       ...SPAWN_EMITTER_HOST_INPUTS,
       ...PARTICLE_INDEX_INPUTS,
       ...attributeInputEntries,
+      ...inheritInputs(inheritPlan),
     ],
     outputs: [...writeOutputs(true), ...attributeSlotEntries],
+    ...(inheritPlan.layout.stride === 0 ? {} : { inherit: inheritPlan }),
   };
   const update: FXKernelTarget = {
     name: `particle-behavior-update${suffix}`,
@@ -351,4 +383,20 @@ export function buildParticleBehaviorTargets(
     killSlot: FX_KILL_SLOT,
   };
   return { spawn, update, tryGpuSimulation };
+}
+
+/**
+ * {@link buildParticleBehaviorTargets} for `graph`: its attributes (or `attributes`, when the
+ * caller already merged them with another graph's) and what its newborns inherit.
+ */
+export function particleBehaviorTargetsFor(
+  graph: FXGraph<FXBehaviorNode>,
+  tryGpuSimulation = false,
+  attributes: readonly FXAttributeRequest[] = collectAttributeRequests(graph).requests,
+): FXBehaviorTargets & { spawn: FXKernelTarget } {
+  return buildParticleBehaviorTargets(
+    attributes,
+    tryGpuSimulation,
+    collectInheritRequests(graph).requests,
+  );
 }

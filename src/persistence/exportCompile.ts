@@ -37,7 +37,7 @@ import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { buildParticleBehaviorTargets } from "../engine/behavior/FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
@@ -296,7 +296,7 @@ export function compileEmitter(
   // decides what the Standard tier's particle mesh takes.
   const bundle = compileBehaviorBundle(
     behaviorGraph,
-    buildParticleBehaviorTargets(behaviorAttributes, spawnConfig.tryGpuSimulation),
+    particleBehaviorTargetsFor(behaviorGraph, spawnConfig.tryGpuSimulation, behaviorAttributes),
   );
   const kernelBuffers = bundle.standardProgram?.buffers;
   requireWithinRenderBudget(

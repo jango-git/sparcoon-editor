@@ -2,7 +2,7 @@ import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 
 import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
 import { compileBehavior } from "../behavior/FXParticleBehaviorKernel.Internal";
-import { buildParticleBehaviorTargets } from "../behavior/FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "../behavior/FXParticleBehaviorTarget";
 import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
 import type { FXGraph } from "../core/FXGraph";
 import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
@@ -57,7 +57,10 @@ export function emitEffectModule(
   ) as Readonly<Record<keyof typeof FX_GLSL_RENDER_COMPILERS, FXCompiledShader>>;
 
   const behaviorAttributes = collectAttributeRequests(behaviorGraph).requests;
-  const kernel = compileBehavior(behaviorGraph, buildParticleBehaviorTargets(behaviorAttributes));
+  const kernel = compileBehavior(
+    behaviorGraph,
+    particleBehaviorTargetsFor(behaviorGraph, false, behaviorAttributes),
+  );
 
   const lines: string[] = [];
   lines.push(

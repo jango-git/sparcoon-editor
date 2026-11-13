@@ -13,6 +13,9 @@ export type FXCompilerErrorCode =
   | "overlapping-output-slots"
   | "attribute-type-conflict"
   | "undeclared-attribute"
+  | "inherit-type-conflict"
+  | "inherit-input-not-in-spawn"
+  | "inherit-input-out-of-layout"
   | "generic-type-conflict"
   | "generic-type-unresolved"
   | "unknown-target-input"
@@ -157,7 +160,10 @@ export type FXCompilerErrorCode =
   | "attribute-never-written"
   // A warning: an emitter whose longest particle lifetime cannot be read off its graph
   // (domain/lifetimeBound.ts).
-  | "lifetime-unbounded";
+  | "lifetime-unbounded"
+  | "inherit-missing"
+  | "inherit-mistyped"
+  | "inherit-unwritten";
 
 /** A single, editor-presentable problem found in a graph. */
 export interface FXCompilerError {

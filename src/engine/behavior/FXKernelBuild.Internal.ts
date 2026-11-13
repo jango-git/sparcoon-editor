@@ -9,7 +9,12 @@ import type {
 } from "./FXCompiledKernel";
 import { killStatementJS } from "./FXKernelLifecycle.Internal";
 import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
-import { bufferAccess, bufferBaseName, SLOTS_PARAMETER } from "./FXKernelShared.Internal";
+import {
+  bufferAccess,
+  bufferBaseName,
+  SLOTS_PARAMETER,
+  SPAWN_KERNEL_PARAMETERS,
+} from "./FXKernelShared.Internal";
 
 /**
  * The `new Function` assembly layer: turns a compiled {@link FXCompiledKernel} into executable
@@ -107,13 +112,6 @@ export function buildParticleSpawnKernel(compiled: FXCompiledKernel): FXParticle
     throw new Error("buildParticleSpawnKernel: compiled kernel has no spawn phase");
   }
   const source = [...phase.helpers, assembleKernelBody(phase, SPAWN_LOOP_HEADER)].join("\n");
-  const built = new Function(
-    SLOTS_PARAMETER,
-    "start",
-    "count",
-    "bindings",
-    "emitter",
-    source,
-  ) as unknown;
+  const built = new Function(...SPAWN_KERNEL_PARAMETERS, source) as unknown;
   return built as FXParticleSpawnKernel;
 }

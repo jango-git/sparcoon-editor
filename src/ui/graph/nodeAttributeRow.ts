@@ -17,13 +17,22 @@ const REMOVE_CLICKS = 4;
 export interface AttributeOption {
   readonly name: string;
   readonly type: string;
+  /** What tells it apart in the dropdown, when its name alone does not. default `name` */
+  readonly value?: string;
+  /** What the dropdown shows. default `name` */
+  readonly label?: string;
 }
 
-/** Wiring for an attribute node (`custom-attribute`): the declared attributes + a picker. */
+/** Wiring for an attribute node (`custom-attribute`, `inherited-attribute`): the attributes it
+ *  can read + a picker. */
 export interface AttributeNodeConfig {
   readonly options: readonly AttributeOption[];
+  /** The option the node reads now. default the one named by its `name` param */
+  readonly current?: string;
+  /** What the picker shows with no option to offer. default "declare one..." */
+  readonly emptyText?: string;
   /** Chooses which attribute the node reads (a structural edit - replaces the node). */
-  readonly onSelect: (name: string, type: string) => void;
+  readonly onSelect: (option: AttributeOption) => void;
 }
 
 /**
@@ -106,23 +115,27 @@ export function buildAttributeRow(
     className: "param__label",
     textContent: t("graph.attribute"),
   });
-  const current = String(node.parameters["name"] ?? "");
+  const current = config.current ?? String(node.parameters["name"] ?? "");
+  const valueOf = (option: AttributeOption): string => option.value ?? option.name;
 
   let control: HTMLElement;
   if (config.options.length === 0) {
     control = createElement("span", {
       className: "param__placeholder",
-      textContent: t("graph.declareAttribute"),
+      textContent: config.emptyText ?? t("graph.declareAttribute"),
     });
   } else {
     const dropdown = new Dropdown({
-      options: config.options.map((option) => ({ value: option.name, label: option.name })),
+      options: config.options.map((option) => ({
+        value: valueOf(option),
+        label: option.label ?? option.name,
+      })),
       value: current,
       placeholder: "-",
-      onChange: (name): void => {
-        const chosen = config.options.find((option) => option.name === name);
+      onChange: (value): void => {
+        const chosen = config.options.find((option) => valueOf(option) === value);
         if (chosen !== undefined) {
-          config.onSelect(chosen.name, chosen.type);
+          config.onSelect(chosen);
         }
       },
       scale,

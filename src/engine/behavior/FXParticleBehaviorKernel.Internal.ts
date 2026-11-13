@@ -7,7 +7,6 @@ import {
 import { printJSLocals } from "../core/codegen/printJS.Internal";
 import { scalarComponentName, scalarize } from "../core/codegen/scalarize.Internal";
 import { FXJSNames } from "../core/codegen/uniqueName.Internal";
-import { collectAttributeRequests } from "../core/compiler/collectAttributeRequests";
 import {
   buildNodes,
   prepareCompile,
@@ -57,7 +56,7 @@ import type {
   FXKernelTarget,
   FXKernelTargetOutput,
 } from "./FXParticleBehaviorTarget";
-import { buildParticleBehaviorTargets } from "./FXParticleBehaviorTarget";
+import { particleBehaviorTargetsFor } from "./FXParticleBehaviorTarget";
 
 // This module is the behavior compile family's entry point; re-export the public symbols that
 // moved to the split files so existing importers keep their one import path.
@@ -464,7 +463,13 @@ export function compileBehavior(
     behaviorNodeKey(resolution.types, phases),
   );
 
-  return { ...(spawn !== undefined ? { spawn } : {}), update, hash };
+  const inherit = targets.spawn?.inherit;
+  return {
+    ...(spawn !== undefined ? { spawn } : {}),
+    update,
+    ...(inherit === undefined ? {} : { inherit }),
+    hash,
+  };
 }
 
 /**
@@ -473,7 +478,7 @@ export function compileBehavior(
  * ordinary attributes, so the plain core-only targets would reject their `attr:<name>` slots.
  */
 function particleTargetsFor(graph: FXGraph<FXBehaviorNode>): FXBehaviorTargets {
-  return buildParticleBehaviorTargets(collectAttributeRequests(graph).requests);
+  return particleBehaviorTargetsFor(graph);
 }
 
 /** Validates the graph against the built-in particle targets (with its attributes). */

@@ -63,9 +63,37 @@ export function buffersFor(compiled: FXCompiledKernel, count = 1): FieldBuffers 
   return fieldsFor(compiled.update.buffers, count);
 }
 
+/** The pose of an emitter at the world origin, at rest. */
+const IDENTITY_EMITTER: FXEmitterTransform = {
+  worldMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  velocity: [0, 0, 0],
+  angularVelocity: [0, 0, 0],
+};
+
+/** A spawn kernel over per-field arrays, born at rest at the origin and inheriting the compiled
+ *  defaults unless told otherwise. */
+export type FieldSpawnKernel = (
+  fields: FieldBuffers,
+  start: number,
+  count: number,
+  bindings: Parameters<FieldKernel<FXParticleSpawnKernel>>[3],
+  emitter?: FXEmitterTransform,
+  inherited?: Float32Array,
+) => void;
+
 /** The compiled spawn kernel, called on per-field arrays (see `overFields`). */
-export function fieldSpawnKernel(compiled: FXCompiledKernel): FieldKernel<FXParticleSpawnKernel> {
-  return overFields(compiled.update.buffers, buildParticleSpawnKernel(compiled));
+export function fieldSpawnKernel(compiled: FXCompiledKernel): FieldSpawnKernel {
+  const run = overFields(compiled.update.buffers, buildParticleSpawnKernel(compiled));
+  return (fields, start, count, bindings, emitter, inherited): void => {
+    run(
+      fields,
+      start,
+      count,
+      bindings,
+      emitter ?? IDENTITY_EMITTER,
+      inherited ?? Float32Array.from(compiled.inherit?.layout.defaults ?? []),
+    );
+  };
 }
 
 /** The compiled update kernel, called on per-field arrays (see `overFields`). */

@@ -24,6 +24,7 @@ import {
   readTrailSinkConfig,
   timelineValueConflicts,
 } from "../domain/nodePalette";
+import { type InheritIssue, inheritIssueWarnings, linkReaction } from "../domain/reactionLinking";
 import { serializeGraph } from "../domain/serialize";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
@@ -36,6 +37,7 @@ import {
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
+import { compilerErrorMessage } from "../i18n/compilerErrors";
 import {
   type EmitterDoc,
   type LiveApplyStatus,
@@ -92,8 +94,10 @@ export class SceneEmitters implements SceneApplier {
   // Entities hand-posed while the caret is parked; applySceneTransforms holds these at base
   // (ignoring tracks) until the dispatcher clears the set on the next frame entry. Keyed by entityKey.
   private readonly manualPoses = new Set<string>();
-  // The death reactions as wired between views, re-made on every sync (cheap: a listener each).
+  // The death reactions as wired between views, re-made on every sync (cheap: a listener each),
+  // and what each leaves its births at defaults for, by reaction id.
   private reactionLinks: (() => void)[] = [];
+  private inheritIssuesByReaction: ReadonlyMap<string, readonly InheritIssue[]> = new Map();
   // See readsSceneDepth: what the views' materials and visibility last said, refreshed when either
   // can change - a sync (new materials) or a visibility flip.
   private sceneDepthRead = false;
@@ -122,6 +126,10 @@ export class SceneEmitters implements SceneApplier {
     scene.add(this.vfxGroup);
   }
 
+  /** What each reaction, by id, leaves its births at defaults for, as last wired. */
+  public get inheritIssues(): ReadonlyMap<string, readonly InheritIssue[]> {
+    return this.inheritIssuesByReaction;
+  }
   /** The effects' root: everything the scene depth pre-pass leaves out (see `SceneDepthSource`). */
   public get effects(): Object3D {
     return this.vfxGroup;
@@ -155,6 +163,7 @@ export class SceneEmitters implements SceneApplier {
       }
     }
     this.wireReactions(scene);
+    active = active === undefined ? undefined : this.withInheritWarnings(active, scene);
     // Re-assert every entity's pose after the (re)build so a structural edit never resets it.
     this.applySceneTransforms(scene, this.currentTime());
     this.refreshSceneDepthRead();
@@ -320,20 +329,28 @@ export class SceneEmitters implements SceneApplier {
 
   /**
    * Links every death reaction of `scene` between the views, as the runtime's `FXEffect` does
-   * between its emitters. Part of every sync; also on its own after a view edit, which changes a
-   * reaction's numbers without a rebuild. The views survive rebuilds, so the links do too.
+   * between its emitters, with what its births inherit of the running source's particles (see
+   * `reactionLinking.ts`). Part of every sync - after every rebuild, so a link always copies within
+   * the layouts it was made for; also on its own after a view edit, which changes a reaction's
+   * numbers without a rebuild.
    */
   public wireReactions(scene: SceneModel): void {
     this.unwireReactions();
+    const issues = new Map<string, readonly InheritIssue[]>();
     for (const emitter of scene.emitters) {
       const target = this.views.get(emitter.id);
       for (const reaction of emitter.reactions) {
         const source = this.views.get(reaction.source);
         if (target !== undefined && source !== undefined) {
-          this.reactionLinks.push(connectDeathReaction(source, target, reaction));
+          const link = linkReaction(source.reactionSource, target.inheritEntries);
+          if (link.issues.length > 0) {
+            issues.set(reaction.id, link.issues);
+          }
+          this.reactionLinks.push(connectDeathReaction(source, target, reaction, link.copies));
         }
       }
     }
+    this.inheritIssuesByReaction = issues;
   }
 
   /** Whether any shown emitter or mesh reads the scene depth - the pre-pass is paid only then.
@@ -408,6 +425,26 @@ export class SceneEmitters implements SceneApplier {
     this.meshViews.get(id)?.driveParamValues(values);
   }
 
+  /** `result` (the active emitter's) with what its reactions cannot hand over among its behavior
+   *  warnings. */
+  private withInheritWarnings(result: SceneApplyResult, scene: SceneModel): SceneApplyResult {
+    const target = scene.emitters.find((emitter) => emitter.id === scene.activeEmitterId);
+    const status = result.behaviorStatus;
+    if (target === undefined || status.status === "invalid") {
+      return result;
+    }
+    const warnings = inheritIssueWarnings(target, scene.emitters, this.inheritIssuesByReaction);
+    if (warnings.length === 0) {
+      return result;
+    }
+    return {
+      ...result,
+      behaviorStatus: {
+        ...status,
+        warnings: [...(status.warnings ?? []), ...warnings.map(compilerErrorMessage)],
+      },
+    };
+  }
   private highlightSelected(): void {
     this.vfxMarker.setSelected(this.selected.kind === "vfx");
     for (const [id, view] of this.views) {

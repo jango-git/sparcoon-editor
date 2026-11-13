@@ -212,6 +212,42 @@ export const STORE_ATTRIBUTE_META: FXNodeMeta = {
 };
 
 /**
+ * Spawn-side reader of what a newborn inherits from the particle whose death spawned it: a user
+ * attribute of that particle (`source: "attribute"`, by `name`), or a core field
+ * (`source: "builtin"`, `name` one of `FX_INHERIT_BUILTINS`, always a float). A birth no death
+ * spawned reads `value` instead.
+ */
+export const INHERITED_ATTRIBUTE_META: FXNodeMeta = {
+  type: "inherited-attribute",
+  category: "attribute",
+  domain: "behavior",
+  phase: "spawn",
+  inputs: [],
+  outputs: [{ key: "value", type: "T" }],
+  params: {
+    source: {
+      kind: "structural",
+      type: "enum",
+      options: ["attribute", "builtin"],
+      default: "attribute",
+    },
+    type: {
+      kind: "structural",
+      type: "valueType",
+      options: ATTRIBUTE_TYPES,
+      default: "float",
+    },
+    value: { kind: "value", type: "generic", default: 0 },
+  },
+  // The kernel input it reads depends on the instance's source, type and default.
+  reads: "dynamic",
+  generic: { constraint: ATTRIBUTE_TYPES },
+  customParams: [{ key: "name", kind: "inherit-source", required: true }],
+  // A value shared by the whole spawn call, no arithmetic.
+  cost: 0,
+};
+
+/**
  * The `type` dropdown options for a Timeline Value: numeric value types plus the UI-only
  * `"color"` alias (`resolveParamType` maps it to `vec4`), mirroring `constant`.
  */
@@ -312,6 +348,7 @@ export const FX_MANUAL_NODE_METAS: readonly FXNodeMeta[] = [
   CUSTOM_ATTRIBUTE_SPLIT_META,
   BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META,
   STORE_ATTRIBUTE_META,
+  INHERITED_ATTRIBUTE_META,
   TIMELINE_VALUE_RENDER_META,
   TIMELINE_VALUE_BEHAVIOR_META,
   TEXTURE_META,

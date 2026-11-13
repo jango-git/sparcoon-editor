@@ -21,6 +21,7 @@ import {
 } from "../../core/ir/noise/FXVoronoiNoise.Internal";
 import type { FXExprBuilderApi } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
+import { FX_RANDOM_SEED_INPUT } from "../../core/socket/FXReadableBuiltins";
 import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES, NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
 
@@ -210,7 +211,8 @@ export const RANDOM_RANGE = {
 } as const;
 
 /**
- * Hash: a stable random in `[min, max)` per `seed` (default: the particle id), each component
+ * Hash: a stable random in `[min, max)` per `seed` (default: the particle's id, a VFX mesh's own
+ * seed), each component
  * independent. Equal seeds give equal values; a different `salt` gives another, unrelated draw.
  */
 export const fxHash = defineNode({
@@ -221,7 +223,7 @@ export const fxHash = defineNode({
   category: "math",
   generic: { constraint: NUMERIC_VALUE_TYPES },
   inputs: {
-    seed: { type: "vec3", default: { targetInput: "PARTICLE_ID" } },
+    seed: { type: "vec3", default: { targetInput: FX_RANDOM_SEED_INPUT } },
     salt: { type: "float", value: 0, step: 1 },
     ...RANDOM_RANGE.inputs,
   },

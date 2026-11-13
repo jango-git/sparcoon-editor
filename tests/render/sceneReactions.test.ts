@@ -131,4 +131,70 @@ describe("SceneEmitters: death reactions in the live preview", () => {
     expect(() => runTo(2.5)).not.toThrow();
     expect(emitters.totalParticleCount()).toBe(0);
   });
+
+  it("hands a reaction's births what they inherit, and reports what the source cannot hand over", () => {
+    const { store, emitters } = preview();
+    const scene = store.getSource().scene;
+    const [shell, sparks] = scene.emitters;
+    const hotShell: EmitterDoc = {
+      ...shell,
+      behaviorGraph: {
+        ...shell.behaviorGraph,
+        attributes: [{ name: "heat", type: "float" }],
+        nodes: {
+          ...shell.behaviorGraph.nodes,
+          n_heat: {
+            id: "n_heat",
+            type: "constant",
+            parameters: { type: "float", value: 5 },
+            position: { x: 0, y: 0 },
+          },
+        },
+        outputBindings: [
+          ...shell.behaviorGraph.outputBindings,
+          { slot: "attr:heat", from: { nodeId: "n_heat", socketKey: "out" }, phase: "spawn" },
+        ],
+      },
+    };
+    const inherit = (name: string, id: string): EmitterDoc["behaviorGraph"]["nodes"][string] => ({
+      id,
+      type: "inherited-attribute",
+      parameters: { source: "attribute", name, type: "float", value: 0.5 },
+      position: { x: 0, y: 0 },
+    });
+    const inheritingSparks: EmitterDoc = {
+      ...sparks,
+      reactions: [{ id: "r", source: "shell", kind: "burst", count: 2 }],
+      behaviorGraph: {
+        ...sparks.behaviorGraph,
+        nodes: {
+          ...sparks.behaviorGraph.nodes,
+          n_heat: inherit("heat", "n_heat"),
+          n_cold: inherit("cold", "n_cold"),
+        },
+        outputBindings: [
+          // Lifetime and position from what they inherit instead (positionX would overlap position).
+          ...sparks.behaviorGraph.outputBindings.filter(
+            (binding) => binding.slot !== "lifetime" && binding.slot !== "position",
+          ),
+          { slot: "lifetime", from: { nodeId: "n_heat", socketKey: "value" }, phase: "spawn" },
+          { slot: "positionX", from: { nodeId: "n_cold", socketKey: "value" }, phase: "spawn" },
+        ],
+      },
+    };
+    const result = emitters.sync({
+      ...scene,
+      emitters: [hotShell, inheritingSparks],
+      activeEmitterId: "sparks",
+    });
+    expect(result.behaviorStatus.warnings).toContainEqual(
+      'emitter "Shell" has no attribute "cold" - births its deaths spawn read the default',
+    );
+    expect(emitters.inheritIssues.get("r")).toEqual([
+      { kind: "missing", name: "cold", expected: "float" },
+    ]);
+    emitters.spawn("shell", { kind: "burst", count: 5 });
+    runTo(4.5); // the shells die at 2 s; their sparks live the shells' heat of 5 s, not 0.5 s
+    expect(emitters.totalParticleCount()).toBe(10);
+  });
 });

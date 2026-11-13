@@ -132,6 +132,14 @@ export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorAr
     // The slot, in the target's order (see `buildParticleBehaviorTargets`).
     buffers: kernel.update.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
     bindings: mergeBindingSlots(kernel),
+    ...(kernel.inherit === undefined
+      ? {}
+      : {
+          inherit: {
+            stride: kernel.inherit.layout.stride,
+            defaults: [...kernel.inherit.layout.defaults],
+          },
+        }),
     update: buildParticleUpdateKernel(kernel),
   };
   return kernel.spawn === undefined ? base : { ...base, spawn: buildParticleSpawnKernel(kernel) };

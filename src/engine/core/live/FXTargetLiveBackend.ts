@@ -12,8 +12,9 @@ import type { FXLiveBackend } from "./FXLiveBackend";
  * folding attribute errors into `validate` only - is shared, in {@link FXTargetLiveBackend}.
  */
 export interface FXTargetLiveBackendConfig<N extends FXGraphNode, A, T> {
-  /** Derives the compile target for a snapshot from its collected attribute requests. */
-  buildTarget(attributes: readonly FXAttributeRequest[]): T;
+  /** Derives the compile target for a snapshot from its collected attribute requests, and from
+   *  whatever else of the graph shapes it (a behavior graph's inheritance). */
+  buildTarget(attributes: readonly FXAttributeRequest[], graph: FXGraph<N>): T;
   /** Structured, non-throwing compilability check of the graph against its target. */
   validate(graph: FXGraph<N>, target: T): FXValidationResult;
   /** Cheap structural hash of the graph (no codegen), matching {@link compile}'s hash. */
@@ -36,7 +37,7 @@ export class FXTargetLiveBackend<N extends FXGraphNode, A, T> implements FXLiveB
 
   public validate(graph: FXGraph<N>): FXValidationResult {
     const attributes = collectAttributeRequests(graph);
-    const result = this.config.validate(graph, this.config.buildTarget(attributes.requests));
+    const result = this.config.validate(graph, this.config.buildTarget(attributes.requests, graph));
     const errors = [...attributes.errors, ...result.errors];
     return { ok: errors.length === 0, errors };
   }
@@ -54,6 +55,6 @@ export class FXTargetLiveBackend<N extends FXGraphNode, A, T> implements FXLiveB
   }
 
   private targetFor(graph: FXGraph<N>): T {
-    return this.config.buildTarget(collectAttributeRequests(graph).requests);
+    return this.config.buildTarget(collectAttributeRequests(graph).requests, graph);
   }
 }

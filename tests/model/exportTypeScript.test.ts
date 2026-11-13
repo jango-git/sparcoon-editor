@@ -432,6 +432,51 @@ describe("emitProjectModule - executes", () => {
     }
   });
 
+  it("seeds a VFX mesh's hash by the mesh: two copies of one effect draw two randoms", () => {
+    const base = createTestState().source;
+    const seeded = createDefaultVfxMesh("mesh_1", "Mesh");
+    const graph = seeded.renderGraph;
+    const mesh = {
+      ...seeded,
+      renderGraph: {
+        ...graph,
+        nodes: {
+          ...graph.nodes,
+          n_hash: {
+            id: "n_hash",
+            type: "hash",
+            parameters: { type: "float" },
+            position: { x: 0, y: 0 },
+          },
+        },
+        outputBindings: [
+          ...graph.outputBindings,
+          { slot: "intensity", from: { nodeId: "n_hash", socketKey: "out" } },
+        ],
+      },
+    };
+    const module = loadModule(
+      emitProjectModule({ ...base, scene: { ...base.scene, meshes: [mesh] } }),
+    );
+    const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
+      dispose(): void;
+    };
+    const effects = [new Effect({}), new Effect({})];
+    try {
+      sparcoon.FXWorld.update(0.05);
+      const seedOf = (effect: three.Group): unknown => {
+        const drawn = effect.children.find((child) => child.type === "Mesh") as three.Mesh;
+        return (drawn.material as three.ShaderMaterial).uniforms["RANDOM_SEED"]?.value;
+      };
+      expect(typeof seedOf(effects[0])).toBe("number");
+      expect(seedOf(effects[0])).not.toBe(seedOf(effects[1]));
+    } finally {
+      for (const effect of effects) {
+        effect.dispose();
+      }
+    }
+  });
+
   it("skips a degenerate zero-count burst instead of throwing out of update", () => {
     const base = createTestState().source;
     const emitter = base.scene.emitters[0];

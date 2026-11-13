@@ -12,7 +12,7 @@ import type {
   FXKernelBindingHandle,
 } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
-import { SLOTS_PARAMETER } from "../behavior/FXKernelShared.Internal";
+import { SLOTS_PARAMETER, SPAWN_KERNEL_PARAMETERS } from "../behavior/FXKernelShared.Internal";
 import {
   assembleKernelBody,
   SPAWN_LOOP_HEADER,
@@ -275,9 +275,12 @@ export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""):
     "{",
     `${inner}buffers: ${JSON.stringify(kernel.update.buffers)},`,
     `${inner}bindings: ${bindingsLiteral(kernel)},`,
+    ...(kernel.inherit === undefined
+      ? []
+      : [`${inner}inherit: ${JSON.stringify(kernel.inherit.layout)},`]),
   ];
   if (kernel.spawn !== undefined) {
-    lines.push(`${inner}spawn(${SLOTS_PARAMETER}, start, count, bindings, emitter) {`);
+    lines.push(`${inner}spawn(${SPAWN_KERNEL_PARAMETERS.join(", ")}) {`);
     lines.push(indentBody(assembleKernelBody(kernel.spawn, SPAWN_LOOP_HEADER), methodBody));
     lines.push(`${inner}},`);
   }

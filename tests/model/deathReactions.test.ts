@@ -286,4 +286,94 @@ describe("death reactions in the export", () => {
       expect(sparks()).toBe(4 * 20 * 0.5);
     });
   });
+
+  /**
+   * `shellAndSparks` with the shells writing a `heat` of `heat` at birth and the sparks living as
+   * long as the heat of the shell they came from (or `fallback` seconds, inheriting none).
+   */
+  function inheritingSparks(heat: number, fallback: number, written = true): SourceState {
+    const source = shellAndSparks();
+    const [shell, sparks] = source.scene.emitters;
+    const shellGraph = shell.behaviorGraph;
+    const sparksGraph = sparks.behaviorGraph;
+    const hotShell: EmitterDoc = {
+      ...shell,
+      behaviorGraph: {
+        ...shellGraph,
+        attributes: [{ name: "heat", type: "float" }],
+        nodes: {
+          ...shellGraph.nodes,
+          n_heat: {
+            id: "n_heat",
+            type: "constant",
+            parameters: { type: "float", value: heat },
+            position: { x: 0, y: 0 },
+          },
+        },
+        outputBindings: [
+          ...shellGraph.outputBindings,
+          ...(written
+            ? [
+                {
+                  slot: "attr:heat",
+                  from: { nodeId: "n_heat", socketKey: "out" },
+                  phase: "spawn" as const,
+                },
+              ]
+            : []),
+        ],
+      },
+    };
+    const inheritingSparksDoc: EmitterDoc = {
+      ...sparks,
+      behaviorGraph: {
+        ...sparksGraph,
+        nodes: {
+          ...sparksGraph.nodes,
+          n_inherit: {
+            id: "n_inherit",
+            type: "inherited-attribute",
+            parameters: { source: "attribute", name: "heat", type: "float", value: fallback },
+            position: { x: 0, y: 0 },
+          },
+        },
+        outputBindings: [
+          ...sparksGraph.outputBindings.filter((binding) => binding.slot !== "lifetime"),
+          { slot: "lifetime", from: { nodeId: "n_inherit", socketKey: "value" }, phase: "spawn" },
+        ],
+      },
+    };
+    return { ...source, scene: { ...source.scene, emitters: [hotShell, inheritingSparksDoc] } };
+  }
+
+  /** How many sparks are alive `after` seconds of sparcoon time past the shells' deaths. */
+  function sparksAliveAfter(source: SourceState, after: number): number | undefined {
+    let alive: number | undefined;
+    playExport(source, (effect) => {
+      // The shells live 2 s; the sparks burst the frame after - at 2.25 s in 1/4 s steps.
+      for (let t = 0; t < 2.25 + after; t += 0.25) {
+        sparcoon.FXWorld.update(0.25);
+      }
+      alive = effect.getEmitter("Sparks")?.particleCount;
+    });
+    return alive;
+  }
+
+  it("ships what a reaction's births inherit, and the sparks live as long as their shell's heat", () => {
+    const source = inheritingSparks(5, 0.5);
+    const text = emitProjectModule(source);
+    expect(text).toContain('inherit: {"stride":1,"defaults":[0.5]},');
+    expect(text).toMatch(
+      /reactions: \[\{"kind":"burst","count":3,"source":0,"copies":\[\d+,0,1\]\}\],/,
+    );
+    expect(sparksAliveAfter(source, 2)).toBe(12); // heat 5: still alive 2 s on
+  });
+
+  it("falls back to the default for a value the source never writes, and copies nothing", () => {
+    const source = inheritingSparks(5, 0.5, false);
+    expect(emitProjectModule(source)).toContain(
+      'reactions: [{"kind":"burst","count":3,"source":0}],',
+    );
+    expect(sparksAliveAfter(source, 2)).toBe(0); // the 0.5 s default ran out long ago
+  });
 });

@@ -13,6 +13,7 @@ import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 
 import { effectiveSpawnConfig } from "../domain/deathReactions";
+import { linkReaction, reactionSourceOf } from "../domain/reactionLinking";
 import { TRAIL_GEOMETRY } from "../domain/trailChecks";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
@@ -23,7 +24,7 @@ import {
 } from "../engine/emit/artifactLiterals";
 import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
-import type { SourceState } from "../model/editorState";
+import type { DeathReaction, SourceState } from "../model/editorState";
 import type { CompiledShadersByGLSLTier } from "./exportCompile";
 import {
   compileEmitter,
@@ -111,8 +112,18 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   };
 
   const emitterIndex = new Map(source.scene.emitters.map((emitter, index) => [emitter.id, index]));
-  source.scene.emitters.forEach((emitter, index) => {
-    const ir = compileEmitter(emitter, effectiveSpawnConfig(emitter, source.scene));
+  // Compiled first, then linked: a reaction copies what its source's compiled slot holds.
+  const compiled = source.scene.emitters.map((emitter) => ({
+    emitter,
+    ir: compileEmitter(emitter, effectiveSpawnConfig(emitter, source.scene)),
+  }));
+  const reactionSources = new Map(
+    compiled.map(({ emitter, ir }) => [emitter.id, reactionSourceOf(ir.kernel)]),
+  );
+  compiled.forEach(({ emitter, ir }, index) => {
+    const inherits = ir.kernel.inherit?.entries ?? [];
+    const copiesOf = (reaction: DeathReaction): readonly number[] =>
+      linkReaction(reactionSources.get(reaction.source), inherits).copies;
     importHelpers(collectBehaviorHelpers(ir.kernel));
     const renderNames = tierNames(`render${String(index)}`);
     const behaviorName = `behavior${String(index)}`;
@@ -156,6 +167,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
         ir,
         slots,
         emitterIndex,
+        copiesOf,
         gpuKernelName,
         trailNames,
       ),

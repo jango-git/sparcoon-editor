@@ -353,6 +353,24 @@
   "param-value-conflict": {
     "message": "у «Значения таймлайна» \"{name}\" здесь другое значение по умолчанию, чем в другом его объявлении в этом эмиттере"
   },
+  "inherit-type-conflict": {
+    "message": "унаследованный \"{source}\" читается и как {firstType}, и как {secondType}"
+  },
+  "inherit-input-not-in-spawn": {
+    "message": "цель \"{targetName}\" объявляет унаследованный вход \"{inputName}\", но наследуют только рождения ядра spawn"
+  },
+  "inherit-input-out-of-layout": {
+    "message": "унаследованный вход \"{inputName}\" цели \"{targetName}\" не лежит внутри её раскладки наследования из {stride} чисел"
+  },
+  "inherit-missing": {
+    "message": "у эмиттера \"{source}\" нет атрибута \"{name}\" - рождения от его смертей читают значение по умолчанию"
+  },
+  "inherit-mistyped": {
+    "message": "эмиттер \"{source}\" хранит \"{name}\" как {found}, а не {expected} - рождения от его смертей читают значение по умолчанию"
+  },
+  "inherit-unwritten": {
+    "message": "эмиттер \"{source}\" никогда не записывает \"{name}\" - рождения от его смертей читают значение по умолчанию"
+  },
   "attribute-never-written": {
     "message": "атрибут \"{name}\" читается здесь, но граф поведения никогда его не записывает - он всегда равен 0"
   },

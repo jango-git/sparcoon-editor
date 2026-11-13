@@ -69,10 +69,16 @@ export interface SocketRef {
 export type SocketPointerHandler = (event: PointerEvent, socket: SocketRef) => void;
 
 /**
- * Params of an attribute node the editor does not surface: `type` is derived from the chosen
- * attribute, and `stage`/`phase` are placement - inferred, not user-set.
+ * Params of an attribute node the editor does not surface: `type` (and an inherited attribute's
+ * `source`) is derived from the chosen attribute, and `stage`/`phase` are placement - inferred,
+ * not user-set.
  */
-const ATTRIBUTE_NODE_HIDDEN_PARAMS: ReadonlySet<string> = new Set(["type", "stage", "phase"]);
+const ATTRIBUTE_NODE_HIDDEN_PARAMS: ReadonlySet<string> = new Set([
+  "type",
+  "stage",
+  "phase",
+  "source",
+]);
 
 /** Shared empty set for the default (no connected inputs) case, to avoid per-view allocation. */
 const NO_CONNECTED_INPUTS: ReadonlySet<string> = new Set();
@@ -150,7 +156,10 @@ export class NodeView {
     // An attribute node (`custom-attribute`(-components)) is driven by an attribute picker;
     // its type and placement are derived, so those params are hidden.
     const isAttributeNode =
-      metadata?.customParams?.some((customParam) => customParam.kind === "attribute-name") ?? false;
+      metadata?.customParams?.some(
+        (customParam) =>
+          customParam.kind === "attribute-name" || customParam.kind === "inherit-source",
+      ) ?? false;
     // `constant` is a pure inline-literal source - it never takes an input wire, so its
     // socket dots are hidden (only the editable value fields show; the connect affordance
     // would be noise). Its value still renders as an editable row below.
