@@ -123,7 +123,7 @@ describe("mesh vertex epilogue splice", () => {
     const { vertexShader } = assembled(render, behavior);
 
     // The graph's camera-facing transform drives particleTransform...
-    expect(render.outputs["particleTransform"]).toBeDefined();
+    expect(render.color.outputs["particleTransform"]).toBeDefined();
     expect(vertexShader).toContain("mat4 fxParticleXform =");
     expect(vertexShader).toContain(
       "vec3 fxModelPos = particleCenter + (fxParticleXform * (fxVertexXform * vec4(position, 1.0))).xyz;",

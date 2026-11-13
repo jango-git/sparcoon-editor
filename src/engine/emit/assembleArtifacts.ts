@@ -5,6 +5,7 @@ import type {
   FXParticleKernelArtifact,
   FXRenderArtifact,
   FXRenderMode,
+  FXRenderProgram,
   FXUniformInit,
   FXValueSlot,
 } from "sparcoon";
@@ -18,7 +19,7 @@ import {
 } from "../behavior/FXParticleBehaviorKernel.Internal";
 import { buildDrawCompute } from "../core/codegen/drawStageBuild.Internal";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
-import type { FXCompiledShader } from "../render/compiler/FXCompiledShader";
+import type { FXCompiledProgram, FXCompiledShader } from "../render/compiler/FXCompiledShader";
 import { zeroValue } from "../render/compiler/FXCompiledShader";
 import { fragmentStageSource, stageSource, varyingDecls } from "./artifactLiterals";
 
@@ -53,6 +54,16 @@ function toUniformInit(value: unknown, type: string): FXUniformInit {
   return { type: "sampler2D", value: value as Texture };
 }
 
+/** The runtime's program of a compiled one. */
+function renderProgram(program: FXCompiledProgram): FXRenderProgram {
+  return {
+    varyings: varyingDecls(program),
+    vertex: stageSource(program.vertex),
+    fragment: fragmentStageSource(program.fragment),
+    outputs: { ...program.outputs },
+  };
+}
+
 /** Assembles the render artifact from a compiled shader (fresh uniform value slots). */
 export function assembleRenderArtifact(
   shader: FXCompiledShader,
@@ -77,10 +88,8 @@ export function assembleRenderArtifact(
     sceneDepth: shader.capabilities.sceneDepth,
     geometry,
     options: { renderMode },
-    varyings: varyingDecls(shader),
-    vertex: stageSource(shader.vertex),
-    fragment: fragmentStageSource(shader.fragment),
-    outputs: { ...shader.outputs },
+    color: renderProgram(shader.color),
+    ...(shader.shadow === undefined ? {} : { shadow: renderProgram(shader.shadow) }),
     uniforms,
     attributeReads: attributeDecls(attributes),
     ...(shader.draw === undefined

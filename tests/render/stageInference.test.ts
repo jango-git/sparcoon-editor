@@ -34,11 +34,11 @@ describe("render placement inference", () => {
     expect(new FXCompilerBaseline().validate(graph, target).ok).toBe(true);
 
     const shader = new FXCompilerBaseline().compile(graph, target);
-    expect(shader.outputs["albedo"]).toBeDefined();
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
     // The offset constant is emitted in the vertex body (its value reaches the slot
     // without a fragment->vertex varying, which is impossible).
-    expect(shader.vertex.body.length).toBeGreaterThan(0);
+    expect(shader.color.vertex.body.length).toBeGreaterThan(0);
   });
 
   it("keeps a flexible constant in fragment when it feeds only a fragment slot", () => {
@@ -51,7 +51,7 @@ describe("render placement inference", () => {
     });
     const target = buildParticleTarget([]);
     const shader = new FXCompilerBaseline().compile(graph, target);
-    expect(shader.outputs["albedo"]).toBeDefined();
-    expect(shader.fragment.body.length).toBeGreaterThan(0);
+    expect(shader.color.outputs["albedo"]).toBeDefined();
+    expect(shader.color.fragment.body.length).toBeGreaterThan(0);
   });
 });

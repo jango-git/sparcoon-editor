@@ -22,7 +22,11 @@ import type { FXCompiledDrawStage } from "../core/codegen/drawStage.Internal";
 import { DRAW_COMPUTE_PARAMETERS } from "../core/codegen/drawStageBuild.Internal";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXValueType } from "../core/socket/FXValueType";
-import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
+import type {
+  FXCompiledProgram,
+  FXCompiledShader,
+  FXCompiledStage,
+} from "../render/compiler/FXCompiledShader";
 import { zeroValue } from "../render/compiler/FXCompiledShader";
 import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
 
@@ -54,10 +58,10 @@ export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
   };
 }
 
-/** The runtime's {@link FXVaryingDecl}s for what a compiled shader carries between its stages.
+/** The runtime's {@link FXVaryingDecl}s for what a compiled program carries between its stages.
  *  Shared with {@link assembleArtifacts}'s in-memory assembler, like {@link stageSource}. */
-export function varyingDecls(shader: FXCompiledShader): FXVaryingDecl[] {
-  return shader.varyings.map((varying) => ({
+export function varyingDecls(program: FXCompiledProgram): FXVaryingDecl[] {
+  return program.varyings.map((varying) => ({
     name: varying.name,
     type: varying.type.glslTypeName,
     interpolation: varying.interpolation,
@@ -71,12 +75,18 @@ export function fragmentStageSource(stage: FXCompiledStage): FXFragmentStageSour
 
 /** How a module prints one stage's helpers and body: each an array literal (expression text). */
 export interface FXStagePrinter {
-  helpers(stage: FXRenderStageKey, helperFunctions: readonly string[]): string;
-  body(stage: FXRenderStageKey, body: readonly string[]): string;
+  helpers(stage: FXRenderStagePath, helperFunctions: readonly string[]): string;
+  body(stage: FXRenderStagePath, body: readonly string[]): string;
 }
 
-/** The stages of a render artifact, by the property that holds each. */
-export type FXRenderStageKey = "vertex" | "fragment";
+/** The programs of a render artifact, by the property that holds each. */
+export type FXRenderProgramKey = "color" | "shadow";
+
+/** One stage of a render artifact: its program's property, and its own within it. */
+export interface FXRenderStagePath {
+  readonly program: FXRenderProgramKey;
+  readonly stage: "vertex" | "fragment";
+}
 
 /** Every helper and line written out. */
 const PLAIN_STAGES: FXStagePrinter = {
@@ -85,7 +95,7 @@ const PLAIN_STAGES: FXStagePrinter = {
 };
 
 function stageLiteral(
-  stage: FXRenderStageKey,
+  stage: FXRenderStagePath,
   source: FXShaderStageSource | FXFragmentStageSource,
   printer: FXStagePrinter,
 ): string {
@@ -97,6 +107,32 @@ function stageLiteral(
     `body: ${printer.body(stage, source.body)}, ` +
     `particleReads: ${JSON.stringify(source.particleReads)}${surface} }`
   );
+}
+
+/** The `FXRenderProgram` object literal of `program` (the artifact's `key` program). */
+function programLiteral(
+  key: FXRenderProgramKey,
+  program: FXCompiledProgram,
+  printer: FXStagePrinter,
+): string {
+  const vertex = stageLiteral(
+    { program: key, stage: "vertex" },
+    stageSource(program.vertex),
+    printer,
+  );
+  const fragment = stageLiteral(
+    { program: key, stage: "fragment" },
+    fragmentStageSource(program.fragment),
+    printer,
+  );
+  return [
+    "{",
+    `    varyings: ${JSON.stringify(varyingDecls(program))},`,
+    `    vertex: ${vertex},`,
+    `    fragment: ${fragment},`,
+    `    outputs: ${JSON.stringify(program.outputs)},`,
+    "  }",
+  ].join("\n");
 }
 
 /** Whether any declared uniform is a `sampler2D` - drives whether the module imports texture helpers. */
@@ -146,10 +182,10 @@ export function renderArtifactBody(
     `  sceneDepth: ${JSON.stringify(shader.capabilities.sceneDepth)},`,
     `  geometry: ${JSON.stringify(geometry)},`,
     `  options: { renderMode: ${JSON.stringify(renderMode)} },`,
-    `  varyings: ${JSON.stringify(varyingDecls(shader))},`,
-    `  vertex: ${stageLiteral("vertex", stageSource(shader.vertex), stages)},`,
-    `  fragment: ${stageLiteral("fragment", fragmentStageSource(shader.fragment), stages)},`,
-    `  outputs: ${JSON.stringify(shader.outputs)},`,
+    `  color: ${programLiteral("color", shader.color, stages)},`,
+    ...(shader.shadow === undefined
+      ? []
+      : [`  shadow: ${programLiteral("shadow", shader.shadow, stages)},`]),
     `  uniforms: ${uniformsLiteral(shader)},`,
     `  attributeReads: ${attributeDecls(attributes)},`,
     ...(shader.draw === undefined ? [] : [drawComputeLiteral(shader.draw)]),

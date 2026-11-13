@@ -1,4 +1,5 @@
 import { refNames } from "../ir/visit.Internal";
+import { liveLocals } from "./liveness.Internal";
 import type { FXRate, FXRatedLocal } from "./rates.Internal";
 import { freeEverywhere, operationCount } from "./rates.Internal";
 
@@ -85,14 +86,7 @@ export function hoistToEarlyStage<L extends FXRatedLocal>(
 
   // What the late stage's result reads, transitively. Nothing else of the late stage is kept: a
   // dead local would only spend a varying on what it reads.
-  const live = new Set(plan.lateRoots);
-  for (const local of [...plan.late].reverse()) {
-    if (live.has(local.name)) {
-      for (const name of reads.get(local.name) ?? []) {
-        live.add(name);
-      }
-    }
-  }
+  const live = liveLocals(plan.late, reads, plan.lateRoots);
   const lateLive = plan.late.filter((local) => live.has(local.name));
   const moved = new Set(
     lateLive

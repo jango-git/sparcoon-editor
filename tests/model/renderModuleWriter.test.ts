@@ -18,10 +18,18 @@ function shader(vertex: readonly string[], fragment: readonly string[]): FXCompi
   });
   return {
     uniforms: {},
-    varyings: [],
-    vertex: stage(vertex),
-    fragment: stage(fragment),
-    outputs: { albedo: "vec4(1.0)" },
+    color: {
+      varyings: [],
+      vertex: stage(vertex),
+      fragment: stage(fragment),
+      outputs: { albedo: "vec4(1.0)" },
+    },
+    shadow: {
+      varyings: [],
+      vertex: stage(vertex),
+      fragment: stage(fragment.slice(0, 1)),
+      outputs: { alpha: "1.0" },
+    },
     capabilities: { lightingIntrinsics: [], sceneDepth: false },
     hash: "h",
   };
@@ -74,11 +82,14 @@ describe("FXRenderModuleWriter", () => {
       [],
       "blending",
     );
-    expect(declarations[1]).toContain("...rBaseline.vertex.body.slice(");
+    expect(declarations[1]).toContain("...rBaseline.color.vertex.body.slice(");
+    // Each program takes its lines from the same program of the first tier.
+    expect(declarations[1]).toContain("...rBaseline.shadow.vertex.body.slice(");
     const artifacts = evaluate(writer, declarations);
-    expect(artifacts["rStandard"].vertex.body).toEqual(standard.vertex.body);
-    expect(artifacts["rStandard"].fragment.body).toEqual(standard.fragment.body);
-    expect(artifacts["rBaseline"].vertex.body).toEqual(baseline.vertex.body);
+    expect(artifacts["rStandard"].shadow?.vertex.body).toEqual(standard.shadow?.vertex.body);
+    expect(artifacts["rStandard"].color.vertex.body).toEqual(standard.color.vertex.body);
+    expect(artifacts["rStandard"].color.fragment.body).toEqual(standard.color.fragment.body);
+    expect(artifacts["rBaseline"].color.vertex.body).toEqual(baseline.color.vertex.body);
   });
 
   it("declares each distinct helper once for the whole module", () => {
@@ -97,7 +108,7 @@ describe("FXRenderModuleWriter", () => {
     );
     expect(writer.helperDeclarations()).toEqual([`const glslHelper0 = ${JSON.stringify(HELPER)};`]);
     const artifacts = evaluate(writer, [...first, ...second]);
-    expect(artifacts["bBaseline"].fragment.helperFunctions).toEqual([HELPER]);
+    expect(artifacts["bBaseline"].color.fragment.helperFunctions).toEqual([HELPER]);
   });
 });
 

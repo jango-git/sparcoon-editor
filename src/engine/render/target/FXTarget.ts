@@ -54,6 +54,9 @@ export interface FXTargetOutput {
   readonly type: FXValueType;
   readonly stage: FXShaderStage;
   readonly required: boolean;
+  /** Read by the target's {@link FXTarget.shadow} program alone: the color program neither
+   *  computes nor carries it. */
+  readonly shadowOnly?: true;
 }
 
 /**
@@ -68,6 +71,25 @@ export interface FXTarget {
   readonly name: string;
   readonly inputs: readonly FXTargetInput[];
   readonly outputs: readonly FXTargetOutput[];
+  /**
+   * The host's shadow program, when it casts shadows: the outputs it reads of the graph, each from
+   * a target output. The compiler compiles it beside the color program from the same graph, cut
+   * down to what these read (see `projectComponents`); an unbound output stays unbound in it.
+   */
+  readonly shadow?: readonly FXShadowOutput[];
+}
+
+/** One output of a target's {@link FXTarget.shadow} program. */
+export interface FXShadowOutput {
+  /** The shadow program's slot. */
+  readonly slot: string;
+  /** The target output it reads. */
+  readonly from: string;
+  /** The components of `from` it reads (`"w"`); all of them when absent. */
+  readonly channels?: string;
+  /** Another shadow output that, bound, replaces this one: the host reads only one of the two,
+   *  so this one is left unbound. */
+  readonly unless?: string;
 }
 
 /**

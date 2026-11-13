@@ -55,6 +55,13 @@ export interface FXFunctionDef {
    * marked `impure`, the same way it already excludes `raw` nodes for exactly this reason.
    */
   readonly impure?: true;
+  /**
+   * True for a function a component of whose result reads other components of its arguments - a
+   * vector reduction (`length`, `dot`), `normalize`, `cross`, a matrix function. Every other
+   * function is element-wise (vector arguments component for component, a scalar one splatted) or
+   * {@link packed}; `scalarize` expands each of these by its own formula.
+   */
+  readonly crossComponent?: true;
 }
 
 const NUMERIC = NUMERIC_VALUE_TYPES;
@@ -340,22 +347,26 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "length",
     signatures: VECTORS.map((type) => ({ args: [type], result: "float" as const })),
     js: noScalarJS("length"),
+    crossComponent: true,
   });
   definitions.push({
     name: "dot",
     signatures: VECTORS.map((type) => ({ args: [type, type], result: "float" as const })),
     js: noScalarJS("dot"),
+    crossComponent: true,
   });
   definitions.push({
     name: "normalize",
     signatures: VECTORS.map((type) => ({ args: [type], result: type })),
     js: noScalarJS("normalize"),
+    crossComponent: true,
   });
   // Native GLSL `cross` is vec3-only; the scalarizer expands it for the behavior/JS backend.
   definitions.push({
     name: "cross",
     signatures: [{ args: ["vec3", "vec3"] as const, result: "vec3" as const }],
     js: noScalarJS("cross"),
+    crossComponent: true,
   });
 
   // Matrix functions: each an fx-prefixed GLSL helper so it works on WebGL1 (GLSL ES
@@ -366,6 +377,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     glslBaseline: "fxTranspose",
     glslBaselineHelper: FX_MAT_TRANSPOSE_HELPER,
     js: noScalarJS("transpose"),
+    crossComponent: true,
   });
   definitions.push({
     name: "determinant",
@@ -373,6 +385,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     glslBaseline: "fxDeterminant",
     glslBaselineHelper: FX_MAT_DETERMINANT_HELPER,
     js: noScalarJS("determinant"),
+    crossComponent: true,
   });
   definitions.push({
     name: "inverse",
@@ -380,6 +393,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     glslBaseline: "fxInverse",
     glslBaselineHelper: FX_MAT_INVERSE_HELPER,
     js: noScalarJS("inverse"),
+    crossComponent: true,
   });
 
   // Bitwise int ops: GLSL ES 1.00 has no bitwise operators at all (unlike int arithmetic, which
@@ -420,6 +434,16 @@ export const FX_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = buildFunctions()
  *  or move. */
 export function isImpureFunction(fn: string): boolean {
   return FX_FUNCTIONS.get(fn)?.impure === true;
+}
+
+/** Whether `fn` computes each result component from the same component of each vector argument
+ *  (a scalar argument splatted) - neither {@link FXFunctionDef.packed} nor
+ *  {@link FXFunctionDef.crossComponent}, nor impure. */
+export function isElementwiseFunction(fn: string): boolean {
+  const def = FX_FUNCTIONS.get(fn);
+  return (
+    def !== undefined && def.packed !== true && def.crossComponent !== true && def.impure !== true
+  );
 }
 
 /**

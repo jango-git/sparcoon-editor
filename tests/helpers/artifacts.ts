@@ -7,6 +7,7 @@ import {
   type FXBehaviorArtifact,
   type FXBufferLayout,
   type FXRenderArtifact,
+  type FXRenderProgram,
   type FXShaderStageSource,
 } from "sparcoon";
 
@@ -49,7 +50,35 @@ function stage(
   };
 }
 
-/** A minimal unlit render artifact (flat white albedo). Override any field. */
+/** A hand-written program over `outputs`, with what each stage reads recorded as the compiler does. */
+function program(
+  outputs: Readonly<Record<string, string>>,
+  vertexBody: readonly string[],
+  fragmentBody: readonly string[],
+  uniformDeclarations: readonly string[],
+): FXRenderProgram {
+  const outputsOf = (vertex: boolean): string[] =>
+    Object.keys(outputs)
+      .filter((slot) => VERTEX_OUTPUT_SLOTS.has(slot) === vertex)
+      .map((slot) => outputs[slot] ?? "");
+  return {
+    varyings: [],
+    vertex: stage(vertexBody, outputsOf(true), uniformDeclarations),
+    fragment: {
+      ...stage(fragmentBody, outputsOf(false), uniformDeclarations),
+      // Every identifier it names, through the compiler's own target-input mapping, as above.
+      surfaceReads: surfaceReadsOf([
+        ...new Set([...fragmentBody, ...outputsOf(false)].join("\n").match(/\b[A-Za-z_]\w*\b/g)),
+      ]),
+    },
+    outputs,
+  };
+}
+
+/** The slots a shadow program carries over from the color program's, as the compiler's target does. */
+const SHADOW_CARRIED_SLOTS = ["alphaThreshold", "particleTransform", "vertexTransform"];
+
+/** A minimal unlit render artifact (flat white albedo), with its shadow program. Override any field. */
 export function unlitArtifact(
   over: {
     attributeReads?: readonly FXAttributeDecl[];
@@ -61,25 +90,20 @@ export function unlitArtifact(
   } = {},
 ): FXRenderArtifact {
   const outputs = over.outputs ?? { albedo: "vec4(1.0)" };
-  const outputsOf = (vertex: boolean): string[] =>
-    Object.keys(outputs)
-      .filter((slot) => VERTEX_OUTPUT_SLOTS.has(slot) === vertex)
-      .map((slot) => outputs[slot] ?? "");
+  const vertexBody = over.vertexBody ?? [];
+  const fragmentBody = over.fragmentBody ?? [];
+  const declarations = over.uniformDeclarations ?? [];
+  const shadowOutputs = {
+    alpha: `(${outputs["albedo"] ?? "vec4(1.0)"}).a`,
+    ...Object.fromEntries(
+      SHADOW_CARRIED_SLOTS.filter((slot) => slot in outputs).map((slot) => [slot, outputs[slot]]),
+    ),
+  };
   return {
     lightingIntrinsics: [],
     sceneDepth: false,
-    varyings: [],
-    vertex: stage(over.vertexBody ?? [], outputsOf(true), over.uniformDeclarations ?? []),
-    fragment: {
-      ...stage(over.fragmentBody ?? [], outputsOf(false), over.uniformDeclarations ?? []),
-      // Every identifier it names, through the compiler's own target-input mapping, as above.
-      surfaceReads: surfaceReadsOf([
-        ...new Set(
-          [...(over.fragmentBody ?? []), ...outputsOf(false)].join("\n").match(/\b[A-Za-z_]\w*\b/g),
-        ),
-      ]),
-    },
-    outputs,
+    color: program(outputs, vertexBody, fragmentBody, declarations),
+    shadow: program(shadowOutputs, vertexBody, fragmentBody, declarations),
     uniforms: over.uniforms ?? {},
     attributeReads: over.attributeReads ?? [],
   };

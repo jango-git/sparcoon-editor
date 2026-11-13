@@ -53,18 +53,28 @@ export interface FXCompiledStage {
   readonly targetReads: readonly string[];
 }
 
-/** The compiler's Three-independent intermediate representation; a material adapter consumes
- *  this and assembles it into the host's own `ShaderMaterial` source. */
-export interface FXCompiledShader {
-  /** Final uniform map keyed by generated name. */
-  readonly uniforms: Readonly<Record<string, FXUniformHandle>>;
+/** One shader program of a compiled graph - the runtime's `FXRenderProgram`: its two stages,
+ *  what it carries between them, and what each of its output slots reads. */
+export interface FXCompiledProgram {
   /** What the vertex stage carries to the fragment stage, declared in both. */
   readonly varyings: readonly FXVarying[];
   readonly vertex: FXCompiledStage;
   readonly fragment: FXCompiledStage;
-  /** GLSL expression bound to each target output slot (e.g. `"albedo"` -> the final `vec4`
-   *  expression), keyed by {@link FXTargetOutput.slot}. */
+  /** GLSL expression bound to each output slot (e.g. `"albedo"` -> the final `vec4`
+   *  expression), keyed by slot. */
   readonly outputs: Readonly<Record<string, string>>;
+}
+
+/** The compiler's Three-independent intermediate representation; a material adapter consumes
+ *  this and assembles it into the host's own `ShaderMaterial` source. */
+export interface FXCompiledShader {
+  /** Final uniform map keyed by generated name, shared by both programs. */
+  readonly uniforms: Readonly<Record<string, FXUniformHandle>>;
+  /** The program drawing the graph, its outputs keyed by {@link FXTargetOutput.slot}. */
+  readonly color: FXCompiledProgram;
+  /** The program casting its shadow, its outputs keyed by `FXShadowOutput.slot`; absent
+   *  for a target with no `FXTarget.shadow`. */
+  readonly shadow?: FXCompiledProgram;
   /** What the compiled nodes ask of the runtime (lighting, scene depth) - read from the same
    *  reachable nodes the code came from, so the artifact can never disagree with it. */
   readonly capabilities: FXRenderCapabilities;

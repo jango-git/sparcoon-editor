@@ -96,9 +96,9 @@ describe.each([
     );
     // The attribute rides its p_fx_tint varying into the fragment; a fragment-slot read stays
     // there, never promoted to the vertex stage.
-    expect(compiled.fragment.body.join("\n")).toContain("p_fx_tint");
-    expect(compiled.vertex.body.join("\n")).not.toContain("p_fx_tint");
-    expect(compiled.outputs[slot]).toBeDefined();
+    expect(compiled.color.fragment.body.join("\n")).toContain("p_fx_tint");
+    expect(compiled.color.vertex.body.join("\n")).not.toContain("p_fx_tint");
+    expect(compiled.color.outputs[slot]).toBeDefined();
     // Exactly `tint` is requested - no other p_fx_<name> attribute is pulled into the IR.
     const attributeVaryings = new Set(
       [...JSON.stringify(compiled).matchAll(/p_fx_(\w+)/g)].map((match) => match[1]),
@@ -223,9 +223,9 @@ describe("custom-attribute drives a vertex output slot (editor path, stage infer
     expect(result.ok).toBe(true); // no stage-direction-mismatch
 
     const compiled = new FXCompilerBaseline().compile(spinGraph(), target);
-    expect(compiled.outputs["particleTransform"]).toBeDefined();
+    expect(compiled.color.outputs["particleTransform"]).toBeDefined();
     // The attribute read landed in the *vertex* program (particleTransform is vertex-stage).
-    expect(compiled.vertex.body.join("\n")).toContain("p_fx_spin");
-    expect(compiled.fragment.body.join("\n")).not.toContain("p_fx_spin");
+    expect(compiled.color.vertex.body.join("\n")).toContain("p_fx_spin");
+    expect(compiled.color.fragment.body.join("\n")).not.toContain("p_fx_spin");
   });
 });

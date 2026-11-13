@@ -120,7 +120,7 @@ describe("FX_MESH_TARGET shape", () => {
 describe("compileMeshArtifact (render-only, attribute-free)", () => {
   it("compiles a constant-albedo graph with no attribute reads", () => {
     const { render, hash } = compileMeshArtifact(constantAlbedo());
-    expect(render.outputs["albedo"]).toBeDefined();
+    expect(render.color.outputs["albedo"]).toBeDefined();
     expect(render.attributeReads).toEqual([]);
     expect(render.geometry).toEqual({ type: "primitive", primitive: "plane" });
     expect(hash).toContain('geo-{"type":"primitive","primitive":"plane"}');
@@ -130,7 +130,7 @@ describe("compileMeshArtifact (render-only, attribute-free)", () => {
     const { render } = compileMeshArtifact(vertexTransformOnMesh(), {
       geometry: { type: "primitive", primitive: "box" },
     });
-    expect(render.outputs["vertexTransform"]).toBeDefined();
+    expect(render.color.outputs["vertexTransform"]).toBeDefined();
     expect(render.geometry).toEqual({ type: "primitive", primitive: "box" });
   });
 

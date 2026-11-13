@@ -166,8 +166,12 @@ function scalarizeCall(expression: Extract<FXExpr, { kind: "call" }>): readonly 
     case "inverse":
       return scalarizeInverse(scalarize(at(expression.args, 0)));
     default: {
-      if (FX_FUNCTIONS.get(expression.fn)?.packed === true) {
+      const def = FX_FUNCTIONS.get(expression.fn);
+      if (def?.packed === true) {
         return scalarizePackedCall(expression);
+      }
+      if (def?.crossComponent === true) {
+        throw new Error(`sparcoon IR: "${expression.fn}" mixes components and has no expansion`);
       }
       // Every other registered function is element-wise.
       const argComponents = expression.args.map(scalarize);

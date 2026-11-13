@@ -96,6 +96,6 @@ describe("playground graphs - standard registries + hand-written resource nodes"
     });
 
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 });

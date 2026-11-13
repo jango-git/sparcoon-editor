@@ -38,7 +38,7 @@ function fragmentOf(wrap: unknown, tier: keyof typeof FX_GLSL_RENDER_COMPILERS):
     graph,
     FX_PARTICLE_TARGET,
   );
-  return shader.fragment.body.join("\n");
+  return shader.color.fragment.body.join("\n");
 }
 
 describe("texture wrap", () => {

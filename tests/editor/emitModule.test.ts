@@ -20,7 +20,7 @@ describe("emitEffectModule - round-trip", () => {
     const module = evaluateEffectModule(text);
     for (const artifact of [module.renderBaseline, module.renderStandard]) {
       expect(artifact.lightingIntrinsics).toEqual([]);
-      expect(artifact.outputs).toHaveProperty("albedo");
+      expect(artifact.color.outputs).toHaveProperty("albedo");
     }
     expect(module.behavior.spawn).toBeTypeOf("function");
     expect(module.behavior.update).toBeTypeOf("function");

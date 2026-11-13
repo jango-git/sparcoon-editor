@@ -47,7 +47,7 @@ function graphReadingIntoAlbedo(
 }
 
 function sourceOf(shader: FXCompiledShader): string {
-  return shader.fragment.body.join("\n") + shader.vertex.body.join("\n");
+  return shader.color.fragment.body.join("\n") + shader.color.vertex.body.join("\n");
 }
 
 const TARGETS = [
@@ -79,7 +79,7 @@ describe("render point-velocity node", () => {
     const compute = shader.draw?.statements.join("\n") ?? "";
     expect(compute).toContain("inputs.objectVelocity[");
     expect(compute).toContain("inputs.objectAngularVelocity[");
-    expect(drawUniformNames(shader)).toContain(shader.outputs["albedo"]);
+    expect(drawUniformNames(shader)).toContain(shader.color.outputs["albedo"]);
   });
 
   it("compiles against FX_PARTICLE_TARGET too, even with velocity/torque fully wired explicitly", () => {

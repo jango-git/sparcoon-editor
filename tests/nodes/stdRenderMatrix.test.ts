@@ -43,8 +43,8 @@ describe("standard render matrix nodes", () => {
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
     // particleTransform is a vertex slot, so the rotation and transform land in the vertex body.
-    expect(shader.vertex.body.join("\n")).toContain("mat3");
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    expect(shader.color.vertex.body.join("\n")).toContain("mat3");
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
   });
 
   it("euler-to-rotation builds a mat3 that drives compose-transform -> particleTransform", () => {
@@ -58,8 +58,8 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    const vertex = shader.color.vertex.body.join("\n");
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
     // The Euler build lands in the vertex stage (feeds a vertex transform slot) with trig.
     expect(vertex).toContain("mat3");
     expect(vertex.toLowerCase()).toContain("cos");
@@ -77,8 +77,8 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    const vertex = shader.color.vertex.body.join("\n");
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
     expect(vertex).toContain("mat3");
     expect(vertex.toLowerCase()).toContain("cross");
     // Default (cameraModel: "parallel") reads the shared view-forward, not the per-particle path.
@@ -97,7 +97,7 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
+    const vertex = shader.color.vertex.body.join("\n");
     expect(vertex).toContain("cameraPosition");
     // The wired position overrides the default PARTICLE_POSITION read entirely.
     expect(vertex).not.toContain("PARTICLE_POSITION");
@@ -119,8 +119,8 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["particleTransform"]).toBeDefined();
-    expect(shader.vertex.body.join("\n")).toContain("mat3");
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
+    expect(shader.color.vertex.body.join("\n")).toContain("mat3");
   });
 
   describe("resolveAlignAxes", () => {
@@ -191,8 +191,8 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.vertex.body.join("\n")).toContain("mat4");
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    expect(shader.color.vertex.body.join("\n")).toContain("mat4");
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
   });
 
   it("normal-matrix emits the inverse and transpose helpers", () => {
@@ -213,7 +213,7 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const helpers = shader.fragment.helperFunctions.join("\n");
+    const helpers = shader.color.fragment.helperFunctions.join("\n");
     expect(helpers).toContain("fxInverse");
     expect(helpers).toContain("fxTranspose");
   });
@@ -238,7 +238,7 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 
   it("combine-mat3 assembles columns (a wired one + inline ones) into an applied mat3", () => {
@@ -261,8 +261,8 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.fragment.body.join("\n")).toContain("mat3");
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.fragment.body.join("\n")).toContain("mat3");
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 
   it("split-mat3 feeds a matrix column into a shading normal", () => {
@@ -281,7 +281,7 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 
   it("world-matrix reads the pose: a chain of it alone is computed once per tick on the CPU", () => {
@@ -302,7 +302,7 @@ describe("standard render matrix nodes", () => {
     // Nothing here changes per particle: the chain reads the pose once per tick on the CPU (a host
     // input, like the clock), and the vertex stage reads the result.
     expect(shader.draw?.statements.join("\n")).toContain("inputs.modelMatrix[");
-    expect(shader.vertex.body.join("\n")).not.toContain("modelMatrix");
+    expect(shader.color.vertex.body.join("\n")).not.toContain("modelMatrix");
     expect(Object.keys(shader.uniforms).sort()).toEqual(drawUniformNames(shader).sort());
   });
 
@@ -327,9 +327,9 @@ describe("standard render matrix nodes", () => {
     // A direction of the pose alone: turned once per tick on the CPU, read by the shading.
     const compute = shader.draw?.statements.join("\n") ?? "";
     expect(compute).toContain("inputs.modelMatrix[");
-    const fragment = shader.fragment.body.join("\n");
+    const fragment = shader.color.fragment.body.join("\n");
     expect(drawUniformNames(shader).some((name) => readsName(fragment, name))).toBe(true);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 
   it("inverse-world-matrix: the pose's inverse is computed once per tick on the CPU, not in-shader", () => {
@@ -346,9 +346,10 @@ describe("standard render matrix nodes", () => {
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
     // inverse(modelMatrix) is the pose's alone: inverted once per tick on the CPU, never in-shader.
     expect(shader.draw?.statements.join("\n")).toContain("inputs.modelMatrix[");
-    const vsrc = shader.vertex.body.join("\n") + shader.vertex.helperFunctions.join("\n");
+    const vsrc =
+      shader.color.vertex.body.join("\n") + shader.color.vertex.helperFunctions.join("\n");
     expect(vsrc).not.toContain("fxInverse");
-    expect(drawUniformNames(shader)).toContain(shader.outputs["particleTransform"]);
+    expect(drawUniformNames(shader)).toContain(shader.color.outputs["particleTransform"]);
   });
 
   it("a matrix produced in vertex crosses into fragment through a mat3 varying", () => {
@@ -379,7 +380,7 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.varyings.map((varying) => varying.type.glslTypeName)).toContain("mat3");
+    expect(shader.color.varyings.map((varying) => varying.type.glslTypeName)).toContain("mat3");
   });
 
   it("a constant matrix is defined in each stage that reads it rather than carried", () => {
@@ -403,7 +404,7 @@ describe("standard render matrix nodes", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.varyings).toEqual([]);
-    expect(shader.fragment.body.join("\n")).toContain("mat3");
+    expect(shader.color.varyings).toEqual([]);
+    expect(shader.color.fragment.body.join("\n")).toContain("mat3");
   });
 });

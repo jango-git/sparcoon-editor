@@ -20,7 +20,7 @@ import type { FXGraph } from "../../core/FXGraph";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import type { FXExprBuilderApi } from "../../core/ir/FXExprBuilder";
 import { coerceNumeric, createBuilders, ref } from "../../core/ir/FXExprBuilder";
-import { FX_FUNCTIONS, isImpureFunction, signaturesFrom } from "../../core/ir/FXFunctions.Internal";
+import { FX_FUNCTIONS, signaturesFrom } from "../../core/ir/FXFunctions.Internal";
 import type { FXSocketRef } from "../../core/socket/FXSocket";
 import { socketRefKey } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
@@ -35,15 +35,13 @@ import type {
   FXUniformHandle,
   FXVarying,
 } from "./FXCompiledShader";
-import { zeroValue } from "./FXCompiledShader";
 import {
-  finishRenderStages,
+  finalizeRenderPrograms,
   type FXPrintedStage,
   FXRenderUniforms,
   type FXSlotValue,
 } from "./FXRenderCompileShared.Internal";
 import type { FXRenderContext } from "./FXRenderContext";
-import { placeRenderStages } from "./FXRenderStagePlacement.Internal";
 
 /**
  * The standard (WebGL2 / GLSL-ES-3.00) render compiler pipeline: deliberately independent of the
@@ -256,10 +254,9 @@ class FXCompileState {
   }
 
   /**
-   * Places every local in its final stage (see `placeRenderStages`) and prints both. Each vertex
-   * value the fragment stage reads - moved there or written there by its own node - crosses through
-   * one varying, `flat` when it is the same at all of a primitive's vertices (and for an integer,
-   * which cannot interpolate).
+   * Places and prints the graph's programs (see `finalizeRenderPrograms`). Each value a program
+   * carries between its stages rides one varying, `flat` when it is the same at all of a primitive's vertices (and for an integer, which
+   * cannot interpolate).
    */
   public finalize(
     target: FXTarget,
@@ -267,58 +264,16 @@ class FXCompileState {
     capabilities: FXRenderCapabilities,
     hash: string,
   ): FXCompiledShader {
-    const slotReads = (stage: FXShaderStage): string[] =>
-      [...slots.values()].filter((slot) => slot.stage === stage).map((slot) => slot.value);
-    const placement = placeRenderStages(
-      {
-        vertex: this.locals[FXShaderStage.VERTEX],
-        fragment: this.locals[FXShaderStage.FRAGMENT],
-        vertexSlotReads: slotReads(FXShaderStage.VERTEX),
-        fragmentSlotReads: slotReads(FXShaderStage.FRAGMENT),
-      },
-      {
-        target,
-        tier: "standard",
-        lightingIntrinsics: capabilities.lightingIntrinsics,
-        uniforms: this.uniforms.handles,
-        isImpureCall: isImpureFunction,
-        declareDrawUniform: (type) => this.allocateUniform({ type, value: zeroValue(type) }).name,
-      },
-    );
-
-    const carried = new Map<string, string>();
-    const writes: string[] = [];
-    for (const { local, perPrimitive } of placement.crossing) {
-      const flat = isIntType(local.type) || perPrimitive;
-      const varying = this.allocateVarying(local.type, flat ? "flat" : "smooth");
-      carried.set(local.name, varying);
-      writes.push(`${varying} = ${local.name};`);
-    }
-    const vertexStage = this.printStage(placement.vertex, new Map());
-    const fragmentStage = this.printStage(placement.fragment, carried);
-
-    const { vertex, fragment, outputs } = finishRenderStages(
-      {
-        vertex: vertexStage,
-        fragment: fragmentStage,
-        varyingWrites: writes,
-        carried,
-        renamed: placement.renamed,
-      },
-      slots,
-      this.uniforms.handles,
-    );
-
-    return {
-      uniforms: this.uniforms.record(),
-      varyings: this.varyingList,
-      vertex,
-      fragment,
-      outputs,
-      capabilities,
-      ...(placement.draw === undefined ? {} : { draw: placement.draw }),
-      hash,
-    };
+    return finalizeRenderPrograms(target, slots, capabilities, hash, {
+      tier: "standard",
+      vertex: this.locals[FXShaderStage.VERTEX],
+      fragment: this.locals[FXShaderStage.FRAGMENT],
+      uniforms: this.uniforms,
+      nodeVaryings: this.varyingList,
+      uniqueName: () => this.uniqueName(),
+      isFlat: (local, perPrimitive) => isIntType(local.type) || perPrimitive,
+      printStage: (locals, carried) => this.printStage(locals, carried),
+    });
   }
 
   /** Prints `locals` as a stage's body, reading each local in `carried` through its varying -

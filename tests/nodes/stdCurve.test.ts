@@ -118,7 +118,7 @@ describe("curve node (ramp)", () => {
   function rampSegments(curve: FXCurveData | undefined): number {
     const src = new FXCompilerBaseline()
       .compile(renderRampGraph(curve), FX_PARTICLE_TARGET)
-      .fragment.body.join("\n");
+      .color.fragment.body.join("\n");
     return (src.match(/mix\(/g) ?? []).length;
   }
 

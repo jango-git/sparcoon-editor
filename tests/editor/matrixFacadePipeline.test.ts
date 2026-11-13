@@ -95,10 +95,10 @@ describe("combine/split matrix facades: editor -> serialize -> engine compile", 
       reconstructRender(serializeGraph(graph, GraphKind.Render)),
       FX_PARTICLE_TARGET,
     );
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
     // The combine assembles a native mat3, the split reads its column 0 by GLSL matrix indexing,
     // and that column is the normal the lighting node shades with.
-    const source = [...shader.vertex.body, ...shader.fragment.body].join("\n");
+    const source = [...shader.color.vertex.body, ...shader.color.fragment.body].join("\n");
     const matrix = /\bmat3 (\w+) = mat3\(/.exec(source)?.[1];
     expect(matrix).toBeDefined();
     const column = new RegExp(`\\bvec3 (\\w+) = \\(${matrix}\\)\\[0\\];`).exec(source)?.[1];

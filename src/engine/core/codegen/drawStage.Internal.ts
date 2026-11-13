@@ -7,6 +7,7 @@ import { isIntType } from "../socket/FXValueType";
 import type { FXScalarLocal } from "./cse.Internal";
 import { commonSubexpressionElimination } from "./cse.Internal";
 import { foldScalarLocals } from "./foldScalars.Internal";
+import { liveLocals } from "./liveness.Internal";
 import { printJSLocals } from "./printJS.Internal";
 import type { FXRate, FXRatedLocal } from "./rates.Internal";
 import { freeEverywhere, operationCount } from "./rates.Internal";
@@ -286,23 +287,6 @@ function computesOnCPU(
       break;
   }
   return childrenOf(expr).every((child) => computesOnCPU(child, lifted, policy));
-}
-
-/** The locals an output slot reads, transitively: only these are worth computing at all. */
-function liveLocals(
-  all: readonly FXTypedLocal[],
-  reads: ReadonlyMap<string, ReadonlySet<string>>,
-  slotReads: ReadonlySet<string>,
-): Set<string> {
-  const live = new Set(slotReads);
-  for (const local of [...all].reverse()) {
-    if (live.has(local.name)) {
-      for (const name of reads.get(local.name) ?? []) {
-        live.add(name);
-      }
-    }
-  }
-  return live;
 }
 
 /** The selected locals - shared ones aside - a live GPU local or an output slot reads, in

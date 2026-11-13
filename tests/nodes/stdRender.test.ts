@@ -25,8 +25,8 @@ const compiler = new FXCompilerBaseline();
  * placed each part of it.
  */
 function programText(shader: FXCompiledShader): string {
-  let fragment = shader.fragment.body.join("\n");
-  for (const write of shader.vertex.body) {
+  let fragment = shader.color.fragment.body.join("\n");
+  for (const write of shader.color.vertex.body) {
     // RegExp#exec is the external API that demands null; converted once here at the boundary.
     const carried = /^(v_bridge_\w+) = (\w+);$/.exec(write) ?? undefined;
     const varying = carried?.[1];
@@ -35,7 +35,7 @@ function programText(shader: FXCompiledShader): string {
       fragment = fragment.replaceAll(new RegExp(`\\b${varying}\\b`, "g"), source);
     }
   }
-  return `${shader.vertex.body.join("\n")}\n${fragment}`;
+  return `${shader.color.vertex.body.join("\n")}\n${fragment}`;
 }
 
 function fragmentOf(
@@ -48,7 +48,7 @@ function fragmentOf(
     [],
     [bind("albedo", "c", "out"), bind("alphaThreshold", "n", socketKey)],
   );
-  const stage = compiler.compile(graph, target).fragment;
+  const stage = compiler.compile(graph, target).color.fragment;
   return [...stage.helperFunctions, ...stage.body].join("\n");
 }
 
@@ -60,10 +60,10 @@ describe("standard render nodes - sources and content", () => {
       [bind("albedo", "c", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
     // A constant color bakes inline; only param nodes allocate uniforms.
     expect(Object.keys(shader.uniforms)).toHaveLength(0);
-    const src = shader.fragment.body.join("\n") + JSON.stringify(shader.outputs);
+    const src = shader.color.fragment.body.join("\n") + JSON.stringify(shader.color.outputs);
     expect(src).toContain("0.2");
   });
 
@@ -111,7 +111,7 @@ describe("standard render nodes - sources and content", () => {
       [edge("f", "uv", "l", "v")],
       [bind("albedo", "c", "out"), bind("alphaThreshold", "l", "out")],
     );
-    const stage = compiler.compile(graph, FX_PARTICLE_TARGET).fragment;
+    const stage = compiler.compile(graph, FX_PARTICLE_TARGET).color.fragment;
     const code = [...stage.helperFunctions, ...stage.body].join("\n");
     expect(code).toContain("fxFlipbookFrameUV(");
     expect(code).not.toContain("fxAnimatedFrame");
@@ -128,8 +128,8 @@ describe("standard render nodes - sources and content", () => {
       [bind("albedo", "c", "out"), bind("intensity", "i", "out")],
     );
     const compiled = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(compiled.outputs["intensity"]).toBeDefined();
-    expect(compiled.outputs["albedo"]).toBeDefined();
+    expect(compiled.color.outputs["intensity"]).toBeDefined();
+    expect(compiled.color.outputs["albedo"]).toBeDefined();
   });
 
   it("describes animated-texture's grid as editable input pins and its uv as a target default", () => {
@@ -156,7 +156,7 @@ describe("standard render nodes - uv and mask content", () => {
       [edge("t", "uv", "l", "v")],
       [bind("albedo", "c", "out"), bind("alphaThreshold", "l", "out")],
     );
-    const body = compiler.compile(graph, FX_PARTICLE_TARGET).fragment.body.join("\n");
+    const body = compiler.compile(graph, FX_PARTICLE_TARGET).color.fragment.body.join("\n");
     expect(body).toMatch(/p_uv \* vec2\(3\.0, 4\.0\)\)? \+ vec2\(0\.5, 0\.25\)/);
   });
 
@@ -260,7 +260,7 @@ describe("standard render nodes - uv and mask content", () => {
       [edge("t", "out", "f", "time")],
       [bind("albedo", "c", "out"), bind("alphaThreshold", "f", "blend")],
     );
-    const body = compiler.compile(graph, FX_MESH_TARGET).fragment.body.join("\n");
+    const body = compiler.compile(graph, FX_MESH_TARGET).color.fragment.body.join("\n");
     expect(body).toMatch(new RegExp(String.raw`fract\(\(${GLSL_NAME} \* 1\.0\)\)`));
     expect(body).not.toContain("u_time");
   });
@@ -276,7 +276,7 @@ describe("standard render nodes - uv and mask content", () => {
       [edge("n", "normal", "f", "normal")],
       [bind("albedo", "c", "out"), bind("alphaThreshold", "f", "out")],
     );
-    const body = compiler.compile(graph, FX_PARTICLE_TARGET).fragment.body.join("\n");
+    const body = compiler.compile(graph, FX_PARTICLE_TARGET).color.fragment.body.join("\n");
     expect(body).toContain("cameraPosition - worldPosition");
     expect(body).toMatch(/pow\(\(1\.0 - .*\), 5\.0\)/);
   });
@@ -297,7 +297,7 @@ describe("standard render nodes - surface sources, literal-typed generics, pivot
         [edge("p", "position", "l", "v")],
         [bind("albedo", "c", "out"), bind("alphaThreshold", "l", "out")],
       );
-      const stage = compiler.compile(graph, target).fragment;
+      const stage = compiler.compile(graph, target).color.fragment;
       expect(stage.body.join("\n")).toContain("worldPosition");
     }
   });
@@ -309,8 +309,8 @@ describe("standard render nodes - surface sources, literal-typed generics, pivot
       [bind("albedo", "m", "out")],
     );
     const compiled = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(compiled.outputs["albedo"]).toBeDefined();
-    expect(compiled.fragment.body.join("\n")).toContain("vec4(");
+    expect(compiled.color.outputs["albedo"]).toBeDefined();
+    expect(compiled.color.fragment.body.join("\n")).toContain("vec4(");
   });
 
   it("a binary-op of two typed-in numbers resolves to float with nothing wired", () => {
@@ -325,7 +325,7 @@ describe("standard render nodes - surface sources, literal-typed generics, pivot
       [],
       [bind("albedo", "c", "out"), bind("particleTransform", "t", "out")],
     );
-    const vertex = compiler.compile(graph, FX_PARTICLE_TARGET).vertex.body.join("\n");
+    const vertex = compiler.compile(graph, FX_PARTICLE_TARGET).color.vertex.body.join("\n");
     expect(vertex).toContain("-0.5");
   });
 });

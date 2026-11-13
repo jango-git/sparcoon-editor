@@ -59,14 +59,16 @@ describe("FXCompilerBaseline render golden - UV -> Texture -> Blend", () => {
 
   it("binds the albedo slot to a local the fragment body declares", () => {
     const shader = compiled();
-    const local = shader.outputs["albedo"];
+    const local = shader.color.outputs["albedo"];
     expect(local).toBeDefined();
-    expect(shader.fragment.body.some((line) => line.includes(`vec4 ${local} =`))).toBe(true);
+    expect(shader.color.fragment.body.some((line) => line.includes(`vec4 ${local} =`))).toBe(true);
   });
 
   it("computes a diamond producer exactly once (texture sampled once)", () => {
     const shader = compiled();
-    const samples = shader.fragment.body.filter((line) => line.includes("fxSample_u_param_sheet("));
+    const samples = shader.color.fragment.body.filter((line) =>
+      line.includes("fxSample_u_param_sheet("),
+    );
     expect(samples).toHaveLength(1);
   });
 });
@@ -120,7 +122,7 @@ describe("FXCompilerBaseline render golden - cross-stage varyings", () => {
 
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
 
-    expect(shader.varyings).toHaveLength(1);
+    expect(shader.color.varyings).toHaveLength(1);
   });
 });
 
@@ -218,7 +220,7 @@ describe("numeric coercion across connections", () => {
 
     // The float input reads the vec3's first component (`.x`) - the connection compiles
     // instead of being rejected as a type mismatch.
-    expect(shader.fragment.body.some((line) => line.includes(").x"))).toBe(true);
+    expect(shader.color.fragment.body.some((line) => line.includes(").x"))).toBe(true);
   });
 
   it("pads a vec3 producer bound to the vec4 albedo slot with zero", () => {
@@ -231,9 +233,9 @@ describe("numeric coercion across connections", () => {
 
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
 
-    const slot = shader.outputs["albedo"];
+    const slot = shader.color.outputs["albedo"];
     expect(
-      shader.fragment.body.some(
+      shader.color.fragment.body.some(
         (line) =>
           line.includes(`vec4 ${slot} =`) &&
           new RegExp(String.raw`vec4\(${GLSL_NAME}, 0\.0\)`).test(line),

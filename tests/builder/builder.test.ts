@@ -104,7 +104,7 @@ describe("FXGraphBuilder - snapshot compiles on both backends", () => {
     const graph = new FXGraph<FXRenderNode>();
     new FXGraphReconciler(renderRegistry()).reconcile(graph, data);
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
   });
 
   it("behavior: builder -> snapshot -> reconcile -> compile -> kernel writes lifetime", () => {

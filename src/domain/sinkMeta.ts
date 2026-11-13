@@ -166,7 +166,8 @@ const UPDATE_SINK_BUILTINS: readonly FXSocketMeta[] = [
     : [slotSocket(killSlotOutput(behaviorTargets.update.killSlot))]),
 ];
 /** Whether the surface sink shows a slot in a render mode: `additivity` only when blending, the
- *  `alphaThreshold` cutoff in every mode but opaque, `albedo` + transforms always. */
+ *  `alphaThreshold` cutoff in every mode but opaque, `albedo`, the `shadowThreshold` cutoff and
+ *  the transforms always. */
 function showsSurfaceSlot(slot: string, renderMode: RenderMode): boolean {
   if (slot === "additivity") {
     return renderMode === "blending";

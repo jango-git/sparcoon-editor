@@ -31,6 +31,6 @@ describe("render delta-time source (u_deltaTime plumbing)", () => {
   it("compiles a delta-time node and references the host u_deltaTime builtin", () => {
     const shader = new FXCompilerBaseline().compile(deltaGraph(), buildParticleTarget([]));
     // combine -> albedo is a fragment slot, so the delta-time read lands in the fragment body.
-    expect(shader.fragment.body.join("\n")).toContain("u_deltaTime");
+    expect(shader.color.fragment.body.join("\n")).toContain("u_deltaTime");
   });
 });

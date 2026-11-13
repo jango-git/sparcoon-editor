@@ -12,7 +12,13 @@ import { canonicalAttributeSuffix } from "../../core/socket/FXAttribute";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 import { FXShaderStage } from "../FXShaderStage";
-import type { FXInputRate, FXTarget, FXTargetInput, FXTargetOutput } from "./FXTarget";
+import type {
+  FXInputRate,
+  FXShadowOutput,
+  FXTarget,
+  FXTargetInput,
+  FXTargetOutput,
+} from "./FXTarget";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;
@@ -237,13 +243,40 @@ const COMPOSITING_OUTPUTS: readonly FXTargetOutput[] = [
   { slot: "alphaThreshold", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
 ];
 
+// The shadow's own cutoff (see SHADOW_OUTPUTS): read by the shadow program alone, so it moves where
+// the cast shadow ends without touching the visible material - in every mode, opaque included.
+const SHADOW_THRESHOLD_OUTPUT: FXTargetOutput = {
+  slot: "shadowThreshold",
+  type: FLOAT,
+  stage: FXShaderStage.FRAGMENT,
+  required: false,
+  shadowOnly: true,
+};
+
 /** The surface slots shared by both render hosts (particle + VFX mesh): `albedo` (required), the
- *  compositing slots, and the local-space `vertexTransform`. Shading normal/emission are node
- *  inputs, not surface slots. */
+ *  compositing slots, the shadow's cutoff and the local-space `vertexTransform`. Shading
+ *  normal/emission are node inputs, not surface slots. */
 const SHARED_SURFACE_OUTPUTS: readonly FXTargetOutput[] = [
   { slot: "albedo", type: VEC4, stage: FXShaderStage.FRAGMENT, required: true },
   ...COMPOSITING_OUTPUTS,
+  SHADOW_THRESHOLD_OUTPUT,
   VERTEX_TRANSFORM_OUTPUT,
+];
+
+/** What a VFX mesh's shadow program reads: the albedo's alpha, the cutoffs the runtime picks
+ *  between by render mode, and the vertex transform. */
+const SHARED_SHADOW_OUTPUTS: readonly FXShadowOutput[] = [
+  { slot: "alpha", from: "albedo", channels: "w" },
+  // The runtime cuts at the shadow's own threshold when there is one.
+  { slot: "alphaThreshold", from: "alphaThreshold", unless: "shadowThreshold" },
+  { slot: "shadowThreshold", from: "shadowThreshold" },
+  { slot: "vertexTransform", from: "vertexTransform" },
+];
+
+/** What a particle's shadow program reads: the mesh's, plus where the particle stands. */
+const SHADOW_OUTPUTS: readonly FXShadowOutput[] = [
+  ...SHARED_SHADOW_OUTPUTS,
+  { slot: "particleTransform", from: "particleTransform" },
 ];
 
 /** The particle surface interface: the shared slots plus the particle-only `particleTransform`. */
@@ -259,6 +292,7 @@ export function buildParticleTarget(attributes: readonly FXAttributeRequest[] = 
     name: `particle${canonicalAttributeSuffix(attributes)}`,
     inputs: [...PARTICLE_BUILTINS, ...attributeRenderInputs(attributes, "primitive")],
     outputs: SURFACE_OUTPUTS,
+    shadow: SHADOW_OUTPUTS,
   };
 }
 
@@ -291,6 +325,7 @@ export const FX_MESH_TARGET: FXTarget = {
   name: "mesh",
   inputs: MESH_BUILTINS,
   outputs: SHARED_SURFACE_OUTPUTS,
+  shadow: SHARED_SHADOW_OUTPUTS,
 };
 
 /** Particle builtins a trail does not expose: a ribbon segment has no authored surface frame, so

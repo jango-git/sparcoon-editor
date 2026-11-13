@@ -35,7 +35,7 @@ function shadedBody(
   const shader = compile({ lit: reg.create(type), ...extra }, connections, [
     bind("albedo", "lit", "color"),
   ]);
-  return shader.fragment.body.join("\n");
+  return shader.color.fragment.body.join("\n");
 }
 
 describe("standard render effects", () => {
@@ -48,8 +48,8 @@ describe("standard render effects", () => {
       [edge("c", "out", "d", "color")],
       [bind("albedo", "d", "color")],
     );
-    const helpers = shader.fragment.helperFunctions.join("\n");
-    const body = shader.fragment.body.join("\n");
+    const helpers = shader.color.fragment.helperFunctions.join("\n");
+    const body = shader.color.fragment.body.join("\n");
     // dissolve builds on the shared `noise` primitive through ordinary IR calls, so only that
     // helper shows up, with its own smoothstep call site inline in the body.
     expect(helpers).toContain("float noise(vec2 p)");
@@ -82,12 +82,12 @@ describe("standard render effects", () => {
       [edge("c", "out", "m", "color")],
       [bind("albedo", "m", "color")],
     );
-    const helpers = shader.fragment.helperFunctions.join("\n");
+    const helpers = shader.color.fragment.helperFunctions.join("\n");
     // The mask is a smoothstep over brightness whose upper edge is kept above the lower one, so
     // equal edges are a hard threshold rather than an undefined smoothstep.
     expect(helpers).toContain("smoothstep(edge0, max(edge1, edge0");
     // The inline edges reach the call that multiplies the color.
-    expect(shader.fragment.body.join("\n")).toMatch(
+    expect(shader.color.fragment.body.join("\n")).toMatch(
       /\* fxLightnessBlendingMask\([^)]*0\.4, 0\.4\)/,
     );
   });

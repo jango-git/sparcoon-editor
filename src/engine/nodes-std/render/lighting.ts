@@ -46,8 +46,8 @@ interface FXShadingParts<I extends FXShadedInputs> {
 /**
  * The lighting part of a lighting node's descriptor: the intrinsic it calls, the normal it falls
  * back to, and its build - `intrinsic(color, normal, ...settings(inputs))` with the emission added
- * on top. Emission rgb is added and the shaded alpha kept, so a default-black emission is a no-op,
- * and it bypasses lighting by construction. `settings` picks the intrinsic's further arguments, in
+ * on top. Emission rgb is added and the input alpha kept (the shaded one, by the intrinsics' ABI),
+ * so a default-black emission is a no-op, and it bypasses lighting by construction. `settings` picks the intrinsic's further arguments, in
  * its parameter order.
  */
 function shading<I extends FXShadedInputs>(
@@ -68,8 +68,15 @@ function shading<I extends FXShadedInputs>(
         inputs.normal ?? target.read("geometryNormal"),
         ...extra,
       );
-      const emission = fn.construct(VEC4, fn.swizzle(inputs.emission, "xyz"), fn.lit(0));
-      return { color: fn.add(shaded, emission) };
+      // Every intrinsic returns its input alpha: said here, it is read straight off the input, so
+      // a program needing only the alpha (the shadow caster) computes no lighting.
+      return {
+        color: fn.construct(
+          VEC4,
+          fn.add(fn.swizzle(shaded, "xyz"), fn.swizzle(inputs.emission, "xyz")),
+          fn.swizzle(inputs.color, "w"),
+        ),
+      };
     },
   };
 }

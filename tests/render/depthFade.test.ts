@@ -30,8 +30,8 @@ function fadeGraph(wired = true): FXGraph<FXRenderNode> {
 describe("depth-fade", () => {
   it("calls the runtime's fxDepthFade in the fragment stage", () => {
     const shader = new FXCompilerBaseline().compile(fadeGraph(), FX_MESH_TARGET);
-    expect(shader.fragment.body.join("\n")).toContain("fxDepthFade(");
-    expect(shader.vertex.body.join("\n")).not.toContain("fxDepthFade");
+    expect(shader.color.fragment.body.join("\n")).toContain("fxDepthFade(");
+    expect(shader.color.vertex.body.join("\n")).not.toContain("fxDepthFade");
   });
 
   it("asks the runtime for the scene depth only when reachable", () => {

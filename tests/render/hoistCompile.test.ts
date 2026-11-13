@@ -27,8 +27,8 @@ const baseline = new FXCompilerBaseline();
 /** The ramp's value: the one float the graph builds by `mix`. */
 const CURVE = new RegExp(String.raw`float ${GLSL_NAME} = mix\(`);
 
-const vertexOf = (shader: FXCompiledShader): string => shader.vertex.body.join("\n");
-const fragmentOf = (shader: FXCompiledShader): string => shader.fragment.body.join("\n");
+const vertexOf = (shader: FXCompiledShader): string => shader.color.vertex.body.join("\n");
+const fragmentOf = (shader: FXCompiledShader): string => shader.color.fragment.body.join("\n");
 
 /** Alpha = a curve over `source` (life ratio by default) times the uv's length; white rgb. */
 function fadeGraph(source: "life-ratio" | "time" = "life-ratio"): FXGraph<FXRenderNode> {
@@ -61,21 +61,21 @@ describe("per-vertex hoist of per-particle fragment values", () => {
     expect(fragmentOf(shader)).not.toContain("PARTICLE_AGE");
     expect(fragmentOf(shader)).not.toMatch(CURVE);
     expect(fragmentOf(shader)).toContain("length(");
-    expect(shader.fragment.targetReads).not.toContain("PARTICLE_AGE");
-    expect(shader.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
+    expect(shader.color.fragment.targetReads).not.toContain("PARTICLE_AGE");
+    expect(shader.color.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
   });
 
   it("marks it flat on Baseline too: the runtime qualifies it where the GLSL can", () => {
     const shader = baseline.compile(fadeGraph(), FX_PARTICLE_TARGET);
     expect(vertexOf(shader)).toMatch(CURVE);
-    expect(shader.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
+    expect(shader.color.varyings.map((varying) => varying.interpolation)).toEqual(["flat"]);
   });
 
   it("keeps a trail's per-point values in the fragment: they change along the ribbon", () => {
     const shader = standard.compile(fadeGraph(), FX_TRAIL_TARGET);
     expect(fragmentOf(shader)).toMatch(CURVE);
     expect(fragmentOf(shader)).toContain("PARTICLE_AGE");
-    expect(shader.varyings).toEqual([]);
+    expect(shader.color.varyings).toEqual([]);
   });
 
   it("computes a mesh's clock-driven value once per tick on the CPU, not per vertex", () => {
@@ -98,7 +98,7 @@ describe("per-vertex hoist of per-particle fragment values", () => {
     );
     const shader = standard.compile(graph, FX_PARTICLE_TARGET);
     expect(vertexOf(shader)).toContain("fxAnimatedFrameOnce(");
-    expect(shader.vertex.helperFunctions.join("\n")).toContain("vec3 fxAnimatedFrameOnce(");
+    expect(shader.color.vertex.helperFunctions.join("\n")).toContain("vec3 fxAnimatedFrameOnce(");
     expect(fragmentOf(shader)).toContain("fxSample_u_param_sheet(");
     expect(fragmentOf(shader)).toContain("fxFlipbookFrameUV(");
     expect(fragmentOf(shader)).not.toContain("fxAnimatedFrameOnce(");
@@ -115,7 +115,7 @@ describe("per-vertex hoist of per-particle fragment values", () => {
     ] as const) {
       const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
       expect(rowsOf(shader)).toBeLessThanOrEqual(fxGraphVaryingAllowance(tier, none, []));
-      expect(shader.varyings.length).toBeGreaterThan(0);
+      expect(shader.color.varyings.length).toBeGreaterThan(0);
     }
   });
 
@@ -131,7 +131,9 @@ describe("per-vertex hoist of per-particle fragment values", () => {
 
 /** The varying rows `shader` carries, by the runtime's packing rule. */
 function rowsOf(shader: FXCompiledShader): number {
-  return packedVectors(shader.varyings.map((varying) => fxPackedShape(varying.type.glslTypeName)));
+  return packedVectors(
+    shader.color.varyings.map((varying) => fxPackedShape(varying.type.glslTypeName)),
+  );
 }
 
 /** Eight per-particle colors (ramps over the life ratio), each modulated per fragment, summed. */

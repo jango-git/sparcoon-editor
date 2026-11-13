@@ -65,7 +65,7 @@ describe("the draw stage, compiled", () => {
       [bind("particleTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const transform = shader.outputs["particleTransform"] ?? "";
+    const transform = shader.color.outputs["particleTransform"] ?? "";
     const pose = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 0, 0, 1];
     const matrix = computed(shader, { modelMatrix: pose })[transform] as number[];
     expect(matrix.slice(12, 15)).toEqual([-4, 2, 3]);

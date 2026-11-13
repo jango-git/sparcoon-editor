@@ -117,7 +117,9 @@ objects under it:
 Every graph ends in permanent **sink** nodes. The behavior graph feeds the **Spawn sink** and the
 **Update sink** - initial and per-frame position, lifetime, velocity and any declared particle
 attributes. The render graph feeds the **Surface sink** - color, transforms, geometry, render mode,
-sorting and shadow flags. A trail graph feeds the same sink, shaped for a ribbon: color, **Width**
+sorting and shadow flags. A cast shadow is drawn from the color's alpha alone, so lighting and
+color work cost the shadow pass nothing; **Shadow Threshold** moves where the shadow ends without
+touching the visible surface. A trail graph feeds the same sink, shaped for a ribbon: color, **Width**
 (which can taper along the trail through its UV), and how many points of each particle's path it
 keeps and how often it records one. Lighting and surface-normal nodes are not offered there, and a
 trail cannot be combined with depth sorting. A material that needs more vertex attributes or

@@ -126,14 +126,14 @@ function withHashNoise(): FXGraph<FXRenderNode> {
 describe("baselineBuild mechanism", () => {
   it("baseline (FXCompilerBaseline) uses the fractal-cosine fallback, not the int hash", () => {
     const shader = new FXCompilerBaseline().compile(withHashNoise(), FX_PARTICLE_TARGET);
-    const body = shader.fragment.body.join("\n");
+    const body = shader.color.fragment.body.join("\n");
     expect(body).toContain("sin(");
     expect(body).not.toMatch(/[&^]|<</);
   });
 
   it("WebGL2 (FXCompilerStandard) uses the primary int-hash build, never baselineBuild", () => {
     const shader = new FXCompilerStandard().compile(withHashNoise(), FX_PARTICLE_TARGET);
-    const body = shader.fragment.body.join("\n");
+    const body = shader.color.fragment.body.join("\n");
     expect(body).toMatch(/[&^]|<</);
     expect(body).not.toContain("sin(");
   });
@@ -162,6 +162,6 @@ describe("baselineBuild mechanism", () => {
       ],
     );
     const shader = new FXCompilerStandard().compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.fragment.body.join("\n")).toContain("^");
+    expect(shader.color.fragment.body.join("\n")).toContain("^");
   });
 });

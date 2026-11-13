@@ -94,8 +94,8 @@ describe("render context IR path", () => {
     });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
 
-    expect(shader.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
-    const body = shader.fragment.body.join("\n");
+    expect(shader.color.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
+    const body = shader.color.fragment.body.join("\n");
     // uv materialized from the builtin
     expect(body).toMatch(new RegExp(`vec2 ${GLSL_NAME} = p_uv;`));
     // vec4 assembled from the splat multiply and two literals
@@ -122,8 +122,8 @@ describe("render context IR path", () => {
       outputBindings: [{ slot: "albedo", from: { nodeId: "tail", socketKey: "color" } }],
     });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
-    expect(shader.fragment.body.join("\n")).toContain("* 2.0)");
+    expect(shader.color.outputs["albedo"]).toMatch(new RegExp(`^${GLSL_NAME}$`));
+    expect(shader.color.fragment.body.join("\n")).toContain("* 2.0)");
   });
 });
 

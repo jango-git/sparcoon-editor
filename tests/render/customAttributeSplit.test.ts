@@ -54,8 +54,8 @@ describe("custom-attribute-split: editor path (name + type only, no explicit sta
     expect(result.ok).toBe(true);
 
     const compiled = new FXCompilerBaseline().compile(graph, target);
-    expect(compiled.vertex.body.join("\n")).toContain("p_fx_spin");
-    expect(compiled.fragment.body.join("\n")).not.toContain("p_fx_spin");
+    expect(compiled.color.vertex.body.join("\n")).toContain("p_fx_spin");
+    expect(compiled.color.fragment.body.join("\n")).not.toContain("p_fx_spin");
   });
 
   it("compiles a vec3 attribute split into x/y/z, wired into position via combine", () => {
@@ -84,6 +84,6 @@ describe("custom-attribute-split: editor path (name + type only, no explicit sta
     });
     const target = buildParticleTarget([{ name: "velocity", type: VEC3 }]);
     const compiled = new FXCompilerBaseline().compile(graph, target);
-    expect(compiled.vertex.body.join("\n")).toContain("p_fx_velocity");
+    expect(compiled.color.vertex.body.join("\n")).toContain("p_fx_velocity");
   });
 });

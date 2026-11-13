@@ -9,7 +9,16 @@ export function renderTargetSignature(target: FXTarget): string {
     .map((input) => [input.name, input.type.id, [...input.stages].sort(), input.rate])
     .sort(byJSON);
   const outputs = target.outputs
-    .map((output) => [output.slot, output.type.id, output.stage, output.required])
+    .map((output) => [
+      output.slot,
+      output.type.id,
+      output.stage,
+      output.required,
+      output.shadowOnly === true,
+    ])
     .sort(byJSON);
-  return JSON.stringify(["render", target.name, inputs, outputs]);
+  const shadow = (target.shadow ?? [])
+    .map((output) => [output.slot, output.from, output.channels ?? "", output.unless ?? ""])
+    .sort(byJSON);
+  return JSON.stringify(["render", target.name, inputs, outputs, shadow]);
 }

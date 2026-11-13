@@ -54,19 +54,19 @@ describe("particle reads", () => {
 
   it.each(compilers)("records what each stage's code reads (%s)", (_, compile) => {
     const shader = compile(graph());
-    expect(stageSource(shader.vertex).particleReads).toEqual({
+    expect(stageSource(shader.color.vertex).particleReads).toEqual({
       position: false,
       lifecycle: false,
       attributes: ["width"],
     });
     // Not `cold`: no output reaches it, so the compiler never builds it.
-    expect(stageSource(shader.fragment).particleReads).toEqual({
+    expect(stageSource(shader.color.fragment).particleReads).toEqual({
       position: false,
       lifecycle: false,
       attributes: ["heat"],
     });
-    expect(shader.vertex.body.join("\n")).toContain("p_fx_width");
-    expect(shader.fragment.body.join("\n")).not.toContain("p_fx_width");
+    expect(shader.color.vertex.body.join("\n")).toContain("p_fx_width");
+    expect(shader.color.fragment.body.join("\n")).not.toContain("p_fx_width");
   });
 
   it("maps the core builtins and attribute inputs, and nothing else", () => {

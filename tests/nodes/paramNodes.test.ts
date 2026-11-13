@@ -33,7 +33,7 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
       renderGraph(new Map([["a", a]]), [bind("albedo", "a", "out")]),
       FX_PARTICLE_TARGET,
     );
-    expect(shader.fragment.uniformDeclarations).toContain("uniform vec4 u_param_intensity;");
+    expect(shader.color.fragment.uniformDeclarations).toContain("uniform vec4 u_param_intensity;");
     expect(shader.uniforms["u_param_intensity"]).toBeDefined();
     expect(shader.uniforms["u_param_intensity"].value).toEqual([1, 0, 0, 1]);
   });
@@ -120,11 +120,11 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
       FX_PARTICLE_TARGET,
     );
     // Sampled in the fragment stage alone: the vertex stage is charged no texture unit for it.
-    expect(shader.fragment.uniformDeclarations).toContain("uniform sampler2D u_param_mask;");
-    expect(shader.vertex.uniformDeclarations).toEqual([]);
+    expect(shader.color.fragment.uniformDeclarations).toContain("uniform sampler2D u_param_mask;");
+    expect(shader.color.vertex.uniformDeclarations).toEqual([]);
     // The handle is flagged external so the assembler emits `{ type: "sampler2D", external }`.
     expect(shader.uniforms["u_param_mask"].external).toBe("u_param_mask");
-    expect(shader.fragment.body.join("\n")).toContain("fxSample_u_param_mask(");
+    expect(shader.color.fragment.body.join("\n")).toContain("fxSample_u_param_mask(");
   });
 
   it("texture with no chosen asset compiles to transparent, allocating no sampler", () => {
@@ -137,9 +137,12 @@ describe("param nodes - named runtime-tunable uniforms/bindings", () => {
         FX_PARTICLE_TARGET,
       );
       expect(
-        [...shader.vertex.uniformDeclarations, ...shader.fragment.uniformDeclarations].join("\n"),
+        [
+          ...shader.color.vertex.uniformDeclarations,
+          ...shader.color.fragment.uniformDeclarations,
+        ].join("\n"),
       ).not.toContain("sampler2D");
-      expect(shader.fragment.body.join("\n")).not.toContain("fxSample_");
+      expect(shader.color.fragment.body.join("\n")).not.toContain("fxSample_");
     }
   });
 

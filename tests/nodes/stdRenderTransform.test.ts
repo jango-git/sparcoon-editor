@@ -31,7 +31,7 @@ function billboardGraph(
 }
 
 function vertexOf(graph: FXGraph<FXRenderNode>): string {
-  return compiler.compile(graph, FX_PARTICLE_TARGET).vertex.body.join("\n");
+  return compiler.compile(graph, FX_PARTICLE_TARGET).color.vertex.body.join("\n");
 }
 
 describe("standard render transform nodes", () => {
@@ -41,9 +41,9 @@ describe("standard render transform nodes", () => {
       scale: [2, 2, 1],
     });
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const vertex = shader.vertex.body.join("\n");
+    const vertex = shader.color.vertex.body.join("\n");
     // The whole chain lands in the vertex stage (particleTransform is a vertex slot).
-    expect(shader.outputs["particleTransform"]).toBeDefined();
+    expect(shader.color.outputs["particleTransform"]).toBeDefined();
     expect(vertex).toContain("mat4");
     // look-at-camera reads the view matrix and transposes its rotation to build the basis.
     expect(vertex).toContain("viewMatrix");
@@ -59,7 +59,9 @@ describe("standard render transform nodes", () => {
       [],
       [bind("vertexTransform", "compose", "out"), bind("albedo", "col", "out")],
     );
-    expect(compiler.compile(graph, FX_PARTICLE_TARGET).outputs["vertexTransform"]).toBeDefined();
+    expect(
+      compiler.compile(graph, FX_PARTICLE_TARGET).color.outputs["vertexTransform"],
+    ).toBeDefined();
   });
 
   it.each(["x", "y", "z"] as const)(
@@ -98,9 +100,9 @@ describe("standard render transform nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.vertex.body.join("\n")).toContain("viewMatrix");
-    expect(shader.fragment.body.join("\n")).not.toContain("viewMatrix");
-    expect(shader.fragment.body.join("\n")).toContain("fxLambertShade");
+    expect(shader.color.vertex.body.join("\n")).toContain("viewMatrix");
+    expect(shader.color.fragment.body.join("\n")).not.toContain("viewMatrix");
+    expect(shader.color.fragment.body.join("\n")).toContain("fxLambertShade");
   });
 });
 

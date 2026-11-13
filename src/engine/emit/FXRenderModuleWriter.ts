@@ -2,7 +2,7 @@ import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
-import type { FXRenderStageKey, FXStagePrinter } from "./artifactLiterals";
+import type { FXRenderStagePath, FXStagePrinter } from "./artifactLiterals";
 import { renderArtifactBody } from "./artifactLiterals";
 import { lineDeltaLiteral } from "./lineDelta";
 
@@ -76,11 +76,16 @@ export class FXRenderModuleWriter {
 
   /** {@link pooledStages}, each stage's lines taken from `base`'s same stage where they agree. */
   private sharedStages(base: FXTierArtifact): FXStagePrinter {
-    const baseStage = (stage: FXRenderStageKey): FXCompiledStage => base.shader[stage];
+    const baseStage = (path: FXRenderStagePath): FXCompiledStage | undefined =>
+      base.shader[path.program]?.[path.stage];
     return {
       helpers: (_stage, helperFunctions) => this.helperList(helperFunctions),
-      body: (stage, body) =>
-        lineDeltaLiteral(body, baseStage(stage).body, `${base.name}.${stage}.body`),
+      body: (path, body): string => {
+        const stage = baseStage(path);
+        return stage === undefined
+          ? JSON.stringify(body)
+          : lineDeltaLiteral(body, stage.body, `${base.name}.${path.program}.${path.stage}.body`);
+      },
     };
   }
 

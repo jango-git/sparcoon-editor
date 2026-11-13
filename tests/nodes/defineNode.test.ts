@@ -124,13 +124,13 @@ describe("defineNode - render backend", () => {
     const graph = graphOf({ c: node }, [], [bind("albedo", "c", "color")]);
 
     const shader = new FXCompilerBaseline().compile(graph, FX_PARTICLE_TARGET);
-    expect(shader.outputs["albedo"]).toBeDefined();
+    expect(shader.color.outputs["albedo"]).toBeDefined();
 
     const uniformNames = Object.keys(shader.uniforms);
     expect(uniformNames).toHaveLength(1);
     expect(shader.uniforms[uniformNames[0]].value).toEqual([1, 0, 0, 1]);
-    expect(shader.fragment.uniformDeclarations.some((d) => d.includes("vec4"))).toBe(true);
-    expect(shader.fragment.body.join("\n")).toContain(uniformNames[0]);
+    expect(shader.color.fragment.uniformDeclarations.some((d) => d.includes("vec4"))).toBe(true);
+    expect(shader.color.fragment.body.join("\n")).toContain(uniformNames[0]);
   });
 });
 
