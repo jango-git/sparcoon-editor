@@ -113,6 +113,15 @@
   "offsetless-input-not-reserved": {
     "message": "target \"{targetName}\" input \"{inputName}\" declares no offsets; offset-less inputs are reserved for \"dt\", \"PARTICLE_INDEX\", and the model matrix"
   },
+  "at-birth-input-not-model-matrix": {
+    "message": "target \"{targetName}\" reads input \"{inputName}\" at birth, but only the model matrix moves with a birth"
+  },
+  "at-birth-input-not-in-spawn": {
+    "message": "target \"{targetName}\" reads input \"{inputName}\" at birth, but only a spawn kernel has births"
+  },
+  "at-birth-input-needs-lifecycle": {
+    "message": "target \"{targetName}\" reads input \"{inputName}\" at birth without the \"lifecycle\" buffer holding the age it moves by"
+  },
   "duplicate-target-output": {
     "message": "target \"{targetName}\" declares output slot \"{outputSlot}\" more than once"
   },

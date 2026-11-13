@@ -30,6 +30,14 @@ export interface FXKernelTargetInput {
   /** State buffer the offsets index; defaults to `"builtin"` - a custom target should always
    *  name its buffer explicitly. */
   readonly buffer?: string;
+  /**
+   * The model matrix of a spawn target, read as it stood at each particle's birth rather than
+   * once per call: a newborn is seeded `age` seconds old (born that long before its tick's end),
+   * so it spawns from the emitter's translation moved back along the emitter's velocity by that
+   * age - its rotation and scale are the call's. Different for every particle, so never hoisted
+   * or lifted; needs the core `lifecycle` buffer, the age it reads.
+   */
+  readonly atBirth?: boolean;
 }
 
 /**
@@ -104,7 +112,8 @@ const INT = FX_VALUE_TYPES.int;
  * The emitter's world (model) matrix, readable in both phases as `modelMatrix` - the same name
  * the render backend exposes, so one shared `world-matrix` node reads it on either side. A
  * synthesized input with no backing buffer (like `dt`); resolves to a field of the runtime
- * `emitter` argument (see `resolveKernelTargetInputRef`).
+ * `emitter` argument (see `resolveKernelTargetInputRef`) - in the spawn phase, as it stood at each
+ * particle's birth (`FXKernelTargetInput.atBirth`).
  */
 export const FX_MODEL_MATRIX_INPUT = "modelMatrix";
 
@@ -131,6 +140,11 @@ const EMITTER_HOST_INPUTS: readonly FXKernelTargetInput[] = [
   { name: FX_OBJECT_VELOCITY_INPUT, type: VEC3 },
   { name: FX_OBJECT_ANGULAR_VELOCITY_INPUT, type: VEC3 },
 ];
+
+/** The spawn phase's: a particle spawns from the emitter as it stood at its birth. */
+const SPAWN_EMITTER_HOST_INPUTS: readonly FXKernelTargetInput[] = EMITTER_HOST_INPUTS.map(
+  (input) => (input.name === FX_MODEL_MATRIX_INPUT ? { ...input, atBirth: true } : input),
+);
 
 /**
  * The current particle's own index into the state buffers (the JS loop variable `i`; the
@@ -316,7 +330,7 @@ export function buildParticleBehaviorTargets(
     buffers,
     inputs: [
       ...readInputs,
-      ...EMITTER_HOST_INPUTS,
+      ...SPAWN_EMITTER_HOST_INPUTS,
       ...PARTICLE_INDEX_INPUTS,
       ...attributeInputEntries,
     ],

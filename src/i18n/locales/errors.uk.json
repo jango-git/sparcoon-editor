@@ -113,6 +113,15 @@
   "offsetless-input-not-reserved": {
     "message": "таргет \"{targetName}\" вхід \"{inputName}\" не оголошує зміщень; входи без зміщень зарезервовані для \"dt\", \"PARTICLE_INDEX\" та матриці моделі"
   },
+  "at-birth-input-not-model-matrix": {
+    "message": "таргет \"{targetName}\" читає вхід \"{inputName}\" на момент народження, але з народженням зміщується лише матриця моделі"
+  },
+  "at-birth-input-not-in-spawn": {
+    "message": "таргет \"{targetName}\" читає вхід \"{inputName}\" на момент народження, але народження є лише в ядра spawn"
+  },
+  "at-birth-input-needs-lifecycle": {
+    "message": "таргет \"{targetName}\" читає вхід \"{inputName}\" на момент народження без буфера \"lifecycle\", у якому лежить вік для зміщення"
+  },
   "duplicate-target-output": {
     "message": "таргет \"{targetName}\" оголошує вихідний слот \"{outputSlot}\" більше одного разу"
   },

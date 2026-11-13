@@ -699,7 +699,8 @@ export const fxMatrixToMat3 = defineNode({
 
 /**
  * The object's world (model) matrix as a mat4 source, reading the `modelMatrix` builtin - Three's
- * uniform in render, the emitter's `matrixWorld` in behavior. Transforms object-space into world space.
+ * uniform in render, the emitter's `matrixWorld` in behavior (in spawn, as it stood at each
+ * particle's birth). Transforms object-space into world space.
  */
 export const fxWorldMatrix = defineNode({
   type: "world-matrix",
@@ -718,8 +719,9 @@ export const fxWorldMatrix = defineNode({
 
 /**
  * The inverse of the world matrix (world -> object space), as `inverse(modelMatrix)`. Nothing
- * supplies an inverse-model uniform, so it is derived - in behavior the kernel hoists it once per
- * call (`modelMatrix` is particle-invariant), not per particle.
+ * supplies an inverse-model uniform, so it is derived - in an update the kernel hoists it once per
+ * call (`modelMatrix` is particle-invariant there); in a spawn it is each birth's own (see
+ * `FXKernelTargetInput.atBirth`).
  */
 export const fxInverseWorldMatrix = defineNode({
   type: "inverse-world-matrix",

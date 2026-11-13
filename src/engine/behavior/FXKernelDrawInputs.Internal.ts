@@ -14,7 +14,8 @@ export const KERNEL_RATE = { constant: 0, pass: 1, particle: 2 } as const;
 /**
  * The rates of a GPU kernel phase's values against `target`: a binding (a parameter), the
  * timestep and the emitter's pose and motion are one for the whole pass; a particle's state, its
- * index, an impure call (`rand`) vary by particle.
+ * index, an impure call (`rand`) and a spawn's pose as of the particle's birth vary by particle
+ * (`isInvariantKernelRef`).
  */
 export function kernelRatePolicy(target: FXKernelTarget): FXRatePolicy {
   return {

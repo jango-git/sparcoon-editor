@@ -25,6 +25,7 @@ import { buildValueBehaviorTarget } from "../helpers/valueTarget";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC3 = FX_VALUE_TYPES.vec3;
+const MAT4 = FX_VALUE_TYPES.mat4;
 
 const reg = behaviorRegistry();
 
@@ -412,6 +413,54 @@ describe("validateKernelTarget - phase awareness and the spawn/update pair", () 
     });
     expect(result.ok).toBe(false);
     expect(hasError(result, "spawn-input-has-dt", "spawn kernel has no dt")).toBe(true);
+  });
+
+  it.each<[string, (targets: ReturnType<typeof pair>) => FXBehaviorTargets, FXCompilerErrorCode]>([
+    [
+      "an at-birth input other than the model matrix",
+      (targets) => ({
+        ...targets,
+        spawn: {
+          ...targets.spawn,
+          buffers: [...targets.spawn.buffers, { name: "lifecycle", stride: 3 }],
+          inputs: [
+            { name: "VALUE_progress", type: FLOAT, buffer: "values", offsets: [0], atBirth: true },
+          ],
+        },
+        update: {
+          ...targets.update,
+          buffers: [...targets.update.buffers, { name: "lifecycle", stride: 3 }],
+        },
+      }),
+      "at-birth-input-not-model-matrix",
+    ],
+    [
+      "an at-birth input in an update target",
+      (targets) => ({
+        ...targets,
+        update: {
+          ...targets.update,
+          buffers: [...targets.update.buffers, { name: "lifecycle", stride: 3 }],
+          inputs: [...targets.update.inputs, { name: "modelMatrix", type: MAT4, atBirth: true }],
+        },
+      }),
+      "at-birth-input-not-in-spawn",
+    ],
+    [
+      "an at-birth input without the lifecycle holding the age",
+      (targets) => ({
+        ...targets,
+        spawn: {
+          ...targets.spawn,
+          inputs: [...targets.spawn.inputs, { name: "modelMatrix", type: MAT4, atBirth: true }],
+        },
+      }),
+      "at-birth-input-needs-lifecycle",
+    ],
+  ])("%s is invalid", (_, shape, code) => {
+    const result = lintTargets(shape(pair()));
+    expect(result.ok).toBe(false);
+    expect(result.errors.map((error) => error.code)).toContain(code);
   });
 
   it("a buffer with different strides in spawn and update is invalid", () => {

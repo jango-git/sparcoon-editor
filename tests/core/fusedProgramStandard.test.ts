@@ -1,4 +1,6 @@
 import {
+  FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM,
@@ -151,6 +153,51 @@ describe("fused transform-feedback program assembly", () => {
     expect(program.vertexSource).toContain(
       `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM};`,
     );
+  });
+
+  it("seeds a newborn's age from the birth-age uniforms: the tail of the range was born earlier", () => {
+    const program = compileMotionGraph();
+    const [birthBranch] = program.vertexSource.split("} else {");
+    expect(program.vertexSource).toContain(
+      `uniform int ${FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM};`,
+    );
+    expect(program.vertexSource).toContain(
+      `uniform vec2 ${FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM};`,
+    );
+    expect(birthBranch).toContain(
+      `int fx_birthAgeIndex = fx_relativeIndex - (${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM} - ${FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM});`,
+    );
+    expect(birthBranch).toContain("out_lifecycle.x = fx_birthAge;");
+  });
+
+  it("spawns a world-matrix read from the emitter as it stood at the particle's birth", () => {
+    const r = registry();
+    const graph = new FXGraph<FXBehaviorNode>();
+    graph.ingest({
+      nodes: new Map([
+        ["m", r.create("world-matrix", {})],
+        ["tp", r.create("transform-point", { p: [1, 2, 3] })],
+      ]),
+      connections: [
+        { from: { nodeId: "m", socketKey: "out" }, to: { nodeId: "tp", socketKey: "m" } },
+      ],
+      outputBindings: [
+        {
+          slot: "position",
+          from: { nodeId: "tp", socketKey: "out" },
+          phase: FXBehaviorPhase.SPAWN,
+        },
+      ],
+    });
+    const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets([]));
+    // Per particle: nothing of it is the pass's, so nothing goes to the draw stage.
+    expect(compiled.spawn?.draw).toBeUndefined();
+    const [birthBranch] = assembleTransformFeedbackProgram(compiled).vertexSource.split("} else {");
+    expect(birthBranch).toContain(
+      "fx_birthModelMatrix[3].xyz -= u_fxObjectVelocity * fx_birthAge;",
+    );
+    // The graph's read is that matrix.
+    expect(birthBranch).toMatch(/mat4 \w+ = fx_birthModelMatrix;/);
   });
 
   it("passes every buffer through unchanged in the update branch, except age", () => {

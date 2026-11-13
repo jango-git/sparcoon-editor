@@ -3,8 +3,12 @@ import {
   FX_CORE_LIFECYCLE,
   FX_ID,
   FX_LIFETIME,
+  FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM,
@@ -27,7 +31,11 @@ import type {
   FXCompiledKernelDrawStage,
   FXCompiledKernelStandard,
 } from "./FXParticleBehaviorKernelStandard.Internal";
-import { glslBufferAttributeName } from "./FXParticleBehaviorKernelStandard.Internal";
+import {
+  BIRTH_AGE_LOCAL,
+  BIRTH_MODEL_MATRIX_LOCAL,
+  glslBufferAttributeName,
+} from "./FXParticleBehaviorKernelStandard.Internal";
 
 /**
  * The `new Function`-assembly layer's standard-tier sibling: turns a {@link FXCompiledKernelStandard}
@@ -48,6 +56,19 @@ void main(){
   fx_unused_fragColor = vec4(0.0);
 }
 `;
+
+/**
+ * The birth branch's first lines: the newborn's age - the last `u_fxBirthAgeCount` births of the
+ * pass's range were born earlier in its tick, aged by `u_fxBirthAges` (first, step); the rest at
+ * its end - and the model matrix as of its birth, its translation moved back along the emitter's
+ * velocity by that age.
+ */
+const BIRTH_PROLOGUE: readonly string[] = [
+  `int fx_birthAgeIndex = fx_relativeIndex - (${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM} - ${FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM});`,
+  `float ${BIRTH_AGE_LOCAL} = fx_birthAgeIndex >= 0 ? ${FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM}.x + float(fx_birthAgeIndex) * ${FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM}.y : 0.0;`,
+  `mat4 ${BIRTH_MODEL_MATRIX_LOCAL} = ${FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM};`,
+  `${BIRTH_MODEL_MATRIX_LOCAL}[3].xyz -= ${FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM} * ${BIRTH_AGE_LOCAL};`,
+];
 
 export interface FXFusedProgramStandard {
   readonly vertexSource: string;
@@ -185,9 +206,11 @@ export function assembleTransformFeedbackProgram(
       ),
     ],
   ]);
-  // Host-owned, like age above: no write slot exists for id (FXParticleBehaviorTarget.ts's
-  // scalarWriteSlots never lists it), so this never collides with a graph write.
-  const lifecycleIdOverride = new Map([
+  // A newborn's age and id, host-owned like age above: no write slot exists for either
+  // (FXParticleBehaviorTarget.ts's scalarWriteSlots never lists them), so this never collides
+  // with a graph write. The age is the one the birth prologue read from the pass's birth ages.
+  const lifecycleBirthOverride = new Map([
+    [FX_AGE, BIRTH_AGE_LOCAL],
     [FX_ID, `float(${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex)`],
   ]);
 
@@ -199,7 +222,7 @@ export function assembleTransformFeedbackProgram(
       buffer,
       spawn.writes,
       `${glslTypeForBuffer(buffer)}(0.0)`,
-      buffer.name === FX_CORE_LIFECYCLE ? lifecycleIdOverride : new Map(),
+      buffer.name === FX_CORE_LIFECYCLE ? lifecycleBirthOverride : new Map(),
     ),
   );
   const updateAssignments = buffers.flatMap((buffer) =>
@@ -242,7 +265,8 @@ void main(){
   int fx_relativeIndex = (fx_particleIndex - ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM} + ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM}) % ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM};
   bool fx_isBirth = ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM} > 0 && fx_relativeIndex < ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM};
   if (fx_isBirth) {
-${[...spawn.body.map((line) => `    ${line}`), ...spawnAssignments].join("\n")}
+${[...BIRTH_PROLOGUE, ...spawn.body].map((line) => `    ${line}`).join("\n")}
+${spawnAssignments.join("\n")}
   } else if (${deadCondition}) {
 ${passThroughAssignments.join("\n")}
   } else {

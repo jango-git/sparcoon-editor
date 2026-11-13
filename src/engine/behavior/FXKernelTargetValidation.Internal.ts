@@ -11,7 +11,11 @@ import {
 import type { FXExpr } from "../core/ir/FXExpr";
 import { childrenOf } from "../core/ir/visit.Internal";
 import type { FXKernelTarget } from "./FXParticleBehaviorTarget";
-import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
+import {
+  FX_EMITTER_INPUT_FIELD,
+  FX_MODEL_MATRIX_INPUT,
+  FX_PARTICLE_INDEX_INPUT,
+} from "./FXParticleBehaviorTarget";
 
 /** The packed builtin state buffer the kernel's integration always writes into. */
 const BUILTIN_BUFFER = "builtin";
@@ -144,6 +148,9 @@ export function validateKernelTarget(
     if (typeError !== undefined) {
       errors.push(typeError);
       continue;
+    }
+    if (input.atBirth === true) {
+      errors.push(...atBirthErrors(target, phase, input.name));
     }
     if (input.offsets !== undefined) {
       if (input.offsets.length !== input.type.components) {
@@ -281,6 +288,44 @@ export function validateKernelTarget(
   return errors;
 }
 
+/** Whether `target` holds the core `lifecycle` buffer (age, lifetime, id). */
+function hasCoreLifecycle(target: FXKernelTarget): boolean {
+  const lifecycle = target.buffers.find((buffer) => buffer.name === FX_CORE_LIFECYCLE);
+  return lifecycle?.stride === FX_CORE_LIFECYCLE_STRIDE;
+}
+
+/** An at-birth input is a spawn target's model matrix, placed by the age in its lifecycle. */
+function atBirthErrors(
+  target: FXKernelTarget,
+  phase: "spawn" | "update",
+  inputName: string,
+): FXCompilerError[] {
+  const errors: FXCompilerError[] = [];
+  const params = { targetName: target.name, inputName };
+  if (inputName !== FX_MODEL_MATRIX_INPUT) {
+    errors.push({
+      code: "at-birth-input-not-model-matrix",
+      message: `target "${target.name}" reads input "${inputName}" at birth, but only the model matrix moves with a birth`,
+      params,
+    });
+  }
+  if (phase !== "spawn") {
+    errors.push({
+      code: "at-birth-input-not-in-spawn",
+      message: `target "${target.name}" reads input "${inputName}" at birth, but only a spawn kernel has births`,
+      params,
+    });
+  }
+  if (!hasCoreLifecycle(target)) {
+    errors.push({
+      code: "at-birth-input-needs-lifecycle",
+      message: `target "${target.name}" reads input "${inputName}" at birth without the "lifecycle" buffer holding the age it moves by`,
+      params,
+    });
+  }
+  return errors;
+}
+
 /** A kill slot needs an update kernel and the lifecycle it acts on, and a name of its own. */
 function killSlotErrors(
   target: FXKernelTarget,
@@ -296,8 +341,7 @@ function killSlotErrors(
       params: { targetName: target.name },
     });
   }
-  const lifecycle = target.buffers.find((buffer) => buffer.name === FX_CORE_LIFECYCLE);
-  if (lifecycle?.stride !== FX_CORE_LIFECYCLE_STRIDE) {
+  if (!hasCoreLifecycle(target)) {
     errors.push({
       code: "kill-slot-needs-lifecycle",
       message: `target "${target.name}" declares a kill slot without the "lifecycle" buffer it acts on`,
@@ -385,6 +429,9 @@ export function kernelTargetShapeErrors(target: unknown): FXCompilerError[] {
       }
       if (input["buffer"] !== undefined && typeof input["buffer"] !== "string") {
         errors.push(shapeError(name, `${path}.buffer`, "a string"));
+      }
+      if (input["atBirth"] !== undefined && typeof input["atBirth"] !== "boolean") {
+        errors.push(shapeError(name, `${path}.atBirth`, "a boolean"));
       }
     });
   }

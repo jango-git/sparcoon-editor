@@ -172,7 +172,7 @@ describe("a GPU kernel's draw stage", () => {
     // With room to spare, spawn's value is computed once per pass.
     expect(compileWith(1).spawn?.draw).toBeDefined();
     // Update's bindings fill the program to Standard's minimum: spawn's value stays per particle.
-    const full = compileWith(996);
+    const full = compileWith(993);
     expect(full.spawn?.draw).toBeUndefined();
     expect(
       transformFeedbackUniformBudget([...(full.spawn?.uniforms ?? []), ...full.update.uniforms])(

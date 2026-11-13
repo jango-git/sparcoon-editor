@@ -97,6 +97,12 @@ export function glslBufferAttributeName(bufferName: string): string {
   return `in_${bufferName}`;
 }
 
+/** The newborn's age and the model matrix as of its birth: locals the fused program's birth branch
+ *  declares ahead of the spawn body (`FXKernelBuildStandard`), what an at-birth model-matrix read
+ *  resolves to. */
+export const BIRTH_AGE_LOCAL = "fx_birthAge";
+export const BIRTH_MODEL_MATRIX_LOCAL = "fx_birthModelMatrix";
+
 /** `dt`/emitter-transform-field name -> the fixed, shared uniform name from sparcoon's
  *  `behaviorTransformFeedbackLayout.ts` - both sides import the same literal constants, never
  *  independently derive them (unlike {@link glslBufferAttributeName}, which only the editor's own
@@ -600,6 +606,9 @@ function resolveTargetInputStandard(target: FXKernelTarget, name: string): strin
     throw new Error(
       `resolveTargetInputStandard: target "${target.name}" declares no input "${name}"`,
     );
+  }
+  if (input.atBirth === true) {
+    return BIRTH_MODEL_MATRIX_LOCAL;
   }
   if (input.offsets === undefined) {
     const field = FX_EMITTER_INPUT_FIELD[name];

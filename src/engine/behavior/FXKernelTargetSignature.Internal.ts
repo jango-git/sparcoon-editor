@@ -44,7 +44,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     // Array position, not an object key: JSON.stringify already turns an `undefined` element
     // into `null`, so no `?? null` fallback is needed to keep the encoding stable.
     inputs: target.inputs
-      .map((input) => [input.name, input.type.id, input.offsets, input.buffer])
+      .map((input) => [input.name, input.type.id, input.offsets, input.buffer, input.atBirth])
       .sort(byJSON),
     outputs: target.outputs
       .map((output) => [
