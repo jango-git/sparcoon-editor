@@ -43,6 +43,23 @@
   height: 15px;
 }
 
+/* Labelled icon segment (e.g. the Overdraw tab's count options): the glyph before the label, for
+   options whose glyph alone is no common symbol. */
+.segment--labelled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.segment--labelled svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
 .segment:hover {
   border-color: var(--card-accent);
   color: var(--card-accent);

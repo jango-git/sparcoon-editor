@@ -75,10 +75,10 @@ export interface AgentApiDependencies {
   readonly transport: TransportStore;
   readonly previewSettings: PreviewSettingsStore;
   readonly gizmoSettings: GizmoSettingsStore;
-  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture">;
+  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture" | "measureOverdraw">;
   /** Frames an entity in the viewport (the preview's `F`). */
   readonly focusEntity: (entity: SceneEntity) => void;
-  /** The live viewport object of an entity, for framing a capture on it. */
+  /** The live viewport object of an entity, for framing a capture on it and counting it alone. */
   readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
   /** Shows the active owner's graph `name` and auto-arranges it (the graph's Arrange button). */
   readonly arrangeGraph: (name: GraphName) => void;

@@ -124,7 +124,7 @@ export interface FXNodeDescriptor<
   /**
    * Behavior: when `true`, `phase` is only a default - the compiler may place the node
    * in whichever phase the graph wires it into (see `resolvePlacementPhases`). For a
-   * value-only node with no real phase constraint, e.g. `spawn-box`.
+   * value-only node with no real phase constraint, e.g. `random-box-point`.
    */
   readonly phaseFlexible?: boolean;
   /** Palette group (fixed vocabulary - see {@link FXNodeCategory}). */

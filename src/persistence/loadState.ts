@@ -53,7 +53,7 @@ import {
 } from "../model/transform";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
-import { migrateRenamedInputs } from "./renamedInputs";
+import { migrateRenamedNodes } from "./renamedNodes";
 
 /** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
  *  returning user with an existing document never pays for it. */
@@ -106,7 +106,7 @@ function normalizeGraph(
       ? (record["comments"] as EditorGraph["comments"])
       : empty.comments,
   };
-  return ensureSinks(migrateRenamedInputs(graph), kind, host);
+  return ensureSinks(migrateRenamedNodes(graph), kind, host);
 }
 
 /** Normalizes a persisted document to the current source shape; anything unrecognized (not a

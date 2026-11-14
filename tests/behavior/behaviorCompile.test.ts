@@ -41,7 +41,7 @@ describe("compileParticleBehavior - kernels produce correct numbers", () => {
     const graph = graphOf(
       {
         life: reg.create("lifetime", { min: 2, max: 2 }),
-        point: reg.create("spawn-box", { size: [0, 0, 0], center: [1, 2, 3] }),
+        point: reg.create("random-box-point", { size: [0, 0, 0], center: [1, 2, 3] }),
       },
       [],
       [bind("lifetime", "life", "value"), bind("position", "point", "position")],
@@ -124,12 +124,12 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
   });
 
   it("allows the same slot written in different phases", () => {
-    // `position` is seeded at spawn (spawn-box) and integrated at update
+    // `position` is seeded at spawn (random-box-point) and integrated at update
     // (integrate-motion) - the canonical dual-phase slot. Per-phase overlap checks must
     // not flag it, and inference places each fixed-phase producer in its own phase.
     const graph = graphOf(
       {
-        sp: reg.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] }),
+        sp: reg.create("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] }),
         iv: reg.create("initial-velocity", { direction: [0, 1, 0], speed: [1, 1] }),
         svs: storeAttr("velocity", VEC3, FXBehaviorPhase.SPAWN),
         rv: readAttr("velocity", VEC3),
@@ -152,7 +152,7 @@ describe("validateParticleBehavior - phase and overlap rules", () => {
 describe("phase-scoped output bindings place flexible nodes", () => {
   const boundPosition = (phase: "spawn" | "update" | undefined): FXGraph<FXBehaviorNode> =>
     graphOf(
-      { box: reg.create("spawn-box", { size: [0, 0, 0], center: [5, 6, 7] }) },
+      { box: reg.create("random-box-point", { size: [0, 0, 0], center: [5, 6, 7] }) },
       [],
       [
         {
@@ -180,7 +180,7 @@ describe("phase-scoped output bindings place flexible nodes", () => {
     const buffers = buffersFor(compiled, 1);
 
     fieldSpawnKernel(compiled)(buffers, 0, 1, compiled.spawn!.bindings);
-    // No phase signal: spawn-box keeps its declared `spawn` default, so it seeds at birth.
+    // No phase signal: random-box-point keeps its declared `spawn` default, so it seeds at birth.
     expect(buffers.position[FX_POSITION_X]).toBe(5);
   });
 
@@ -234,7 +234,7 @@ describe("numeric coercion into output slots", () => {
 
   it("narrows a vec3 producer bound to the scalar lifetime slot to its first component", () => {
     const graph = graphOf(
-      { point: reg.create("spawn-box", { size: [0, 0, 0], center: [7, 2, 3] }) },
+      { point: reg.create("random-box-point", { size: [0, 0, 0], center: [7, 2, 3] }) },
       [],
       [bind("lifetime", "point", "position"), bind("position", "point", "position")],
     );

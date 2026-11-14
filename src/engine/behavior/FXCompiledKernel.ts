@@ -83,6 +83,9 @@ export interface FXCompiledKernelPhase {
   readonly kill?: string;
   /** Captured bindings keyed by generated name; passed to the kernel at runtime. */
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
+  /** The mesh asset each surface samples, by the name the kernel reads it under (see
+   *  `FXKernelContext.allocateSurface`); absent when none. */
+  readonly surfaces?: Readonly<Record<string, string>>;
   /** State buffers this phase reads/writes (name + stride), in slot order - each one's field
    *  offset in the slot comes from it (`slotLayout`). */
   readonly buffers: readonly FXKernelBufferLayout[];

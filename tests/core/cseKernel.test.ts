@@ -79,9 +79,9 @@ describe("behavior kernel CSE", () => {
 
   it("never merges Math.random(): three independent axes stay three draws", () => {
     const r = behaviorRegistry();
-    // A filled spawn-box draws one independent random per axis; CSE must keep all three.
+    // A filled random-box-point draws one independent random per axis; CSE must keep all three.
     const compiled = spawnPhase(
-      new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
+      new Map([["box", r.create("random-box-point", { size: [2, 2, 2], center: [0, 0, 0] })]]),
       [],
       "box",
       "position",

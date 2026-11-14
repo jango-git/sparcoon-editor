@@ -490,7 +490,7 @@ export function createDefaultEmitter(id: string, name: string): EmitterDoc {
     [
       {
         id: "n_pos",
-        type: "spawn-sphere",
+        type: "random-sphere-point",
         parameters: { radius: 1.5, center: [0, 0, 0], surfaceOnly: false },
         position: { x: 168, y: 72 },
       },

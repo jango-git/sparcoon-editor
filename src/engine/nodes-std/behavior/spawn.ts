@@ -84,7 +84,7 @@ export const fxLifetime = defineNode({
 
 /** Scatters particles uniformly inside an axis-aligned box, or over its surface. */
 export const fxSpawnBox = defineNode({
-  type: "spawn-box",
+  type: "random-box-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
@@ -156,7 +156,7 @@ export const fxSpawnBox = defineNode({
 
 /** Scatters particles inside (or on the surface of) a sphere, uniformly. */
 export const fxSpawnSphere = defineNode({
-  type: "spawn-sphere",
+  type: "random-sphere-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
@@ -203,7 +203,7 @@ export const fxSpawnSphere = defineNode({
  * `center`: it spans `height / 2` to either side of it along the axis.
  */
 export const fxSpawnCylinder = defineNode({
-  type: "spawn-cylinder",
+  type: "random-cylinder-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
@@ -242,7 +242,7 @@ export const fxSpawnCylinder = defineNode({
  * The base (full radius) sits at `center`; the apex is `height` along the axis.
  */
 export const fxSpawnCone = defineNode({
-  type: "spawn-cone",
+  type: "random-cone-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
@@ -289,7 +289,7 @@ export const fxSpawnCone = defineNode({
 
 /** Scatters particles inside (or on the surface of) a torus about an axis. */
 export const fxSpawnTorus = defineNode({
-  type: "spawn-torus",
+  type: "random-torus-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
@@ -332,7 +332,7 @@ export const fxSpawnTorus = defineNode({
  * 0 gives a full disc; inner == outer gives a thin ring.
  */
 export const fxSpawnDisc = defineNode({
-  type: "spawn-disc",
+  type: "random-disc-point",
   domain: "behavior",
   phase: "spawn",
   // Value-only: reads no `dt` or update-only state, so its phase is a free choice.

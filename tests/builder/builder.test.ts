@@ -113,7 +113,7 @@ describe("FXGraphBuilder - snapshot compiles on both backends", () => {
     // the `attr:velocity` slot in their own phase (a cross-phase edge is illegal).
     const data = buildBehaviorGraph((b) => {
       const life = b.add("lifetime", { min: 3, max: 3 });
-      const pos = b.add("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] });
+      const pos = b.add("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] });
       const vel = b.add("initial-velocity", { direction: [0, 1, 0], speed: [1, 1] });
       const seedVel = b.add(
         "store-attribute",

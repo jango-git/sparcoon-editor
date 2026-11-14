@@ -5,6 +5,7 @@
  */
 
 import type { AttributeTypeName, EditorGraph, GraphPosition } from "../domain/graphModel";
+import type { FXNodeMeta } from "../domain/nodePalette";
 import {
   ATTRIBUTE_TYPES,
   isMeshExcludedRenderNode,
@@ -23,6 +24,7 @@ import {
   replaceNodeParams,
   updateNodeParam,
 } from "../model/commands";
+import type { SourceState } from "../model/editorState";
 import { focusOwner, parseGraphName, resolveGraph, targetGraph } from "./address.Internal";
 import { copyPlainData, requireFiniteNumber, requireKnownKeys } from "./arguments.Internal";
 import { describeNodeType, type NodeTypeInfo } from "./catalog";
@@ -173,6 +175,7 @@ export function createGraphHandle(
         const node = requireNode(authored, nodeId);
         const metadata = placedNodeMeta(source, target, authored, node);
         requireParameterKeys(metadata, patch);
+        requireMeshAssets(source, metadata, patch);
         focusOwner(store, target.owner);
         // Same policy as the canvas's attribute picker: the attribute choice can't change under a
         // stable id, so it replaces the node - for an inherited attribute, its source and type too.
@@ -266,4 +269,24 @@ export function createGraphHandle(
         removeAttribute(store, target.slot, name);
       }),
   };
+}
+
+/** Every mesh-asset parameter in `patch` names a mesh of the content library, or none (""). */
+function requireMeshAssets(
+  source: SourceState,
+  metadata: FXNodeMeta,
+  patch: Readonly<Record<string, unknown>>,
+): void {
+  for (const parameter of metadata.customParams ?? []) {
+    if (parameter.kind !== "mesh-asset" || !(parameter.key in patch)) {
+      continue;
+    }
+    const name = patch[parameter.key];
+    if (name === "") {
+      continue;
+    }
+    if (typeof name !== "string" || !source.meshAssets.some((asset) => asset.name === name)) {
+      throw new AgentError("not_found", `No mesh asset "${String(name)}".`);
+    }
+  }
 }

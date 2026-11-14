@@ -29,7 +29,7 @@ export function installPreviewContextMenu(
   element.addEventListener("pointerdown", (event) => {
     // Ignore presses begun on a bubbling overlay (the viewport tab strip) - those pan, not menu.
     const onOverlay =
-      event.target instanceof Element && Boolean(event.target.closest(".viewport-transform"));
+      event.target instanceof Element && Boolean(event.target.closest(".viewport-tabs"));
     tracking = event.button === 2 && !isToolActive() && !onOverlay;
     downX = event.clientX;
     downY = event.clientY;

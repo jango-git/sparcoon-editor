@@ -37,14 +37,12 @@
   filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.9));
 }
 
-/* Viewport N-panel: a Blender-style panel in the preview's top-right, toggled by
-   N. A vertical strip of tabs on its outer (right) edge - Item (the selected object's name +
-   position / rotation / scale) plus the moved-in view-settings tabs (Sun / Hemisphere / Scene /
-   Gizmo) - each revealing its own content panel to the left. */
-.viewport-transform {
+/* Viewport side tabs (ui/components/viewportTabs.ts): a Blender-style vertical strip of tabs on one
+   edge of the preview, each revealing its own content panel toward the middle. The right one is the
+   N-panel (Item and the view settings), the left one the Render and Overdraw tabs. */
+.viewport-tabs {
   position: absolute;
   top: 8px;
-  right: 8px;
   z-index: 3;
   display: flex;
   align-items: flex-start;
@@ -52,13 +50,21 @@
   gap: 4px;
 }
 
-/* Content area holding the tab panels; sits left of the strip. */
-.viewport-transform__content {
+.viewport-tabs--left {
+  left: 8px;
+}
+
+.viewport-tabs--right {
+  right: 8px;
+}
+
+/* Content area holding the tab panels, on the strip's inner side. */
+.viewport-tabs__content {
   flex: none;
 }
 
-/* The tab strip on the outer (right) edge; its tabs stack vertically. */
-.viewport-transform__tabs {
+/* The tab strip on the outer edge; its tabs stack vertically. */
+.viewport-tabs__strip {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -66,7 +72,7 @@
 
 /* Vertical tab: icon over a top-to-bottom label. Stays visible when the panel is
    collapsed (it is the handle that reopens it) and wears the accent while its panel is open. */
-.viewport-transform__tab {
+.viewport-tabs__tab {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -80,37 +86,42 @@
 }
 
 /* Merge the seam between stacked tabs. */
-.viewport-transform__tab + .viewport-transform__tab {
+.viewport-tabs__tab + .viewport-tabs__tab {
   margin-top: -1px;
 }
 
 /* The hovered/active tab floats above its neighbours so its full border is never covered. */
-.viewport-transform__tab:hover,
-.viewport-transform__tab--active {
+.viewport-tabs__tab:hover,
+.viewport-tabs__tab--active {
   z-index: 1;
 }
 
-.viewport-transform__tab svg {
+.viewport-tabs__tab svg {
   width: 15px;
   height: 15px;
 }
 
-.viewport-transform__tab-label {
+.viewport-tabs__tab-label {
   writing-mode: vertical-rl;
   font-size: var(--font-size-small);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
-.viewport-transform__tab:hover {
+.viewport-tabs__tab:hover {
   color: var(--accent);
   border-color: var(--accent);
 }
 
-.viewport-transform__tab--active {
+.viewport-tabs__tab--active {
   color: var(--accent);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+}
+
+/* A collapsed tab whose settings depart from the default (the Overdraw tab while a count is on). */
+.viewport-tabs__tab--marked {
+  color: var(--accent);
 }
 
 /* A tab's content panel - hidden unless it is the active, non-collapsed tab. Its width tracks its
@@ -119,7 +130,7 @@
    panel instead of clipping. No floor: the fields inside (name, number-control, axis) already carry
    their own usable-width min-widths, so a shared panel-level floor only fought a narrow tab's own
    fit-to-content goal. */
-.viewport-transform__panel {
+.viewport-tabs__panel {
   display: none;
   flex-direction: column;
   gap: 6px;
@@ -131,7 +142,7 @@
   font-size: var(--font-size-small);
 }
 
-.viewport-transform__panel--open {
+.viewport-tabs__panel--open {
   display: flex;
 }
 
@@ -210,8 +221,8 @@
   min-width: 64px;
 }
 
-/* Preview view-settings rows (Sun / Hemisphere / Scene / Gizmo). The tabs themselves live in the
-   viewport N-panel (.viewport-transform); this grid lays out each panel's rows in two columns that
+/* Preview view-settings rows (Lighting / Scene / Gizmo). The tabs themselves are the
+   viewport side tabs (.viewport-tabs); this grid lays out each panel's rows in two columns that
    are uniform across the whole tab - a label column sized to the widest label, and a control column
    sized to the widest control the tab actually needs (not stretched to whatever room the panel
    has - a fixed-width switch next to a color swatch would otherwise inflate the swatch far past
@@ -231,7 +242,7 @@
 
 /* Field-tier caption (tokens.css) - muted, not the control's own bright panel-foreground, so the
    field's own value (the color/number/switch beside it) stays the visually loudest thing on the
-   row. Font-size inherited here (--font-size-small, from .viewport-transform__panel); the Content
+   row. Font-size inherited here (--font-size-small, from .viewport-tabs__panel); the Content
    sheet's own field label (.content-export__label) has no such ambient context, so it sets its own
    font-size locally (modal.css) rather than joining that part of this rule. */
 .preview-settings__label,
@@ -340,12 +351,28 @@
   color: var(--accent);
 }
 
+/* A read-only card over the viewport (the stats, the overdraw legend). */
+.viewport-card {
+  position: absolute;
+  padding: 6px 8px;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-foreground);
+  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  border: 1px solid var(--border-mid);
+  /* Never intercept orbit drags started over the card. */
+  pointer-events: none;
+}
+
+.viewport-card[hidden] {
+  display: none;
+}
+
 /* Preview performance stats - a small readout (FPS, particles, effect cost) in the bottom-left of
-   the viewport (the top-left hosts the transform panel). A grid, not a column of independent
+   the viewport. A grid, not a column of independent
    rows: the two columns (value, label) are shared across every row, so the value column
    auto-sizes to its widest row instead of a hardcoded width (see .viewport-stats__row below). */
 .viewport-stats {
-  position: absolute;
   bottom: 8px;
   left: 8px;
   z-index: 4;
@@ -353,14 +380,6 @@
   grid-template-columns: max-content max-content;
   column-gap: 8px;
   row-gap: 4px;
-  padding: 6px 8px;
-  font-size: var(--font-size-small);
-  font-variant-numeric: tabular-nums;
-  color: var(--panel-foreground);
-  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
-  border: 1px solid var(--border-mid);
-  /* Never intercept orbit drags started over the readout. */
-  pointer-events: none;
 }
 
 /* Group-tier caption (tokens.css's caption ladder) - the stats readout's own "STATS" heading and
@@ -405,4 +424,33 @@
 .viewport-stats__label {
   align-self: center;
   color: var(--muted);
+}
+
+/* The overdraw view's ramp, bottom centre between the stats and the spawn buttons: an open side
+   panel covers the top of the viewport. */
+.overdraw-legend {
+  bottom: 8px;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 196px;
+  transform: translateX(-50%);
+  color: var(--muted);
+}
+
+.overdraw-legend__bar {
+  height: 8px;
+  border: 1px solid var(--border-mid);
+}
+
+.overdraw-legend__labels {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* `display: contents` above beats the UA `[hidden]` rule, so a hidden row would still show. */
+.viewport-stats__row[hidden] {
+  display: none;
 }

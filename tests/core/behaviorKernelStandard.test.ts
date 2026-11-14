@@ -41,10 +41,10 @@ function occurrences(haystack: string, needle: string): number {
 }
 
 describe("standard-tier behavior kernel", () => {
-  it("compiles a spawn-box into GLSL writing three independent fxNextRandom() draws", () => {
+  it("compiles a random-box-point into GLSL writing three independent fxNextRandom() draws", () => {
     const r = behaviorRegistry();
     const compiled = spawnPhase(
-      new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
+      new Map([["box", r.create("random-box-point", { size: [2, 2, 2], center: [0, 0, 0] })]]),
       [],
       "box",
       "position",

@@ -75,3 +75,45 @@ export function bufferBaseName(name: string): string {
 export function bufferAccess(name: string, offset: number): string {
   return `${SLOTS_PARAMETER}[${bufferBaseName(name)} + ${offset.toString()}]`;
 }
+
+/**
+ * The mesh surfaces one phase reads, by mesh asset: each named once, by `declare`, however many
+ * nodes read it. Shared by both backends' kernel states, which only name and declare differently.
+ */
+export class FXKernelSurfaces {
+  private readonly names = new Map<string, string>();
+
+  /** The name the phase reads `mesh`'s table under, from `declare` on its first use. */
+  public nameOf(mesh: string, declare: () => string): string {
+    let name = this.names.get(mesh);
+    if (name === undefined) {
+      name = declare();
+      this.names.set(mesh, name);
+    }
+    return name;
+  }
+
+  /** The phase's `surfaces` field: each table's mesh by its name; absent when none. */
+  public phaseField(): { surfaces?: Record<string, string> } {
+    if (this.names.size === 0) {
+      return {};
+    }
+    const surfaces: Record<string, string> = {};
+    for (const [mesh, name] of this.names) {
+      surfaces[name] = mesh;
+    }
+    return { surfaces };
+  }
+}
+
+/** The mesh asset each surface of `kernel` samples, both phases' together; absent when none (the
+ *  artifacts' `meshSurfaces`). */
+export function kernelMeshSurfaces(kernel: {
+  readonly spawn?: { readonly surfaces?: Readonly<Record<string, string>> };
+  readonly update: { readonly surfaces?: Readonly<Record<string, string>> };
+}): Readonly<Record<string, string>> | undefined {
+  const { spawn, update } = kernel;
+  return spawn?.surfaces === undefined && update.surfaces === undefined
+    ? undefined
+    : { ...spawn?.surfaces, ...update.surfaces };
+}

@@ -53,8 +53,8 @@ interface ShapeCase {
 
 const SHAPE_CASES: readonly ShapeCase[] = [
   {
-    title: "spawn-box volume stays within the box around its center",
-    type: "spawn-box",
+    title: "random-box-point volume stays within the box around its center",
+    type: "random-box-point",
     params: { size: [2, 4, 6], center: [1, 2, 3] },
     check: ([x, y, z]) => {
       expect(Math.abs(x - 1)).toBeLessThanOrEqual(1 + EPS);
@@ -63,8 +63,8 @@ const SHAPE_CASES: readonly ShapeCase[] = [
     },
   },
   {
-    title: "spawn-box surface only places points on a face of the box",
-    type: "spawn-box",
+    title: "random-box-point surface only places points on a face of the box",
+    type: "random-box-point",
     params: { size: [2, 2, 2], surfaceOnly: true },
     check: (p) => {
       for (const c of p) {
@@ -74,20 +74,20 @@ const SHAPE_CASES: readonly ShapeCase[] = [
     },
   },
   {
-    title: "spawn-sphere volume stays within the radius around its center",
-    type: "spawn-sphere",
+    title: "random-sphere-point volume stays within the radius around its center",
+    type: "random-sphere-point",
     params: { radius: 2, center: [1, 0, -1] },
     check: ([x, y, z]) => expect(Math.hypot(x - 1, y, z + 1)).toBeLessThanOrEqual(2 + EPS),
   },
   {
-    title: "spawn-sphere surface only pins points to the radius",
-    type: "spawn-sphere",
+    title: "random-sphere-point surface only pins points to the radius",
+    type: "random-sphere-point",
     params: { radius: 2, surfaceOnly: true },
     check: ([x, y, z]) => expect(Math.hypot(x, y, z)).toBeCloseTo(2, 4),
   },
   {
-    title: "spawn-cylinder keeps points within radius and half-length about the Y axis",
-    type: "spawn-cylinder",
+    title: "random-cylinder-point keeps points within radius and half-length about the Y axis",
+    type: "random-cylinder-point",
     params: { radius: 2, height: 4, axis: "y" },
     check: ([x, y, z]) => {
       expect(Math.hypot(x, z)).toBeLessThanOrEqual(2 + EPS);
@@ -95,14 +95,14 @@ const SHAPE_CASES: readonly ShapeCase[] = [
     },
   },
   {
-    title: "spawn-cylinder surface only pins points to the wall radius",
-    type: "spawn-cylinder",
+    title: "random-cylinder-point surface only pins points to the wall radius",
+    type: "random-cylinder-point",
     params: { radius: 2, height: 4, surfaceOnly: true },
     check: ([x, , z]) => expect(Math.hypot(x, z)).toBeCloseTo(2, 5),
   },
   {
-    title: "spawn-cylinder about X keeps X as the height axis",
-    type: "spawn-cylinder",
+    title: "random-cylinder-point about X keeps X as the height axis",
+    type: "random-cylinder-point",
     params: { radius: 1, height: 4, axis: "x" },
     check: ([x, y, z]) => {
       expect(Math.hypot(y, z)).toBeLessThanOrEqual(1 + EPS); // radial plane is YZ
@@ -110,8 +110,8 @@ const SHAPE_CASES: readonly ShapeCase[] = [
     },
   },
   {
-    title: "spawn-cone tapers radius to zero at the apex height",
-    type: "spawn-cone",
+    title: "random-cone-point tapers radius to zero at the apex height",
+    type: "random-cone-point",
     params: { radius: 2, height: 4, axis: "y" },
     check: ([x, y, z]) => {
       const t = y / 4; // 0 at base, 1 at apex
@@ -121,16 +121,16 @@ const SHAPE_CASES: readonly ShapeCase[] = [
     },
   },
   {
-    title: "spawn-torus stays within the tube of the ring",
-    type: "spawn-torus",
+    title: "random-torus-point stays within the tube of the ring",
+    type: "random-torus-point",
     params: { major: 3, minor: 0.5, axis: "y" },
     // Distance from the ring circle (radius=major in the XZ plane) is within the tube.
     check: ([x, y, z]) =>
       expect(Math.hypot(Math.hypot(x, z) - 3, y)).toBeLessThanOrEqual(0.5 + EPS),
   },
   {
-    title: "spawn-disc scatters over an annulus in the plane perpendicular to the axis",
-    type: "spawn-disc",
+    title: "random-disc-point scatters over an annulus in the plane perpendicular to the axis",
+    type: "random-disc-point",
     params: { innerRadius: 1, outerRadius: 2, axis: "y" },
     check: ([x, y, z]) => {
       expect(Math.abs(y)).toBeLessThan(1e-6); // flat in the XZ plane
@@ -148,13 +148,13 @@ describe("spawn shapes", () => {
     }
   });
 
-  it("spawn-box volume fills the box rather than collapsing onto its center", () => {
-    const xs = positionsOf("spawn-box", { size: [2, 2, 2] }).map(([x]) => x);
+  it("random-box-point volume fills the box rather than collapsing onto its center", () => {
+    const xs = positionsOf("random-box-point", { size: [2, 2, 2] }).map(([x]) => x);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(1);
   });
 
-  it("spawn-sphere volume fills the ball rather than only its surface", () => {
-    const radii = positionsOf("spawn-sphere", { radius: 2 }).map((p) => Math.hypot(...p));
+  it("random-sphere-point volume fills the ball rather than only its surface", () => {
+    const radii = positionsOf("random-sphere-point", { radius: 2 }).map((p) => Math.hypot(...p));
     expect(Math.min(...radii)).toBeLessThan(1.5);
   });
 });

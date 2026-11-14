@@ -43,7 +43,11 @@ import {
   isInvariantKernelRef,
   resolveKernelRef,
 } from "./FXKernelRefResolve.Internal";
-import { BUILTIN_BUFFER, FX_BEHAVIOR_ALL_FUNCTIONS } from "./FXKernelShared.Internal";
+import {
+  BUILTIN_BUFFER,
+  FX_BEHAVIOR_ALL_FUNCTIONS,
+  FXKernelSurfaces,
+} from "./FXKernelShared.Internal";
 import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import {
@@ -85,6 +89,7 @@ class FXKernelState {
   private readonly localsIR: FXKernelLocal[] = [];
   private readonly helperMap = new Map<string, string>();
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
+  private readonly surfaces = new FXKernelSurfaces();
 
   /** `names` is the kernel's: shared with the other phase, whose bindings merge with this
    *  phase's by name. */
@@ -153,6 +158,12 @@ class FXKernelState {
     return handle;
   }
 
+  /** The name `mesh`'s surface table is read under: the kernel reads it from `bindings` like a
+   *  binding, but the runtime adds it, so no value scrub reaches it. */
+  public allocateSurface(mesh: string): string {
+    return this.surfaces.nameOf(mesh, () => this.uniqueName("b_surface"));
+  }
+
   public assemblePhase(
     writes: readonly FXKernelWrite[],
     preamble: readonly string[],
@@ -182,6 +193,7 @@ class FXKernelState {
       epilogue,
       ...(kill === undefined ? {} : { kill }),
       bindings,
+      ...this.surfaces.phaseField(),
       buffers,
       writtenBuffers: [...written],
     };
@@ -280,6 +292,10 @@ class FXParticleKernelContext
 
   public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {
     return this.state.allocateBinding(descriptor);
+  }
+
+  public allocateSurface(mesh: string): FXExpr {
+    return ref("binding", this.state.allocateSurface(mesh), FX_VALUE_TYPES.sampler2D);
   }
 
   /**

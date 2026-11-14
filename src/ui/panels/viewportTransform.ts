@@ -1,7 +1,6 @@
 /**
  * The viewport's right-hand panel - Blender's N-panel in spirit: a vertical tab strip (Item, plus
- * the Lighting/Scene/Gizmo view-settings) on the preview's top-right; clicking the active tab
- * collapses the content, `N` toggles the whole panel.
+ * the Lighting/Scene/Gizmo view-settings) on the preview's top-right; `N` toggles it.
  *
  * Editing a transform writes the entity's base transform (via {@link setEntityBaseChannel}), never
  * a keyframe - like the gizmo. Fields show the effective transform under the playhead.
@@ -20,7 +19,7 @@ import { selectEntityDoc } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import { IDENTITY_TRANSFORM, sampleTransform, type Transform } from "../../model/transform";
 import { NumberControl } from "../components/numberControl";
-import { attachTooltip } from "../components/tooltip";
+import { createViewportTabs, type ViewportTabs } from "../components/viewportTabs";
 import { createElement } from "../dom";
 import type { EditorContext } from "../editorContext";
 import { icon, viewportIcons } from "../icons";
@@ -32,20 +31,8 @@ type Channel = "position" | "rotation" | "scale";
 
 const AXIS_KEYS = ["axis.x", "axis.y", "axis.z"] as const;
 
-/** The panel plus a handle to toggle it - the `N` hotkey collapses/expands the active tab. */
-export interface ViewportTransformPanel {
-  readonly element: HTMLElement;
-  /** The tab strip element - a tab's own press/release already opens or collapses it, so
-   *  viewport-interaction auto-collapse must ignore presses that land here. */
-  readonly tabs: HTMLElement;
-  /** Collapses/expands the content beside the (always-visible) tab strip. */
-  toggle(): void;
-  /** Force-collapses the open tab, if any (no-op if already collapsed) - closes the panel on any
-   *  other viewport interaction (orbit/pan/select) so it doesn't linger over the scene. */
-  collapse(): void;
-}
-
-export function createViewportTransform(context: EditorContext): ViewportTransformPanel {
+/** The right-hand tabs: Item, then the view settings. The `N` hotkey toggles them. */
+export function createViewportTransform(context: EditorContext): ViewportTabs {
   const {
     store,
     selection,
@@ -105,125 +92,19 @@ export function createViewportTransform(context: EditorContext): ViewportTransfo
     name,
   ]);
 
-  const itemPanel = createElement("div", { className: "viewport-transform__panel" }, [
+  // The strip sits on the viewport's right edge; each tab's panel opens to its left.
+  const tabs = createViewportTabs("right");
+  tabs.addTab(t("viewport.item"), viewportIcons.item, t("viewport.itemTransformTip"), [
     nameRow,
     section(t("field.position"), controls.position),
     section(t("field.rotation"), controls.rotation),
     section(t("field.scale"), controls.scale),
   ]);
-
-  // The tab strip lives on the panel's outer (right) edge; each tab's content panel opens inward.
-  // The strip is always visible, so it is the handle that reopens the panel after N collapses it.
-  const tabs = createElement("div", { className: "viewport-transform__tabs" });
-  const content = createElement("div", { className: "viewport-transform__content" });
-  const panel = createElement("div", { className: "viewport-transform" }, [content, tabs]);
-  // The open panel captures pointer/scrub gestures; keep them from reaching the orbit controls. The
-  // tab strip is left to bubble, so a drag begun on it still orbits (the strip is not a dead zone).
-  content.addEventListener("pointerdown", (event) => event.stopPropagation());
-
-  // Each group is a vertical tab plus its content panel. At most one panel shows at a time; when
-  // collapsed none show and no tab is highlighted (the strip stays visible either way).
-  const groups: { tab: HTMLElement; panel: HTMLElement }[] = [];
-  let activeIndex = 0;
-  // Start collapsed: only the tab strip shows until the user opens a tab or presses N.
-  let collapsed = true;
-
-  const paint = (): void => {
-    groups.forEach((group, i) => {
-      const open = !collapsed && i === activeIndex;
-      group.tab.classList.toggle("viewport-transform__tab--active", open);
-      group.panel.classList.toggle("viewport-transform__panel--open", open);
-    });
-  };
-
-  // Opening a tab; opening the already-open one collapses the content (Blender-like).
-  const activateTab = (index: number): void => {
-    if (!collapsed && index === activeIndex) {
-      collapsed = true;
-    } else {
-      activeIndex = index;
-      collapsed = false;
-    }
-    paint();
-  };
-
-  // A tab press can't rely on the browser `click`: the orbit controls' pointer-capture on the same
-  // press suppresses it. Each tab records its press instead; a shared pointerup opens it only if
-  // the pointer stayed within TAB_DRAG_THRESHOLD (a bigger move means it was an orbit).
-  const TAB_DRAG_THRESHOLD = 4;
-  let pendingTab: number | undefined;
-  let tabDownX = 0;
-  let tabDownY = 0;
-  window.addEventListener("pointerup", (event) => {
-    if (pendingTab === undefined) {
-      return;
-    }
-    const index = pendingTab;
-    pendingTab = undefined;
-    if (
-      Math.abs(event.clientX - tabDownX) <= TAB_DRAG_THRESHOLD &&
-      Math.abs(event.clientY - tabDownY) <= TAB_DRAG_THRESHOLD
-    ) {
-      activateTab(index);
-    }
-  });
-  // A cancelled gesture (e.g. pointercancel) must not leave a press pending for the next pointerup.
-  window.addEventListener("pointercancel", () => {
-    pendingTab = undefined;
-  });
-
-  const addTab = (
-    label: string,
-    glyph: string,
-    description: string,
-    tabPanel: HTMLElement,
-  ): void => {
-    const index = groups.length;
-    const tab = createElement("button", {
-      className: "viewport-transform__tab",
-    });
-    tab.type = "button";
-    attachTooltip(tab, label, description);
-    tab.append(
-      icon(glyph),
-      createElement("span", { className: "viewport-transform__tab-label", textContent: label }),
-    );
-    // Record the press (see the shared pointerup above); left to bubble so a drag still orbits.
-    tab.addEventListener("pointerdown", (event) => {
-      pendingTab = index;
-      tabDownX = event.clientX;
-      tabDownY = event.clientY;
-    });
-
-    tabs.append(tab);
-    content.append(tabPanel);
-    groups.push({ tab, panel: tabPanel });
-  };
-
-  addTab(t("viewport.item"), viewportIcons.item, t("viewport.itemTransformTip"), itemPanel);
   for (const settingsGroup of createPreviewSettingsGroups(settings, gizmo, store, signals)) {
-    // The rows sit in a two-column grid (label column + control column, each uniform across the
-    // tab) nested in the panel, so the panel's open/collapse display toggle stays intact.
-    const grid = createElement("div", { className: "preview-settings" }, settingsGroup.rows);
-    addTab(
-      settingsGroup.label,
-      settingsGroup.glyph,
-      t("viewport.settingsTip"),
-      createElement("div", { className: "viewport-transform__panel" }, [grid]),
-    );
+    tabs.addTab(settingsGroup.label, settingsGroup.glyph, t("viewport.settingsTip"), [
+      createElement("div", { className: "preview-settings" }, settingsGroup.rows),
+    ]);
   }
-
-  const toggle = (): void => {
-    collapsed = !collapsed;
-    paint();
-  };
-  const collapse = (): void => {
-    if (!collapsed) {
-      collapsed = true;
-      paint();
-    }
-  };
-  paint();
 
   const read = (channel: Channel): [number, number, number] => {
     const [x, y, z] = controls[channel];
@@ -258,7 +139,7 @@ export function createViewportTransform(context: EditorContext): ViewportTransfo
   signals.on("sourceStructureChanged", update);
   update();
 
-  return { element: panel, toggle, collapse, tabs };
+  return tabs;
 }
 
 function axisTriplet(

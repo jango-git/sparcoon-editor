@@ -1,6 +1,6 @@
 /**
- * The viewport for the agent: transport controls, framing, and image captures. A capture at a
- * given time replays the timeline from 0 in fixed steps inside one task, so the live frame loop
+ * The viewport for the agent: transport controls, framing, image captures and overdraw counts. A
+ * capture or count at a given time replays the timeline from 0 in fixed steps inside one task, so the live frame loop
  * cannot interleave: the timeline dispatcher fires the spawn events and drives the values exactly
  * as it does during playback, and the coordinator steps the simulation by the fixed step instead
  * of wall-clock time. Spawn randomness is not seeded, so two captures of the same moment match in
@@ -14,7 +14,10 @@ import type { SceneEntity } from "../model/entity";
 import { VFX_ENTITY } from "../model/entity";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
+import type { OverdrawStats } from "../render/overdrawPass";
+import type { OverdrawCount } from "../render/overdrawShader";
 import type {
+  CaptureShot,
   CaptureView,
   FrameCaptureOptions,
   SceneCoordinator,
@@ -29,25 +32,11 @@ import {
 import { AgentError } from "./errors";
 import { settle } from "./settle.Internal";
 
-/** How each captured frame is drawn - shared by single captures and sequences. */
-export interface FrameOptions {
+/** Where a frame is shot from and at what size - shared by captures and overdraw counts. */
+export interface ShotOptions {
   /** Image (or cell) size in pixels; omitted, the viewport's own size. Both or neither. */
   readonly width?: number;
   readonly height?: number;
-  /** Draws the effect alone: no ground, grid, player figure or gizmos. */
-  readonly clean?: boolean;
-  /**
-   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on and its Depth
-   * Fade fades against, so an effect built around the ground (debris settling, a crack in it)
-   * reads on it. Without `clean` the frame shows what the viewport shows.
-   */
-  readonly ground?: boolean;
-  /**
-   * `"#rrggbb"` (sRGB, as a game would state it) or `"transparent"`; omitted, the viewport's own
-   * background. Transparent loses purely additive light (see `SceneCoordinator.capture`), so a
-   * solid color is the one to compare against a game frame with.
-   */
-  readonly background?: string;
   /**
    * A capture-only camera, in world units: placed at `position`, looking at `target`, with an
    * optional vertical `fov` in degrees. The viewport camera is left where it is.
@@ -65,6 +54,24 @@ export interface FrameOptions {
   readonly frame?: { readonly entity?: string; readonly radius: number };
 }
 
+/** How each captured frame is drawn - shared by single captures and sequences. */
+export interface FrameOptions extends ShotOptions {
+  /** Draws the effect alone: no ground, grid, player figure or gizmos. */
+  readonly clean?: boolean;
+  /**
+   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on and its Depth
+   * Fade fades against, so an effect built around the ground (debris settling, a crack in it)
+   * reads on it. Without `clean` the frame shows what the viewport shows.
+   */
+  readonly ground?: boolean;
+  /**
+   * `"#rrggbb"` (sRGB, as a game would state it) or `"transparent"`; omitted, the viewport's own
+   * background. Transparent loses purely additive light (see `SceneCoordinator.capture`), so a
+   * solid color is the one to compare against a game frame with.
+   */
+  readonly background?: string;
+}
+
 export interface CaptureOptions extends FrameOptions {
   /** Timeline time (seconds) to replay to before capturing; omitted, captures the current frame. */
   readonly time?: number;
@@ -75,6 +82,42 @@ export interface SequenceOptions extends FrameOptions {
   readonly times: readonly number[];
   /** Grid columns; defaults to a near-square grid. */
   readonly columns?: number;
+}
+
+export interface OverdrawOptions extends ShotOptions {
+  /** Timeline time (seconds) to replay to before counting; omitted, counts the current frame. */
+  readonly time?: number;
+  /**
+   * `"rasterized"`: every fragment of the effect's quads and meshes, transparent texels and
+   * discarded fragments included - the fill cost (the viewport's Overdraw). `"surviving"`: only the
+   * fragments left after the alpha cutoff and alpha hash (the viewport's Discard).
+   */
+  readonly count: OverdrawCount;
+}
+
+/**
+ * Layer counts over a frame. A pixel holds at most 255 layers, so `max` stops there and a
+ * total over such pixels reads low.
+ */
+export interface OverdrawLayers {
+  /** Fragments drawn over the frame: the sum of every pixel's layers. */
+  readonly fragments: number;
+  /** Fragments per pixel of the whole frame, comparable across frame sizes. */
+  readonly perPixel: number;
+  /** The most layers over one pixel. */
+  readonly max: number;
+}
+
+/**
+ * The overdraw of one frame, counted as the viewport's overdraw view does: the studio hides what
+ * is behind it, the effects never hide each other. Each emitter and mesh is also counted alone,
+ * so their fragments add up to the total; hidden ones are left out of both.
+ */
+export interface OverdrawReport extends OverdrawLayers {
+  readonly width: number;
+  readonly height: number;
+  /** Emitters and meshes, most fragments first. */
+  readonly byOwner: readonly (OverdrawLayers & { readonly id: string; readonly name: string })[];
 }
 
 export interface PreviewApi {
@@ -88,14 +131,16 @@ export interface PreviewApi {
   capture(options?: CaptureOptions): Promise<string>;
   /** One PNG data URL laying out a capture per time in a labelled grid. */
   captureSequence(options: SequenceOptions): Promise<string>;
+  /** Counts a frame's overdraw. After a timed count the transport is left paused there. */
+  overdraw(options: OverdrawOptions): Promise<OverdrawReport>;
 }
 
 export interface PreviewDependencies {
   readonly store: Store;
   readonly transport: TransportStore;
-  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture">;
+  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture" | "measureOverdraw">;
   readonly focusEntity: (entity: SceneEntity) => void;
-  /** The live viewport object of an entity, for framing a capture on it. */
+  /** The live viewport object of an entity, for framing a capture on it and counting it alone. */
   readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
 }
 
@@ -107,20 +152,14 @@ const MAX_CAPTURE_SIZE = 4096;
 /** Below this, a remaining interval is float noise rather than time left to simulate. */
 const TIME_EPSILON = 1e-9;
 
-const FRAME_OPTION_KEYS = [
-  "width",
-  "height",
-  "clean",
-  "ground",
-  "background",
-  "camera",
-  "frame",
-] as const;
+const SHOT_OPTION_KEYS = ["width", "height", "camera", "frame"] as const;
+const FRAME_OPTION_KEYS = [...SHOT_OPTION_KEYS, "clean", "ground", "background"] as const;
+const OVERDRAW_COUNTS: readonly OverdrawCount[] = ["rasterized", "surviving"];
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 /** The capture-only point of view `options` asks for, checked; `undefined` for the viewport's. */
 function requireView(
-  options: FrameOptions,
+  options: ShotOptions,
   source: SourceState,
   entityObject: (entity: SceneEntity) => Object3D | undefined,
 ): CaptureView | undefined {
@@ -161,9 +200,25 @@ function requireFov(value: unknown): number {
   return fov;
 }
 
+/** The coordinator's view of a shot's size and point of view, checked; `view` already resolved. */
+function requireShot(options: ShotOptions, view: CaptureView | undefined): CaptureShot {
+  const { width, height } = options;
+  return {
+    ...(width !== undefined || height !== undefined
+      ? {
+          size: {
+            width: requireInteger("width", width, 1, MAX_CAPTURE_SIZE),
+            height: requireInteger("height", height, 1, MAX_CAPTURE_SIZE),
+          },
+        }
+      : {}),
+    ...(view !== undefined ? { view } : {}),
+  };
+}
+
 /** The coordinator's view of a frame's options, checked; `view` already resolved. */
 function requireFrame(options: FrameOptions, view: CaptureView | undefined): FrameCaptureOptions {
-  const { width, height, clean, ground, background } = options;
+  const { clean, ground, background } = options;
   if (clean !== undefined && typeof clean !== "boolean") {
     throw new AgentError("invalid_argument", "clean must be a boolean.");
   }
@@ -174,20 +229,29 @@ function requireFrame(options: FrameOptions, view: CaptureView | undefined): Fra
     throw new AgentError("invalid_argument", 'background must be "#rrggbb" or "transparent".');
   }
   return {
-    ...(width !== undefined || height !== undefined
-      ? {
-          size: {
-            width: requireInteger("width", width, 1, MAX_CAPTURE_SIZE),
-            height: requireInteger("height", height, 1, MAX_CAPTURE_SIZE),
-          },
-        }
-      : {}),
+    ...requireShot(options, view),
     ...(clean === true ? { overlays: false, ground: ground === true } : {}),
     // three reads a hex string as sRGB and converts it to its linear working space.
     ...(background === undefined
       ? {}
       : { background: background === "transparent" ? "transparent" : new Color(background) }),
-    ...(view !== undefined ? { view } : {}),
+  };
+}
+
+function requireCount(value: unknown): OverdrawCount {
+  const count = OVERDRAW_COUNTS.find((key) => key === value);
+  if (count === undefined) {
+    throw new AgentError("invalid_argument", 'count must be "rasterized" or "surviving".');
+  }
+  return count;
+}
+
+/** `stats`' layers, with `perPixel` over the whole frame. */
+function layersOf(stats: OverdrawStats): OverdrawLayers {
+  return {
+    fragments: stats.fragments,
+    perPixel: stats.fragments / (stats.width * stats.height),
+    max: stats.max,
   };
 }
 
@@ -243,17 +307,17 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
     return time;
   };
 
-  /** Replays the timeline from 0, capturing once at each of `times` (ascending). */
-  const replay = async (
+  /** Replays the timeline from 0, calling `take` once at each of `times` (ascending). */
+  const replay = async <T>(
     times: readonly number[],
-    frame: FrameCaptureOptions,
-  ): Promise<{ readonly time: number; readonly image: HTMLCanvasElement }[]> => {
+    take: () => T,
+  ): Promise<{ readonly time: number; readonly value: T }[]> => {
     // Let a pending recompute land first, so its restart-on-rebuild can't rewind mid-replay.
     await settle();
     // Stop rewinds and lets the dispatcher clear live particles; play arms event dispatch.
     transport.stop();
     transport.play();
-    const frames: { readonly time: number; readonly image: HTMLCanvasElement }[] = [];
+    const taken: { readonly time: number; readonly value: T }[] = [];
     try {
       let now = 0;
       for (const time of times) {
@@ -263,13 +327,39 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
           coordinator.advance(next - now);
           now = next;
         }
-        frames.push({ time, image: coordinator.capture(frame) });
+        taken.push({ time, value: take() });
       }
     } finally {
       // Never leave the live loop running a replay that failed part-way.
       transport.pause();
     }
-    return frames;
+    return taken;
+  };
+
+  /** At `time`, or now when it is omitted, after any pending recompute lands. */
+  const at = async <T>(time: number | undefined, take: () => T): Promise<T> => {
+    if (time === undefined) {
+      await settle();
+      return take();
+    }
+    const [taken] = await replay([requireTime("time", time)], take);
+    if (taken === undefined) {
+      throw new AgentError("rejected", "The replay produced no frame.");
+    }
+    return taken.value;
+  };
+
+  /** The emitters and meshes shown in the viewport, each with its live object. */
+  const shownOwners = (): { id: string; name: string; object: Object3D }[] => {
+    const { scene } = store.getSource();
+    const owners = [
+      ...scene.emitters.map((emitter) => ({ ...emitter, kind: "emitter" as const })),
+      ...scene.meshes.map((mesh) => ({ ...mesh, kind: "vfxMesh" as const })),
+    ];
+    return owners.flatMap(({ kind, id, name, hidden }) => {
+      const object = hidden === true ? undefined : entityObject({ kind, id });
+      return object === undefined ? [] : [{ id, name, object }];
+    });
   };
 
   return {
@@ -283,15 +373,8 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
     capture: async (options = {}): Promise<string> => {
       requireKnownKeys("options", options, ["time", ...FRAME_OPTION_KEYS]);
       const frame = requireFrame(options, requireView(options, store.getSource(), entityObject));
-      if (options.time === undefined) {
-        await settle();
-        return coordinator.capture(frame).toDataURL("image/png");
-      }
-      const [captured] = await replay([requireTime("time", options.time)], frame);
-      if (captured === undefined) {
-        throw new AgentError("rejected", "Capture produced no frame.");
-      }
-      return captured.image.toDataURL("image/png");
+      const image = await at(options.time, () => coordinator.capture(frame));
+      return image.toDataURL("image/png");
     },
 
     captureSequence: async (options): Promise<string> => {
@@ -307,9 +390,38 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
           ? Math.ceil(Math.sqrt(times.length))
           : requireInteger("columns", options.columns, 1, times.length);
       const frame = requireFrame(options, requireView(options, store.getSource(), entityObject));
-      return composeSheet(await replay(times, frame), columns, options.background).toDataURL(
-        "image/png",
-      );
+      const frames = await replay(times, () => coordinator.capture(frame));
+      return composeSheet(
+        frames.map(({ time, value }) => ({ time, image: value })),
+        columns,
+        options.background,
+      ).toDataURL("image/png");
+    },
+
+    overdraw: async (options): Promise<OverdrawReport> => {
+      requireKnownKeys("options", options, ["time", "count", ...SHOT_OPTION_KEYS]);
+      const count = requireCount(options.count);
+      const shot = requireShot(options, requireView(options, store.getSource(), entityObject));
+      // Looked up at the counted frame: a recompute settled on the way rebuilds the objects.
+      const { owners, total, parts } = await at(options.time, () => {
+        const shown = shownOwners();
+        const measured = coordinator.measureOverdraw(
+          count,
+          shot,
+          shown.map((owner) => owner.object),
+        );
+        return { owners: shown, ...measured };
+      });
+      const byOwner = owners
+        .map((owner, index) => {
+          const stats = parts[index];
+          return stats === undefined
+            ? undefined
+            : { id: owner.id, name: owner.name, ...layersOf(stats) };
+        })
+        .filter((entry) => entry !== undefined)
+        .sort((first, second) => second.fragments - first.fragments);
+      return { width: total.width, height: total.height, ...layersOf(total), byOwner };
     },
   };
 }

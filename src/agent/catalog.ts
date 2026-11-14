@@ -25,7 +25,7 @@ export interface NodeTypeSummary {
 
 /**
  * A node type's full engine metadata plus its display text. A node's stored parameters are its
- * `params`, its `customParams` (texture, gradient, attribute/param names), the inline values of
+ * `params`, its `customParams` (texture, gradient, attribute/param names, a mesh asset's name), the inline values of
  * the `inputs` that carry a `control` (an editable input uses its inline value until a wire feeds
  * it), and `stage` (`"vertex"`/`"fragment"`) or `phase` (`"spawn"`/`"update"`) when the metadata's
  * `stage`/`phase` is `"param"`. All of them are set through `graph(...).setParams`.

@@ -104,8 +104,8 @@ describe("projectFile: serialize/deserialize round-trip", () => {
   });
 });
 
-describe("projectFile: renamed node inputs", () => {
-  it("loads a spawn-cylinder saved with `length` under its current `height`, value and wire alike", () => {
+describe("projectFile: renamed nodes and inputs", () => {
+  it("loads a spawn-cylinder saved with `length` as a random-cylinder-point with `height`, value and wire alike", () => {
     const base = createInitialState().source;
     const [emitter] = base.scene.emitters;
     const graph = emitter.behaviorGraph;
@@ -150,6 +150,7 @@ describe("projectFile: renamed node inputs", () => {
 
     const loaded = deserializeProject(serializeProject(saved))?.scene.emitters[0].behaviorGraph;
 
+    expect(loaded?.nodes["cyl"]?.type).toBe("random-cylinder-point");
     expect(loaded?.nodes["cyl"]?.parameters).toEqual({ radius: 2, height: 3 });
     expect(loaded?.connections.find((connection) => connection.id === "wire")?.to).toEqual({
       nodeId: "cyl",

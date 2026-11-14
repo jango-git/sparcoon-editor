@@ -320,10 +320,16 @@ export function assetsInterface(
     return `export type ${className}Assets = Record<string, never>;`;
   }
   const fields = [
-    ...textureNames.map((name) => `  ${name}: FXExternalTexture;`),
-    ...geometryNames.map((name) => `  ${name}: BufferGeometry;`),
+    ...textureNames.map((name) => `  ${propertyKey(name)}: FXExternalTexture;`),
+    ...geometryNames.map((name) => `  ${propertyKey(name)}: BufferGeometry;`),
   ].join("\n");
   return `export interface ${className}Assets {\n${fields}\n}`;
+}
+
+/** `name` as a property key: bare when it is an identifier, quoted otherwise - a mesh asset keeps
+ *  its GLB mesh or file name, such as `rock.glb #1`. */
+function propertyKey(name: string): string {
+  return /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
 }
 
 /** A quoted, `|`-joined TS union-literal type from `names` (only called with a non-empty list). */

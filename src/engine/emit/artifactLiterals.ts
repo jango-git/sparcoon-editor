@@ -12,7 +12,11 @@ import type {
   FXKernelBindingHandle,
 } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
-import { SLOTS_PARAMETER, SPAWN_KERNEL_PARAMETERS } from "../behavior/FXKernelShared.Internal";
+import {
+  kernelMeshSurfaces,
+  SLOTS_PARAMETER,
+  SPAWN_KERNEL_PARAMETERS,
+} from "../behavior/FXKernelShared.Internal";
 import {
   assembleKernelBody,
   SPAWN_LOOP_HEADER,
@@ -256,6 +260,14 @@ function bindingsLiteral(kernel: FXCompiledKernel): string {
   return `{ ${entries.join(", ")} }`;
 }
 
+/** The `meshSurfaces` line of an artifact literal at `indent`; none when it samples no surface. */
+function meshSurfacesLines(
+  surfaces: Readonly<Record<string, string>> | undefined,
+  indent: string,
+): string[] {
+  return surfaces === undefined ? [] : [`${indent}meshSurfaces: ${JSON.stringify(surfaces)},`];
+}
+
 /** Indents each line of a kernel body by `indent`, for the emitted method block. */
 function indentBody(body: string, indent: string): string {
   return body
@@ -275,6 +287,7 @@ export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""):
     "{",
     `${inner}buffers: ${JSON.stringify(kernel.update.buffers)},`,
     `${inner}bindings: ${bindingsLiteral(kernel)},`,
+    ...meshSurfacesLines(kernelMeshSurfaces(kernel), inner),
     ...(kernel.inherit === undefined
       ? []
       : [`${inner}inherit: ${JSON.stringify(kernel.inherit.layout)},`]),
@@ -328,6 +341,7 @@ export function gpuKernelArtifactBody(
     `  buffers: ${JSON.stringify(program.buffers)},`,
     `  transformFeedbackVaryings: ${JSON.stringify(program.transformFeedbackVaryings)},`,
     `  bindings: ${gpuBindingsLiteral(program.bindings, program.draw?.uniforms ?? {})},`,
+    ...meshSurfacesLines(program.surfaces, "  "),
     ...(program.draw === undefined ? [] : [drawComputeLiteral(program.draw.stage)]),
     "}",
   ].join("\n");

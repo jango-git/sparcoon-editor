@@ -142,9 +142,11 @@ export interface FXCustomParamMeta {
    * `attribute-name` - a picker of declared attributes; `inherit-source` - a picker of what a
    * dying particle hands its newborns (its emitter's attributes, and core fields);
    * `texture`/`gradient` - a resource picker / gradient editor; `param-name` - a free-text field
-   * naming a param's stable uniform/binding slot.
+   * naming a param's stable uniform/binding slot; `mesh-asset` - a picker of the content
+   * library's mesh assets.
    */
-  readonly kind: "attribute-name" | "inherit-source" | "texture" | "gradient" | "param-name";
+  readonly kind:
+    "attribute-name" | "inherit-source" | "texture" | "gradient" | "param-name" | "mesh-asset";
   readonly required: boolean;
 }
 

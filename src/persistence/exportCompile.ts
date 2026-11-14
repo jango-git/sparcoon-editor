@@ -13,6 +13,7 @@ import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attr
 import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../domain/lifetimeBound";
+import { missingMeshAssetErrors } from "../domain/meshSurfaceChecks";
 import {
   GraphKind,
   readRenderSinkConfig,
@@ -37,6 +38,7 @@ import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
+import { kernelMeshSurfaces } from "../engine/behavior/FXKernelShared.Internal";
 import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
@@ -163,6 +165,8 @@ export interface EmitterIR {
    */
   readonly gpuProgram?: FXFusedProgramStandard | undefined;
   readonly geometry: FXGeometrySource;
+  /** The mesh assets the behavior samples: geometries the app supplies by these names. */
+  readonly meshSurfaces: readonly string[];
   readonly renderMode: "blending" | "alphaHash" | "alphaTest" | "opaque";
   readonly sortInterval: number;
   readonly castShadow: boolean;
@@ -254,11 +258,13 @@ function compileTrail(
 /**
  * Compiles one emitter for the export. `spawnConfig` is how it runs - the export passes
  * `effectiveSpawnConfig` (a reaction source is never offered the GPU); defaults to what its spawn
- * node asks for, for an emitter compiled on its own.
+ * node asks for, for an emitter compiled on its own. `meshAssetNames` is the content library's
+ * mesh assets: a mesh the behavior samples must be one of them.
  */
 export function compileEmitter(
   emitter: EmitterDoc,
   spawnConfig: SpawnSinkConfig = readSpawnSinkConfig(emitter.behaviorGraph),
+  meshAssetNames: readonly string[] = [],
 ): EmitterIR {
   // A Timeline Value declared at two types or with two defaults across the emitter's graphs.
   const [declarationConflict] = timelineValueConflicts(emitterGraphs(emitter));
@@ -289,6 +295,10 @@ export function compileEmitter(
   const [depthFadeError] = depthFadeModeErrors(renderGraph, config.renderMode);
   if (depthFadeError !== undefined) {
     throw new Error(`exportTypeScript: ${emitter.name}: ${depthFadeError.message}`);
+  }
+  const [meshError] = missingMeshAssetErrors(behaviorGraph, meshAssetNames);
+  if (meshError !== undefined) {
+    throw new Error(`exportTypeScript: ${emitter.name}: ${meshError.message}`);
   }
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
 
@@ -321,6 +331,7 @@ export function compileEmitter(
     behaviorAttributes,
     gpuProgram: bundle.standardProgram,
     geometry: toArtifactGeometrySource(config.geometry),
+    meshSurfaces: [...new Set(Object.values(kernelMeshSurfaces(bundle.kernel) ?? {}))],
     renderMode: config.renderMode,
     sortInterval: config.sortInterval,
     castShadow: config.castShadow,

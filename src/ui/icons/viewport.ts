@@ -1,6 +1,6 @@
 /**
- * Viewport overlay glyphs: the top-right studio controls (Lighting / Scene) and the bottom-right
- * add-object "+". 16x16 line icons, `stroke="currentColor"`.
+ * Viewport overlay glyphs: the side tabs (View on the left, Item / Lighting / Scene / Gizmo on the
+ * right), their options and the bottom-right add-object buttons. 16x16 line icons, `stroke="currentColor"`.
  */
 export const viewportIcons = {
   // Lighting tab (Sun / Environment controls): a sun with rays.
@@ -65,5 +65,25 @@ export const viewportIcons = {
   mesh: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="3" y="3" width="10" height="10"/>
     <path d="M3 13 13 3"/>
+  </svg>`,
+
+  // Overdraw off: a sphere with a shaded half, the shaded frame.
+  viewShaded: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="8" cy="8" r="5.4"/>
+    <path d="M8 2.6a5.4 5.4 0 0 1 0 10.8Z" fill="currentColor" stroke="none"/>
+  </svg>`,
+
+  // Overdraw tab and its every-fragment count: three quads stacked over each other.
+  viewOverdraw: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="2.4" y="2.4" width="7" height="7"/>
+    <rect x="4.5" y="4.5" width="7" height="7"/>
+    <rect x="6.6" y="6.6" width="7" height="7"/>
+  </svg>`,
+
+  // Overdraw after discard: the stacked quads reduced to round sprites.
+  viewSurviving: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="5.6" cy="5.6" r="3"/>
+    <circle cx="8" cy="8" r="3"/>
+    <circle cx="10.4" cy="10.4" r="3"/>
   </svg>`,
 };

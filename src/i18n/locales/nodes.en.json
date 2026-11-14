@@ -1392,6 +1392,19 @@
     },
     "searchTags": ["rand", "jitter", "hash", "noise", "range", "vector"]
   },
+  "random-mesh-point": {
+    "description": "A random point on the surface of a mesh asset, uniform by area, and the mesh normal there, both in the mesh's own space. A new point each time it runs: once per particle in the spawn, every step in the update. The app supplies the mesh geometry under the asset's name.",
+    "label": "Random Mesh Point",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      },
+      "position": {
+        "label": "Position"
+      }
+    },
+    "searchTags": ["random", "point", "sample", "surface", "geometry", "model", "shape", "emit"]
+  },
   "builtin-attribute": {
     "description": {
       "behavior": "Reads all four host particle builtins at once - position, age, lifetime, and id - each as its own output (the CPU-side reader).",
@@ -1611,8 +1624,8 @@
     },
     "searchTags": ["ease", "smooth", "hermite"]
   },
-  "spawn-box": {
-    "description": "Scatters particles inside (or over the surface of) an axis-aligned box.",
+  "random-box-point": {
+    "description": "A random point inside (or on the surface of) an axis-aligned box. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1621,7 +1634,7 @@
         "label": "Size"
       }
     },
-    "label": "Spawn Box",
+    "label": "Random Box Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1632,10 +1645,10 @@
         "label": "Surface Only"
       }
     },
-    "searchTags": ["emit", "emitter", "cube", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "cube", "shape", "source"]
   },
-  "spawn-cone": {
-    "description": "Scatters particles inside (or on the surface of) a cone about an axis.",
+  "random-cone-point": {
+    "description": "A random point inside (or on the surface of) a cone about an axis. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1647,7 +1660,7 @@
         "label": "Base Radius"
       }
     },
-    "label": "Spawn Cone",
+    "label": "Random Cone Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1661,10 +1674,10 @@
         "label": "Surface Only"
       }
     },
-    "searchTags": ["emit", "emitter", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "shape", "source"]
   },
-  "spawn-cylinder": {
-    "description": "Scatters particles inside (or on the lateral surface of) a cylinder about an axis.",
+  "random-cylinder-point": {
+    "description": "A random point inside (or on the lateral surface of) a cylinder about an axis. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1676,7 +1689,7 @@
         "label": "Radius"
       }
     },
-    "label": "Spawn Cylinder",
+    "label": "Random Cylinder Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1690,10 +1703,10 @@
         "label": "Surface Only"
       }
     },
-    "searchTags": ["emit", "emitter", "tube", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "tube", "shape", "source"]
   },
-  "spawn-disc": {
-    "description": "Scatters particles over a flat ring (inner/outer radius) about an axis.",
+  "random-disc-point": {
+    "description": "A random point on a flat ring (inner/outer radius) about an axis. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1705,7 +1718,7 @@
         "label": "Outer Radius"
       }
     },
-    "label": "Spawn Disc",
+    "label": "Random Disc Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1716,10 +1729,10 @@
         "label": "Axis"
       }
     },
-    "searchTags": ["emit", "emitter", "disk", "circle", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "disk", "circle", "shape", "source"]
   },
-  "spawn-sphere": {
-    "description": "Scatters particles inside or on the surface of a sphere.",
+  "random-sphere-point": {
+    "description": "A random point inside or on the surface of a sphere. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1728,7 +1741,7 @@
         "label": "Radius"
       }
     },
-    "label": "Spawn Sphere",
+    "label": "Random Sphere Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1739,10 +1752,10 @@
         "label": "Surface Only"
       }
     },
-    "searchTags": ["emit", "emitter", "ball", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "ball", "shape", "source"]
   },
-  "spawn-torus": {
-    "description": "Scatters particles inside (or on the surface of) a torus about an axis.",
+  "random-torus-point": {
+    "description": "A random point inside (or on the surface of) a torus about an axis. A new point each time it runs: once per particle in the spawn, every step in the update.",
     "inputs": {
       "center": {
         "label": "Center"
@@ -1754,7 +1767,7 @@
         "label": "Minor Radius"
       }
     },
-    "label": "Spawn Torus",
+    "label": "Random Torus Point",
     "outputs": {
       "position": {
         "label": "Position"
@@ -1768,7 +1781,7 @@
         "label": "Surface Only"
       }
     },
-    "searchTags": ["emit", "emitter", "donut", "ring", "shape", "source"]
+    "searchTags": ["random", "point", "emit", "emitter", "donut", "ring", "shape", "source"]
   },
   "sphere-collision": {
     "description": "Bounces particles off a solid sphere, with radius, restitution and friction.",

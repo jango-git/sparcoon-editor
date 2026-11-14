@@ -115,7 +115,11 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   // Compiled first, then linked: a reaction copies what its source's compiled slot holds.
   const compiled = source.scene.emitters.map((emitter) => ({
     emitter,
-    ir: compileEmitter(emitter, effectiveSpawnConfig(emitter, source.scene)),
+    ir: compileEmitter(
+      emitter,
+      effectiveSpawnConfig(emitter, source.scene),
+      source.meshAssets.map((asset) => asset.name),
+    ),
   }));
   const reactionSources = new Map(
     compiled.map(({ emitter, ir }) => [emitter.id, reactionSourceOf(ir.kernel)]),
@@ -159,6 +163,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     ];
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
+    ir.meshSurfaces.forEach((name) => externalGeometryNames.add(name));
     emitterSpecs.push(
       emitterSpecLiteral(
         emitter,

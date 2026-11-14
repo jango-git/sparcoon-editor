@@ -87,7 +87,7 @@ function cyclicBehaviorGraph(): FXGraph<FXBehaviorNode> {
   behavior.ingest({
     nodes: new Map<string, FXBehaviorNode>([
       ["life", br.create("lifetime", { min: 2, max: 2 })],
-      ["pos", br.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] })],
+      ["pos", br.create("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] })],
       ["g1", br.create("gravity", { acceleration: [0, -9.8, 0] })],
       ["g2", br.create("gravity", { acceleration: [0, -9.8, 0] })],
       ["im", br.create("integrate-motion")],
@@ -151,7 +151,7 @@ function conflictingAttributeGraphs(): {
   behavior.ingest({
     nodes: new Map<string, FXBehaviorNode>([
       ["life", br.create("lifetime", { min: 2, max: 2 })],
-      ["pos", br.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] })],
+      ["pos", br.create("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] })],
       ["sv", storeAttr("shared", FX_VALUE_TYPES.vec2, FXBehaviorPhase.SPAWN)],
     ]),
     connections: [],

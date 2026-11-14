@@ -1,23 +1,38 @@
 /**
- * Node inputs (and outputs) renamed since projects started being saved. A saved project names an
- * input in two places - the inline value in the node's `parameters` and the `to.socketKey` of a
- * wire feeding it - and an output in the `from.socketKey` of every wire or sink binding reading it,
- * so a rename that only touched the node definition would silently drop them on load: the value
- * back to its default, the wire as dangling. Loading maps every old key to its new one before
- * anything else reads the graph.
+ * Node types, inputs and outputs renamed since projects started being saved. A saved project names
+ * a node's type in the node itself, an input in two places - the inline value in the node's
+ * `parameters` and the `to.socketKey` of a wire feeding it - and an output in the `from.socketKey`
+ * of every wire or sink binding reading it, so a rename that only touched the node definition
+ * would silently break them on load: the node as an unknown type, the value back to its default,
+ * the wire as dangling. Loading maps every old name to its new one before anything else reads the
+ * graph: the type first, then the inputs and outputs of the type it now has.
  */
 
 import type { EditorGraph, GraphConnection, GraphNode } from "../domain/graphModel";
 import { isRecord } from "../util/guards";
 
-/** Node type -> old input key -> current input key. */
+/**
+ * Old node type -> current node type. A new name never reuses an old one, so a file saved after
+ * the rename is never migrated again.
+ */
+const RENAMED_TYPES: Readonly<Record<string, string>> = {
+  // A random point of a shape, in the spawn or the update: they never spawned anything themselves.
+  "spawn-box": "random-box-point",
+  "spawn-cone": "random-cone-point",
+  "spawn-cylinder": "random-cylinder-point",
+  "spawn-disc": "random-disc-point",
+  "spawn-sphere": "random-sphere-point",
+  "spawn-torus": "random-torus-point",
+};
+
+/** Current node type -> old input key -> current input key. */
 const RENAMED_INPUTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  // Named like spawn-cone's, which measures the same axis-long dimension.
-  "spawn-cylinder": { length: "height" },
+  // Named like the cone's, which measures the same axis-long dimension.
+  "random-cylinder-point": { length: "height" },
 };
 
 /**
- * Node type -> old output key -> current output key: a wire (or a sink binding) reading a renamed
+ * Current node type -> old output key -> current output key: a wire (or a sink binding) reading a renamed
  * output names it in its `from.socketKey`. A new name never reuses an old one, so a file saved
  * after the rename is never migrated again.
  */
@@ -35,8 +50,14 @@ function own<T>(table: Readonly<Record<string, T>>, key: string): T | undefined 
 }
 
 /** A stored node's type, or `undefined` for one too damaged to have one (left as it is). */
-function typeOf(node: unknown): string | undefined {
+function storedTypeOf(node: unknown): string | undefined {
   return isRecord(node) && typeof node["type"] === "string" ? node["type"] : undefined;
+}
+
+/** A stored node's type under its current name. */
+function typeOf(node: unknown): string | undefined {
+  const type = storedTypeOf(node);
+  return type === undefined ? undefined : (own(RENAMED_TYPES, type) ?? type);
 }
 
 function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>): GraphNode {
@@ -55,9 +76,10 @@ function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>)
   return { ...node, parameters };
 }
 
-/** `graph` with every renamed input's stored value and incoming wire, and every wire or sink binding
- *  reading a renamed output, under its current key. */
-export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
+/** `graph` with every renamed node type under its current name, and every renamed input's stored
+ *  value and incoming wire, and every wire or sink binding reading a renamed output, under its
+ *  current key. */
+export function migrateRenamedNodes(graph: EditorGraph): EditorGraph {
   const renamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
     const type = typeOf(node);
     return type !== undefined ? own(RENAMED_INPUTS, type) : undefined;
@@ -66,9 +88,14 @@ export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
     const type = typeOf(node);
     return type !== undefined ? own(RENAMED_OUTPUTS, type) : undefined;
   };
+  const retyped = (node: unknown): boolean => {
+    const type = storedTypeOf(node);
+    return type !== undefined && own(RENAMED_TYPES, type) !== undefined;
+  };
   if (
     !Object.values(graph.nodes).some(
-      (node) => renamesOf(node) !== undefined || outputRenamesOf(node) !== undefined,
+      (node) =>
+        retyped(node) || renamesOf(node) !== undefined || outputRenamesOf(node) !== undefined,
     )
   ) {
     return graph;
@@ -84,8 +111,10 @@ export function migrateRenamedInputs(graph: EditorGraph): EditorGraph {
 
   const nodes: Record<string, GraphNode> = {};
   for (const [id, node] of Object.entries(graph.nodes)) {
+    const type = typeOf(node);
+    const current = retyped(node) && type !== undefined ? { ...node, type } : node;
     const renames = renamesOf(node);
-    nodes[id] = renames !== undefined ? migrateNode(node, renames) : node;
+    nodes[id] = renames !== undefined ? migrateNode(current, renames) : current;
   }
   const connections = graph.connections.map((connection): GraphConnection => {
     if (!isRecord(connection) || !isRecord(connection.to)) {

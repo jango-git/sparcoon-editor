@@ -40,7 +40,7 @@ import type {
 } from "./FXCompiledKernel";
 import type { FXKernelContext } from "./FXKernelContext";
 import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
-import { BUILTIN_BUFFER } from "./FXKernelShared.Internal";
+import { BUILTIN_BUFFER, FXKernelSurfaces } from "./FXKernelShared.Internal";
 import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import {
@@ -131,6 +131,9 @@ export interface FXCompiledPhaseStandard {
   /** The bound kill value (a float variable); update phase only. */
   readonly kill?: string;
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
+  /** The mesh asset each `sampler2D` surface uniform samples, by uniform; absent when none. A
+   *  surface is a declared uniform, not one of {@link bindings}. */
+  readonly surfaces?: Readonly<Record<string, string>>;
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly writtenBuffers: readonly string[];
   /** What is one for the whole pass, computed once per pass on the CPU (see `liftDrawStage`). */
@@ -166,6 +169,7 @@ class FXKernelStateStandard {
   private readonly helperMap = new Map<string, string>();
   private readonly uniforms: FXKernelUniform[] = [];
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
+  private readonly surfaces = new FXKernelSurfaces();
 
   /** `names` is the fused program's: shared with the other phase, whose uniforms sit beside
    *  this phase's in one program. */
@@ -192,36 +196,30 @@ class FXKernelStateStandard {
     }
   }
 
-  /** Declares a live-tunable uniform, deduped by a forced name (a param slot) the same way the
-   *  JS backend dedupes bindings; two allocations of the same name share one uniform. */
-  public allocateBinding(
-    descriptor: FXKernelBindingDescriptor,
-    glslTypeName: string,
-  ): FXKernelBindingHandle {
+  /** Declares a live-tunable `uniform float`, deduped by a forced name (a param slot) the same way
+   *  the JS backend dedupes bindings; two allocations of the same name share one uniform. */
+  public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {
     if (descriptor.name !== undefined) {
       const existing = this.bindingHandles.find((handle) => handle.name === descriptor.name);
       if (existing !== undefined) {
-        const priorType = this.uniforms.find(
-          (uniform) => uniform.name === descriptor.name,
-        )?.glslTypeName;
-        if (priorType !== undefined && priorType !== glslTypeName) {
-          throw new Error(
-            `FXKernelStateStandard.allocateBinding: uniform "${descriptor.name}" is declared as ` +
-              `both ${priorType} and ${glslTypeName}`,
-          );
-        }
         return existing;
       }
-      this.declareUniform(descriptor.name, glslTypeName);
-      const handle: FXKernelBindingHandle = { name: descriptor.name, value: descriptor.value };
-      this.bindingHandles.push(handle);
-      return handle;
     }
-    const name = this.uniqueName();
-    this.declareUniform(name, glslTypeName);
+    const name = descriptor.name ?? this.uniqueName();
+    this.declareUniform(name, "float");
     const handle: FXKernelBindingHandle = { name, value: descriptor.value };
     this.bindingHandles.push(handle);
     return handle;
+  }
+
+  /** The uniform `mesh`'s surface table is sampled through: a `sampler2D` the runtime binds a
+   *  texture to, not a value it uploads, so no binding. */
+  public allocateSurface(mesh: string): string {
+    return this.surfaces.nameOf(mesh, () => {
+      const name = this.uniqueName();
+      this.declareUniform(name, "sampler2D");
+      return name;
+    });
   }
 
   /**
@@ -295,6 +293,7 @@ class FXKernelStateStandard {
       writes,
       ...(kill === undefined ? {} : { kill }),
       bindings,
+      ...this.surfaces.phaseField(),
       buffers,
       writtenBuffers: [...written],
       ...(lifted.stage === undefined
@@ -381,16 +380,15 @@ class FXParticleKernelContextStandard
     this.state.emitHelper(key, source);
   }
 
-  // `FXKernelBindingHandle.value: number | Float32Array` is shared with the JS backend, where
-  // `Float32Array` exclusively means "a LUT, sample through sampleLut" - never repurposed here
-  // for "a live vector uniform's value" (that would make the two meanings ambiguous to every
-  // future reader/consumer of `bindings`). A vector value param is instead one binding per
-  // component (each a plain number, `uniform float`), exactly like the JS backend's own
-  // `allocateValueParam` - simpler and unambiguous, at the cost of one `gl.uniform1f` call per
-  // component at runtime instead of a single `gl.uniform3fv`.
+  // A vector value param is one binding per component (each a plain number), exactly like the
+  // JS backend's own `allocateValueParam` - simpler and unambiguous, at the cost of one
+  // `gl.uniform1f` call per component at runtime instead of a single `gl.uniform3fv`.
   public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {
-    const glslTypeName = descriptor.value instanceof Float32Array ? "sampler2D" : "float";
-    return this.state.allocateBinding(descriptor, glslTypeName);
+    return this.state.allocateBinding(descriptor);
+  }
+
+  public allocateSurface(mesh: string): FXExpr {
+    return ref("binding", this.state.allocateSurface(mesh), FX_VALUE_TYPES.sampler2D);
   }
 
   public allocateValueParam(

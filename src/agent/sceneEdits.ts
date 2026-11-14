@@ -43,6 +43,10 @@ export interface SceneEdits {
   remove(ownerId: string): void;
   /** Renames an emitter or mesh. The project (the VFX group's name) is `project.setName`. */
   rename(ownerId: string, name: string): void;
+  /**
+   * Hides an emitter or mesh from the viewport, or shows it again: the timeline's eye. A project
+   * edit, saved and undoable like the others.
+   */
   setHidden(ownerId: string, hidden: boolean): void;
   /**
    * Turns an emitter's trail on (a ribbon behind every particle, authored in its `"trail"` graph,

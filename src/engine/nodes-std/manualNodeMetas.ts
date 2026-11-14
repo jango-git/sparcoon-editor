@@ -307,6 +307,34 @@ export const TIMELINE_VALUE_BEHAVIOR_META: FXNodeMeta = {
   cost: 0,
 };
 
+/** Random Mesh Point with a mesh picked: 8 texel fetches at 8 (the texture node's figure for one),
+ *  4 draws (~2 each), the column, alias coin and fold (~12), and two 3-corner vec3 blends with a
+ *  normalize (~30). */
+export const RANDOM_MESH_POINT_COST = 114;
+
+/**
+ * A random point uniform by area on the surface of a named **mesh** asset, with the mesh's normal
+ * there, in the mesh's own space. The app supplies the geometry by that name. Behavior only, in the
+ * spawn or the update.
+ */
+export const RANDOM_MESH_POINT_META: FXNodeMeta = {
+  type: "random-mesh-point",
+  category: "spawn",
+  domain: "behavior",
+  phase: "spawn",
+  inputs: [],
+  outputs: [
+    { key: "position", type: "vec3" },
+    { key: "normal", type: "vec3" },
+  ],
+  params: {},
+  reads: [],
+  // Optional: with no mesh picked every particle spawns at the origin, so it stays valid.
+  customParams: [{ key: "mesh", kind: "mesh-asset", required: false }],
+  // With a mesh picked (see the node's `estimateCost`).
+  cost: RANDOM_MESH_POINT_COST,
+};
+
 /** How a `texture` node treats UVs outside [0, 1] (see `FXRenderNodeTexture`). */
 export const TEXTURE_WRAP_MODES = ["clamp", "repeat", "mirror", "border"] as const;
 
@@ -351,6 +379,7 @@ export const FX_MANUAL_NODE_METAS: readonly FXNodeMeta[] = [
   INHERITED_ATTRIBUTE_META,
   TIMELINE_VALUE_RENDER_META,
   TIMELINE_VALUE_BEHAVIOR_META,
+  RANDOM_MESH_POINT_META,
   TEXTURE_META,
   // Deep-frozen (the same objects the classes' `describe()` return), so a mutating
   // palette consumer fails loudly instead of corrupting shared metadata (M9).

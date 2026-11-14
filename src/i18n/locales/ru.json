@@ -79,6 +79,8 @@
     "paramNamePlaceholder": "имя...",
     "texture": "Текстура",
     "uploadTextureHint": "загрузите в Ассетах...",
+    "mesh": "Меш",
+    "uploadMeshHint": "загрузите в Ассетах...",
     "removeAttributeTitle": "Удалить атрибут",
     "removeAttributeTip": "Удалить \"{name}\" из этого стока.",
     "addAttribute": "Добавить атрибут",
@@ -129,9 +131,17 @@
     "insertScaleKey": "Вставить ключ масштаба",
     "insertAll": "Вставить все",
     "renderBackendBaseline": "Базовый",
-    "renderBackendBaselineTip": "Рендер, совместимый с WebGL1 - показывает, как эффект увидит старое устройство.",
+    "renderBackendBaselineTip": "Рендер WebGL1 - показывает, как эффект увидит старое устройство.",
     "renderBackendStandard": "Стандартный",
-    "renderBackendStandardTip": "Рендер WebGL2 - показывает, как эффект увидит современное устройство."
+    "renderBackendStandardTip": "Рендер WebGL2 - показывает, как эффект увидит современное устройство.",
+    "renderBackendReload": "Переключение перезагружает редактор.",
+    "viewShaded": "Нет",
+    "viewShadedTip": "Обычный кадр.",
+    "viewOverdraw": "Overdraw",
+    "viewOverdrawTip": "Считаются все фрагменты квадов частиц, включая прозрачные пиксели текстуры и отброшенные discard. Это стоимость заливки.",
+    "viewSurviving": "Discard",
+    "viewSurvivingTip": "Считаются только фрагменты, оставшиеся после отсечения по альфе и alpha hash.",
+    "viewOpaqueNote": "Непрозрачные эффекты считаются так, будто не закрывают друг друга."
   },
   "viewport": {
     "item": "Объект",
@@ -140,7 +150,11 @@
     "addEmitterTip": "Добавить новый эмиттер в сцену.",
     "addMesh": "Создать меш",
     "addMeshTip": "Добавить VFX-меш (обычный меш с материалом) в сцену.",
-    "settingsTip": "Настроить параметры предпросмотра."
+    "settingsTip": "Настроить параметры предпросмотра.",
+    "render": "Рендер",
+    "renderTip": "Каким уровнем GLSL рендерится превью.",
+    "overdraw": "Overdraw",
+    "overdrawTip": "Сколько слоёв эффектов рисуется в каждом пикселе."
   },
   "stats": {
     "title": "Статистика",
@@ -154,7 +168,9 @@
     "graphCost": "Стоимость графа",
     "graphCostTip": "Примерная ALU-стоимость всего графа - чем выше, тем дороже он обходится.",
     "objectCost": "Стоимость объекта",
-    "totalCost": "Общая стоимость"
+    "totalCost": "Общая стоимость",
+    "overdraw": "Слои",
+    "overdrawTip": "Слои эффектов в пикселе под курсором."
   },
   "transport": {
     "jumpToStart": "Перейти к началу",

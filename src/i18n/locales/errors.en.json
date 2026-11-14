@@ -344,6 +344,9 @@
   "trail-with-sort": {
     "message": "a trail cannot be combined with depth sorting - set the render graph's Sort Every to 0"
   },
+  "missing-mesh-asset": {
+    "message": "No mesh asset \"{name}\" in the content library"
+  },
   "depth-fade-needs-blending": {
     "message": "Depth Fade works only in the blending render mode, not {mode}: a depth-writing surface would fade against its own depth"
   },

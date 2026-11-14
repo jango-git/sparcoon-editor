@@ -36,6 +36,7 @@ import { PanelFocus } from "./ui/focus/panelFocus";
 import { PanelFocusTracker } from "./ui/focus/panelFocusTracker";
 import { installHotkeys } from "./ui/hotkeys";
 import { InputMode, InputModeState } from "./ui/inputMode";
+import { PreviewViewModeState } from "./ui/previewViewMode";
 import { commitEntitySelection } from "./ui/selection";
 import { installPreviewContextMenu } from "./ui/tools/previewContextMenu";
 import { TransformTool } from "./ui/tools/transformTool";
@@ -112,6 +113,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   // How the editor is navigated (mouse vs trackpad) - one global state read by the graph and the
   // viewport, set from the middlebar toggle.
   const inputMode = new InputModeState();
+  const viewMode = new PreviewViewModeState();
   const context: EditorContext = {
     store,
     signals,
@@ -123,6 +125,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     inputMode,
     previewSettings,
     gizmoSettings,
+    viewMode,
   };
   const shell = mountApplicationShell(root, context);
 
@@ -142,6 +145,8 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   const applyInputMode = (): void => coordinator.setTouchpad(inputMode.mode === InputMode.Touchpad);
   inputMode.onChange(applyInputMode);
   applyInputMode();
+  coordinator.setOverdrawReadout(shell.reportOverdraw);
+  viewMode.onChange((mode) => coordinator.setViewMode(mode));
   // The texture registry turns the asset library's data-URL images into live GPU textures
   // the preview binds into its Texture slots. A finished async decode rebinds.
   const textures = new TextureRegistry(() => pipeline.scheduleRecompute());
@@ -303,7 +308,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       downX = event.clientX;
       downY = event.clientY;
       downOnOverlay =
-        event.target instanceof Element && Boolean(event.target.closest(".viewport-transform"));
+        event.target instanceof Element && Boolean(event.target.closest(".viewport-tabs"));
     });
     shell.previewContainer.addEventListener("pointerup", (event) => {
       if (

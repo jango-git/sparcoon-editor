@@ -16,6 +16,7 @@ import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../../domain/nodePal
 import { attributeNameFromSlot, humanizeKey } from "../../domain/nodePalette";
 import { t } from "../../i18n";
 import { nodeDescription, nodeLabel, nodeParamLabel, nodeSocketLabel } from "../../i18n/nodeText";
+import type { AssetPickerOption } from "../components/assetPicker";
 import type { PaletteAccess } from "../components/colorPicker";
 import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
@@ -44,6 +45,7 @@ import {
   type NodeRow,
 } from "./nodeGrid";
 import { buildHelpIcon } from "./nodeHelpIcon";
+import { buildMeshAssetRow } from "./nodeMeshRow";
 import { buildTextureAssetRows, type TextureAssetOption } from "./nodeTextureRow";
 import { NodeWidgets } from "./nodeWidgets";
 import { socketTypeColor } from "./socketColors";
@@ -98,6 +100,46 @@ const GRADIENT_ROW_SPAN = 4;
  */
 const CURVE_ROW_SPAN = 8;
 
+/** What a {@link NodeView} card is built with beyond its node and metadata; an absent field and
+ *  `undefined` are the same. */
+export interface NodeViewOptions {
+  readonly onParamChange?: ParamChangeHandler | undefined;
+  /**
+   * Fires on every intermediate step of a scrub/drag control (a live preview, no history entry);
+   * omitted entirely for a behavior-graph node, whose params then report nothing until release
+   * (see graphCanvas.ts's wiring and NodeWidgets' matching `live` channel).
+   */
+  readonly onLiveParamChange?: ParamChangeHandler | undefined;
+  readonly attribute?: AttributeNodeConfig | undefined;
+  readonly onSocketPointerDown?: SocketPointerHandler | undefined;
+  readonly connectedInputs?: ReadonlySet<string> | undefined;
+  readonly textureAssets?: readonly TextureAssetOption[] | undefined;
+  readonly onRemoveAttribute?: ((name: string) => void) | undefined;
+  readonly onSetAttributeType?: ((name: string, type: AttributeTypeName) => void) | undefined;
+  readonly onRenameAttribute?: ((oldName: string, newName: string) => boolean) | undefined;
+  /**
+   * Live cost at construction time (see `update`'s `cost` parameter for how it stays current).
+   * `undefined` when the node has no engine-computed cost (a sink) - the badge is then omitted.
+   */
+  readonly cost?: number | undefined;
+  /**
+   * A sink's own graph reachable-cost total (domain/graphStats.ts's `computeSinkCost`), shown in
+   * the same badge in place of `cost` - a sink has no per-node engine cost of its own, but its
+   * header is where that graph's total now lives (moved off the Stats panel, which sums the
+   * whole effect instead). `undefined` for every non-sink node.
+   */
+  readonly sinkCost?: number | undefined;
+  /** Forwarded to every color-flagged field's picker/ramp (see NodeWidgets' matching param). */
+  readonly paletteAccess?: PaletteAccess | undefined;
+  /**
+   * Live graph zoom (graphCanvas.ts's `() => this.viewport.scale`), forwarded to every dropdown
+   * this card builds so a popup's rows visually match the zoomed trigger they hang from.
+   */
+  readonly scale?: (() => number) | undefined;
+  /** The library's mesh assets, for a node with a `mesh-asset` parameter (empty otherwise). */
+  readonly meshAssets?: readonly AssetPickerOption[] | undefined;
+}
+
 export class NodeView {
   public readonly element: HTMLElement;
   /** Socket dot elements, keyed `${side}:${key}`, for wire endpoint measurement. */
@@ -111,39 +153,29 @@ export class NodeView {
    *  (see `i18n/nodeText.ts`), never displayed itself. */
   private readonly nodeType: string;
 
-  constructor(
-    node: GraphNode,
-    metadata: FXNodeMeta | undefined,
-    private readonly onParamChange?: ParamChangeHandler,
-    // Fires on every intermediate step of a scrub/drag control (a live preview, no history entry);
-    // omitted entirely for a behavior-graph node, whose params then report nothing until release
-    // (see graphCanvas.ts's wiring and NodeWidgets' matching `live` channel).
-    onLiveParamChange?: ParamChangeHandler,
-    attribute?: AttributeNodeConfig,
-    onSocketPointerDown?: SocketPointerHandler,
-    connectedInputs: ReadonlySet<string> = NO_CONNECTED_INPUTS,
-    textureAssets: readonly TextureAssetOption[] = [],
-    onRemoveAttribute?: (name: string) => void,
-    onSetAttributeType?: (name: string, type: AttributeTypeName) => void,
-    onRenameAttribute?: (oldName: string, newName: string) => boolean,
-    // Live cost at construction time (see `update`'s `cost` parameter for how it stays current).
-    // `undefined` when the node has no engine-computed cost (a sink) - the badge is then omitted.
-    cost?: number,
-    // A sink's own graph reachable-cost total (domain/graphStats.ts's `computeSinkCost`), shown in
-    // the same badge in place of `cost` - a sink has no per-node engine cost of its own, but its
-    // header is where that graph's total now lives (moved off the Stats panel, which sums the
-    // whole effect instead). `undefined` for every non-sink node.
-    sinkCost?: number,
-    // Forwarded to every color-flagged field's picker/ramp (see NodeWidgets' matching param).
-    paletteAccess?: PaletteAccess,
-    // Live graph zoom (graphCanvas.ts's `() => this.viewport.scale`), forwarded to every dropdown
-    // this card builds so a popup's rows visually match the zoomed trigger they hang from.
-    scale?: () => number,
-  ) {
+  private readonly onParamChange: ParamChangeHandler | undefined;
+
+  constructor(node: GraphNode, metadata: FXNodeMeta | undefined, options: NodeViewOptions = {}) {
+    const {
+      onLiveParamChange,
+      attribute,
+      onSocketPointerDown,
+      connectedInputs = NO_CONNECTED_INPUTS,
+      textureAssets = [],
+      onRemoveAttribute,
+      onSetAttributeType,
+      onRenameAttribute,
+      cost,
+      sinkCost,
+      paletteAccess,
+      scale,
+      meshAssets = [],
+    } = options;
+    this.onParamChange = options.onParamChange;
     this.nodeType = node.type;
     this.widgets = new NodeWidgets(
       metadata,
-      onParamChange,
+      this.onParamChange,
       onLiveParamChange,
       paletteAccess,
       scale,
@@ -290,6 +322,19 @@ export class NodeView {
       } else {
         bodyRows.push(this.paramNameRow(node, paramNameKey));
       }
+    }
+    const meshKey = metadata?.customParams?.find(
+      (customParam) => customParam.kind === "mesh-asset",
+    )?.key;
+    if (meshKey !== undefined) {
+      bodyRows.push(
+        buildMeshAssetRow(node, meshKey, meshAssets, {
+          widgets: this.widgets,
+          onParamChange: this.onParamChange,
+          labelledRow: (label, control) => this.labelledRow(label, control),
+          scale,
+        }),
+      );
     }
     if (isAttributeNode && attribute !== undefined) {
       bodyRows.push(

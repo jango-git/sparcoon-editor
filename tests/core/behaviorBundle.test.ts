@@ -22,11 +22,11 @@ function bind(
   return { slot, from: { nodeId, socketKey }, phase };
 }
 
-function spawnBoxGraph(): FXGraph<FXBehaviorNode> {
+function boxPointGraph(): FXGraph<FXBehaviorNode> {
   const r = behaviorRegistry();
   const graph = new FXGraph<FXBehaviorNode>();
   graph.ingest({
-    nodes: new Map([["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })]]),
+    nodes: new Map([["box", r.create("random-box-point", { size: [2, 2, 2], center: [0, 0, 0] })]]),
     connections: [],
     outputBindings: [bind("position", "box", "position", FXBehaviorPhase.SPAWN)],
   });
@@ -35,7 +35,7 @@ function spawnBoxGraph(): FXGraph<FXBehaviorNode> {
 
 describe("compileBehaviorBundle", () => {
   it("attempts the standard family only when tryGpuSimulation is on, for a GLSL-compilable graph", () => {
-    const graph = spawnBoxGraph();
+    const graph = boxPointGraph();
     const on = compileBehaviorBundle(graph, buildParticleBehaviorTargets([], true));
     expect(on.standardProgram).toBeDefined();
     expect(on.kernel).toBeDefined();

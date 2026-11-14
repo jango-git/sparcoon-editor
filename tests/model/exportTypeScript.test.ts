@@ -844,7 +844,7 @@ describe("emitProjectModule - GPU (transform-feedback) simulation opt-in", () =>
     const text = emitProjectModule(emitterWithGpuFlag(true));
     // createTestState()'s spawn sink never sets the flag: it exports exactly as switched on.
     expect(emitProjectModule(createTestState().source)).toBe(text);
-    // The default project's spawn graph (spawn-box + lifetime) is fully GLSL-portable (rand/cbrt/
+    // The default project's spawn graph (random-box-point + lifetime) is fully GLSL-portable (rand/cbrt/
     // fbm all have a standard-tier twin) - it must actually compile, not silently fall back, or
     // this test would be exercising the wrong branch.
     expect(text).toContain("const gpuKernel0: FXParticleKernelArtifact = {");

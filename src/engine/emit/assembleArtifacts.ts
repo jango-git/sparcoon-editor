@@ -13,6 +13,7 @@ import type { Texture } from "three";
 
 import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
+import { kernelMeshSurfaces } from "../behavior/FXKernelShared.Internal";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
@@ -128,10 +129,12 @@ function mergeBindingSlots(
  *  `new Function`-built kernels; the binding slots are fresh, scrubbed via
  *  {@link FXEmitter.applyValues}. */
 export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorArtifact {
+  const meshSurfaces = kernelMeshSurfaces(kernel);
   const base: FXBehaviorArtifact = {
     // The slot, in the target's order (see `buildParticleBehaviorTargets`).
     buffers: kernel.update.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
     bindings: mergeBindingSlots(kernel),
+    ...(meshSurfaces === undefined ? {} : { meshSurfaces }),
     ...(kernel.inherit === undefined
       ? {}
       : {
@@ -165,6 +168,7 @@ export function assembleGpuKernelArtifact(
     buffers: program.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
     transformFeedbackVaryings: [...program.transformFeedbackVaryings],
     bindings,
+    ...(program.surfaces === undefined ? {} : { meshSurfaces: { ...program.surfaces } }),
     ...(program.draw === undefined
       ? {}
       : {

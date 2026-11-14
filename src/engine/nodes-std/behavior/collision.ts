@@ -220,7 +220,7 @@ export const fxBoxCollision = defineNode({
 /**
  * Cone collision: a solid truncated cone (frustum) about an arbitrary `axis`; the particle is a
  * sphere of `radius`. Its base, of `bottomRadius`, is centered on `center`; its top, of
- * `topRadius`, sits `height` along the axis - the same base-anchored layout as `spawn-cone`.
+ * `topRadius`, sits `height` along the axis - the same base-anchored layout as `random-cone-point`.
  * `topRadius` 0 makes it a plain cone, `topRadius == bottomRadius` a cylinder.
  *
  * The shape is round about its axis, so the contact is found in the 2D half-plane through the axis

@@ -12,7 +12,8 @@ export function scalarize(expression: FXExpr): readonly FXExpr[] {
     case "lit":
       return expression.values.map(floatLiteral);
     case "ref":
-      if (expression.type.components === 1) {
+      // A scalar, or an opaque value (a sampler) with no components to split into.
+      if (expression.type.components === 1 || !expression.type.instantiable) {
         return [expression];
       }
       return indices(expression.type.components).map((i) => ({

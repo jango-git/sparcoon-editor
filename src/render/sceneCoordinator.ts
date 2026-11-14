@@ -28,10 +28,13 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import type { PreviewSettings, PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
+import type { PreviewViewMode } from "../ui/previewViewMode";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
 import { EDITOR_GIZMO_LAYER, EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
 import type { DecodedEnvironment } from "./environmentTexture";
+import { OverdrawPass, type OverdrawStats } from "./overdrawPass";
+import type { OverdrawCount } from "./overdrawShader";
 import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
 
@@ -62,10 +65,24 @@ function createSceneRenderer(
   }
 }
 
-/** What one {@link SceneCoordinator.capture} renders. */
-export interface FrameCaptureOptions {
+/** Where an offscreen shot is taken from and at what size; the viewport camera is left alone. */
+export interface CaptureShot {
   /** Pixel size to render at; omitted, the viewport's own drawing-buffer size. */
   readonly size?: { readonly width: number; readonly height: number };
+  /** Where the frame is shot from; omitted, the viewport camera's own view. */
+  readonly view?: CaptureView;
+}
+
+/** What one {@link SceneCoordinator.measureOverdraw} reports. */
+export interface OverdrawMeasure {
+  /** Every part drawn together, as the viewport's overdraw view counts them. */
+  readonly total: OverdrawStats;
+  /** Each part drawn alone, in the order given; a hidden part counts nothing. */
+  readonly parts: readonly OverdrawStats[];
+}
+
+/** What one {@link SceneCoordinator.capture} renders. */
+export interface FrameCaptureOptions extends CaptureShot {
   /** Whether the editor's furniture (grid, player figure, gizmos) is drawn as the viewport shows
    *  it. Default true. */
   readonly overlays?: boolean;
@@ -78,8 +95,6 @@ export interface FrameCaptureOptions {
   readonly ground?: boolean;
   /** Replaces the background for this frame (an active HDRI's included); lighting is untouched. */
   readonly background?: Color | "transparent";
-  /** Where the frame is shot from; omitted, the viewport camera's own view. */
-  readonly view?: CaptureView;
 }
 
 /**
@@ -106,6 +121,11 @@ export class SceneCoordinator {
   private readonly controls: OrbitControls;
   private readonly environment: SceneEnvironment;
   private readonly depthPass: SceneDepthPass;
+  private readonly overdrawPass: OverdrawPass;
+  private viewMode: PreviewViewMode = "shaded";
+  // The pointer over the canvas in drawing-buffer pixels (y down), for the overdraw readout.
+  private pointer: { x: number; y: number } | undefined = undefined;
+  private reportOverdraw: ((layers: number | undefined) => void) | undefined = undefined;
   private readonly settings: PreviewSettingsStore;
   /** The decoded active-environment textures (ADR-0004), set externally as the library resolves them. */
   private activeEnvironment: DecodedEnvironment | undefined;
@@ -144,6 +164,7 @@ export class SceneCoordinator {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.depthPass = new SceneDepthPass(this.renderer, this.scene);
+    this.overdrawPass = new OverdrawPass(this.renderer, this.scene);
 
     this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
     this.camera.position.set(0, 2, 7);
@@ -168,6 +189,10 @@ export class SceneCoordinator {
     // Touchpad navigation: touchpad mode pans/pinch-zooms, mouse mode dollies - onWheel
     // drives both (OrbitControls' own wheel-zoom stays off). On the container so it works over overlays.
     container.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
+    container.addEventListener("pointermove", (event) => this.trackPointer(event));
+    container.addEventListener("pointerleave", () => {
+      this.pointer = undefined;
+    });
 
     this.settings = settings;
     this.environment = new SceneEnvironment(
@@ -213,6 +238,24 @@ export class SceneCoordinator {
   /** Wires the effects a scene depth pre-pass serves (the scene emitters); none until then. */
   public setSceneDepthSource(source: SceneDepthSource): void {
     this.depthPass.source = source;
+    this.overdrawPass.source = source;
+  }
+
+  /**
+   * Switches what the viewport shows: the shaded frame or an overdraw view. Captures always take
+   * the shaded frame.
+   */
+  public setViewMode(mode: PreviewViewMode): void {
+    this.viewMode = mode;
+    if (mode === "shaded") {
+      this.overdrawPass.release();
+    }
+    this.renderViewport();
+  }
+
+  /** Wires the readout of the overdraw under the pointer, pushed every overdraw frame. */
+  public setOverdrawReadout(report: (layers: number | undefined) => void): void {
+    this.reportOverdraw = report;
   }
 
   /** Wires the live particle-overflow source (the scene emitters), reported alongside FPS. */
@@ -277,58 +320,41 @@ export class SceneCoordinator {
    * size, which a GPU limit can clamp below the requested one; the frame is never stretched.
    */
   public capture(options: FrameCaptureOptions = {}): HTMLCanvasElement {
-    const { size, overlays = true, background, view } = options;
-    const ground = options.ground ?? (overlays && this.settings.get().ground);
-    const pixelRatio = this.renderer.getPixelRatio();
-    const viewportSize = this.renderer.getSize(new Vector2());
-    const viewportBackground = this.scene.background;
-    const viewportFog = this.scene.fog;
-    // Shot through a copy, so size, overlays and point of view never touch the viewport camera.
-    const camera = this.camera.clone();
-    try {
-      if (size !== undefined) {
-        this.renderer.setPixelRatio(1);
-        this.renderer.setSize(size.width, size.height, false);
-        camera.aspect = size.width / size.height;
+    return this.shoot(options, (camera, target) => this.captureFrom(camera, target, options));
+  }
+
+  /**
+   * Counts the overdraw of `camera`'s frame as the viewport's overdraw view does, at `shot`'s size
+   * and point of view: every part together, then each of `parts` (the effect's top-level objects)
+   * drawn alone. The counts add up, as the effects never hide each other in them, so the parts'
+   * fragments sum to the total's wherever no pixel reaches 255.
+   */
+  public measureOverdraw(
+    count: OverdrawCount,
+    shot: CaptureShot,
+    parts: readonly Object3D[],
+  ): OverdrawMeasure {
+    return this.shoot(shot, (camera) => {
+      // Depth Fade fades against the scene depth, and a fade can discard.
+      this.depthPass.update(camera);
+      const total = this.overdrawPass.measure(camera, count);
+      const shown = parts.filter((part) => part.visible);
+      try {
+        return {
+          total,
+          parts: parts.map((part) => {
+            for (const other of shown) {
+              other.visible = other === part;
+            }
+            return this.overdrawPass.measure(camera, count);
+          }),
+        };
+      } finally {
+        for (const part of shown) {
+          part.visible = true;
+        }
       }
-      const target = view === undefined ? this.controls.target : aimCaptureCamera(camera, view);
-      camera.updateProjectionMatrix();
-      if (!overlays) {
-        camera.layers.disable(EDITOR_OVERLAY_LAYER);
-        camera.layers.disable(EDITOR_GIZMO_LAYER);
-      }
-      if (ground) {
-        camera.layers.enable(EDITOR_GROUND_LAYER);
-      } else {
-        camera.layers.disable(EDITOR_GROUND_LAYER);
-      }
-      if (background === "transparent") {
-        return this.renderTransparent(camera);
-      }
-      if (background !== undefined) {
-        this.scene.background = background;
-      }
-      if (ground && !overlays && background instanceof Color) {
-        // Clear of the effect round the target, gone into the background well before the edge.
-        const distance = camera.position.distanceTo(target);
-        this.scene.fog = new Fog(
-          background,
-          distance * GROUND_FADE_START,
-          distance * GROUND_FADE_END,
-        );
-      }
-      this.renderFrom(camera);
-      const canvas = this.renderer.domElement;
-      return copyCanvas(canvas, canvas.width, canvas.height);
-    } finally {
-      this.scene.background = viewportBackground;
-      this.scene.fog = viewportFog;
-      if (size !== undefined) {
-        this.renderer.setPixelRatio(pixelRatio);
-        this.renderer.setSize(viewportSize.x, viewportSize.y, false);
-      }
-      this.renderFrom(this.camera);
-    }
+    });
   }
 
   public start(): void {
@@ -350,6 +376,7 @@ export class SceneCoordinator {
     this.controls.dispose();
     this.environment.destroy();
     this.depthPass.dispose();
+    this.overdrawPass.dispose();
     this.renderer.dispose();
   }
 
@@ -455,7 +482,7 @@ export class SceneCoordinator {
     // emitter time (no spawn, no integration) while the camera and render stay live.
     this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
-    this.renderFrom(this.camera);
+    this.renderViewport();
     this.frameHandle = requestAnimationFrame((next) => this.frame(next));
   }
 
@@ -478,6 +505,78 @@ export class SceneCoordinator {
       );
       this.statsFrames = 0;
       this.statsElapsed = 0;
+    }
+  }
+
+  /**
+   * Runs `draw` with a copy of the viewport camera aimed and sized as `shot` asks (`target` is
+   * what it looks at), then restores the drawing-buffer size and repaints the live view.
+   */
+  private shoot<T>(shot: CaptureShot, draw: (camera: PerspectiveCamera, target: Vector3) => T): T {
+    const { size, view } = shot;
+    const pixelRatio = this.renderer.getPixelRatio();
+    const viewportSize = this.renderer.getSize(new Vector2());
+    // Shot through a copy, so size, overlays and point of view never touch the viewport camera.
+    const camera = this.camera.clone();
+    try {
+      if (size !== undefined) {
+        this.renderer.setPixelRatio(1);
+        this.renderer.setSize(size.width, size.height, false);
+        camera.aspect = size.width / size.height;
+      }
+      const target = view === undefined ? this.controls.target : aimCaptureCamera(camera, view);
+      camera.updateProjectionMatrix();
+      return draw(camera, target);
+    } finally {
+      if (size !== undefined) {
+        this.renderer.setPixelRatio(pixelRatio);
+        this.renderer.setSize(viewportSize.x, viewportSize.y, false);
+      }
+      this.renderViewport();
+    }
+  }
+
+  /** {@link capture}'s frame from the aimed `camera`: its overlays, ground and background. */
+  private captureFrom(
+    camera: PerspectiveCamera,
+    target: Vector3,
+    options: FrameCaptureOptions,
+  ): HTMLCanvasElement {
+    const { overlays = true, background } = options;
+    const ground = options.ground ?? (overlays && this.settings.get().ground);
+    const viewportBackground = this.scene.background;
+    const viewportFog = this.scene.fog;
+    try {
+      if (!overlays) {
+        camera.layers.disable(EDITOR_OVERLAY_LAYER);
+        camera.layers.disable(EDITOR_GIZMO_LAYER);
+      }
+      if (ground) {
+        camera.layers.enable(EDITOR_GROUND_LAYER);
+      } else {
+        camera.layers.disable(EDITOR_GROUND_LAYER);
+      }
+      if (background === "transparent") {
+        return this.renderTransparent(camera);
+      }
+      if (background !== undefined) {
+        this.scene.background = background;
+      }
+      if (ground && !overlays && background instanceof Color) {
+        // Clear of the effect round the target, gone into the background well before the edge.
+        const distance = camera.position.distanceTo(target);
+        this.scene.fog = new Fog(
+          background,
+          distance * GROUND_FADE_START,
+          distance * GROUND_FADE_END,
+        );
+      }
+      this.renderFrom(camera);
+      const canvas = this.renderer.domElement;
+      return copyCanvas(canvas, canvas.width, canvas.height);
+    } finally {
+      this.scene.background = viewportBackground;
+      this.scene.fog = viewportFog;
     }
   }
 
@@ -519,6 +618,35 @@ export class SceneCoordinator {
     this.renderer.render(this.scene, camera);
   }
 
+  /** Draws the viewport's own frame: shaded, or the overdraw view with its pointer readout. */
+  private renderViewport(): void {
+    if (this.viewMode === "shaded") {
+      this.renderFrom(this.camera);
+      return;
+    }
+    // Depth Fade fades against the scene depth, and a fade can discard.
+    this.depthPass.update(this.camera);
+    this.overdrawPass.render(this.camera, this.viewMode);
+    if (this.reportOverdraw !== undefined) {
+      const pointer = this.pointer;
+      this.reportOverdraw(
+        pointer === undefined ? undefined : this.overdrawPass.countAt(pointer.x, pointer.y),
+      );
+    }
+  }
+
+  private trackPointer(event: PointerEvent): void {
+    const canvas = this.renderer.domElement;
+    const bounds = canvas.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) {
+      return;
+    }
+    this.pointer = {
+      x: ((event.clientX - bounds.left) * canvas.width) / bounds.width,
+      y: ((event.clientY - bounds.top) * canvas.height) / bounds.height,
+    };
+  }
+
   private resize(): void {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
@@ -530,7 +658,7 @@ export class SceneCoordinator {
     this.camera.updateProjectionMatrix();
     // Paint immediately: a ResizeObserver can fire while the rAF loop is throttled (a background
     // tab, or before start()), which would otherwise leave the canvas stretched until the next tick.
-    this.renderFrom(this.camera);
+    this.renderViewport();
   }
 }
 

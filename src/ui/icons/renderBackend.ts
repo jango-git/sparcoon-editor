@@ -1,6 +1,6 @@
 /**
- * Render-backend glyphs for the preview viewport's Baseline/Standard switch (a stacked-layers
- * motif: one plane for the single legacy tier, two for the fuller modern one). 16x16 line icons.
+ * Render-backend glyphs for the Render tab's Baseline/Standard option (a stacked-layers motif: one
+ * plane for the single legacy tier, two for the fuller modern one). 16x16 line icons.
  */
 export const renderBackendIcons = {
   // A single flat diamond plane - one tier, nothing layered underneath.

@@ -17,6 +17,8 @@ export interface SegmentOption<TKey extends string> {
   readonly label: string;
   /** An icon segment: renders this glyph instead of the label text, with `label` as its tooltip. */
   readonly glyph?: string;
+  /** Keeps the label text beside the glyph, for options whose glyph alone is no common symbol. */
+  readonly labelled?: boolean;
   /** Second (muted) tooltip line - what this option does. Shown on icon segments. */
   readonly description?: string;
 }
@@ -36,16 +38,25 @@ export function createSegmentedControl<TKey extends string>(
     }
   };
 
-  const createButton = (option: SegmentOption<TKey>): HTMLButtonElement => {
+  const createFace = (option: SegmentOption<TKey>): HTMLButtonElement => {
     const glyph = option.glyph ?? "";
-    const button =
-      glyph !== ""
-        ? createElement("button", { className: "segment segment--icon" })
-        : createElement("button", { className: "segment", textContent: option.label });
-    if (glyph !== "") {
-      button.append(icon(glyph));
-      attachTooltip(button, option.label, option.description);
+    if (glyph === "") {
+      return createElement("button", { className: "segment", textContent: option.label });
     }
+    const labelled = option.labelled === true;
+    const button = createElement("button", {
+      className: labelled ? "segment segment--labelled" : "segment segment--icon",
+    });
+    button.append(icon(glyph));
+    if (labelled) {
+      button.append(createElement("span", { textContent: option.label }));
+    }
+    attachTooltip(button, option.label, option.description);
+    return button;
+  };
+
+  const createButton = (option: SegmentOption<TKey>): HTMLButtonElement => {
+    const button = createFace(option);
     button.addEventListener("click", () => {
       if (current === option.key) {
         return;

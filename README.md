@@ -21,7 +21,7 @@ by the [`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
     <td align="center"><img src="assets/gallery/destruction.webp" width="400" alt="Destruction" /><br /><b>Destruction</b><br /><sub>mesh particles, shadows, lighting, collisions</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b><br /><sub>curl noise</sub></td>
+    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b><br /><sub>spawn on a mesh, curl noise</sub></td>
     <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b><br /><sub>GPU simulation, collision, shadows</sub></td>
   </tr>
   <tr>
@@ -105,8 +105,8 @@ If the particle was not born from a reaction, the node returns its default value
 
 ## Nodes
 
-- **Behavior:** spawn shapes, forces (gravity, drag, point force, vortex, turbulence), collisions
-  (plane, box, sphere, cone), particle attributes.
+- **Behavior:** random points in shapes and on mesh surfaces, forces (gravity, drag, point force,
+  vortex, turbulence), collisions (plane, box, sphere, cone), particle attributes.
 - **Render:** textures and flipbooks, UV transforms, gradients, color correction, fresnel, dissolve,
   soft particles (Depth Fade), lighting (Lambert, Half-Lit, ambient), normal maps, particle
   orientation.
@@ -146,8 +146,8 @@ Using the effect in a game is described in the
 - A project lives in the browser and is autosaved, and `Ctrl+S` saves it as `.json`. There is no
   cloud, no share links and no accounts.
 - A project from an earlier version opens in the current one. Missing fields get default values,
-  renamed node inputs and outputs are carried over, and a removed node stays in the graph with an
-  error.
+  renamed nodes and their renamed inputs and outputs are carried over, and a removed node stays in
+  the graph with an error.
 - After updating the runtime, export your effects again.
 
 ## Interface

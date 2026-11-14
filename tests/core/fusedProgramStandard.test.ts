@@ -40,7 +40,7 @@ function compileMotionGraph(attributes: readonly FXAttributeRequest[] = []) {
   const graph = new FXGraph<FXBehaviorNode>();
   graph.ingest({
     nodes: new Map([
-      ["box", r.create("spawn-box", { size: [2, 2, 2], center: [0, 0, 0] })],
+      ["box", r.create("random-box-point", { size: [2, 2, 2], center: [0, 0, 0] })],
       ["life", r.create("lifetime", { min: 1, max: 2 })],
       ["gravity", r.create("gravity", { acceleration: [0, -9.81, 0] })],
       ["integrate", r.create("integrate-motion", {})],

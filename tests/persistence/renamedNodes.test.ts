@@ -8,7 +8,7 @@ import type {
 } from "../../src/domain/graphModel";
 import { createEmptyGraph } from "../../src/domain/graphModel";
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
-import { migrateRenamedInputs } from "../../src/persistence/renamedInputs";
+import { migrateRenamedNodes } from "../../src/persistence/renamedNodes";
 
 function node(id: string, type: string, parameters: Record<string, unknown> = {}): GraphNode {
   return { id, type, parameters, position: { x: 0, y: 0 } };
@@ -48,10 +48,10 @@ function socketKeys(type: string, side: "inputs" | "outputs"): string[] {
   return definition.describe()[side].map((socket) => socket.key);
 }
 
-describe("migrateRenamedInputs", () => {
+describe("migrateRenamedNodes", () => {
   it("maps only onto keys the current node definitions declare", () => {
-    expect(socketKeys("spawn-cylinder", "inputs")).toContain("height");
-    expect(socketKeys("spawn-cylinder", "inputs")).not.toContain("length");
+    expect(socketKeys("random-cylinder-point", "inputs")).toContain("height");
+    expect(socketKeys("random-cylinder-point", "inputs")).not.toContain("length");
     expect(socketKeys("animated-texture", "outputs")).toEqual(
       expect.arrayContaining(["uvFrame", "uvNext"]),
     );
@@ -59,30 +59,65 @@ describe("migrateRenamedInputs", () => {
     expect(socketKeys("animated-texture", "outputs")).not.toContain("uvCurrent");
   });
 
+  it("maps old node types onto types the current definitions declare", () => {
+    for (const shape of ["box", "cone", "cylinder", "disc", "sphere", "torus"]) {
+      const migrated = migrateRenamedNodes(graphOf([node("n", `spawn-${shape}`)]));
+      const type = migrated.nodes["n"].type;
+      expect(type).toBe(`random-${shape}-point`);
+      expect(FX_STANDARD_NODES.some((definition) => definition.type === type)).toBe(true);
+    }
+  });
+
+  it("renames a node's type, keeping its id, parameters, wires and sink bindings", () => {
+    const sphere = node("s", "spawn-sphere", { radius: 2, surfaceOnly: true });
+    const graph = graphOf(
+      [node("src", "constant"), sphere],
+      [wire("w", ["src", "out"], ["s", "radius"])],
+      [{ slot: "position", from: { nodeId: "s", socketKey: "position" } }],
+    );
+    const migrated = migrateRenamedNodes(graph);
+    expect(migrated.nodes["s"]).toEqual({ ...sphere, type: "random-sphere-point" });
+    expect(migrated.nodes["src"]).toBe(graph.nodes["src"]);
+    expect(migrated.connections).toEqual(graph.connections);
+    expect(migrated.outputBindings).toEqual(graph.outputBindings);
+  });
+
+  it("renames an old cylinder's type and then its renamed input", () => {
+    const migrated = migrateRenamedNodes(
+      graphOf(
+        [node("src", "constant"), node("cyl", "spawn-cylinder", { length: 3 })],
+        [wire("w", ["src", "out"], ["cyl", "length"])],
+      ),
+    );
+    expect(migrated.nodes["cyl"].type).toBe("random-cylinder-point");
+    expect(migrated.nodes["cyl"].parameters).toEqual({ height: 3 });
+    expect(migrated.connections).toEqual([wire("w", ["src", "out"], ["cyl", "height"])]);
+  });
+
   it("returns a graph with no renamed node types as the same object", () => {
     const graph = graphOf(
-      [node("a", "spawn-cone", { length: 2 }), node("b", "gravity")],
+      [node("a", "random-cone-point", { length: 2 }), node("b", "gravity")],
       [wire("w", ["b", "velocity"], ["a", "length"])],
     );
-    expect(migrateRenamedInputs(graph)).toBe(graph);
+    expect(migrateRenamedNodes(graph)).toBe(graph);
   });
 
   it("moves a renamed input's stored value to its current key, keeping the other params", () => {
-    const migrated = migrateRenamedInputs(
+    const migrated = migrateRenamedNodes(
       graphOf([node("cyl", "spawn-cylinder", { length: 3, radius: 1 })]),
     );
     expect(migrated.nodes["cyl"].parameters).toEqual({ height: 3, radius: 1 });
   });
 
   it("keeps the current key when a file holds both the old and the current one", () => {
-    const migrated = migrateRenamedInputs(
+    const migrated = migrateRenamedNodes(
       graphOf([node("cyl", "spawn-cylinder", { length: 3, height: 5 })]),
     );
     expect(migrated.nodes["cyl"].parameters).toEqual({ height: 5 });
   });
 
   it("re-targets a wire feeding a renamed input, leaving other node types' same-named inputs alone", () => {
-    const migrated = migrateRenamedInputs(
+    const migrated = migrateRenamedNodes(
       graphOf(
         [node("src", "constant"), node("cyl", "spawn-cylinder"), node("cone", "spawn-cone")],
         [
@@ -108,7 +143,7 @@ describe("migrateRenamedInputs", () => {
       [{ slot: "albedo", from: { nodeId: "anim", socketKey: "uvCurrent" } }],
     );
 
-    const migrated = migrateRenamedInputs(graph);
+    const migrated = migrateRenamedNodes(graph);
 
     expect(migrated.connections.map((connection) => connection.from.socketKey)).toEqual([
       "uvFrame",
@@ -128,8 +163,8 @@ describe("migrateRenamedInputs", () => {
       [wire("w", ["anim", "uvPrevious"], ["cyl", "length"])],
       [{ slot: "albedo", from: { nodeId: "anim", socketKey: "uvCurrent" } }],
     );
-    const once = migrateRenamedInputs(graph);
-    expect(migrateRenamedInputs(once)).toEqual(once);
+    const once = migrateRenamedNodes(graph);
+    expect(migrateRenamedNodes(once)).toEqual(once);
   });
 
   it("reads only its own rename tables, whatever names a file stores", () => {
@@ -141,7 +176,7 @@ describe("migrateRenamedInputs", () => {
       [wire("w", ["odd", "hasOwnProperty"], ["cyl", "constructor"])],
       [{ slot: "albedo", from: { nodeId: "odd", socketKey: "valueOf" } }],
     );
-    const migrated = migrateRenamedInputs(graph);
+    const migrated = migrateRenamedNodes(graph);
     expect(migrated.nodes["odd"]).toBe(oddType);
     expect(migrated.nodes["cyl"].parameters).toEqual({ constructor: 3, height: 4 });
     expect(migrated.connections).toEqual(graph.connections);
@@ -164,10 +199,10 @@ describe("migrateRenamedInputs", () => {
 
     let migrated: EditorGraph | undefined;
     expect(() => {
-      migrated = migrateRenamedInputs(graph);
+      migrated = migrateRenamedNodes(graph);
     }).not.toThrow();
     expect(migrated?.nodes["broken"]).toBe(damagedNode);
-    expect(migrated?.nodes["cyl"]).toBe(noParameters);
+    expect(migrated?.nodes["cyl"]).toEqual({ ...noParameters, type: "random-cylinder-point" });
     expect(migrated?.connections).toEqual([noTarget, notAWire]);
     expect(migrated?.outputBindings).toEqual([noSource]);
   });

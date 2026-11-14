@@ -15,6 +15,7 @@ import type { HotkeyRouter } from "./focus/hotkeyRouter";
 import type { PanelFocus } from "./focus/panelFocus";
 import type { PanelFocusTracker } from "./focus/panelFocusTracker";
 import type { InputModeState } from "./inputMode";
+import type { PreviewViewModeState } from "./previewViewMode";
 
 export interface EditorContext {
   readonly store: Store;
@@ -27,5 +28,7 @@ export interface EditorContext {
   readonly selection: SelectionStore;
   readonly inputMode: InputModeState;
   readonly previewSettings: PreviewSettingsStore;
+  /** What the viewport shows: the shaded frame or an overdraw view. */
+  readonly viewMode: PreviewViewModeState;
   readonly gizmoSettings: GizmoSettingsStore;
 }

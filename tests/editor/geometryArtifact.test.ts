@@ -30,7 +30,7 @@ function graphs(): { render: FXGraph<FXRenderNode>; behavior: FXGraph<FXBehavior
   behavior.ingest({
     nodes: new Map<string, FXBehaviorNode>([
       ["life", br.create("lifetime", { min: 1, max: 1 })],
-      ["pos", br.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] })],
+      ["pos", br.create("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] })],
     ]),
     connections: [],
     outputBindings: [

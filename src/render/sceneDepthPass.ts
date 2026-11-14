@@ -8,7 +8,6 @@ import { fxSetCameraDepth } from "sparcoon";
 import {
   type Camera,
   DepthTexture,
-  MeshBasicMaterial,
   type Object3D,
   type Scene,
   Vector2,
@@ -16,7 +15,7 @@ import {
   WebGLRenderTarget,
 } from "three";
 
-import { EDITOR_GIZMO_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
+import { drawnSize, sizedTarget, StudioDepth } from "./offscreenPass";
 
 /** What the pre-pass asks of the previewed effects. */
 export interface SceneDepthSource {
@@ -31,15 +30,15 @@ export class SceneDepthPass {
 
   private target: WebGLRenderTarget | undefined = undefined;
   private readonly size = new Vector2();
-  // Depth only: the studio's shading would be thrown away.
-  private readonly depthOnly = new MeshBasicMaterial({ colorWrite: false });
+  private readonly studio: StudioDepth;
   // A depth texture needs WebGL2 or WEBGL_depth_texture; without one the effects draw hard.
   private readonly supported: boolean;
 
   constructor(
     private readonly renderer: WebGLRenderer,
-    private readonly scene: Scene,
+    scene: Scene,
   ) {
+    this.studio = new StudioDepth(renderer, scene);
     this.supported =
       renderer.capabilities.isWebGL2 || renderer.extensions.has("WEBGL_depth_texture");
   }
@@ -57,34 +56,18 @@ export class SceneDepthPass {
       return;
     }
     const drawn = this.renderer.getRenderTarget();
-    if (drawn instanceof WebGLRenderTarget) {
-      this.size.set(drawn.width, drawn.height);
-    } else {
-      this.renderer.getDrawingBufferSize(this.size);
-    }
-    const target = this.targetSized(this.size.x, this.size.y);
-
-    const { overrideMaterial } = this.scene;
-    const { autoUpdate } = this.renderer.shadowMap;
-    const effectsVisible = source.effects.visible;
-    const layers = camera.layers.mask;
-    this.scene.overrideMaterial = this.depthOnly;
-    // Grid, player figure and gizmos are editor furniture, not something an effect fades against.
-    camera.layers.disable(EDITOR_OVERLAY_LAYER);
-    camera.layers.disable(EDITOR_GIZMO_LAYER);
-    // The frame's own render updates the shadow maps; this one would only redo them.
-    this.renderer.shadowMap.autoUpdate = false;
-    const { effects } = source;
-    effects.visible = false;
+    const target = sizedTarget(
+      this.target,
+      drawnSize(this.renderer, this.size),
+      (width, height) =>
+        new WebGLRenderTarget(width, height, { depthTexture: new DepthTexture(width, height) }),
+    );
+    this.target = target;
     this.renderer.setRenderTarget(target);
     try {
-      this.renderer.render(this.scene, camera);
+      this.studio.draw(camera, source.effects);
     } finally {
       this.renderer.setRenderTarget(drawn);
-      camera.layers.mask = layers;
-      effects.visible = effectsVisible;
-      this.renderer.shadowMap.autoUpdate = autoUpdate;
-      this.scene.overrideMaterial = overrideMaterial;
     }
     fxSetCameraDepth(camera, target.depthTexture);
   }
@@ -92,18 +75,6 @@ export class SceneDepthPass {
   public dispose(): void {
     this.target?.dispose();
     this.target = undefined;
-    this.depthOnly.dispose();
-  }
-
-  // Remade, not resized, on a size change: rare, and a new depth texture is plainly the right size.
-  private targetSized(width: number, height: number): WebGLRenderTarget {
-    if (this.target?.width === width && this.target.height === height) {
-      return this.target;
-    }
-    this.target?.dispose();
-    this.target = new WebGLRenderTarget(width, height, {
-      depthTexture: new DepthTexture(width, height),
-    });
-    return this.target;
+    this.studio.dispose();
   }
 }

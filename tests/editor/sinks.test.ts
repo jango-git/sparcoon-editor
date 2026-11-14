@@ -145,7 +145,7 @@ describe("output sink nodes", () => {
       {
         ...createEmptyGraph(),
         nodes: {
-          pos: { id: "pos", type: "spawn-box", parameters: {}, position: { x: 0, y: 0 } },
+          pos: { id: "pos", type: "random-box-point", parameters: {}, position: { x: 0, y: 0 } },
         },
         outputBindings: [
           { slot: "position", from: { nodeId: "pos", socketKey: "position" }, phase: "spawn" },
@@ -157,7 +157,7 @@ describe("output sink nodes", () => {
     const snapshot = serializeGraph(graph);
     expect(snapshot.nodes[SPAWN_SINK_ID]).toBeUndefined();
     expect(snapshot.nodes[UPDATE_SINK_ID]).toBeUndefined();
-    expect(snapshot.nodes.pos).toEqual({ type: "spawn-box", params: {} });
+    expect(snapshot.nodes.pos).toEqual({ type: "random-box-point", params: {} });
     expect(snapshot.outputBindings).toEqual([
       { slot: "position", from: { nodeId: "pos", socketKey: "position" }, phase: "spawn" },
     ]);

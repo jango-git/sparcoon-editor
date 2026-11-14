@@ -1,3 +1,5 @@
+import { FX_SURFACE_TEXEL_FLOATS } from "sparcoon";
+
 import type { FXGLSLTypeName } from "../socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../socket/FXValueType";
 import type { FXCallSignature } from "./FXExprBuilder";
@@ -332,7 +334,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     js: () => "Math.random()",
   });
 
-  // Volume-mode radius sampling (spawn-sphere/spawn-cone) needs a real cube root; GLSL has no
+  // Volume-mode radius sampling (random-sphere-point/random-cone-point) needs a real cube root; GLSL has no
   // `cbrt`, but every call site's argument is non-negative (a [0,1) random draw), where
   // pow(x, 1/3) agrees with cbrt exactly - same spelling works under both GLSL tiers.
   definitions.push({
@@ -424,8 +426,27 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     js: noScalarJS("intShiftLeft"),
   });
 
+  // One texel of a mesh surface table (sparcoon's `surfaceTableLayout.ts`), by its index: an
+  // RGBA32F texture on the GPU, rows as wide as the texture, and the table's Float32Array on the
+  // CPU. The table never reaches WebGL1 (the JS kernel runs there), so it has no baseline form.
+  definitions.push({
+    name: "meshFetch",
+    signatures: [{ args: ["sampler2D", "float"], result: "vec4" }],
+    standardOnly: true,
+    packed: true,
+    glslStandard: (args) => `fxMeshFetch(${args[0]}, ${args[1]})`,
+    glslStandardHelper: FX_MESH_FETCH_GLSL_STANDARD_HELPER,
+    js: (args) => `${args[0]}[${args[1]} * ${String(FX_SURFACE_TEXEL_FLOATS)} + ${args[2]}]`,
+  });
+
   return new Map(definitions.map((definition) => [definition.name, definition]));
 }
+
+const FX_MESH_FETCH_GLSL_STANDARD_HELPER = `vec4 fxMeshFetch(sampler2D table, float texel) {
+  int index = int(texel);
+  int width = textureSize(table, 0).x;
+  return texelFetch(table, ivec2(index % width, index / width), 0);
+}`;
 
 /** The canonical, backend-neutral function registry. */
 export const FX_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = buildFunctions();

@@ -79,6 +79,8 @@
     "paramNamePlaceholder": "name...",
     "texture": "Texture",
     "uploadTextureHint": "upload in Assets...",
+    "mesh": "Mesh",
+    "uploadMeshHint": "upload in Assets...",
     "removeAttributeTitle": "Remove attribute",
     "removeAttributeTip": "Remove \"{name}\" from this sink.",
     "addAttribute": "Add attribute",
@@ -129,9 +131,17 @@
     "insertScaleKey": "Insert Scale Key",
     "insertAll": "Insert All",
     "renderBackendBaseline": "Baseline",
-    "renderBackendBaselineTip": "WebGL1-compatible rendering - previews what an older device will show.",
+    "renderBackendBaselineTip": "WebGL1 rendering - previews what an older device will show.",
     "renderBackendStandard": "Standard",
-    "renderBackendStandardTip": "WebGL2 rendering - previews what a modern device will show."
+    "renderBackendStandardTip": "WebGL2 rendering - previews what a modern device will show.",
+    "renderBackendReload": "Switching reloads the editor.",
+    "viewShaded": "None",
+    "viewShadedTip": "The shaded frame.",
+    "viewOverdraw": "Overdraw",
+    "viewOverdrawTip": "Counts every fragment of the particle quads, transparent texels and discarded fragments included. This is the fill cost.",
+    "viewSurviving": "Discard",
+    "viewSurvivingTip": "Counts only the fragments left after the alpha cutoff and alpha hash.",
+    "viewOpaqueNote": "Opaque effects are counted as if they did not hide each other."
   },
   "viewport": {
     "item": "Item",
@@ -140,7 +150,11 @@
     "addEmitterTip": "Add a new emitter to the scene.",
     "addMesh": "Spawn mesh",
     "addMeshTip": "Add a VFX mesh (a plain mesh with a material) to the scene.",
-    "settingsTip": "Adjust these preview settings."
+    "settingsTip": "Adjust these preview settings.",
+    "render": "Render",
+    "renderTip": "Which GLSL tier the preview renders with.",
+    "overdraw": "Overdraw",
+    "overdrawTip": "How many effect layers are drawn over each pixel."
   },
   "stats": {
     "title": "Stats",
@@ -154,7 +168,9 @@
     "graphCost": "Graph cost",
     "graphCostTip": "This graph's approximate ALU cost - higher runs more expensive.",
     "objectCost": "Object cost",
-    "totalCost": "Total cost"
+    "totalCost": "Total cost",
+    "overdraw": "Layers",
+    "overdrawTip": "Effect layers drawn over the pixel under the pointer."
   },
   "transport": {
     "jumpToStart": "Jump to start",

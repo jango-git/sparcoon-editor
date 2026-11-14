@@ -20,11 +20,13 @@ import { graphModeFor, GraphViewState } from "./graphViewState";
 import { createWorkspace } from "./layout/panelLayout";
 import { createMiddlebar } from "./middlebar";
 import { createGraphPanel } from "./panels/graphPanel";
+import { createOverdrawLegend } from "./panels/overdrawLegend";
 import { createPreviewPanel } from "./panels/previewPanel";
 import { createTimelinePanel } from "./panels/timelinePanel";
 import { createViewportObjects } from "./panels/viewportObjects";
 import { createViewportStats } from "./panels/viewportStats";
 import { createViewportTransform } from "./panels/viewportTransform";
+import { createViewportView } from "./panels/viewportView";
 
 export interface ApplicationShell {
   readonly canvas: HTMLCanvasElement;
@@ -32,6 +34,8 @@ export interface ApplicationShell {
   /** Pushes fresh FPS, particle-count and overflow readings into the viewport's stats overlay
    *  (render loop); `overflow` is `undefined` when no emitter can report it. */
   readonly reportStats: (fps: number, particles: number, overflow?: ParticleOverflow) => void;
+  /** Pushes the overdraw under the pointer into the stats overlay (render loop, overdraw view). */
+  readonly reportOverdraw: (layers: number | undefined) => void;
   /** Collapses/expands the N-panel's active tab. The viewport keymap (in main.ts) binds it to N. */
   readonly toggleTransformPanel: () => void;
   /** Opens the Content screen (assets + import/export). The global keymap (in main.ts) binds it
@@ -47,23 +51,19 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
 
   const preview = createPreviewPanel();
   // The right-hand N-panel hosts both the Item transform and the preview view-settings tabs
-  // (Lighting / Scene / Gizmo); it reads the settings + gizmo stores off the context.
+  // (Lighting / Scene / Gizmo); the left-hand one the Render and Overdraw tabs.
   const transformPanel = createViewportTransform(context);
-  preview.element.append(createViewportObjects(store));
-  preview.element.append(transformPanel.element);
-  const stats = createViewportStats();
-  preview.element.append(stats.element);
-  // Any other viewport interaction (orbit/pan/zoom/select) collapses the open N-panel tab so it
-  // doesn't linger over the scene; a tab's own press/release manages its own open/close already
-  // (see viewportTransform.ts), so events landing on the tab strip are left alone.
-  const collapseOnViewportInteraction = (event: Event): void => {
-    if (event.target instanceof Node && transformPanel.tabs.contains(event.target)) {
-      return;
-    }
-    transformPanel.collapse();
-  };
-  preview.element.addEventListener("pointerdown", collapseOnViewportInteraction);
-  preview.element.addEventListener("wheel", collapseOnViewportInteraction);
+  const viewPanel = createViewportView(context.viewMode);
+  const stats = createViewportStats(context.viewMode);
+  preview.element.append(
+    viewPanel.element,
+    createOverdrawLegend(context.viewMode),
+    createViewportObjects(store),
+    transformPanel.element,
+    stats.element,
+  );
+  transformPanel.collapseOnInteraction(preview.element);
+  viewPanel.collapseOnInteraction(preview.element);
   // Effect cost is whole-scene and structural, unlike fps/particles (pushed every frame by the
   // render loop via reportStats) - recompute only on a source edit. A mute toggle commits as a
   // view edit (sourceViewChanged), not structural, so both are listened for.
@@ -107,6 +107,7 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
     canvas: preview.canvas,
     previewContainer: preview.element,
     reportStats: stats.report,
+    reportOverdraw: stats.reportOverdraw,
     toggleTransformPanel: () => transformPanel.toggle(),
     openAssets: assets.open,
     arrangeGraph: (name) => graphPanel.arrange(graphModeFor(name)),

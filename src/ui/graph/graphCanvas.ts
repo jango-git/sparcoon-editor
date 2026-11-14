@@ -88,6 +88,8 @@ import {
 } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import type { TransportStore } from "../../model/transport";
+import { meshThumbnails } from "../../render/assetThumbnails";
+import type { AssetPickerOption } from "../components/assetPicker";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { createElement } from "../dom";
 import type { EditorContext } from "../editorContext";
@@ -510,44 +512,49 @@ export class GraphCanvas {
           this.activeRenderHost(),
           this.meshAssetNames(),
         );
-        view = new NodeView(
-          node,
-          metadata,
-          (key, value) => updateNodeParam(this.store, this.activeSlot(), nodeId, key, value),
+        const isSpawnSink = node.type === SPAWN_SINK_TYPE;
+        view = new NodeView(node, metadata, {
+          onParamChange: (key, value): void => {
+            updateNodeParam(this.store, this.activeSlot(), nodeId, key, value);
+          },
           // Live preview during a scrub/drag, never touching undo history (see updateNodeParam's
           // `live` param) - omitted entirely for the behavior graph, whose params then report
           // nothing until the gesture's final onParamChange above (per the user's own request: a
           // behavior-graph edit forces a full simulation rebuild, so it must not run mid-drag).
-          this.activeSlot() === "behaviorGraph"
-            ? undefined
-            : (key, value): void =>
-                updateNodeParam(this.store, this.activeSlot(), nodeId, key, value, true),
-          this.attributeConfigFor(metadata, nodeId),
-          (event, socket) => this.onSocketPointerDown(event, socket),
-          connectedInputKeys(fills.get(nodeId)),
-          this.textureAssetOptions(metadata),
+          onLiveParamChange:
+            this.activeSlot() === "behaviorGraph"
+              ? undefined
+              : (key, value): void =>
+                  updateNodeParam(this.store, this.activeSlot(), nodeId, key, value, true),
+          attribute: this.attributeConfigFor(metadata, nodeId),
+          onSocketPointerDown: (event, socket): void => {
+            this.onSocketPointerDown(event, socket);
+          },
+          connectedInputs: connectedInputKeys(fills.get(nodeId)),
+          textureAssets: this.textureAssetOptions(metadata),
           // A behavior sink's declared attributes are its `attr:<name>` input rows. Both phase
           // sinks get the row (an attribute is written from either), but only Spawn's carries a
           // rename field, a remove button, and an element-type picker - attributes are declared
-          // from Spawn, so Update only ever *uses* them; passing `undefined` here drops all three
+          // from Spawn, so Update only ever *uses* them; leaving these out drops all three
           // controls from its rows while leaving the socket itself (and its inline value editor)
           // fully wireable.
-          node.type === SPAWN_SINK_TYPE
+          onRemoveAttribute: isSpawnSink
             ? (name: string): void => removeAttribute(this.store, "behaviorGraph", name)
             : undefined,
-          node.type === SPAWN_SINK_TYPE
+          onSetAttributeType: isSpawnSink
             ? (name: string, type: AttributeTypeName): void =>
                 setAttributeType(this.store, "behaviorGraph", name, type)
             : undefined,
-          node.type === SPAWN_SINK_TYPE
+          onRenameAttribute: isSpawnSink
             ? (oldName: string, newName: string): boolean =>
                 renameAttribute(this.store, "behaviorGraph", oldName, newName)
             : undefined,
-          costs.get(nodeId),
-          sinkCosts.get(nodeId),
+          cost: costs.get(nodeId),
+          sinkCost: sinkCosts.get(nodeId),
           paletteAccess,
-          (): number => this.viewport.scale,
-        );
+          scale: (): number => this.viewport.scale,
+          meshAssets: this.meshAssetOptions(metadata),
+        });
         if (isSink(node)) {
           view.element.classList.add("node--output");
         } else if (isTimelineValueType(node.type)) {
@@ -1416,6 +1423,11 @@ export class GraphCanvas {
     if (metadata?.customParams?.some((parameter) => parameter.kind === "inherit-source") === true) {
       return `${base}|inherits:${JSON.stringify(this.inheritCandidates())}`;
     }
+    // A mesh picker lists the library's mesh assets: an upload or delete refreshes it. JSON, as a
+    // mesh name is unsanitized text (see the render sink above).
+    if (hasMeshAssetPicker(metadata)) {
+      return `${base}|meshes:${JSON.stringify(this.meshAssetNames())}`;
+    }
     // A Texture's picker lists the library's assets and its body previews the chosen
     // one; rebuild when that set changes so a freshly-uploaded (or deleted) texture shows up in
     // the dropdown, and when an asset's dimensions change so a replaced image repaints the preview.
@@ -1512,6 +1524,23 @@ export class GraphCanvas {
     }
   }
 
+  /** The library's mesh assets, offered to a node with a `mesh-asset` picker (empty otherwise). */
+  private meshAssetOptions(metadata: ReturnType<typeof metaForNode>): AssetPickerOption[] {
+    if (!hasMeshAssetPicker(metadata)) {
+      return [];
+    }
+    const assets = selectMeshAssets(this.store);
+    const thumbnails = meshThumbnails(assets);
+    return assets.map((asset) => {
+      const thumbnailUrl = thumbnails.get(asset.name);
+      return {
+        name: asset.name,
+        label: asset.label,
+        ...(thumbnailUrl === undefined ? {} : { thumbnailUrl }),
+      };
+    });
+  }
+
   /** The library's texture assets, offered to a Texture node's picker (empty otherwise). */
   private textureAssetOptions(
     metadata: ReturnType<typeof metaForNode>,
@@ -1543,4 +1572,9 @@ export class GraphCanvas {
       ),
     );
   }
+}
+
+/** Whether a node of `metadata` picks a mesh asset (Random Mesh Point). */
+function hasMeshAssetPicker(metadata: ReturnType<typeof metaForNode>): boolean {
+  return metadata?.customParams?.some((parameter) => parameter.kind === "mesh-asset") === true;
 }

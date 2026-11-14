@@ -46,8 +46,13 @@ describe("bundled project presets", () => {
     for (const preset of PROJECT_PRESETS) {
       const source = deserializeProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
+      // As the export compiles them: against the preset's content library.
+      const meshAssetNames = source!.meshAssets.map((asset) => asset.name);
       for (const emitter of source!.scene.emitters) {
-        expect(() => compileEmitter(emitter), `${preset.fileName}: ${emitter.name}`).not.toThrow();
+        expect(
+          () => compileEmitter(emitter, undefined, meshAssetNames),
+          `${preset.fileName}: ${emitter.name}`,
+        ).not.toThrow();
       }
       for (const mesh of source!.scene.meshes) {
         expect(() => compileMesh(mesh), `${preset.fileName}: ${mesh.name}`).not.toThrow();

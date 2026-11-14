@@ -161,6 +161,9 @@ export type FXCompilerErrorCode =
   // A warning: an emitter whose longest particle lifetime cannot be read off its graph
   // (domain/lifetimeBound.ts).
   | "lifetime-unbounded"
+  // A Random Mesh Point node naming a mesh asset the content library does not hold
+  // (domain/meshSurfaceChecks.ts).
+  | "missing-mesh-asset"
   | "inherit-missing"
   | "inherit-mistyped"
   | "inherit-unwritten"

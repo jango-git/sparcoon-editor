@@ -29,6 +29,7 @@ import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attr
 import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorAttribute } from "../domain/graphModel";
 import { unboundedLifetimeWarnings } from "../domain/lifetimeBound";
+import { missingMeshAssetErrors } from "../domain/meshSurfaceChecks";
 import {
   encodeGeometrySource,
   type RenderMode,
@@ -195,6 +196,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // Only meaningful for `config.geometry.kind === "custom"`: catches a mesh asset that was
   // deleted/re-uploaded under the same authored name, which a built emitter can't pick up live.
   private builtCustomGeometryRef: BufferGeometry | undefined = undefined;
+  // The geometries the behavior samples, as built: a mesh asset re-uploaded under the same name
+  // is a new geometry, which only a rebuild reads.
+  private builtSurfaceGeometries: readonly (BufferGeometry | undefined)[] = [];
   private builtRenderMode: RenderMode | undefined = undefined;
   // Surface-sink params, invisible to the live gate's IR hash - tracked to force a rebuild on
   // flip (the depth material is attached at build time in installEmitter).
@@ -407,6 +411,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     ];
     if (renderErrors.length > 0) {
       return hold({ render: invalidFromErrors(renderErrors) });
+    }
+    // The runtime requires every mesh the behavior samples: pin a missing one to its node.
+    const meshErrors = missingMeshAssetErrors(
+      this.behaviorLive.graphView,
+      Object.keys(this.resolveMeshGeometries()),
+    );
+    if (meshErrors.length > 0) {
+      return hold({ behavior: invalidFromErrors(meshErrors) });
     }
     if (trail !== undefined) {
       // A sort scrambles the per-slot path a trail records: the fix is on the render graph's
@@ -678,6 +690,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // since only a fresh driver can resize particle buffers or swap backend.
     const behaviorStructural =
       recompiled.behavior ||
+      !sameGeometries(this.surfaceGeometries(artifacts), this.builtSurfaceGeometries) ||
       spawnConfig.tryGpuSimulation !== this.builtTryGpuSimulation ||
       spawnConfig.expectedCapacity !== this.builtExpectedCapacity ||
       this.kernel !== this.builtKernel;
@@ -805,6 +818,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     return { baseline: assemble(shaders.baseline), standard: assemble(shaders.standard) };
   }
 
+  /** The library geometry of each mesh `artifacts`' behavior samples, in a stable order. */
+  private surfaceGeometries(artifacts: PreviewArtifacts): (BufferGeometry | undefined)[] {
+    const geometries = this.resolveMeshGeometries();
+    return [...new Set(Object.values(artifacts.behavior.meshSurfaces ?? {}))]
+      .sort()
+      .map((name) => geometries[name]);
+  }
+
   /** Full rebuild path: a fresh `FXEmitter.fromArtifacts` replacing the previous one - resets
    *  particle buffers and playback. Used for the first build, any behavior-structural change, or
    *  as the fallback when a render-only swap ({@link applyRenderArtifact}) refuses a genuine
@@ -839,6 +860,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     this.builtKernel = this.kernel;
     this.builtGeometryKey = encodeGeometrySource(geometry);
     this.builtCustomGeometryRef = currentCustomGeometryRef;
+    this.builtSurfaceGeometries = this.surfaceGeometries(artifacts);
     this.builtRenderMode = renderMode;
     this.builtCastShadow = castShadow;
     this.builtReceiveShadow = receiveShadow;
@@ -1019,4 +1041,12 @@ export function applyTransform(object: Object3D, transform: Transform): void {
   const quaternion = normalizeQuat(transform.rotation);
   object.quaternion.set(quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
   object.scale.set(transform.scale[0], transform.scale[1], transform.scale[2]);
+}
+
+/** Whether `a` and `b` hold the same geometries in the same order. */
+function sameGeometries(
+  a: readonly (BufferGeometry | undefined)[],
+  b: readonly (BufferGeometry | undefined)[],
+): boolean {
+  return a.length === b.length && a.every((geometry, i) => geometry === b[i]);
 }

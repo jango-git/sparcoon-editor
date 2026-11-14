@@ -66,7 +66,10 @@ export function printJS(
         requireScalar(node, "literal");
         return jsNumber(node.values[0]);
       case "ref":
-        requireScalar(node, "reference");
+        // A sampler is opaque: one JS value (a surface table), no components to scalarize.
+        if (node.type.instantiable) {
+          requireScalar(node, "reference");
+        }
         return resolveRef(node);
       case "bin":
         return printBin(node.op, print(node.a), print(node.b));

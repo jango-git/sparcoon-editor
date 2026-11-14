@@ -54,7 +54,7 @@ export function plumeGraphs(): {
     nodes: new Map<string, FXBehaviorNode>([
       // spawn: seed lifetime + position, store an initial velocity attribute.
       ["life", br.create("lifetime", { min: 2, max: 2 })],
-      ["pos", br.create("spawn-box", { size: [0, 0, 0], center: [0, 0, 0] })],
+      ["pos", br.create("random-box-point", { size: [0, 0, 0], center: [0, 0, 0] })],
       ["iv", br.create("initial-velocity", { direction: [0, 1, 0], speed: [1, 1] })],
       ["svs", storeAttr("velocity", VEC3, FXBehaviorPhase.SPAWN)],
       // update: accumulate velocity (gravity), then integrate position from it.

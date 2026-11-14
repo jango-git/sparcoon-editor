@@ -6,20 +6,42 @@ import { createDefaultEmitter, createInitialState } from "../../src/model/editor
 import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { TransportStore } from "../../src/model/transport";
-import type { FrameCaptureOptions } from "../../src/render/sceneCoordinator";
+import type { OverdrawStats } from "../../src/render/overdrawPass";
+import type { CaptureShot, FrameCaptureOptions } from "../../src/render/sceneCoordinator";
 
 /** A preview API over a fake coordinator that records what each capture was asked to render. */
 function previewWithRecorder() {
   const state = createInitialState();
   state.source = {
     ...state.source,
-    scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_1", "Emitter")] },
+    scene: {
+      ...state.source.scene,
+      emitters: [
+        createDefaultEmitter("emitter_1", "Emitter"),
+        createDefaultEmitter("emitter_2", "Smoke"),
+        { ...createDefaultEmitter("emitter_3", "Muted"), hidden: true },
+      ],
+    },
   };
   const store = new Store(state, new SignalBus());
   const transport = new TransportStore(() => store.getSource().timeline.duration);
   const requests: FrameCaptureOptions[] = [];
   const bolt = new Object3D();
+  const objects = new Map<string, Object3D>([
+    ["emitter_1", bolt],
+    ["emitter_2", new Object3D()],
+    ["emitter_3", new Object3D()],
+  ]);
   const steps: number[] = [];
+  const counted: { count: string; shot: CaptureShot; parts: readonly Object3D[] }[] = [];
+  // 10x10 frames: the first part draws 30 fragments, the second 120.
+  const stats = (fragments: number, max: number): OverdrawStats => ({
+    width: 10,
+    height: 10,
+    fragments,
+    covered: Math.min(fragments, 100),
+    max,
+  });
   const preview = createPreviewApi({
     store,
     transport,
@@ -29,11 +51,15 @@ function previewWithRecorder() {
         requests.push(options);
         return { width: 1, height: 1, toDataURL: () => "data:image/png;base64," } as never;
       },
+      measureOverdraw: (count, shot, parts) => {
+        counted.push({ count, shot, parts });
+        return { total: stats(150, 9), parts: [stats(30, 2), stats(120, 7)] };
+      },
     },
     focusEntity: () => {},
-    entityObject: (entity) => (entity.kind === "emitter" ? bolt : undefined),
+    entityObject: (entity) => (entity.kind === "emitter" ? objects.get(entity.id) : undefined),
   });
-  return { preview, transport, requests, steps, bolt };
+  return { preview, transport, requests, steps, bolt, counted, objects };
 }
 
 describe("agent preview captures", () => {
@@ -137,11 +163,58 @@ describe("agent preview captures", () => {
         capture: () => {
           throw new Error("GPU lost");
         },
+        measureOverdraw: () => {
+          throw new Error("GPU lost");
+        },
       },
       focusEntity: () => {},
       entityObject: () => undefined,
     });
     await expect(failing.capture({ time: 0.2 })).rejects.toThrow(/GPU lost/);
     expect(transport.isPlaying()).toBe(false);
+  });
+});
+
+describe("agent preview overdraw", () => {
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
+      setTimeout(() => callback(0), 0);
+      return 0;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("counts the shown owners alone, most fragments first, per pixel of the frame", async () => {
+    const { preview, counted, objects } = previewWithRecorder();
+    const report = await preview.overdraw({ count: "rasterized", width: 10, height: 10 });
+    const [request] = counted;
+    expect(request.count).toBe("rasterized");
+    expect(request.shot.size).toEqual({ width: 10, height: 10 });
+    // The hidden emitter is left out.
+    expect(request.parts).toEqual([objects.get("emitter_1"), objects.get("emitter_2")]);
+    expect(report).toMatchObject({ width: 10, height: 10, fragments: 150, perPixel: 1.5, max: 9 });
+    expect(report.byOwner).toEqual([
+      { id: "emitter_2", name: "Smoke", fragments: 120, perPixel: 1.2, max: 7 },
+      { id: "emitter_1", name: "Emitter", fragments: 30, perPixel: 0.3, max: 2 },
+    ]);
+  });
+
+  it("replays to the requested time and leaves the transport paused there", async () => {
+    const { preview, transport, steps } = previewWithRecorder();
+    await preview.overdraw({ count: "surviving", time: 0.5 });
+    expect(steps.reduce((total, step) => total + step, 0)).toBeCloseTo(0.5);
+    expect(transport.isPlaying()).toBe(false);
+    expect(transport.getTime()).toBeCloseTo(0.5);
+  });
+
+  it("rejects an unknown count and the capture-only look options", async () => {
+    const { preview } = previewWithRecorder();
+    await expect(preview.overdraw({ count: "all" as never })).rejects.toThrow(/count/);
+    await expect(preview.overdraw({ count: "rasterized", clean: true } as never)).rejects.toThrow(
+      /clean/,
+    );
   });
 });

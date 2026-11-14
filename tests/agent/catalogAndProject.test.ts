@@ -17,7 +17,7 @@ describe("agent catalog", () => {
     const render = catalog.nodeTypes("render");
     const behavior = catalog.nodeTypes("behavior");
     expect(render.some((entry) => entry.type === "constant")).toBe(true);
-    expect(behavior.some((entry) => entry.type === "spawn-sphere")).toBe(true);
+    expect(behavior.some((entry) => entry.type === "random-sphere-point")).toBe(true);
     const meshOnly = catalog.nodeTypes("render", { mesh: true });
     expect(meshOnly.length).toBeLessThan(render.length);
     expect(

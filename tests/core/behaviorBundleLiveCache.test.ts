@@ -31,12 +31,12 @@ function behaviorLive(): FXLiveGraph<FXBehaviorNode, FXCompiledBehaviorBundle> {
   );
 }
 
-// A GLSL-compilable spawn graph (spawn-box), so the standard family actually produces a program -
-// same fixture shape as behaviorKernelStandard.test.ts's own spawn-box smoke test.
-const SPAWN_BOX: FXGraphSnapshotData = {
+// A GLSL-compilable spawn graph (random-box-point), so the standard family actually produces a program -
+// same fixture shape as behaviorKernelStandard.test.ts's own random-box-point smoke test.
+const BOX_POINT: FXGraphSnapshotData = {
   version: 2,
   nodes: {
-    box: { type: "spawn-box", params: { size: [2, 2, 2], center: [0, 0, 0] } },
+    box: { type: "random-box-point", params: { size: [2, 2, 2], center: [0, 0, 0] } },
   },
   connections: [],
   outputBindings: [{ slot: "position", from: { nodeId: "box", socketKey: "position" } }],
@@ -46,7 +46,7 @@ describe("FXBehaviorLiveBackend + FXLiveGraph: the standard family is cached, no
   it("compiles the standard program on the first apply, then reuses it verbatim on an identical re-apply", () => {
     const live = behaviorLive();
 
-    const first = live.apply(SPAWN_BOX);
+    const first = live.apply(BOX_POINT);
     expect(first.status).toBe("recompiled");
     const bundle = live.artifact;
     expect(bundle?.standardProgram).toBeDefined();
@@ -54,7 +54,7 @@ describe("FXBehaviorLiveBackend + FXLiveGraph: the standard family is cached, no
     // An identical re-apply - nothing about the graph or the flag changed. EmitterView.
     // compileGpuKernel() has no gate of its own; FXLiveGraph's hash gate must catch this
     // at the source instead.
-    const second = live.apply(SPAWN_BOX);
+    const second = live.apply(BOX_POINT);
     expect(second.status).toBe("rebound");
     // Same bundle object, same standardProgram object - proof compileBehaviorBundle (and so
     // compileBehaviorStandard) was not invoked a second time, not just that the output matches.

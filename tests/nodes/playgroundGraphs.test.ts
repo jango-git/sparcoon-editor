@@ -31,7 +31,7 @@ describe("playground graphs - standard registries + hand-written resource nodes"
     const nodes = new Map<string, FXBehaviorNode>([
       // spawn
       ["life", r.create("lifetime", { min: 4, max: 4 })],
-      ["pos", r.create("spawn-box", { size: [0.8, 0, 0.8], center: [0, 0, 0] })],
+      ["pos", r.create("random-box-point", { size: [0.8, 0, 0.8], center: [0, 0, 0] })],
       ["ivel", r.create("initial-velocity", { direction: [0, 1, 0], speed: [1.8, 2.6] })],
       ["storeVelSpawn", storeAttr("velocity", VEC3, FXBehaviorPhase.SPAWN)],
       ["rot", r.create("random")],

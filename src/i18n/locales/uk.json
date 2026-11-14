@@ -79,6 +79,8 @@
     "paramNamePlaceholder": "ім'я...",
     "texture": "Текстура",
     "uploadTextureHint": "завантажте в Ассетах...",
+    "mesh": "Меш",
+    "uploadMeshHint": "завантажте в Ассетах...",
     "removeAttributeTitle": "Видалити атрибут",
     "removeAttributeTip": "Видалити \"{name}\" з цього стоку.",
     "addAttribute": "Додати атрибут",
@@ -129,9 +131,17 @@
     "insertScaleKey": "Вставити ключ масштабу",
     "insertAll": "Вставити всі",
     "renderBackendBaseline": "Базовий",
-    "renderBackendBaselineTip": "Рендер, сумісний з WebGL1 - показує, як ефект побачить старий пристрій.",
+    "renderBackendBaselineTip": "Рендер WebGL1 - показує, як ефект побачить старий пристрій.",
     "renderBackendStandard": "Стандартний",
-    "renderBackendStandardTip": "Рендер WebGL2 - показує, як ефект побачить сучасний пристрій."
+    "renderBackendStandardTip": "Рендер WebGL2 - показує, як ефект побачить сучасний пристрій.",
+    "renderBackendReload": "Перемикання перезавантажує редактор.",
+    "viewShaded": "Немає",
+    "viewShadedTip": "Звичайний кадр.",
+    "viewOverdraw": "Overdraw",
+    "viewOverdrawTip": "Рахуються всі фрагменти квадів частинок, зокрема прозорі пікселі текстури та відкинуті discard. Це вартість заливки.",
+    "viewSurviving": "Discard",
+    "viewSurvivingTip": "Рахуються лише фрагменти, що лишилися після відсікання за альфою та alpha hash.",
+    "viewOpaqueNote": "Непрозорі ефекти рахуються так, ніби не закривають один одного."
   },
   "viewport": {
     "item": "Об'єкт",
@@ -140,7 +150,11 @@
     "addEmitterTip": "Додати новий емітер до сцени.",
     "addMesh": "Створити меш",
     "addMeshTip": "Додати VFX-меш (звичайний меш з матеріалом) до сцени.",
-    "settingsTip": "Налаштувати параметри попереднього перегляду."
+    "settingsTip": "Налаштувати параметри попереднього перегляду.",
+    "render": "Рендер",
+    "renderTip": "Яким рівнем GLSL рендериться прев'ю.",
+    "overdraw": "Overdraw",
+    "overdrawTip": "Скільки шарів ефектів малюється в кожному пікселі."
   },
   "stats": {
     "title": "Статистика",
@@ -154,7 +168,9 @@
     "graphCost": "Вартість графа",
     "graphCostTip": "Приблизна ALU-вартість усього графа - що вища, то дорожчий він у виконанні.",
     "objectCost": "Вартість об'єкта",
-    "totalCost": "Загальна вартість"
+    "totalCost": "Загальна вартість",
+    "overdraw": "Шари",
+    "overdrawTip": "Шари ефектів у пікселі під курсором."
   },
   "transport": {
     "jumpToStart": "Перейти на початок",

@@ -1,7 +1,7 @@
 /**
  * The preview's performance readout: a small floating panel in the bottom-left of the 3D viewport,
  * showing FPS, total particle count, particle overflow and whole-scene effect cost as labelled
- * rows. Pure UI - never
+ * rows, and in an overdraw view the layers under the pointer. Pure UI - never
  * touches the model, commands or undo. FPS/particles are pushed by the render loop every frame via
  * {@link ViewportStats.report}; effect cost is pushed separately via {@link ViewportStats.reportCost}
  * since it only changes on a structural/view edit, not every frame.
@@ -11,6 +11,7 @@ import { t } from "../../i18n";
 import type { ParticleOverflow } from "../../render/sceneEmitters";
 import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
+import type { PreviewViewModeState } from "../previewViewMode";
 import { field } from "../primitives/field";
 
 export interface ViewportStats {
@@ -25,9 +26,12 @@ export interface ViewportStats {
   report(fps: number, particles: number, overflow?: ParticleOverflow): void;
   /** Updates the displayed whole-scene effect cost (called on a structural/view edit). */
   reportCost(cost: number): void;
+  /** Updates the layers under the pointer (called by the render loop in an overdraw view, the
+   *  only time its row shows); `undefined` while the pointer is off the canvas. */
+  reportOverdraw(layers: number | undefined): void;
 }
 
-export function createViewportStats(): ViewportStats {
+export function createViewportStats(viewMode: PreviewViewModeState): ViewportStats {
   const fpsValue = createElement("span", {
     className: "viewport-stats__value",
     textContent: "-",
@@ -47,12 +51,24 @@ export function createViewportStats(): ViewportStats {
     className: "viewport-stats__value",
     textContent: "-",
   });
-  const element = createElement("div", { className: "viewport-stats" }, [
+  const overdrawValue = createElement("span", {
+    className: "viewport-stats__value",
+    textContent: "-",
+  });
+  attachTooltip(overdrawValue, t("stats.overdraw"), t("stats.overdrawTip"));
+  const overdrawRow = statRow(overdrawValue, t("stats.overdraw"));
+  const syncOverdrawRow = (): void => {
+    overdrawRow.hidden = !viewMode.overdrawOn;
+  };
+  syncOverdrawRow();
+  viewMode.onChange(syncOverdrawRow);
+  const element = createElement("div", { className: "viewport-card viewport-stats" }, [
     createElement("div", { className: "viewport-stats__title", textContent: t("stats.title") }),
     statRow(fpsValue, t("field.fps")),
     statRow(particlesValue, t("stats.particles")),
     statRow(overflowValue, t("stats.overflow")),
     statRow(costValue, t("stats.totalCost")),
+    overdrawRow,
   ]);
 
   return {
@@ -80,6 +96,13 @@ export function createViewportStats(): ViewportStats {
     },
     reportCost(cost: number): void {
       costValue.textContent = Math.round(cost).toLocaleString("en-US");
+    },
+    reportOverdraw(layers: number | undefined): void {
+      const text = layers === undefined ? "-" : String(layers);
+      // Pushed every frame; the DOM is touched only on a change.
+      if (overdrawValue.textContent !== text) {
+        overdrawValue.textContent = text;
+      }
     },
   };
 }

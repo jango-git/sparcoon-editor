@@ -3,7 +3,6 @@ import { slotLayout } from "sparcoon/editor";
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
-  FXKernelBindingHandle,
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
@@ -22,9 +21,10 @@ import {
  * compiled data and the shared buffer helpers.
  */
 
-/** Reads each captured binding once into a local, ahead of the per-particle loop. */
-function bindingPreamble(bindings: Readonly<Record<string, FXKernelBindingHandle>>): string {
-  return Object.keys(bindings)
+/** Reads each captured binding and mesh surface once into a local, ahead of the per-particle
+ *  loop. */
+function bindingPreamble(phase: FXCompiledKernelPhase): string {
+  return [...Object.keys(phase.bindings), ...Object.keys(phase.surfaces ?? {})]
     .map((name) => `const ${name} = bindings[${JSON.stringify(name)}].value;`)
     .join("\n");
 }
@@ -76,7 +76,7 @@ function phaseLoopBody(phase: FXCompiledKernelPhase): string {
  */
 export function assembleKernelBody(phase: FXCompiledKernelPhase, loopHeader: string): string {
   return [
-    bindingPreamble(phase.bindings),
+    bindingPreamble(phase),
     // Particle-invariant locals, computed once per invocation before the loop.
     ...phase.preLoop,
     loopHeader,
