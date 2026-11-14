@@ -281,21 +281,32 @@ const presetGraphs = readdirSync(PRESETS)
     ];
   });
 
-describe("arrangeGraph on the bundled presets", () => {
-  it.each(presetGraphs)("$name", ({ graph, kind }) => {
-    const arranged = arrange(graph, kind);
-    expect(serializeGraph(arranged, kind)).toEqual(serializeGraph(graph, kind));
-    expect(arranged.comments).toEqual([]);
-    expect(layoutProblems(arranged, kind, syntheticMetrics(graph, kind))).toEqual([]);
-  });
+// The largest preset graphs take seconds to arrange, more on a loaded or small machine.
+const PRESET_ARRANGE_TIMEOUT_MS = 30_000;
 
-  it("arranging an arranged graph changes nothing that compiles and keeps every promise", () => {
-    for (const { graph, kind } of presetGraphs.slice(0, 12)) {
-      const twice = arrange(arrange(graph, kind), kind);
-      expect(serializeGraph(twice, kind)).toEqual(serializeGraph(graph, kind));
-      expect(layoutProblems(twice, kind, syntheticMetrics(graph, kind))).toEqual([]);
-    }
-  });
+describe("arrangeGraph on the bundled presets", () => {
+  it.each(presetGraphs)(
+    "$name",
+    ({ graph, kind }) => {
+      const arranged = arrange(graph, kind);
+      expect(serializeGraph(arranged, kind)).toEqual(serializeGraph(graph, kind));
+      expect(arranged.comments).toEqual([]);
+      expect(layoutProblems(arranged, kind, syntheticMetrics(graph, kind))).toEqual([]);
+    },
+    PRESET_ARRANGE_TIMEOUT_MS,
+  );
+
+  it(
+    "arranging an arranged graph changes nothing that compiles and keeps every promise",
+    () => {
+      for (const { graph, kind } of presetGraphs.slice(0, 12)) {
+        const twice = arrange(arrange(graph, kind), kind);
+        expect(serializeGraph(twice, kind)).toEqual(serializeGraph(graph, kind));
+        expect(layoutProblems(twice, kind, syntheticMetrics(graph, kind))).toEqual([]);
+      }
+    },
+    PRESET_ARRANGE_TIMEOUT_MS,
+  );
 });
 
 describe("arrangeActiveGraph", () => {

@@ -26,6 +26,10 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # A failing check stops the deploy, and the site keeps the last version that passed.
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build
 
       - name: Prepare site
