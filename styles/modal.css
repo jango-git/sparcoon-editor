@@ -183,13 +183,6 @@
   overflow-y: auto;
 }
 
-/* Controls that read as one unit (the embed flag over its TypeScript export). */
-.content-export__group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .content-export__field {
   display: flex;
   flex-direction: column;
@@ -226,17 +219,6 @@
 .content-export__button {
   justify-content: center;
   padding: 0 12px;
-}
-
-/* The embed-assets flag: checkbox + label, gating the TypeScript export below it (tooltip has the
-   detail). */
-.content-export__embed {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--font-size-small);
-  color: var(--muted);
-  cursor: pointer;
 }
 
 /* The Examples list: one .asset-row per bundled preset, no scroll (it's short by design). A preset

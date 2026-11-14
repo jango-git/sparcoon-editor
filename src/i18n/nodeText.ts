@@ -1,10 +1,10 @@
 /**
  * Node-graph text (label/description/socket+param labels), resolved by a node's stable `type`
  * (plus a socket/param key) at render time - never baked into `FXNodeMeta`. `NODE_PALETTE`
- * (domain/nodePalette.ts) builds eagerly at module-load time, before `initI18n` resolves, so
+ * (domain/nodePalette.ts) builds eagerly at module-load time, before `initGraphText` resolves, so
  * baking translated text into it would race the locale fetch; resolving here, at the point the
  * UI actually paints a label, sidesteps that entirely (painting only starts after
- * `mountApplicationShell`, itself after `await initI18n()`).
+ * `mountApplicationShell`, itself after `await initGraphText()`).
  *
  * Keys are runtime strings (a node `type`), not compile-time literals, so there is no `TKey`-style
  * type check here - `tests/i18n/nodeText.test.ts` covers completeness instead. Every resolver
@@ -52,7 +52,7 @@ async function loadNodeDictionary(code: string): Promise<NodeTextDictionary> {
   return (await response.json()) as NodeTextDictionary;
 }
 
-/** Must be awaited before any resolver call - see {@link initI18n}, which calls this. */
+/** Must be awaited before any resolver call - see {@link initGraphText}, which calls this. */
 export async function initNodeText(locale: string): Promise<void> {
   const [fallback, current] = await Promise.all([
     loadNodeDictionary(DEFAULT_LOCALE),

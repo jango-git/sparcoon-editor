@@ -1,0 +1,30 @@
+/* Unsupported-device notice, shown in place of the editor (src/ui/unsupportedDevice.ts). */
+
+.unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  background: var(--panel-background);
+}
+
+.unsupported__logo {
+  width: 64px;
+  height: 64px;
+}
+
+.unsupported__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.unsupported__text {
+  max-width: 360px;
+  margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+}

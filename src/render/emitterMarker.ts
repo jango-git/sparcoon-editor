@@ -24,7 +24,7 @@ import {
   ENTITY_ACCENT_LIGHTNESS,
   ENTITY_ACCENT_SATURATION,
 } from "../theme/entityAccent";
-import { markEditorOverlay } from "./editorOverlay";
+import { markEditorGizmo } from "./editorOverlay";
 
 /** The kind of object a marker stands for - picks its outline shape. */
 export type MarkerKind = "vfx" | "emitter" | "vfxMesh";
@@ -107,7 +107,7 @@ export function createGizmoMarker(kind: MarkerKind): GizmoMarker {
   const pickMesh = new Mesh(pickGeometry, pickMaterial);
   pickMesh.name = "GizmoPick";
   lines.add(pickMesh);
-  markEditorOverlay(lines);
+  markEditorGizmo(lines);
 
   const colorSelected = selectedColor(kind);
   return {

@@ -303,8 +303,8 @@ describe("death reactions in the export", () => {
         attributes: [{ name: "heat", type: "float" }],
         nodes: {
           ...shellGraph.nodes,
-          n_heat: {
-            id: "n_heat",
+          nHeat: {
+            id: "nHeat",
             type: "constant",
             parameters: { type: "float", value: heat },
             position: { x: 0, y: 0 },
@@ -316,7 +316,7 @@ describe("death reactions in the export", () => {
             ? [
                 {
                   slot: "attr:heat",
-                  from: { nodeId: "n_heat", socketKey: "out" },
+                  from: { nodeId: "nHeat", socketKey: "out" },
                   phase: "spawn" as const,
                 },
               ]
@@ -330,8 +330,8 @@ describe("death reactions in the export", () => {
         ...sparksGraph,
         nodes: {
           ...sparksGraph.nodes,
-          n_inherit: {
-            id: "n_inherit",
+          nInherit: {
+            id: "nInherit",
             type: "inherited-attribute",
             parameters: { source: "attribute", name: "heat", type: "float", value: fallback },
             position: { x: 0, y: 0 },
@@ -339,7 +339,7 @@ describe("death reactions in the export", () => {
         },
         outputBindings: [
           ...sparksGraph.outputBindings.filter((binding) => binding.slot !== "lifetime"),
-          { slot: "lifetime", from: { nodeId: "n_inherit", socketKey: "value" }, phase: "spawn" },
+          { slot: "lifetime", from: { nodeId: "nInherit", socketKey: "value" }, phase: "spawn" },
         ],
       },
     };

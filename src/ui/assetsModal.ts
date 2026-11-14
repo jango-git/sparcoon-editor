@@ -5,10 +5,8 @@
  * GLB meshes stack as sections rather than three parallel columns), Project (name/save-load/
  * examples/export) and Help (a static quick-reference). A single "Upload asset" affordance
  * (button or drag-drop) routes dropped files to their library by type, and drag-drop is live over
- * the whole sheet regardless of which block it lands on. The embed-assets flag is still inert -
- * the TypeScript export takes its assets via constructor, not embedded. A row's user count is real
- * for textures (node references) and HDRIs (active or not, ADR-0004), 0 for the not-yet-consumed
- * mesh kind.
+ * the whole sheet regardless of which block it lands on. A row's user count is real for textures
+ * (node references) and HDRIs (active or not, ADR-0004), 0 for the not-yet-consumed mesh kind.
  */
 
 import { t } from "../i18n";

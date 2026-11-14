@@ -135,6 +135,12 @@ export function createPreviewSettingsGroups(
     hemisphereIntensityRow,
   ];
   const presetPickerRow = presetRow(store, signals);
+  const groundRow = toggleRow(
+    t("preview.ground"),
+    current.ground,
+    (on) => settings.update({ ground: on }),
+    t("preview.groundTip"),
+  );
   const gridRow = toggleRow(
     t("preview.grid"),
     current.grid,
@@ -146,6 +152,12 @@ export function createPreviewSettingsGroups(
     current.playerFigure,
     (on) => settings.update({ playerFigure: on }),
     t("preview.playerFigureTip"),
+  );
+  const gizmosRow = toggleRow(
+    t("preview.gizmos"),
+    current.gizmos,
+    (on) => settings.update({ gizmos: on }),
+    t("preview.gizmosTip"),
   );
   const backgroundRow = colorRow(
     t("preview.background"),
@@ -176,8 +188,10 @@ export function createPreviewSettingsGroups(
     hemisphereSkyRow.setValue(latest.hemisphereSky);
     hemisphereGroundRow.setValue(latest.hemisphereGround);
     hemisphereIntensityRow.setValue(latest.hemisphereIntensity);
+    groundRow.setValue(latest.ground);
     gridRow.setValue(latest.grid);
     playerFigureRow.setValue(latest.playerFigure);
+    gizmosRow.setValue(latest.gizmos);
     backgroundRow.setValue(latest.background);
   };
   applyPreviewState();
@@ -224,7 +238,13 @@ export function createPreviewSettingsGroups(
     {
       label: t("preview.scene"),
       glyph: viewportIcons.scene,
-      rows: [gridRow.element, playerFigureRow.element, backgroundRow.element],
+      rows: [
+        groundRow.element,
+        gridRow.element,
+        playerFigureRow.element,
+        gizmosRow.element,
+        backgroundRow.element,
+      ],
     },
     {
       // Gizmo: the modal transform tool's axis space (Local/Global) and per-mode snap increments.

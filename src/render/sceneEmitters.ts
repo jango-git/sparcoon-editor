@@ -51,7 +51,6 @@ import { authoredGraphs, type GraphName } from "../model/graphSlots";
 import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
 import { blocked, invalidFromErrors } from "./applyStatus.Internal";
-import { EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
@@ -84,7 +83,7 @@ export class SceneEmitters implements SceneApplier {
   // The VFX group's own preview gizmo, a permanent child of the group.
   private readonly vfxMarker: GizmoMarker = createGizmoMarker("vfx");
   // Reused for viewport click-picking, so a pick allocates nothing.
-  private readonly raycaster = createPickRaycaster();
+  private readonly raycaster = new Raycaster();
   // The entity currently selected for the gizmo - its marker is highlighted. Re-applied after
   // every sync so a freshly (re)built emitter view adopts the current highlight.
   private selected: SceneEntity = VFX_ENTITY;
@@ -289,6 +288,8 @@ export class SceneEmitters implements SceneApplier {
   public pick(ndc: Vector2, camera: Camera): SceneEntity | undefined {
     this.vfxGroup.updateWorldMatrix(true, true);
     this.raycaster.setFromCamera(ndc, camera);
+    // Hidden gizmos are not pickable: the ray sees the layers the camera draws.
+    this.raycaster.layers.mask = camera.layers.mask;
     const targets: { object: Object3D; entity: SceneEntity }[] = [
       { object: this.vfxMarker.pickTarget, entity: VFX_ENTITY },
     ];
@@ -649,13 +650,6 @@ function emptyResult(): SceneApplyResult {
     renderStatus: IDLE,
     behaviorStatus: IDLE,
   };
-}
-
-/** A raycaster that sees the gizmo pick targets, which live on the editor overlay layer. */
-function createPickRaycaster(): Raycaster {
-  const raycaster = new Raycaster();
-  raycaster.layers.enable(EDITOR_OVERLAY_LAYER);
-  return raycaster;
 }
 
 /** Shows or hides `view` (when it exists); whether that changed its visibility. */

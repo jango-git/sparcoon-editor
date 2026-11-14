@@ -83,10 +83,8 @@ async function loadDictionary(code: string): Promise<DeepPartial<Dictionary>> {
   return (await response.json()) as DeepPartial<Dictionary>;
 }
 
-/** Must be awaited before any t() call (or any node-text/compiler-error resolver, see ./nodeText
- *  and ./compilerErrors). Loads the English fallback and (if different) the detected active
- *  locale, plus the node-text and compiler-error dictionaries for the same locale; a failed
- *  active load falls back to en. */
+/** Must be awaited before any t() call. Loads the English fallback and (if different) the
+ *  detected active locale of the interface dictionary. A failed active load falls back to en. */
 export async function initI18n(): Promise<void> {
   active = detectLocale();
   const [fallback, current] = await Promise.all([
@@ -97,11 +95,15 @@ export async function initI18n(): Promise<void> {
           console.warn(error);
           return undefined;
         }),
-    initNodeText(active),
-    initCompilerErrors(active),
   ]);
   fallbackDictionary = fallback;
   activeDictionary = current ?? fallback;
+}
+
+/** Must be awaited, after {@link initI18n}, before any node-text or compiler-error resolver call
+ *  (see ./nodeText and ./compilerErrors). Loads both dictionaries for the active locale. */
+export async function initGraphText(): Promise<void> {
+  await Promise.all([initNodeText(active), initCompilerErrors(active)]);
 }
 
 export function getLocale(): string {

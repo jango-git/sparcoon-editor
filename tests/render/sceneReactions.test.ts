@@ -143,8 +143,8 @@ describe("SceneEmitters: death reactions in the live preview", () => {
         attributes: [{ name: "heat", type: "float" }],
         nodes: {
           ...shell.behaviorGraph.nodes,
-          n_heat: {
-            id: "n_heat",
+          nHeat: {
+            id: "nHeat",
             type: "constant",
             parameters: { type: "float", value: 5 },
             position: { x: 0, y: 0 },
@@ -152,7 +152,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
         },
         outputBindings: [
           ...shell.behaviorGraph.outputBindings,
-          { slot: "attr:heat", from: { nodeId: "n_heat", socketKey: "out" }, phase: "spawn" },
+          { slot: "attr:heat", from: { nodeId: "nHeat", socketKey: "out" }, phase: "spawn" },
         ],
       },
     };
@@ -169,16 +169,16 @@ describe("SceneEmitters: death reactions in the live preview", () => {
         ...sparks.behaviorGraph,
         nodes: {
           ...sparks.behaviorGraph.nodes,
-          n_heat: inherit("heat", "n_heat"),
-          n_cold: inherit("cold", "n_cold"),
+          nHeat: inherit("heat", "nHeat"),
+          nCold: inherit("cold", "nCold"),
         },
         outputBindings: [
           // Lifetime and position from what they inherit instead (positionX would overlap position).
           ...sparks.behaviorGraph.outputBindings.filter(
             (binding) => binding.slot !== "lifetime" && binding.slot !== "position",
           ),
-          { slot: "lifetime", from: { nodeId: "n_heat", socketKey: "value" }, phase: "spawn" },
-          { slot: "positionX", from: { nodeId: "n_cold", socketKey: "value" }, phase: "spawn" },
+          { slot: "lifetime", from: { nodeId: "nHeat", socketKey: "value" }, phase: "spawn" },
+          { slot: "positionX", from: { nodeId: "nCold", socketKey: "value" }, phase: "spawn" },
         ],
       },
     };

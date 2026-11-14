@@ -26,10 +26,10 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
-import type { PreviewSettingsStore } from "../settings/previewSettings";
+import type { PreviewSettings, PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
-import { EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
+import { EDITOR_GIZMO_LAYER, EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
 import type { DecodedEnvironment } from "./environmentTexture";
 import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
@@ -66,12 +66,14 @@ function createSceneRenderer(
 export interface FrameCaptureOptions {
   /** Pixel size to render at; omitted, the viewport's own drawing-buffer size. */
   readonly size?: { readonly width: number; readonly height: number };
-  /** Whether the editor's furniture (grid, player figure, gizmos) is drawn. Default true. */
+  /** Whether the editor's furniture (grid, player figure, gizmos) is drawn as the viewport shows
+   *  it. Default true. */
   readonly overlays?: boolean;
   /**
    * Whether the studio ground is drawn - what shadows fall on and a Depth Fade fades against.
-   * Default: as {@link overlays}. Drawn without the overlays, it fades into a solid
-   * {@link background} past the point the frame is aimed at, so no edge of the plane shows.
+   * Default: as the viewport shows it, and off without the {@link overlays}. Drawn without the
+   * overlays, it fades into a solid {@link background} past the point the frame is aimed at, so no
+   * edge of the plane shows.
    */
   readonly ground?: boolean;
   /** Replaces the background for this frame (an active HDRI's included); lighting is untouched. */
@@ -145,9 +147,9 @@ export class SceneCoordinator {
 
     this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
     this.camera.position.set(0, 2, 7);
-    // The viewport shows the editor's furniture too; a clean capture switches this layer off.
+    // The viewport shows the editor's furniture too; a clean capture switches this layer off. The
+    // gizmo and ground layers follow the preview settings (applyViewLayers).
     this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
-    this.camera.layers.enable(EDITOR_GROUND_LAYER);
 
     // Damping off so the camera stops exactly when the pointer does; polar clamp keeps it from
     // diving below the floor. Bound to the container (not the canvas) so a drag starting over a
@@ -174,7 +176,11 @@ export class SceneCoordinator {
       this.activeEnvironment,
       this.renderer,
     );
-    settings.subscribe((next) => this.environment.apply(next, this.activeEnvironment));
+    this.applyViewLayers(settings.get());
+    settings.subscribe((next) => {
+      this.environment.apply(next, this.activeEnvironment);
+      this.applyViewLayers(next);
+    });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
@@ -271,7 +277,8 @@ export class SceneCoordinator {
    * size, which a GPU limit can clamp below the requested one; the frame is never stretched.
    */
   public capture(options: FrameCaptureOptions = {}): HTMLCanvasElement {
-    const { size, overlays = true, ground = overlays, background, view } = options;
+    const { size, overlays = true, background, view } = options;
+    const ground = options.ground ?? (overlays && this.settings.get().ground);
     const pixelRatio = this.renderer.getPixelRatio();
     const viewportSize = this.renderer.getSize(new Vector2());
     const viewportBackground = this.scene.background;
@@ -288,8 +295,11 @@ export class SceneCoordinator {
       camera.updateProjectionMatrix();
       if (!overlays) {
         camera.layers.disable(EDITOR_OVERLAY_LAYER);
+        camera.layers.disable(EDITOR_GIZMO_LAYER);
       }
-      if (!ground) {
+      if (ground) {
+        camera.layers.enable(EDITOR_GROUND_LAYER);
+      } else {
         camera.layers.disable(EDITOR_GROUND_LAYER);
       }
       if (background === "transparent") {
@@ -350,6 +360,20 @@ export class SceneCoordinator {
   private getParticleCount: () => number = () => 0;
   // Births lost to full emitters, sampled alongside the particle count; `undefined` = unknown.
   private getParticleOverflow: () => ParticleOverflow | undefined = () => undefined;
+
+  /** Shows or hides the gizmo and ground layers in the viewport, as the preview settings say. */
+  private applyViewLayers(settings: PreviewSettings): void {
+    for (const [layer, shown] of [
+      [EDITOR_GIZMO_LAYER, settings.gizmos],
+      [EDITOR_GROUND_LAYER, settings.ground],
+    ] as const) {
+      if (shown) {
+        this.camera.layers.enable(layer);
+      } else {
+        this.camera.layers.disable(layer);
+      }
+    }
+  }
 
   /** Wheel handler: touchpad pans/pinch-zooms; mouse dollies through the direction lock. */
   private onWheel(event: WheelEvent): void {

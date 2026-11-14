@@ -209,7 +209,6 @@
   right: 10px;
   z-index: 3;
   background: var(--panel-background);
-  font-variant-numeric: tabular-nums;
 }
 
 .graph-arrange.counting {

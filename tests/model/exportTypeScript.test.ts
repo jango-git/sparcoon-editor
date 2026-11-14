@@ -442,8 +442,8 @@ describe("emitProjectModule - executes", () => {
         ...graph,
         nodes: {
           ...graph.nodes,
-          n_hash: {
-            id: "n_hash",
+          nHash: {
+            id: "nHash",
             type: "hash",
             parameters: { type: "float" },
             position: { x: 0, y: 0 },
@@ -451,7 +451,7 @@ describe("emitProjectModule - executes", () => {
         },
         outputBindings: [
           ...graph.outputBindings,
-          { slot: "intensity", from: { nodeId: "n_hash", socketKey: "out" } },
+          { slot: "intensity", from: { nodeId: "nHash", socketKey: "out" } },
         ],
       },
     };
@@ -466,7 +466,7 @@ describe("emitProjectModule - executes", () => {
       sparcoon.FXWorld.update(0.05);
       const seedOf = (effect: three.Group): unknown => {
         const drawn = effect.children.find((child) => child.type === "Mesh") as three.Mesh;
-        return (drawn.material as three.ShaderMaterial).uniforms["RANDOM_SEED"]?.value;
+        return (drawn.material as three.ShaderMaterial).uniforms["RANDOM_SEED"].value;
       };
       expect(typeof seedOf(effects[0])).toBe("number");
       expect(seedOf(effects[0])).not.toBe(seedOf(effects[1]));

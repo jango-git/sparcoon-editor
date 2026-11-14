@@ -1,15 +1,12 @@
-/* Countdown-confirm control (components/countdownConfirm.ts): a danger-tinted guarded button, shared
-   by the timeline row remove and the middlebar reset - each caller adds only its own size class. The
-   `counting` class (set by the control while a countdown is live) fills danger like :hover, and
-   tabular-nums keeps the remaining-clicks digit from shifting width as it counts down. */
+/* Danger-tinted guarded button, used with the countdown-confirm control
+   (components/countdownConfirm.ts) - each caller adds only its own size class. The `counting` class
+   (set by the control while a countdown is live) fills danger like :hover. */
 .confirm-danger {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
   color: var(--danger);
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border-mid));
@@ -21,4 +18,28 @@
   color: var(--on-accent);
   background: var(--danger);
   border-color: var(--danger);
+}
+
+/* While counting, the lone digit sits centered, also on a labelled button (Arrange) that keeps its
+   width (countdownConfirm.ts). */
+.countdown-confirm.counting {
+  justify-content: center;
+}
+
+/* The remaining-presses digit, the same on every countdown-confirm button whatever its own label
+   size; tabular-nums keeps it from shifting width as it counts down. */
+.countdown-confirm__count {
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Just fired: grey for a moment, hovered or not. `:not(.counting)` only lifts the specificity above
+   the callers' :hover and resting-background rules (the two classes never coexist). */
+.countdown-confirm.confirmed:not(.counting) {
+  color: var(--confirmed-foreground);
+  background: var(--confirmed-background);
+  border-color: var(--confirmed-border);
+  cursor: default;
 }

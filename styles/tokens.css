@@ -58,6 +58,11 @@
   --overlay-subtle: rgba(255, 255, 255, 0.04);
   --well: rgba(0, 0, 0, 0.22);
 
+  /* A countdown-confirm button just after it fired (confirm.css). */
+  --confirmed-background: #202227;
+  --confirmed-border: #34363c;
+  --confirmed-foreground: #8a8f96;
+
   --card-accent: var(--accent);
 
   /* Timeline spawn events read amber against the blue value keyframes. Deliberately the
@@ -109,4 +114,8 @@
 
   --overlay-subtle: rgba(0, 0, 0, 0.05);
   --well: rgba(0, 0, 0, 0.06);
+
+  --confirmed-background: #2c2e33;
+  --confirmed-border: #2c2e33;
+  --confirmed-foreground: #c4c7cc;
 }

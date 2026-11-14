@@ -96,24 +96,13 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     PROJECT_PRESETS.map((preset) => presetRow(context, preset)),
   );
 
-  // The embed flag is grouped above the TypeScript export it's meant to govern once wired (still
-  // inert - see file doc); a visible label carries its name, the tooltip the detail.
-  const embedField = createElement("label", { className: "content-export__embed" }, [
-    createElement("input", { className: "param__checkbox", type: "checkbox" }),
-    createElement("span", { textContent: t("content.embedAssets") }),
-  ]);
-  attachTooltip(embedField, t("content.embedAssets"), t("content.embedAssetsTip"));
   const typeScriptButton = exportButton(assetIcons.upload, t("content.exportTypeScript"));
   typeScriptButton.addEventListener("click", () => exportTypeScript(store));
-  const typeScriptGroup = createElement("div", { className: "content-export__group" }, [
-    embedField,
-    typeScriptButton,
-  ]);
 
   const form = createElement("div", { className: "content-export__form" }, [
     nameField,
     jsonRow,
-    typeScriptGroup,
+    typeScriptButton,
     presetsTitle,
     presetsList,
   ]);

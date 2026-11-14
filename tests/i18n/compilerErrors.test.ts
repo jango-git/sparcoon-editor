@@ -12,7 +12,7 @@ import errorsUk from "../../src/i18n/locales/errors.uk.json" with { type: "json"
  * documents for `initNodeText`). So, mirroring that file's own approach: the locale JSON is
  * checked via static import, the pure `interpolate` substitution is exercised directly against
  * that data, and `compilerErrorMessage` itself is exercised only for its fallback path (the
- * dictionaries are empty in this test's module instance, exactly as they are before `initI18n()`
+ * dictionaries are empty in this test's module instance, exactly as they are before `initGraphText()`
  * ever runs) - which is also the only path every not-yet-migrated code relies on today.
  */
 

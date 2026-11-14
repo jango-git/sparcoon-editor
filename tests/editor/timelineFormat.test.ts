@@ -105,20 +105,20 @@ describe("timeline value formatting", () => {
 describe("describeEvent", () => {
   it("describes a burst by its time and count", () => {
     expect(describeEvent({ id: "e", kind: "burst", time: 1.5, count: 10 })).toBe(
-      "Burst · 1.5s · 10",
+      "Burst | 1.5s | 10",
     );
   });
 
   it("describes a timed play by its time, rate and duration", () => {
     expect(describeEvent({ id: "e", kind: "play", time: 1, rate: 12.5, duration: 2 })).toBe(
-      "Play · 1s · 12.5/s · 2s",
+      "Play | 1s | 12.5/s | 2s",
     );
   });
 
   it("describes a play with no positive duration as infinite", () => {
     for (const duration of [0, -1]) {
       expect(describeEvent({ id: "e", kind: "play", time: 1, rate: 10, duration })).toBe(
-        "Play · 1s · 10/s · infinite",
+        "Play | 1s | 10/s | infinite",
       );
     }
   });

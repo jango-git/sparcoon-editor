@@ -1,8 +1,7 @@
 # <img src="assets/logo.svg" width="30" height="30" alt="" align="top" /> Sparcoon Editor
 
-A node-based visual effects editor for three.js that runs in the browser. You build the effect from
-nodes and get back one self-contained TypeScript module, played by the
-[`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
+A browser-based node editor for three.js particle effects. The result is a TypeScript module played
+by the [`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
 [Runtime](https://github.com/jango-git/sparcoon) -
@@ -10,219 +9,193 @@ nodes and get back one self-contained TypeScript module, played by the
 
 <table>
   <tr>
-    <td align="center"><img src="assets/gallery/campfire.webp" width="400" alt="Campfire" /><br /><b>Campfire</b></td>
-    <td align="center"><img src="assets/gallery/lightning-crack.webp" width="400" alt="Lightning Crack" /><br /><b>Lightning Crack</b></td>
+    <td align="center"><img src="assets/gallery/campfire.webp" width="400" alt="Campfire" /><br /><b>Campfire</b><br /><sub>flipbook, Half-Lit, ground collision</sub></td>
+    <td align="center"><img src="assets/gallery/lightning-crack.webp" width="400" alt="Lightning Crack" /><br /><b>Lightning Crack</b><br /><sub>mesh particles, shadows, soft particles</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gallery/portal.webp" width="400" alt="Portal" /><br /><b>Portal</b></td>
-    <td align="center"><img src="assets/gallery/shield.webp" width="400" alt="Energy Shield" /><br /><b>Energy Shield</b></td>
+    <td align="center"><img src="assets/gallery/portal.webp" width="400" alt="Portal" /><br /><b>Portal</b><br /><sub>vortex, soft particles</sub></td>
+    <td align="center"><img src="assets/gallery/shield.webp" width="400" alt="Energy Shield" /><br /><b>Energy Shield</b><br /><sub>sphere collision, death reactions, trails</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gallery/fireworks.webp" width="400" alt="Fireworks" /><br /><b>Fireworks</b></td>
-    <td align="center"><img src="assets/gallery/destruction.webp" width="400" alt="Destruction" /><br /><b>Destruction</b></td>
+    <td align="center"><img src="assets/gallery/fireworks.webp" width="400" alt="Fireworks" /><br /><b>Fireworks</b><br /><sub>chained reactions, inherited color, trails</sub></td>
+    <td align="center"><img src="assets/gallery/destruction.webp" width="400" alt="Destruction" /><br /><b>Destruction</b><br /><sub>mesh particles, shadows, lighting, collisions</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b></td>
-    <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b></td>
+    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b><br /><sub>curl noise</sub></td>
+    <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b><br /><sub>GPU simulation, collision, shadows</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="assets/editor.webp" width="100%" alt="The Portal preset being built in the editor" /><br /><b>Portal, built node by node in the editor</b></td>
+    <td colspan="2" align="center"><img src="assets/editor.webp" width="100%" alt="The Portal preset in the editor" /><br /><b>Portal in the editor</b></td>
   </tr>
 </table>
 
-Every effect above is a bundled preset built from the editor's own nodes: press `Ctrl+Space`, pick
-it on the **Content** screen and hit **Load**.
+Every effect above is an editor preset. To open one, press `Ctrl+Space`, pick it on the **Content**
+screen and press **Load**.
 
-> **Pre-release.** The editor works end to end, but the project format and the exported artifact are
-> not frozen yet - breaking changes are possible before the first stable release. A project lives in
-> your browser, so export anything you care about to `.json`.
+> **Pre-release.** The project and export formats still change. Projects from earlier versions open
+> in the current one (see [Projects](#projects)).
 
-## Who this is for
+## Purpose
 
-VFX artists building three.js content under hard constraints - mobile ad creatives and playables
-first, where the build has a size budget, the target device may be five years old, and review will
-not pass anything that generates code at runtime.
+The editor targets effects for mobile ads and playables, where the build size is limited, devices
+are old and code generation at runtime is forbidden. Graphs compile into shaders and simulation code
+as you work, and only the result goes into the game.
 
-Authoring works the way it does in a game engine: emitters, spawn shapes, forces, bursts, a timeline.
-The editor compiles all of it into shaders and simulation code as you work. Only the compiled result
-goes to production.
+It is not a fit if you need a 3D scene editor, effects assembled from data at runtime, or another
+engine (Babylon.js, PlayCanvas, PixiJS).
 
-If you are coming from **Unity VFX Graph, Niagara, Effekseer or PopcornFX**, the authoring model will
-feel familiar. The difference is the destination: the result lives in an ordinary three.js scene.
+## Quick start
 
-**This is probably not what you need if** you are looking for a full 3D scene editor (only effects
-are authored here), you assemble effects from data at runtime (compilation happens at authoring time
-by design), you expect to drop the result in without a build step (the output is an ES module that
-expects a bundler), or you work on another engine - Babylon.js, PlayCanvas, PixiJS.
-
-### Why it will work in an ad build
-
-- **No runtime code generation.** The export is ready GLSL plus ordinary JavaScript functions; neither
-  `eval` nor `new Function` is used anywhere.
-- **No dependency tail.** The runtime has exactly one peer dependency: `three`.
-- **Old hardware has a path.** Every graph also compiles to a WebGL1-compatible tier (see
-  [Rendering and simulation](#rendering-and-simulation)).
-- **Instancing.** Billboards and mesh particles draw in one call per emitter, plus one for its trail.
-- **The assets stay yours.** Textures and meshes are passed into the effect's constructor, so how you
-  load, inline or pack them into a single file is your decision.
-- **Tree-shakeable ESM with full types**, unbundled and unminified, so your bundler treats it like any
-  other source and can transpile it as far down as you need.
-
-## Quick start (nothing to install)
-
-1. Open the **[live build](https://jango-git.github.io/sparcoon-editor/)**.
-2. Press `Ctrl+Space` to open the **Content** screen, pick the **Sparks** preset and hit **Load**.
-3. Close the screen and press `Space` - the effect starts playing in the viewport.
-4. Change something - a node value in the graph, a burst on the timeline - and watch the preview
-   rebuild while you type.
-5. Go back to **Content** and hit **Export TypeScript** to get the module described below.
-
-Nothing is uploaded anywhere: the project lives in your browser (autosaved to `localStorage`), and
-`Ctrl+S` writes it out as `.json`.
-
-## Using an exported effect
-
-The export is one module per project: a named `FXEffect` subclass - a `THREE.Group` - plus a typed
-interface for the assets the project references. Install the runtime and add the effect to your
-scene:
-
-```sh
-npm install sparcoon three
-```
-
-```ts
-const effect = new MyEffect(assets, { renderer, camera }); // emitted by the editor
-scene.add(effect);
-effect.play();
-// each frame: FXWorld.update(deltaSeconds) before rendering
-```
-
-Channels marked **Exclude from export** stay under your code's control - that is how anything which
-has to follow gameplay rather than a baked curve gets wired, through calls typed against the names
-the project declares. Playback, parameters, emission from code, worlds and disposal are covered in
-the [runtime's README](https://github.com/jango-git/sparcoon#readme).
+1. Open the [editor](https://jango-git.github.io/sparcoon-editor/).
+2. `Ctrl+Space`, the **Content** screen, the **Sparks** preset, **Load**.
+3. Close the screen and press `Space`.
+4. Change a node value or an event on the timeline.
+5. **Content**, **Export TypeScript**.
 
 ## What an effect is made of
 
-A project holds one **VFX group** - the root transform of the whole effect - and any number of
-objects under it:
+An effect is a root **VFX group** and the objects in it:
 
-- **Emitter** - a particle system. It owns two graphs: a **Behavior graph** (per-particle simulation)
-  and a **Render graph** (per-particle material), plus an optional **Trail graph** - a ribbon drawn
-  behind every particle along its recorded path, added with the graph switch's **Add trail**. It
-  spawns nothing until a timeline event fires.
-- **VFX mesh** - a single non-instanced mesh with a render graph and no simulation: the non-particle
-  parts of an effect, such as a shockwave quad or a shaded prop.
+- **Emitter** - a particle system with a behavior graph (how particles are born and move), a render
+  graph (how they look) and an optional trail graph (a ribbon behind every particle).
+- **VFX mesh** - a single mesh with a render graph, for example a shockwave, a shield or a scene
+  object.
 
-Every graph ends in permanent **sink** nodes. The behavior graph feeds the **Spawn sink** and the
-**Update sink** - initial and per-frame position, lifetime, velocity and any declared particle
-attributes. The render graph feeds the **Surface sink** - color, transforms, geometry, render mode,
-sorting and shadow flags. A cast shadow is drawn from the color's alpha alone, so lighting and
-color work cost the shadow pass nothing; **Shadow Threshold** moves where the shadow ends without
-touching the visible surface. A trail graph feeds the same sink, shaped for a ribbon: color, **Width**
-(which can taper along the trail through its UV), and how many points of each particle's path it
-keeps and how often it records one. Lighting and surface-normal nodes are not offered there, and a
-trail cannot be combined with depth sorting. A material that needs more vertex attributes or
-varyings than the GPU guarantees is flagged on its graph: an error past WebGL2's limits, a warning
-past WebGL1's.
+Every graph ends in sinks, the nodes its results flow into:
 
-A Timeline Value name is one value across all of an emitter's graphs - one track, one
-`setEmitterParam` - so every node declaring it must agree on its type and default.
+- **Spawn** - values at a particle's birth: position, velocity, lifetime, attributes. The emitter's
+  capacity and GPU simulation are set here too.
+- **Update** - values at every simulation step, and killing a particle, for example when it touches
+  a collider.
+- **Surface** - color, particle shape (billboard, primitive or mesh), blend mode, sorting and
+  shadows.
+- **Surface** of a trail graph - the ribbon's color and width, its length and how often it records
+  a point.
 
-The **timeline** owns everything time-based: **Burst** events (how many particles to release on one
-frame) and **Play** events (a rate per second or per unit the emitter travels, over a duration or
-infinite), keyframes on **Timeline Value** nodes - named graph inputs you can drive at runtime - and
-keyframes on any object's position, rotation and scale.
+If a material does not fit the device limits, its graph is marked with an error for WebGL2 or a
+warning for WebGL1.
 
-## What is inside
+## Timeline
 
-**The node library** is split by graph. Behavior: spawn shapes (box, sphere, cone, cylinder, disc,
-torus), forces (gravity, drag, point force, vortex, turbulence, firework), collisions (plane, box, sphere, cone),
-integration, particle attributes and the usual math. Render: textures with frame animation and UV
-tiling/rotation, gradients and color ramps, HSL adjustment, fresnel, dissolve, Depth Fade (soft
-particles and intersection glows - the host gives each camera its scene depth, see the runtime's
-README), normal maps, Lambert, Half-Lit and ambient shading, full matrix math, camera facing and
-velocity alignment.
+The timeline sets everything that depends on time:
 
-**Assets.** Images as textures, `.hdr` environments, `.glb` / `.gltf` meshes. The **Upload asset**
-button on the Content screen takes a file and sends it to the right library by type.
+- **Burst** - a release of particles on one frame.
+- **Play** - continuous emission per second or per unit the emitter travels.
+- Keys on the transform of any object and on graph parameters (**Timeline Value**).
+- **Loop** - looping or one-shot playback.
 
-**Lighting.** Manual Sun and Hemisphere lights, or an active HDRI environment that drives the
-viewport background, a baked light probe, and Sun's auto-derived direction and color.
+A channel marked **Exclude from export** stays out of the export, and the game's code sets its
+value.
 
-**Everything else.** Undo covers every action, uploads and preset loads included. Autosave to
-`localStorage`. An approximate ALU **cost** per node. Light, auto and dark themes, mouse or touchpad
-navigation, and an English, Russian or Ukrainian interface, with more locales to come.
+## Reactions and inheritance
 
-| Shortcut                     | Action                            |
-| ---------------------------- | --------------------------------- |
-| `Ctrl+Z` / `Ctrl+Shift+Z`    | Undo / redo                       |
-| `Ctrl+C` / `Ctrl+V`          | Copy / paste                      |
-| `Ctrl+S`                     | Save project JSON                 |
-| `Ctrl+Space`                 | Content screen                    |
-| `Space`                      | Play / pause                      |
-| `Left` / `Right`             | Step one frame                    |
-| `A`                          | Add node (graph)                  |
-| `C`                          | Add comment (graph)               |
-| `G` / `R` / `S`              | Move / rotate / scale (viewport)  |
-| `N`                          | Toggle transform panel (viewport) |
-| `I`                          | Keyframe selection                |
-| `F`                          | Frame / fit view                  |
-| `Delete` / `Backspace` / `X` | Delete selection                  |
+A reaction starts emission on one emitter where another emitter's particles die. Firework bursts,
+impact splashes and multi-stage chains are built this way. A reaction is added on the emitter's
+timeline with **Add reaction**.
+
+- The event fires at the point of death, one frame later.
+- The source emitter simulates on the CPU.
+- An emitter cannot react to itself, and reactions cannot form a cycle.
+
+The **Inherited Attribute** node hands a newborn particle an attribute of the dead one: color, size,
+random seed, any attribute of its emitter. If the particle was not born from a reaction, the node
+returns its default value.
+
+## Nodes
+
+- **Behavior:** spawn shapes, forces (gravity, drag, point force, vortex, turbulence), collisions
+  (plane, box, sphere, cone), particle attributes.
+- **Render:** textures and flipbooks, UV transforms, gradients, color correction, fresnel, dissolve,
+  soft particles (Depth Fade), lighting (Lambert, Half-Lit, ambient), normal maps, particle
+  orientation.
+- **Shared:** math, curves, noise (value, fractal, curl, Voronoi), random numbers.
+
+Every node shows an approximate cost in GPU operations - for comparing graphs, not for estimating
+frame time.
 
 ## Rendering and simulation
 
-Graphs compile to two GLSL tiers: **Standard** (WebGL2) and **Baseline** (WebGL1-compatible). The
-preview switches between them, and an export always carries both - the runtime picks by the
-capabilities of the renderer it is given. The same nodes exist on both tiers, though the quality of some implementations depends on
-the backend.
+Every graph compiles for two tiers, **Standard** (WebGL2) and **Baseline** (WebGL1). The preview
+switches between them, and the export carries both. The node set is the same, but the quality of
+some nodes depends on the tier.
 
-An emitter can additionally simulate on the GPU through transform feedback. That is enabled per
-emitter (on by default) and needs a WebGL2 renderer at runtime. A graph that does not compile to a
-GPU kernel runs on the JavaScript kernel, which is always compiled. This is the regular fallback
-path.
+An emitter simulates on the GPU if that is enabled (the default), the graph allows it and the device
+supports it, and on the CPU otherwise.
 
-## Export formats
+## Assets and preview
 
-**Project JSON** is the editable format: the whole authored document together with its assets. This
-is what you hand to another artist.
-
-**TypeScript export** is the shipping format: precompiled artifacts plus a thin subclass of the
-runtime's effect class, importing only the runtime and a couple of three.js types.
-
-## Limits
-
-Known and deliberate, so you do not discover them mid-project:
-
-- Environments are `.hdr` only, and drive the background and the baked light probe. No reflections,
-  no PMREM. An environment stays part of the editor preview and never reaches the compiled result.
-- A multi-mesh `.glb` decomposes into one asset per mesh. Uploaded meshes are baked into plain vertex
-  arrays; materials and hierarchy are dropped on purpose, since the material comes from the render
+- Images become textures, `.glb` and `.gltf` become meshes, `.hdr` becomes a preview environment.
+- Only geometry is taken from a `.glb`, one asset per mesh. The material comes from the render
   graph.
-- A lit graph shades with the lights of the host scene - Lambert and Half-Lit with all of three's
-  lights, ambient shading with the ambient, hemisphere and light-probe ones - so in a scene without
-  them it comes out dark. The preview's own lighting rig is not exported.
-- The **Embed assets** checkbox does nothing yet: the TypeScript export always takes its assets
-  through the constructor.
-- Projects travel as files. No share links, no cloud, no accounts.
-- No performance measurements yet. The cost readout in the editor is a relative ALU estimate for
-  comparing graphs; it cannot be read as frame time.
+- The preview is lit manually (Sun, Hemisphere) or by an HDRI environment. Preview lighting is not
+  exported, and in the game the effect is lit by the lights of its scene.
 
-## Reporting bugs
+## Export
 
-The most useful thing is a short screen capture plus the project `.json` it reproduces on.
+- **Project JSON** - the project together with its assets, for handing to another artist.
+- **TypeScript** - an effect module ready for the build. Assets are not included - the game's code
+  passes them in.
 
-## Running locally
+Using the effect in a game is described in the
+[runtime's README](https://github.com/jango-git/sparcoon#readme).
+
+## Projects
+
+- A project lives in the browser and is autosaved, and `Ctrl+S` saves it as `.json`. There is no
+  cloud, no share links and no accounts.
+- A project from an earlier version opens in the current one. Missing fields get default values,
+  renamed node inputs and outputs are carried over, and a removed node stays in the graph with an
+  error.
+- After updating the runtime, export your effects again.
+
+## Interface
+
+The interface is in English, Russian and Ukrainian. A graph is laid out automatically with the
+Arrange button.
+
+| Shortcut                     | Action                           |
+| ---------------------------- | -------------------------------- |
+| `Ctrl+Z` / `Ctrl+Shift+Z`    | Undo / redo                      |
+| `Ctrl+C` / `Ctrl+V`          | Copy / paste                     |
+| `Ctrl+S`                     | Save the project as JSON         |
+| `Ctrl+Space`                 | Content screen                   |
+| `Space`                      | Play / pause                     |
+| `Left` / `Right`             | Step one frame                   |
+| `A`                          | Add node (graph)                 |
+| `C`                          | Add comment (graph)              |
+| `G` / `R` / `S`              | Move / rotate / scale (viewport) |
+| `N`                          | Transform panel (viewport)       |
+| `I`                          | Key the selection                |
+| `F`                          | Fit view                         |
+| `Delete` / `Backspace` / `X` | Delete selection                 |
+
+## Agent API
+
+The editor publishes `window.sparcoon`, an API through which an agent builds an effect in a browser
+(usually headless, with calls through `page.evaluate`).
+
+- `scene`, `graph(...)`, `timeline` - edits to objects, graphs and the timeline.
+- `edit(body)` - several edits as one undo step, all or nothing.
+- `catalog` - a graph's nodes with their inputs, outputs and parameters.
+- `assets`, `project` - assets, projects, presets and export.
+- `preview` - playback and frame captures.
+- `status()` - the compile result after the last edit.
+
+Inputs and outputs are JSON. `version` goes up on incompatible API changes.
+
+## Development
 
 ```sh
 npm install
-npm run dev     # rollup watch + dev server
-npm run build   # bundle to dist/
+npm run dev
+npm run build
+npm test
+npm run typecheck
+npm run lint
 ```
 
-`npm test` runs the Vitest suite; `npm run typecheck` and `npm run lint` cover the rest.
+When reporting a bug, attach a screen recording and the project `.json`.
 
 ## License
 
-MIT - use it in commercial work, client projects and ads that ship; keep the copyright notice. See
-[LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

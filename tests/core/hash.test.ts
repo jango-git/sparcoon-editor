@@ -134,9 +134,9 @@ describe("structuralHash", () => {
   });
 
   it("hashes both surrogate halves: astral characters do not collide", () => {
-    // 😀 (U+1F600) and 😁 (U+1F601) share the high surrogate; only the low one
+    // U+1F600 and U+1F601 share the high surrogate; only the low one
     // differs - a code-point iteration reading charCodeAt(0) collides them.
-    expect(fnv1a64("type:😀:")).not.toBe(fnv1a64("type:😁:"));
+    expect(fnv1a64("type:\u{1F600}:")).not.toBe(fnv1a64("type:\u{1F601}:"));
   });
 
   it("a delimiter inside type/cacheKey does not alias a different split", () => {

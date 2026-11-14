@@ -29,10 +29,14 @@ export interface PreviewSettings {
   readonly hemisphereGround: Rgba;
   /** Hemisphere fill intensity. */
   readonly hemisphereIntensity: number;
+  /** The studio ground: what shadows fall on and a Depth Fade fades against. */
+  readonly ground: boolean;
   /** A grid drawn on the ground plane. */
   readonly grid: boolean;
   /** A wireframe player-figure box (2 x 0.5 x 0.75) as a scale reference. */
   readonly playerFigure: boolean;
+  /** The object outlines (group, emitters, meshes) and the sun's direction marker. */
+  readonly gizmos: boolean;
   /** The scene background color, linear RGBA. Ignored while an environment is active
    *  (`SourceState.activeEnvironmentName`). */
   readonly background: Rgba;
@@ -57,8 +61,10 @@ export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   hemisphereSky: linearFromHex("bcc7d6"),
   hemisphereGround: linearFromHex("2b2620"),
   hemisphereIntensity: 0.7,
+  ground: true,
   grid: true,
   playerFigure: true,
+  gizmos: true,
   background: linearFromHex("2b2e33"),
 };
 
@@ -89,8 +95,10 @@ function parsePreviewSettings(raw: unknown): PreviewSettings {
       raw["hemisphereIntensity"],
       DEFAULT_PREVIEW_SETTINGS.hemisphereIntensity,
     ),
+    ground: asBoolean(raw["ground"], DEFAULT_PREVIEW_SETTINGS.ground),
     grid: asBoolean(raw["grid"], DEFAULT_PREVIEW_SETTINGS.grid),
     playerFigure: asBoolean(raw["playerFigure"], DEFAULT_PREVIEW_SETTINGS.playerFigure),
+    gizmos: asBoolean(raw["gizmos"], DEFAULT_PREVIEW_SETTINGS.gizmos),
     background: asRgba(raw["background"], DEFAULT_PREVIEW_SETTINGS.background),
   };
 }

@@ -39,7 +39,7 @@ export interface FrameOptions {
   /**
    * With `clean`, keeps the studio ground: the surface the effect's shadows fall on and its Depth
    * Fade fades against, so an effect built around the ground (debris settling, a crack in it)
-   * reads on it. Without `clean` the ground is drawn anyway.
+   * reads on it. Without `clean` the frame shows what the viewport shows.
    */
   readonly ground?: boolean;
   /**

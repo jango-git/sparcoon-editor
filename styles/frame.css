@@ -2,6 +2,8 @@
 
 #application {
   height: 100vh;
+  /* On phones 100vh includes the area under the address bar. */
+  height: 100dvh;
   display: grid;
   grid-template-rows: 1fr;
 }

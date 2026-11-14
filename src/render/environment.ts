@@ -26,6 +26,7 @@ import {
   PlaneGeometry,
   Scene,
   SphereGeometry,
+  Vector3,
   WebGLCubeRenderTarget,
   type WebGLRenderer,
 } from "three";
@@ -34,7 +35,7 @@ import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js"
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
 import { AXIS_COLORS } from "./axisColors";
-import { markEditorGround, markEditorOverlay } from "./editorOverlay";
+import { markEditorGizmo, markEditorGround, markEditorOverlay } from "./editorOverlay";
 import type { DecodedEnvironment } from "./environmentTexture";
 
 /** Y of the ground plane - shares the emitters' origin so particles rest on it, not above it. */
@@ -42,6 +43,18 @@ const GROUND_Y = 0;
 
 /** Distance the sun sits from the origin; its azimuth/elevation place it on this sphere. */
 const SUN_DISTANCE = 14;
+
+/** Distance from the origin the sun's gizmo sits at, along the sun's direction - near enough to
+ *  stay in view, unlike the light itself. */
+const SUN_GIZMO_DISTANCE = 3;
+
+/** Sun gizmo: disc radius, ray length beyond the disc, and the line toward the lit scene. */
+const SUN_GIZMO_RADIUS = 0.12;
+const SUN_GIZMO_RAY = 0.08;
+const SUN_GIZMO_BEAM = 0.9;
+
+/** Sun gizmo color: a warm yellow, apart from the grey object outlines. */
+const SUN_GIZMO_COLOR = 0xffd24a;
 
 /** Half-extent of the sun's orthographic shadow frustum (the shadow box). */
 const SHADOW_BOX_HALF = 30;
@@ -81,6 +94,9 @@ export class SceneEnvironment {
   private readonly player: LineSegments;
   private readonly playerGeometry: EdgesGeometry;
   private readonly playerMaterial: LineBasicMaterial;
+  private readonly sunGizmo: LineSegments;
+  private readonly sunGizmoGeometry: BufferGeometry;
+  private readonly sunGizmoMaterial: LineBasicMaterial;
 
   constructor(
     private readonly scene: Scene,
@@ -148,6 +164,15 @@ export class SceneEnvironment {
     markEditorOverlay(this.player);
     scene.add(this.player);
 
+    // Sun gizmo - a rayed disc on the sun's side of the scene, its beam pointing the way the light
+    // shines. Shown with the sun; the gizmo layer hides it with the object outlines.
+    this.sunGizmoGeometry = createSunGizmoGeometry();
+    this.sunGizmoMaterial = new LineBasicMaterial({ color: SUN_GIZMO_COLOR, toneMapped: false });
+    this.sunGizmo = new LineSegments(this.sunGizmoGeometry, this.sunGizmoMaterial);
+    this.sunGizmo.name = "SunGizmo";
+    markEditorGizmo(this.sunGizmo);
+    scene.add(this.sunGizmo);
+
     this.apply(settings, activeEnvironment);
   }
 
@@ -155,6 +180,7 @@ export class SceneEnvironment {
    * background. An active environment fully replaces the manual Hemisphere fill (ADR-0004). */
   public apply(settings: PreviewSettings, activeEnvironment: DecodedEnvironment | undefined): void {
     this.sun.visible = settings.sun;
+    this.sunGizmo.visible = settings.sun;
     setLinear(this.sun.color, settings.sunColor);
     this.sun.intensity = settings.sunIntensity;
     this.placeSun(settings.sunAzimuth, settings.sunElevation);
@@ -188,6 +214,7 @@ export class SceneEnvironment {
       this.probe,
       this.grid,
       this.player,
+      this.sunGizmo,
     );
     this.groundGeometry.dispose();
     this.groundMaterial.dispose();
@@ -199,6 +226,8 @@ export class SceneEnvironment {
     this.gridMaterial.dispose();
     this.playerGeometry.dispose();
     this.playerMaterial.dispose();
+    this.sunGizmoGeometry.dispose();
+    this.sunGizmoMaterial.dispose();
   }
 
   /** Re-bakes the SH probe from `texture` when it has changed, so unrelated settings drags don't
@@ -226,12 +255,14 @@ export class SceneEnvironment {
   private placeSun(azimuthDegrees: number, elevationDegrees: number): void {
     const azimuth = (azimuthDegrees * Math.PI) / 180;
     const elevation = (elevationDegrees * Math.PI) / 180;
-    const horizontal = SUN_DISTANCE * Math.cos(elevation);
-    this.sun.position.set(
-      horizontal * Math.sin(azimuth),
-      SUN_DISTANCE * Math.sin(elevation),
-      horizontal * Math.cos(azimuth),
+    const direction = new Vector3(
+      Math.cos(elevation) * Math.sin(azimuth),
+      Math.sin(elevation),
+      Math.cos(elevation) * Math.cos(azimuth),
     );
+    this.sun.position.copy(direction).multiplyScalar(SUN_DISTANCE);
+    this.sunGizmo.position.copy(direction).multiplyScalar(SUN_GIZMO_DISTANCE);
+    this.sunGizmo.lookAt(this.sun.target.position);
   }
 }
 
@@ -260,6 +291,39 @@ function createGridGeometry(size: number, divisions: number): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
+  return geometry;
+}
+
+/**
+ * The sun gizmo as one line-segment geometry: a disc with eight short rays in the XY plane, and a
+ * beam from its center along +Z, which `lookAt` turns toward the lit scene.
+ */
+function createSunGizmoGeometry(): BufferGeometry {
+  const segments = 24;
+  const rays = 8;
+  const positions: number[] = [];
+  for (let i = 0; i < segments; i += 1) {
+    const a = (i / segments) * Math.PI * 2;
+    const b = ((i + 1) / segments) * Math.PI * 2;
+    positions.push(
+      Math.cos(a) * SUN_GIZMO_RADIUS,
+      Math.sin(a) * SUN_GIZMO_RADIUS,
+      0,
+      Math.cos(b) * SUN_GIZMO_RADIUS,
+      Math.sin(b) * SUN_GIZMO_RADIUS,
+      0,
+    );
+  }
+  const inner = SUN_GIZMO_RADIUS * 1.35;
+  const outer = inner + SUN_GIZMO_RAY;
+  for (let i = 0; i < rays; i += 1) {
+    const a = (i / rays) * Math.PI * 2;
+    positions.push(Math.cos(a) * inner, Math.sin(a) * inner, 0);
+    positions.push(Math.cos(a) * outer, Math.sin(a) * outer, 0);
+  }
+  positions.push(0, 0, 0, 0, 0, SUN_GIZMO_BEAM);
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
   return geometry;
 }
 

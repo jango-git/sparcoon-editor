@@ -1,5 +1,7 @@
 import nodeResolve from "@rollup/plugin-node-resolve";
+import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
+import { transform as transformCss } from "lightningcss";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import livereload from "rollup-plugin-livereload";
@@ -40,8 +42,7 @@ function copyJsonAssets(sourceDir, outputName) {
  * Concatenates the per-surface stylesheets (`styles/`) into a single `dist/styles.css`, in
  * cascade order - tokens/reset first, then each surface. CSS is a static asset (Rollup does not
  * process it); this only assembles the parts, and the order is explicit because the cascade
- * depends on it. Each file is a verbatim slice, so the concatenation is byte-identical to the
- * former monolithic `base.css`.
+ * depends on it. Production builds minify the result, and watch builds keep it readable.
  */
 function bundleStyles() {
   const stylesDir = path.resolve("styles");
@@ -63,6 +64,7 @@ function bundleStyles() {
     "switch.css",
     "modal.css",
     "tooltip.css",
+    "unsupported.css",
   ];
   return {
     name: "bundle-styles",
@@ -75,8 +77,11 @@ function bundleStyles() {
       const combined = cascadeOrder
         .map((fileName) => readFileSync(path.join(stylesDir, fileName), "utf8"))
         .join("");
+      const output = isDevelopment
+        ? combined
+        : transformCss({ filename: "styles.css", code: Buffer.from(combined), minify: true }).code;
       mkdirSync("dist", { recursive: true });
-      writeFileSync(path.resolve("dist", "styles.css"), combined);
+      writeFileSync(path.resolve("dist", "styles.css"), output);
     },
   };
 }
@@ -96,6 +101,7 @@ export default {
     bundleStyles(),
     nodeResolve({ browser: true }),
     typescript({ tsconfig: "./tsconfig.build.json" }),
+    !isDevelopment && terser({ module: true }),
     isDevelopment &&
       serve({
         contentBase: ["."],

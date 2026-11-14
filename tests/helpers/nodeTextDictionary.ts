@@ -27,7 +27,7 @@ export const NODE_TEXT_EN: Readonly<Record<string, NodeTextEntry | undefined>> =
  * Reads `nodes.en.json` directly (a static import, not the runtime `i18n/nodeText.ts` loader,
  * which fetches at runtime and so needs a real HTTP origin - unavailable under vitest's Node
  * environment). Tests that only need to assert dictionary *content* use this instead of
- * `initI18n()`.
+ * `initGraphText()`.
  */
 export function nodeTextEntry(type: string): NodeTextEntry | undefined {
   return NODE_TEXT_EN[type];

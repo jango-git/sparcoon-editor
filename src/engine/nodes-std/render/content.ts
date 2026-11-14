@@ -104,8 +104,8 @@ export const fxFlowUV = defineNode({
 });
 
 /**
- * Polar UVs about `center`: `uv.x = atan2(d.y, d.x) / 2π + 0.5` (angle, 0..1 counterclockwise from
- * the -x seam), `uv.y = 2 * length(d)` (radius, 1 at the quad's edge), with `d = uv - center`.
+ * Polar UVs about `center`: `uv.x = atan2(d.y, d.x) / (2 * pi) + 0.5` (angle, 0..1 counterclockwise
+ * from the -x seam), `uv.y = 2 * length(d)` (radius, 1 at the quad's edge), with `d = uv - center`.
  */
 export const fxPolarUV = defineNode({
   type: "polar-uv",

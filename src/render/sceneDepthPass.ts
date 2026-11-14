@@ -16,6 +16,8 @@ import {
   WebGLRenderTarget,
 } from "three";
 
+import { EDITOR_GIZMO_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
+
 /** What the pre-pass asks of the previewed effects. */
 export interface SceneDepthSource {
   /** The effects' root, left out of the pre-pass: the effects fade against the studio. */
@@ -65,7 +67,11 @@ export class SceneDepthPass {
     const { overrideMaterial } = this.scene;
     const { autoUpdate } = this.renderer.shadowMap;
     const effectsVisible = source.effects.visible;
+    const layers = camera.layers.mask;
     this.scene.overrideMaterial = this.depthOnly;
+    // Grid, player figure and gizmos are editor furniture, not something an effect fades against.
+    camera.layers.disable(EDITOR_OVERLAY_LAYER);
+    camera.layers.disable(EDITOR_GIZMO_LAYER);
     // The frame's own render updates the shadow maps; this one would only redo them.
     this.renderer.shadowMap.autoUpdate = false;
     const { effects } = source;
@@ -75,6 +81,7 @@ export class SceneDepthPass {
       this.renderer.render(this.scene, camera);
     } finally {
       this.renderer.setRenderTarget(drawn);
+      camera.layers.mask = layers;
       effects.visible = effectsVisible;
       this.renderer.shadowMap.autoUpdate = autoUpdate;
       this.scene.overrideMaterial = overrideMaterial;

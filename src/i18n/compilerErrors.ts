@@ -37,7 +37,7 @@ async function loadCompilerErrorDictionary(code: string): Promise<CompilerErrorD
   return (await response.json()) as CompilerErrorDictionary;
 }
 
-/** Must be awaited before any resolver call - see {@link initI18n}, which calls this. */
+/** Must be awaited before any resolver call - see {@link initGraphText}, which calls this. */
 export async function initCompilerErrors(locale: string): Promise<void> {
   const [fallback, current] = await Promise.all([
     loadCompilerErrorDictionary(DEFAULT_LOCALE),
