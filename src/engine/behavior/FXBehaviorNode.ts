@@ -16,7 +16,7 @@ export abstract class FXBehaviorNode extends FXGraphNode<FXKernelContext> {
   public abstract readonly phase: FXBehaviorPhase;
 
   /**
-   * The value this node inherits from the particle whose death spawned the newborn;
+   * The value this node inherits from the particle whose birth or death spawned the newborn;
    * {@link collectInheritRequests} gathers these across the reachable graph into the emitter's
    * inherit layout. Absent for every node but `inherited-attribute`.
    */

@@ -212,9 +212,9 @@ export const STORE_ATTRIBUTE_META: FXNodeMeta = {
 };
 
 /**
- * Spawn-side reader of what a newborn inherits from the particle whose death spawned it: a user
- * attribute of that particle (`source: "attribute"`, by `name`), or a core field
- * (`source: "builtin"`, `name` one of `FX_INHERIT_BUILTINS`, always a float). A birth no death
+ * Spawn-side reader of what a newborn inherits from the particle whose birth or death spawned it: a
+ * user attribute of that particle (`source: "attribute"`, by `name`), or a core field
+ * (`source: "builtin"`, `name` one of `FX_INHERIT_BUILTINS`, always a float). A birth no reaction
  * spawned reads `value` instead.
  */
 export const INHERITED_ATTRIBUTE_META: FXNodeMeta = {

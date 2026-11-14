@@ -19,13 +19,30 @@ function setup(): { store: Store; api: ReturnType<typeof createEditApi> } {
   return { store, api: createEditApi(liveSession(store)) };
 }
 
+describe("agent timeline: birth reactions", () => {
+  it("adds a birth reaction, switches its event and refuses an unknown one", () => {
+    const { store, api } = setup();
+    const id = api.timeline.addBurstOnBirth("emitter_b", "emitter_a", 6);
+    api.timeline.addPlayOnBirth("emitter_b", "emitter_a", 10, 0.5);
+    const reactions = (): readonly { on: string }[] =>
+      sceneView(store.getSource()).emitters[1]?.reactions ?? [];
+    expect(reactions().map((reaction) => reaction.on)).toEqual(["birth", "birth"]);
+    api.timeline.updateReaction("emitter_b", id, { on: "death" });
+    expect(reactions()[0]?.on).toBe("death");
+    expect(() => api.timeline.updateReaction("emitter_b", id, { on: "spawn" as "birth" })).toThrow(
+      /on must be one of/,
+    );
+    expect(() => api.timeline.addBurstOnBirth("emitter_a", "emitter_b", 1)).toThrow(/cycle/);
+  });
+});
+
 describe("agent timeline: death reactions", () => {
   it("adds, edits and removes a reaction, and shows it in the scene view", () => {
     const { store, api } = setup();
     const id = api.timeline.addBurstOnDeath("emitter_b", "emitter_a", 6);
     api.timeline.updateReaction("emitter_b", id, { count: 9 });
     expect(sceneView(store.getSource()).emitters[1]?.reactions).toEqual([
-      { id, source: "emitter_a", kind: "burst", count: 9 },
+      { id, source: "emitter_a", on: "death", kind: "burst", count: 9 },
     ]);
     api.timeline.removeReaction("emitter_b", id);
     expect(sceneView(store.getSource()).emitters[1]?.reactions).toEqual([]);

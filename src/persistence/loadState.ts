@@ -4,9 +4,8 @@
  * can never crash startup - it falls back to a fresh document instead.
  */
 
-import { asEmissionBasis, asKeyEase } from "sparcoon/editor";
+import { asEmissionBasis, asKeyEase, asParticleEventKind } from "sparcoon/editor";
 
-import { withValidReactions } from "../domain/deathReactions";
 import { createEmptyGraph, type EditorGraph } from "../domain/graphModel";
 import {
   DEFAULT_RENDER_HOST,
@@ -16,6 +15,7 @@ import {
   RENDER_SINK_ID,
   type RenderHost,
 } from "../domain/nodePalette";
+import { withValidReactions } from "../domain/reactions";
 import { ensureSinks } from "../domain/sinks";
 import {
   seedIdentifierCounterFromRawSource,
@@ -25,7 +25,6 @@ import { nextIdentifier } from "../model/commands/identifier";
 import {
   type AnimationTrack,
   createDefaultVfx,
-  type DeathReaction,
   DEFAULT_TIMELINE,
   type EditorState,
   emissionBasisField,
@@ -34,6 +33,7 @@ import {
   type Keyframe,
   type MeshAsset,
   type PaletteSwatch,
+  type Reaction,
   type SourceState,
   type SpawnAction,
   type TextureAsset,
@@ -510,27 +510,30 @@ function normalizeEvents(raw: unknown): readonly TimelineEvent[] {
 }
 
 /**
- * Keeps only well-formed persisted death reactions (a corrupt one is dropped, not fatal - and so is
- * a play without end or over distance, which no reaction may be). Whether each source exists, and cycles, are
- * checked across the scene ({@link withValidReactions}).
+ * Keeps only well-formed persisted reactions (a corrupt one is dropped, not fatal - and so is a play
+ * without end or over distance, which no reaction may be, and one naming no particle event). One
+ * saved before birth reactions existed names none and fires on deaths. Whether each source exists,
+ * and cycles, are checked across the scene ({@link withValidReactions}).
  */
-function normalizeReactions(raw: unknown): readonly DeathReaction[] {
+function normalizeReactions(raw: unknown): readonly Reaction[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  const reactions: DeathReaction[] = [];
+  const reactions: Reaction[] = [];
   for (const value of raw) {
     if (!isRecord(value) || typeof value["id"] !== "string") {
       continue;
     }
     const source = value["source"];
+    const on = value["on"] === undefined ? "death" : asParticleEventKind(value["on"]);
     const action = normalizeSpawnAction(value);
     if (
       typeof source === "string" &&
+      on !== undefined &&
       action !== undefined &&
       (action.kind === "burst" || (action.duration > 0 && action.over === undefined))
     ) {
-      reactions.push({ ...action, id: value["id"], source });
+      reactions.push({ ...action, id: value["id"], source, on });
     }
   }
   return reactions;

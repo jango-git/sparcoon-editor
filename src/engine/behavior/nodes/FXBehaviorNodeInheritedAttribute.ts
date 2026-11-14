@@ -14,10 +14,10 @@ import type { FXInheritRequest, FXInheritSource } from "../FXInheritPlan";
 import type { FXKernelContext } from "../FXKernelContext";
 
 /**
- * Behavior node: what a newborn inherits from the particle whose death spawned it - a user
+ * Behavior node: what a newborn inherits from the particle whose birth or death spawned it - a user
  * attribute of that particle, by name, or one of its core fields - as its `value` output. A birth
- * no death spawned (a timeline's, a host's) reads the node's default instead, as does one whose
- * dying particle has no such attribute. Spawn only: inheritance happens at birth.
+ * no reaction spawned (a timeline's, a host's) reads the node's default instead, as does one whose
+ * source particle has no such attribute. Spawn only: inheritance happens at birth.
  *
  * The source and type are structural (a new source is a new node, as for `custom-attribute`); the
  * default is applied in place, and reshapes the inherit layout (see {@link inheritInputName}).

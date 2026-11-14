@@ -13,11 +13,11 @@ import type {
 } from "./FXInheritPlan";
 
 /**
- * Inheritance: what a newborn takes from the particle whose death spawned it. A spawn graph reads
- * an inherited value through an `inherited-attribute` node, which requests it here; the requests
+ * Inheritance: what a newborn takes from the particle whose birth or death spawned it. A spawn
+ * graph reads an inherited value through an `inherited-attribute` node, which requests it here; the requests
  * of a graph lay out its emitter's inherit layout (the runtime's `FXInheritLayout`), a flat run of
- * floats every birth of one spawn call shares. Which of the dying particle's floats fill it is a
- * death reaction's own (see `domain/reactionLinking.ts`): this side knows only what it reads.
+ * floats every birth of one spawn call shares. Which of the source particle's floats fill it is a
+ * reaction's own (see `domain/reactionLinking.ts`): this side knows only what it reads.
  */
 
 /** Every inheritable core field, in the order a picker offers them. */
@@ -30,7 +30,7 @@ export const FX_INHERIT_BUILTIN_COMPONENT: Readonly<Record<FXInheritBuiltin, num
 };
 
 /**
- * What a birth no death spawned reads for a core field: an id no particle has, so a graph can
+ * What a birth no reaction spawned reads for a core field: an id no particle has, so a graph can
  * tell such a birth apart, and no lifetime.
  */
 export const FX_INHERIT_BUILTIN_DEFAULTS: Readonly<Record<FXInheritBuiltin, number>> = {

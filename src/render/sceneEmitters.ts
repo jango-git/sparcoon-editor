@@ -3,7 +3,7 @@
  * scene model each recompute. Surfaces the active graph owner's snapshot/status to the pipeline.
  */
 
-import { connectDeathReaction, fireSpawnAction } from "sparcoon/editor";
+import { connectReaction, fireSpawnAction } from "sparcoon/editor";
 import type { Vector2 } from "three";
 import {
   type BufferGeometry,
@@ -17,7 +17,6 @@ import {
   type WebGLRenderer,
 } from "three";
 
-import { effectiveSpawnConfig } from "../domain/deathReactions";
 import {
   GraphKind,
   readRenderSinkConfig,
@@ -25,6 +24,7 @@ import {
   timelineValueConflicts,
 } from "../domain/nodePalette";
 import { type InheritIssue, inheritIssueWarnings, linkReaction } from "../domain/reactionLinking";
+import { effectiveSpawnConfig } from "../domain/reactions";
 import { serializeGraph } from "../domain/serialize";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
@@ -329,7 +329,7 @@ export class SceneEmitters implements SceneApplier {
   }
 
   /**
-   * Links every death reaction of `scene` between the views, as the runtime's `FXEffect` does
+   * Links every reaction of `scene` between the views, as the runtime's `FXEffect` does
    * between its emitters, with what its births inherit of the running source's particles (see
    * `reactionLinking.ts`). Part of every sync - after every rebuild, so a link always copies within
    * the layouts it was made for; also on its own after a view edit, which changes a reaction's
@@ -343,11 +343,13 @@ export class SceneEmitters implements SceneApplier {
       for (const reaction of emitter.reactions) {
         const source = this.views.get(reaction.source);
         if (target !== undefined && source !== undefined) {
-          const link = linkReaction(source.reactionSource, target.inheritEntries);
+          const link = linkReaction(source.reactionSource, reaction.on, target.inheritEntries);
           if (link.issues.length > 0) {
             issues.set(reaction.id, link.issues);
           }
-          this.reactionLinks.push(connectDeathReaction(source, target, reaction, link.copies));
+          this.reactionLinks.push(
+            connectReaction(source, reaction.on, target, reaction, link.copies),
+          );
         }
       }
     }
@@ -547,7 +549,7 @@ export class SceneEmitters implements SceneApplier {
       renderSnapshot,
       behaviorSnapshot,
       readRenderSinkConfig(emitter.renderGraph),
-      // A death source simulates on the CPU whatever its spawn node asks (deathReactions.ts).
+      // A reaction source simulates on the CPU whatever its spawn node asks (reactions.ts).
       effectiveSpawnConfig(emitter, scene),
       emitter.behaviorGraph.attributes,
       trail,

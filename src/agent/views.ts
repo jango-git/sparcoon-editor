@@ -12,8 +12,8 @@ import type { AttributeTypeName, GraphComment, GraphPosition } from "../domain/g
 import { isSinkType } from "../domain/nodePalette";
 import type {
   AnimationTrack,
-  DeathReaction,
   LiveApplyStatus,
+  Reaction,
   SourceState,
   TimelineEvent,
 } from "../model/editorState";
@@ -77,8 +77,9 @@ export interface EmitterView extends AnimatedView {
   readonly events: readonly TimelineEvent[];
   /** The events play in the editor only; the export ships none (`timeline.setEventsExcluded`). */
   readonly eventsExcluded: boolean;
-  /** What it spawns at every death of another emitter's particles (`timeline.addBurstOnDeath`). */
-  readonly reactions: readonly DeathReaction[];
+  /** What it spawns at every birth or death of another emitter's particles
+   *  (`timeline.addBurstOnBirth`, `timeline.addBurstOnDeath`). */
+  readonly reactions: readonly Reaction[];
   /** Whether the emitter draws a trail - its `"trail"` graph exists (`scene.setTrail`). */
   readonly trail: boolean;
 }

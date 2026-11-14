@@ -3,10 +3,12 @@
  * label row + time lane, under one playhead. The transport is transient; length/fps are authored.
  */
 
-import { reactingEmitters, reactionSourceCandidates } from "../../domain/deathReactions";
+import { FX_PARTICLE_EVENT_KINDS } from "sparcoon/editor";
+
 import type { EditorGraph } from "../../domain/graphModel";
 import { isKeyframeValue } from "../../domain/graphModel";
 import { isTimelineValueType } from "../../domain/nodePalette";
+import { reactingEmitters, reactionSourceCandidates } from "../../domain/reactions";
 import { t } from "../../i18n";
 import {
   addBurstEvent,
@@ -28,10 +30,10 @@ import {
 } from "../../model/commands";
 import {
   canRemoveObject,
-  type DeathReaction,
   type EmitterDoc,
   emitterGraphs,
   projectDisplayName,
+  type Reaction,
   type VfxDoc,
   type VfxMeshDoc,
 } from "../../model/editorState";
@@ -57,7 +59,7 @@ import { fractionAcross } from "../primitives/geometry";
 import { clamp } from "../primitives/math";
 import { commitEntitySelection } from "../selection";
 import { copyTimelineSelection } from "./timelineClipboard";
-import { fraction, timeAtFraction } from "./timelineFormat";
+import { addReactionLabel, fraction, timeAtFraction } from "./timelineFormat";
 import {
   type InspectorContext,
   renderReactionInspector,
@@ -461,24 +463,24 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     });
   }
 
-  /** "Burst / Play on death of <source>" for every emitter `emitter` may react to. */
+  /** "Burst / Play on birth / death of <source>" for every emitter `emitter` may react to. */
   function reactionMenuItems(emitter: EmitterDoc): ContextMenuItem[] {
     const sources = reactionSourceCandidates(store.getSource().scene.emitters, emitter.id);
     if (sources.length === 0) {
       return [{ label: t("timeline.noReactionSource"), run: (): void => undefined }];
     }
     return sources.flatMap((source) =>
-      (["burst", "play"] as const).map((kind) => ({
-        label: t(kind === "burst" ? "timeline.addBurstOnDeath" : "timeline.addPlayOnDeath", {
-          source: source.name,
-        }),
-        run: (): void => {
-          const id = addReaction(store, emitter.id, source.id, defaultSpawnAction(kind));
-          if (id !== undefined) {
-            pickReaction(emitter.id, id);
-          }
-        },
-      })),
+      FX_PARTICLE_EVENT_KINDS.flatMap((on) =>
+        (["burst", "play"] as const).map((kind) => ({
+          label: addReactionLabel(on, kind, source.name),
+          run: (): void => {
+            const id = addReaction(store, emitter.id, source.id, on, defaultSpawnAction(kind));
+            if (id !== undefined) {
+              pickReaction(emitter.id, id);
+            }
+          },
+        })),
+      ),
     );
   }
 
@@ -491,7 +493,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   }
 
   /** The picked reaction and its emitter while both still exist; forgets a stale pick. */
-  function resolvePickedReaction(): { emitter: EmitterDoc; reaction: DeathReaction } | undefined {
+  function resolvePickedReaction(): { emitter: EmitterDoc; reaction: Reaction } | undefined {
     if (pickedReaction === undefined) {
       return undefined;
     }

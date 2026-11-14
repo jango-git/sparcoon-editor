@@ -160,7 +160,10 @@ describe("reaction linking", () => {
         { name: "tint", components: 3, offset: 7 },
       ],
     },
-    written: new Set(["position", FX_CORE_LIFECYCLE, "heat"]),
+    written: {
+      birth: new Set(["position", FX_CORE_LIFECYCLE]),
+      death: new Set(["position", FX_CORE_LIFECYCLE, "heat"]),
+    },
   };
 
   it("copies each value from where the source's slot holds it, core fields included", () => {
@@ -170,7 +173,7 @@ describe("reaction linking", () => {
     ]);
     const offsetOf = (name: string): number =>
       plan.entries.find((entry) => entry.inputName.includes(name))?.offset ?? -1;
-    const link = linkReaction(source, plan.entries);
+    const link = linkReaction(source, "death", plan.entries);
     expect(link.issues).toEqual([]);
     expect(link.copies).toEqual(
       expect.arrayContaining([6, offsetOf("heat"), 1, 3 + FX_ID, offsetOf("builtin_id"), 1]),
@@ -184,7 +187,7 @@ describe("reaction linking", () => {
       request("heat", VEC2, [0, 0]),
       request("tint", VEC3, [0, 0, 0]),
     ]);
-    const link = linkReaction(source, plan.entries);
+    const link = linkReaction(source, "death", plan.entries);
     expect(link.copies).toEqual([]);
     expect(link.issues).toEqual(
       expect.arrayContaining([
@@ -195,8 +198,15 @@ describe("reaction linking", () => {
     );
   });
 
+  it("at a birth, reports a value the source writes only in its update", () => {
+    const plan = planInherits([request("heat")]);
+    const link = linkReaction(source, "birth", plan.entries);
+    expect(link.copies).toEqual([]);
+    expect(link.issues).toEqual([{ kind: "late", name: "heat", expected: "float" }]);
+  });
+
   it("links nothing from an unbuilt source, and reports nothing", () => {
-    expect(linkReaction(undefined, planInherits([request("heat")]).entries)).toEqual({
+    expect(linkReaction(undefined, "death", planInherits([request("heat")]).entries)).toEqual({
       copies: [],
       issues: [],
     });

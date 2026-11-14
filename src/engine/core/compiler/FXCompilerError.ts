@@ -163,7 +163,8 @@ export type FXCompilerErrorCode =
   | "lifetime-unbounded"
   | "inherit-missing"
   | "inherit-mistyped"
-  | "inherit-unwritten";
+  | "inherit-unwritten"
+  | "inherit-late";
 
 /** A single, editor-presentable problem found in a graph. */
 export interface FXCompilerError {

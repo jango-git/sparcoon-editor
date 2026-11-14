@@ -8,10 +8,10 @@ import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 
 import {
   type AnimationTrack,
-  type DeathReaction,
   emissionBasisField,
   type EmitterDoc,
   type Keyframe,
+  type Reaction,
   type SourceState,
   type SpawnAction,
   type TimelineEvent,
@@ -137,15 +137,15 @@ export function eventsLiteral(events: readonly TimelineEvent[], liveEvents?: tru
 }
 
 /**
- * The death reactions as the runtime reads them, each source by its index in the exported emitter
- * list (`emitterIndex`, by emitter id) - the export keeps every emitter, in scene order - with what
- * its births inherit of the dying particle (`copiesOf`, see `reactionLinking.ts`), omitted when
- * nothing.
+ * The reactions as the runtime reads them, each source by its index in the exported emitter list
+ * (`emitterIndex`, by emitter id) - the export keeps every emitter, in scene order - with the
+ * particle event it fires on (omitted for a death, the runtime's default) and what its births
+ * inherit of the source's particle (`copiesOf`, see `reactionLinking.ts`, omitted when nothing).
  */
 export function reactionsLiteral(
-  reactions: readonly DeathReaction[],
+  reactions: readonly Reaction[],
   emitterIndex: ReadonlyMap<string, number>,
-  copiesOf: (reaction: DeathReaction) => readonly number[],
+  copiesOf: (reaction: Reaction) => readonly number[],
 ): string {
   return JSON.stringify(
     reactions.map((reaction) => {
@@ -156,7 +156,12 @@ export function reactionsLiteral(
         );
       }
       const copies = copiesOf(reaction);
-      return { ...actionLiteral(reaction), source, ...(copies.length > 0 ? { copies } : {}) };
+      return {
+        ...actionLiteral(reaction),
+        source,
+        ...(reaction.on === "death" ? {} : { on: reaction.on }),
+        ...(copies.length > 0 ? { copies } : {}),
+      };
     }),
   );
 }
@@ -175,7 +180,7 @@ export function emitterSpecLiteral(
   ir: EmitterIR,
   slots: readonly string[],
   emitterIndex: ReadonlyMap<string, number>,
-  copiesOf: (reaction: DeathReaction) => readonly number[],
+  copiesOf: (reaction: Reaction) => readonly number[],
   gpuKernelName?: string,
   trailNames?: RenderArtifactNames,
 ): string {

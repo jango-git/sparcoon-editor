@@ -1,14 +1,19 @@
 /**
- * Timeline agent edits: the scene-wide length and frame rate, each emitter's spawn events and death
- * reactions, and (from {@link KeyframeEdits}) keyframes. An emitter spawns nothing until an event fires, so these
- * are what make a capture show particles. Times and durations snap to the frame grid, as they do
- * in the editor.
+ * Timeline agent edits: the scene-wide length and frame rate, each emitter's spawn events and
+ * reactions to other emitters' particle births and deaths, and (from {@link KeyframeEdits})
+ * keyframes. An emitter spawns nothing until an event fires, so these are what make a capture show
+ * particles. Times and durations snap to the frame grid, as they do in the editor.
  */
 
-import type { FXEmissionBasis } from "sparcoon";
-import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
+import type { FXEmissionBasis, FXParticleEventKind, FXSpawnAction } from "sparcoon";
+import {
+  asEmissionBasis,
+  asParticleEventKind,
+  FX_EMISSION_BASES,
+  FX_PARTICLE_EVENT_KINDS,
+} from "sparcoon/editor";
 
-import { canReact } from "../domain/deathReactions";
+import { canReact } from "../domain/reactions";
 import {
   addBurstEvent,
   addPlayEvent,
@@ -24,7 +29,7 @@ import {
   updateEvent,
   updateReaction,
 } from "../model/commands";
-import type { DeathReaction, SourceState, TimelineEvent } from "../model/editorState";
+import type { Reaction, SourceState, TimelineEvent } from "../model/editorState";
 import { isRecord } from "../util/guards";
 import { resolveOwner } from "./address.Internal";
 import { requireBoolean, requireFiniteNumber } from "./arguments.Internal";
@@ -68,12 +73,22 @@ export interface TimelineEdits extends KeyframeEdits {
   /**
    * Spawns `count` particles on `emitterId` at every death of `sourceId`'s particles, from where
    * each died, one frame later. `sourceId` then simulates on the CPU. Refused when it would close a
-   * cycle of reactions (an emitter reacting to itself included). Returns the reaction id.
+   * cycle of reactions, birth and death ones alike (an emitter reacting to itself included).
+   * Returns the reaction id.
    */
   addBurstOnDeath(emitterId: string, sourceId: string, count: number): string;
   /** Emits `rate` particles per second for `duration` seconds (above 0) on `emitterId` from where
    *  each of `sourceId`'s particles died. See {@link addBurstOnDeath}. */
   addPlayOnDeath(emitterId: string, sourceId: string, rate: number, duration: number): string;
+  /**
+   * Spawns `count` particles on `emitterId` at every birth of `sourceId`'s particles, from where
+   * each was born, one frame later. Its births can inherit only what `sourceId`'s spawn writes.
+   * Otherwise as {@link addBurstOnDeath}.
+   */
+  addBurstOnBirth(emitterId: string, sourceId: string, count: number): string;
+  /** Emits `rate` particles per second for `duration` seconds (above 0) on `emitterId` from where
+   *  each of `sourceId`'s particles was born. See {@link addBurstOnBirth}. */
+  addPlayOnBirth(emitterId: string, sourceId: string, rate: number, duration: number): string;
   updateReaction(emitterId: string, reactionId: string, patch: ReactionPatch): void;
   removeReaction(emitterId: string, reactionId: string): void;
 }
@@ -146,11 +161,7 @@ function requirePatch(event: TimelineEvent, patch: EventPatch): EventPatch {
   return patch;
 }
 
-function requireReaction(
-  source: SourceState,
-  emitterId: string,
-  reactionId: string,
-): DeathReaction {
+function requireReaction(source: SourceState, emitterId: string, reactionId: string): Reaction {
   const emitter = source.scene.emitters.find((candidate) => candidate.id === emitterId);
   const reaction = emitter?.reactions.find((candidate) => candidate.id === reactionId);
   if (reaction === undefined) {
@@ -176,12 +187,30 @@ function cycleError(emitterId: string, sourceId: string): AgentError {
   );
 }
 
-/** Adds the reaction, or explains why the command refused it. */
-function requireAdded(id: string | undefined, emitterId: string, sourceId: string): string {
-  if (id === undefined) {
-    throw cycleError(emitterId, sourceId);
+/** A reaction's `on`: one of the runtime's {@link FX_PARTICLE_EVENT_KINDS}. */
+function requireParticleEvent(value: unknown): FXParticleEventKind {
+  const kind = asParticleEventKind(value);
+  if (kind === undefined) {
+    throw new AgentError(
+      "invalid_argument",
+      `on must be one of ${FX_PARTICLE_EVENT_KINDS.map((candidate) => `"${candidate}"`).join(", ")}.`,
+    );
   }
-  return id;
+  return kind;
+}
+
+/** A reaction's burst of `count`, its argument checked. */
+function burstAction(count: number): FXSpawnAction {
+  return { kind: "burst", count: requireFiniteNumber("count", count) };
+}
+
+/** A reaction's play of `rate` for `duration` (above 0), its arguments checked. */
+function playAction(rate: number, duration: number): FXSpawnAction {
+  return {
+    kind: "play",
+    rate: requireFiniteNumber("rate", rate),
+    duration: requirePositiveDuration(duration),
+  };
 }
 
 function requirePositiveDuration(duration: unknown): number {
@@ -193,15 +222,15 @@ function requirePositiveDuration(duration: unknown): number {
 }
 
 /** The fields a patch may set on each reaction kind. */
-const REACTION_FIELDS: Readonly<Record<DeathReaction["kind"], readonly string[]>> = {
-  burst: ["source", "count"],
-  play: ["source", "rate", "duration"],
+const REACTION_FIELDS: Readonly<Record<Reaction["kind"], readonly string[]>> = {
+  burst: ["source", "on", "count"],
+  play: ["source", "on", "rate", "duration"],
 };
 
 function requireReactionPatch(
   source: SourceState,
   emitterId: string,
-  reaction: DeathReaction,
+  reaction: Reaction,
   patch: ReactionPatch,
 ): ReactionPatch {
   for (const [key, value] of Object.entries(patch)) {
@@ -216,6 +245,8 @@ function requireReactionPatch(
       if (!canReact(source.scene.emitters, emitterId, sourceId, reaction.id)) {
         throw cycleError(emitterId, sourceId);
       }
+    } else if (key === "on") {
+      requireParticleEvent(value);
     } else if (key === "duration") {
       requirePositiveDuration(value);
     } else {
@@ -226,6 +257,25 @@ function requireReactionPatch(
 }
 
 export function createTimelineEdits(session: EditSession): TimelineEdits {
+  // Adds a reaction firing `on` a particle event, or explains why the command refused it. `action`
+  // checks its own arguments, after the emitters'.
+  const addOn = (
+    on: FXParticleEventKind,
+    emitterId: string,
+    sourceId: string,
+    action: () => FXSpawnAction,
+  ): string =>
+    session.mutate((store) => {
+      const source = store.getSource();
+      const target = requireEmitter(source, emitterId);
+      const from = requireSourceEmitter(source, sourceId);
+      const id = addReaction(store, target, from, on, action());
+      if (id === undefined) {
+        throw cycleError(target, from);
+      }
+      return id;
+    });
+
   return {
     ...createKeyframeEdits(session),
 
@@ -288,26 +338,13 @@ export function createTimelineEdits(session: EditSession): TimelineEdits {
       ),
 
     addBurstOnDeath: (emitterId, sourceId, count) =>
-      session.mutate((store) => {
-        const source = store.getSource();
-        const target = requireEmitter(source, emitterId);
-        const from = requireSourceEmitter(source, sourceId);
-        const action = { kind: "burst" as const, count: requireFiniteNumber("count", count) };
-        return requireAdded(addReaction(store, target, from, action), target, from);
-      }),
-
+      addOn("death", emitterId, sourceId, () => burstAction(count)),
     addPlayOnDeath: (emitterId, sourceId, rate, duration) =>
-      session.mutate((store) => {
-        const source = store.getSource();
-        const target = requireEmitter(source, emitterId);
-        const from = requireSourceEmitter(source, sourceId);
-        const action = {
-          kind: "play" as const,
-          rate: requireFiniteNumber("rate", rate),
-          duration: requirePositiveDuration(duration),
-        };
-        return requireAdded(addReaction(store, target, from, action), target, from);
-      }),
+      addOn("death", emitterId, sourceId, () => playAction(rate, duration)),
+    addBurstOnBirth: (emitterId, sourceId, count) =>
+      addOn("birth", emitterId, sourceId, () => burstAction(count)),
+    addPlayOnBirth: (emitterId, sourceId, rate, duration) =>
+      addOn("birth", emitterId, sourceId, () => playAction(rate, duration)),
 
     updateReaction: (emitterId, reactionId, patch) =>
       session.mutate((store) => {

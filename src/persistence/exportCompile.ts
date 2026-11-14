@@ -253,8 +253,8 @@ function compileTrail(
 
 /**
  * Compiles one emitter for the export. `spawnConfig` is how it runs - the export passes
- * `effectiveSpawnConfig` (a death source is never offered the GPU); defaults to what its spawn node
- * asks for, for an emitter compiled on its own.
+ * `effectiveSpawnConfig` (a reaction source is never offered the GPU); defaults to what its spawn
+ * node asks for, for an emitter compiled on its own.
  */
 export function compileEmitter(
   emitter: EmitterDoc,

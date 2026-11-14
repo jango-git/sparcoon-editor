@@ -7,7 +7,7 @@
  *   recomputed by the pipeline on every structural edit.
  */
 
-import type { FXEmissionBasis, FXKeyEase, FXSpawnAction } from "sparcoon";
+import type { FXEmissionBasis, FXKeyEase, FXParticleEventKind, FXSpawnAction } from "sparcoon";
 
 import type {
   EditorGraph,
@@ -84,26 +84,28 @@ export interface PlayEvent extends PlayAction {
 
 export type TimelineEvent = BurstEvent | PlayEvent;
 
+/** What a reaction holds besides its action: its id, its source and which of the source's
+ *  particle events fires it. */
+interface ReactionTrigger {
+  readonly id: string;
+  /** The id of the emitter whose particles' births or deaths fire it. */
+  readonly source: string;
+  readonly on: FXParticleEventKind;
+}
+
 /**
- * A **death reaction** on one emitter: its action, fired at every death of the `source` emitter's
- * particles, from where the particle died (the runtime's `connectDeathReaction`). Not on the time
- * axis. A play here always has a finite duration, and the reactions of a scene never form a cycle
- * (see domain/deathReactions.ts).
+ * A **reaction** on one emitter: its action, fired at every birth or death of the `source`
+ * emitter's particles, from where the particle was born or died (the runtime's `connectReaction`).
+ * Not on the time axis. A play here always has a finite duration, and the reactions of a scene
+ * never form a cycle, whatever events they fire on (see domain/reactions.ts).
  */
-export interface BurstReaction extends BurstAction {
-  readonly id: string;
-  /** The id of the emitter whose particles' deaths fire it. */
-  readonly source: string;
-}
+export interface BurstReaction extends BurstAction, ReactionTrigger {}
 
-/** A reaction's play counts over time only: it spawns from where a particle died, which does not
- *  move. */
-export interface PlayReaction extends Omit<PlayAction, "over"> {
-  readonly id: string;
-  readonly source: string;
-}
+/** A reaction's play counts over time only: it spawns from where a particle was born or died,
+ *  which does not move. */
+export interface PlayReaction extends Omit<PlayAction, "over">, ReactionTrigger {}
 
-export type DeathReaction = BurstReaction | PlayReaction;
+export type Reaction = BurstReaction | PlayReaction;
 
 /**
  * One emitter object in the scene. Each emitter owns its **own** pair of authored
@@ -126,10 +128,10 @@ export interface EmitterDoc {
   /** This emitter's timeline spawn events (burst / play), sorted by time; the timeline drives them. */
   readonly events: readonly TimelineEvent[];
   /**
-   * What this emitter spawns when other emitters' particles die. With {@link events}, the only
+   * What this emitter spawns when other emitters' particles are born or die. With {@link events}, the only
    * things that make an emitter spawn - a fresh emitter is idle until one fires.
    */
-  readonly reactions: readonly DeathReaction[];
+  readonly reactions: readonly Reaction[];
   /** The emitter's local transform (relative to the VFX group), edited by the preview gizmo. */
   readonly transform: Transform;
   /** Keyframes animating this emitter's transform channels (position / rotation / scale). */

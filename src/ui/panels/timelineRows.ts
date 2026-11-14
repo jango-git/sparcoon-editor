@@ -4,7 +4,7 @@
  */
 
 import { t, type TKey } from "../../i18n";
-import type { DeathReaction, EmitterDoc, Keyframe } from "../../model/editorState";
+import type { EmitterDoc, Keyframe, Reaction } from "../../model/editorState";
 import { emitterEntity, type SceneEntity } from "../../model/entity";
 import { frameOf } from "../../model/frames";
 import type { TransformChannel } from "../../model/transform";
@@ -18,6 +18,7 @@ import {
   formatChannel,
   formatValue,
   fraction,
+  reactionTitle,
   spanFraction,
 } from "./timelineFormat";
 import { beginRename, rowActionButton, timelineIcon } from "./timelineRowLabel";
@@ -247,13 +248,13 @@ export function buildTrackLabel(
 }
 
 /**
- * The label cell for a death reaction sub-row: its kind's glyph, the death glyph, and the source
- * emitter's name - set apart as a link (`onSelectSource` goes to that emitter). Clicking anywhere
+ * The label cell for a reaction sub-row: its kind's glyph, its event's glyph (birth or death), and
+ * the source emitter's name - set apart as a link (`onSelectSource` goes to that emitter). Clicking anywhere
  * else picks the reaction for the inspector (`onPick`) - a reaction has no place on the time axis,
  * so it is not a timeline item (no drag, marquee or clipboard).
  */
 export function buildReactionLabel(
-  reaction: DeathReaction,
+  reaction: Reaction,
   sourceName: string,
   picked: boolean,
   onPick: () => void,
@@ -269,30 +270,28 @@ export function buildReactionLabel(
     event.stopPropagation();
     onSelectSource();
   });
-  const death = createElement("span", { className: "timeline-reaction__death" });
-  death.append(icon(timelineIcons.reaction));
+  const event = createElement("span", { className: "timeline-reaction__event" });
+  event.append(
+    icon(reaction.on === "birth" ? timelineIcons.reactionBirth : timelineIcons.reaction),
+  );
   const label = createElement(
     "div",
     { className: "timeline-row__label timeline-track__label timeline-reaction__label" },
     [
       timelineIcon(reaction.kind === "burst" ? timelineIcons.burst : timelineIcons.play),
-      death,
+      event,
       createElement("span", { className: "timeline-row__name" }, [source]),
     ],
   );
   label.classList.toggle("is-picked", picked);
-  attachTooltip(
-    label,
-    t(reaction.kind === "burst" ? "timeline.burstOnDeath" : "timeline.playOnDeath"),
-    describeReaction(reaction, sourceName),
-    "pointer",
-  );
+  attachTooltip(label, reactionTitle(reaction), describeReaction(reaction, sourceName), "pointer");
   label.addEventListener("click", onPick);
   return label;
 }
 
-/** A reaction row's lane fill: armed for the whole timeline, since a death can come at any time. */
-export function reactionBand(reaction: DeathReaction): HTMLElement {
+/** A reaction row's lane fill: armed for the whole timeline, since a birth or death can come at any
+ *  time. */
+export function reactionBand(reaction: Reaction): HTMLElement {
   return createElement("div", {
     className: `timeline-reaction__band timeline-reaction__band--${reaction.kind}`,
   });

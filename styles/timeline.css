@@ -698,14 +698,15 @@
   color: color-mix(in srgb, var(--timeline-event) 70%, var(--dim));
 }
 
-/* The death glyph between the kind badge and the source: reads "when it dies". */
-.timeline-reaction__death {
+/* The event glyph between the kind badge and the source: reads "when it is born" or "when it
+   dies". */
+.timeline-reaction__event {
   flex: none;
   display: flex;
   color: var(--dim);
 }
 
-.timeline-reaction__death svg {
+.timeline-reaction__event svg {
   width: 14px;
   height: 14px;
 }

@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   canReact,
-  deathSourceIds,
   effectiveSpawnConfig,
   reactingEmitters,
   reactionSourceCandidates,
+  reactionSourceIds,
   withValidReactions,
-} from "../../src/domain/deathReactions";
+} from "../../src/domain/reactions";
 import {
   addReaction,
   defaultSpawnAction,
@@ -19,8 +19,8 @@ import {
 } from "../../src/model/commands";
 import {
   createDefaultEmitter,
-  type DeathReaction,
   type EmitterDoc,
+  type Reaction,
   type SourceState,
 } from "../../src/model/editorState";
 import { SignalBus } from "../../src/model/signals";
@@ -31,15 +31,15 @@ import { loadModule } from "../helpers/loadModule";
 import { createTestState } from "../helpers/testDocument";
 
 /** Emitters `a`, `b`, `c` (starters), `b` reacting to `a`'s deaths with `reactions`. */
-function chain(reactions: Readonly<Record<string, readonly DeathReaction[]>> = {}): EmitterDoc[] {
+function chain(reactions: Readonly<Record<string, readonly Reaction[]>> = {}): EmitterDoc[] {
   return ["a", "b", "c"].map((id) => ({
     ...createDefaultEmitter(id, id.toUpperCase()),
     reactions: reactions[id] ?? [],
   }));
 }
 
-function burstOn(source: string, id = `r_${source}`, count = 4): DeathReaction {
-  return { id, source, kind: "burst", count };
+function burstOn(source: string, id = `r_${source}`, count = 4): Reaction {
+  return { id, source, on: "death", kind: "burst", count };
 }
 
 function storeWith(emitters: readonly EmitterDoc[], signals = new SignalBus()): Store {
@@ -78,7 +78,7 @@ describe("death reaction rules", () => {
 
   it("names the sources, and who reacts to each", () => {
     const emitters = chain({ b: [burstOn("a")], c: [burstOn("a", "r2")] });
-    expect([...deathSourceIds(emitters)]).toEqual(["a"]);
+    expect([...reactionSourceIds(emitters)]).toEqual(["a"]);
     expect(reactingEmitters(emitters, "a").map((emitter) => emitter.id)).toEqual(["b", "c"]);
   });
 
@@ -107,39 +107,60 @@ describe("death reaction rules", () => {
   });
 });
 
-describe("death reaction commands", () => {
+describe("reaction commands", () => {
   it("adds a reaction only where it may exist, clamped like an edit", () => {
     const store = storeWith(chain());
-    const id = addReaction(store, "b", "a", { kind: "play", rate: 10, duration: 0 });
+    const id = addReaction(store, "b", "a", "death", { kind: "play", rate: 10, duration: 0 });
     expect(id).toBeDefined();
     const [reaction] = emitterOf(store, "b").reactions;
     // A reaction never plays forever: at least one frame.
     expect(reaction).toMatchObject({ source: "a", kind: "play", rate: 10 });
     expect(reaction.kind === "play" && reaction.duration).toBeCloseTo(1 / 30, 6);
-    expect(addReaction(store, "a", "b", defaultSpawnAction("burst"))).toBeUndefined(); // a cycle
+    expect(addReaction(store, "a", "b", "death", defaultSpawnAction("burst"))).toBeUndefined(); // a cycle
   });
 
-  it("is a structural edit only when the set of sources changes (where they simulate)", () => {
+  it("adds a birth reaction, and switches a reaction's event", () => {
     const signals = new SignalBus();
     const store = storeWith(chain(), signals);
     const kinds: string[] = [];
     signals.on("sourceStructureChanged", () => kinds.push("structural"));
     signals.on("sourceViewChanged", () => kinds.push("view"));
-    const first = addReaction(store, "b", "a", defaultSpawnAction("burst")) ?? ""; // a: a source
-    addReaction(store, "c", "a", defaultSpawnAction("burst")); // a already is
+    const id = addReaction(store, "b", "a", "birth", defaultSpawnAction("burst")) ?? "";
+    expect(emitterOf(store, "b").reactions[0]?.on).toBe("birth");
+    updateReaction(store, "b", id, { on: "death" });
+    expect(emitterOf(store, "b").reactions[0]?.on).toBe("death");
+    // A new event is a new link: what the births inherit, and its warnings, follow it.
+    expect(kinds).toEqual(["structural", "structural"]);
+  });
+
+  it("refuses a cycle mixing birth and death reactions", () => {
+    const store = storeWith(chain());
+    expect(addReaction(store, "b", "a", "birth", defaultSpawnAction("burst"))).toBeDefined();
+    expect(addReaction(store, "a", "b", "death", defaultSpawnAction("burst"))).toBeUndefined();
+  });
+
+  it("is a structural edit only when a link changes, not a reaction's numbers", () => {
+    const signals = new SignalBus();
+    const store = storeWith(chain(), signals);
+    const kinds: string[] = [];
+    signals.on("sourceStructureChanged", () => kinds.push("structural"));
+    signals.on("sourceViewChanged", () => kinds.push("view"));
+    const first = addReaction(store, "b", "a", "death", defaultSpawnAction("burst")) ?? ""; // a link: a becomes a source
+    addReaction(store, "c", "a", "death", defaultSpawnAction("burst")); // a new link to a source
     updateReaction(store, "b", first, { count: 3 });
     updateReaction(store, "b", first, { source: "c" }); // c becomes one too
-    removeReaction(store, "b", first); // c no longer is
-    expect(kinds).toEqual(["structural", "view", "view", "structural", "structural"]);
+    removeReaction(store, "b", first); // a link less
+    expect(kinds).toEqual(["structural", "structural", "view", "structural", "structural"]);
   });
 
   it("updates the action, and re-points only to a source that closes no cycle", () => {
     const store = storeWith(chain({ c: [burstOn("b", "c_on_b")] }));
-    const id = addReaction(store, "b", "a", defaultSpawnAction("burst")) ?? "";
+    const id = addReaction(store, "b", "a", "death", defaultSpawnAction("burst")) ?? "";
     updateReaction(store, "b", id, { count: 7.6, rate: 99 });
     expect(emitterOf(store, "b").reactions[0]).toEqual({
       id,
       source: "a",
+      on: "death",
       kind: "burst",
       count: 8,
     });
@@ -157,7 +178,7 @@ describe("death reaction commands", () => {
   });
 });
 
-describe("death reactions in a saved document", () => {
+describe("reactions in a saved document", () => {
   function saved(emitters: readonly unknown[]): unknown {
     const source = createTestState().source;
     return { ...source, scene: { ...source.scene, emitters } };
@@ -178,20 +199,51 @@ describe("death reactions in a saved document", () => {
         {
           ...b,
           reactions: [
-            { id: "ok", source: "a", kind: "play", rate: 5, duration: 0.5 },
-            { id: "endless", source: "a", kind: "play", rate: 5, duration: 0 },
-            { id: "distance", source: "a", kind: "play", rate: 5, duration: 1, over: "distance" },
+            { id: "ok", source: "a", on: "death", kind: "play", rate: 5, duration: 0.5 },
+            { id: "endless", source: "a", on: "death", kind: "play", rate: 5, duration: 0 },
+            {
+              id: "distance",
+              source: "a",
+              on: "death",
+              kind: "play",
+              rate: 5,
+              duration: 1,
+              over: "distance",
+            },
             { id: "no_source", kind: "burst", count: 3 },
-            { id: "bad_kind", source: "a", kind: "spray", count: 3 },
+            { id: "bad_kind", source: "a", on: "death", kind: "spray", count: 3 },
           ],
         },
       ]),
     );
     expect(source?.scene.emitters[1]?.reactions.map((reaction) => reaction.id)).toEqual(["ok"]);
   });
+
+  it("reads a reaction saved before birth reactions existed as a death one, and drops a bad event", () => {
+    const [a, b] = chain();
+    const source = normalizeSource(
+      saved([
+        a,
+        {
+          ...b,
+          reactions: [
+            { id: "old", source: "a", kind: "burst", count: 3 },
+            { id: "birth", source: "a", on: "birth", kind: "burst", count: 3 },
+            { id: "bad_event", source: "a", on: "spawn", kind: "burst", count: 3 },
+          ],
+        },
+      ]),
+    );
+    expect(
+      source?.scene.emitters[1]?.reactions.map((reaction) => [reaction.id, reaction.on]),
+    ).toEqual([
+      ["old", "death"],
+      ["birth", "birth"],
+    ]);
+  });
 });
 
-describe("death reactions in the export", () => {
+describe("reactions in the export", () => {
   /** Shell bursts 4 at 0 and lives 2 s; Sparks has no events and bursts 3 per shell death. */
   function shellAndSparks(): SourceState {
     const source = createTestState().source;
@@ -202,7 +254,7 @@ describe("death reactions in the export", () => {
     const sparks: EmitterDoc = {
       ...createDefaultEmitter("sparks", "Sparks"),
       events: [],
-      reactions: [{ id: "r", source: "shell", kind: "burst", count: 3 }],
+      reactions: [{ id: "r", source: "shell", on: "death", kind: "burst", count: 3 }],
     };
     return {
       ...source,
@@ -246,7 +298,14 @@ describe("death reactions in the export", () => {
   function shellAndPlayingSparks(): SourceState {
     const source = shellAndSparks();
     const [shell, sparks] = source.scene.emitters;
-    const play: DeathReaction = { id: "r", source: "shell", kind: "play", rate: 20, duration: 0.5 };
+    const play: Reaction = {
+      id: "r",
+      source: "shell",
+      on: "death",
+      kind: "play",
+      rate: 20,
+      duration: 0.5,
+    };
     return {
       ...source,
       scene: { ...source.scene, emitters: [shell, { ...sparks, reactions: [play] }] },
@@ -265,6 +324,35 @@ describe("death reactions in the export", () => {
       expect(count("Shell")).toBe(0);
       expect(count("Sparks")).toBe(0);
       sparcoon.FXWorld.update(0.375);
+      expect(count("Sparks")).toBe(12);
+    });
+  });
+
+  it("ships a birth reaction with its event, and bursts the sparks the frame after the births", () => {
+    const source = shellAndSparks();
+    const [shell, sparks] = source.scene.emitters;
+    const onBirth: SourceState = {
+      ...source,
+      scene: {
+        ...source.scene,
+        emitters: [
+          shell,
+          {
+            ...sparks,
+            reactions: [{ id: "r", source: "shell", on: "birth", kind: "burst", count: 3 }],
+          },
+        ],
+      },
+    };
+    expect(emitProjectModule(onBirth)).toContain(
+      'reactions: [{"kind":"burst","count":3,"source":0,"on":"birth"}],',
+    );
+    playExport(onBirth, (effect) => {
+      const count = (name: string): number | undefined => effect.getEmitter(name)?.particleCount;
+      sparcoon.FXWorld.update(0.125); // the t=0 burst
+      expect(count("Shell")).toBe(4);
+      expect(count("Sparks")).toBe(0);
+      sparcoon.FXWorld.update(0.125);
       expect(count("Sparks")).toBe(12);
     });
   });

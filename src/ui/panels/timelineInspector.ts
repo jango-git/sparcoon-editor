@@ -3,10 +3,15 @@
  * {@link InspectorContext}; the panel calls it on every selection change.
  */
 
-import type { FXEmissionBasis } from "sparcoon";
-import { asEmissionBasis, FX_EMISSION_BASES } from "sparcoon/editor";
+import type { FXEmissionBasis, FXParticleEventKind } from "sparcoon";
+import {
+  asEmissionBasis,
+  asParticleEventKind,
+  FX_EMISSION_BASES,
+  FX_PARTICLE_EVENT_KINDS,
+} from "sparcoon/editor";
 
-import { reactionSourceCandidates } from "../../domain/deathReactions";
+import { reactionSourceCandidates } from "../../domain/reactions";
 import { t, type TKey } from "../../i18n";
 import {
   DEFAULT_PLAY_DURATION,
@@ -24,10 +29,11 @@ import {
   updateEvent,
   updateReaction,
 } from "../../model/commands";
-import type { DeathReaction, EmitterDoc, SpawnAction } from "../../model/editorState";
+import type { EmitterDoc, Reaction, SpawnAction } from "../../model/editorState";
 import { frameOf, timeOfFrame } from "../../model/frames";
 import type { Store } from "../../model/store";
 import { clearChildren } from "../dom";
+import { reactionTitle } from "./timelineFormat";
 import {
   channelValueEditor,
   dropdownField,
@@ -306,20 +312,46 @@ function spawnActionFields(
     : [rate, duration];
 }
 
+/** The label of each particle event a reaction fires on. */
+const EVENT_LABEL: Readonly<Record<FXParticleEventKind, TKey>> = {
+  birth: "timeline.reactionOnBirth",
+  death: "timeline.reactionOnDeath",
+};
+
+/** A reaction's particle event: one of the runtime's {@link FX_PARTICLE_EVENT_KINDS}. */
+function eventField(
+  on: FXParticleEventKind,
+  commit: (on: FXParticleEventKind) => void,
+): HTMLElement {
+  return dropdownField(
+    t("timeline.reactionEvent"),
+    FX_PARTICLE_EVENT_KINDS.map((value) => ({ value, label: t(EVENT_LABEL[value]) })),
+    on,
+    (value) => {
+      const kind = asParticleEventKind(value);
+      if (kind !== undefined) {
+        commit(kind);
+      }
+    },
+    t("timeline.reactionEventTip"),
+  );
+}
+
 /**
- * The inspector for one death reaction of `target` (picked from its timeline sub-row, not the time
- * selection): what it reacts to - any emitter that closes no cycle - and its action.
+ * The inspector for one reaction of `target` (picked from its timeline sub-row, not the time
+ * selection): what it reacts to - any emitter that closes no cycle - on which particle event, and
+ * its action.
  */
 export function renderReactionInspector(
   inspector: HTMLElement,
   store: Store,
   target: EmitterDoc,
-  reaction: DeathReaction,
+  reaction: Reaction,
 ): void {
   clearChildren(inspector);
   const emitters = store.getSource().scene.emitters;
   inspector.append(
-    inspectorTitle(t(reaction.kind === "burst" ? "timeline.burstOnDeath" : "timeline.playOnDeath")),
+    inspectorTitle(reactionTitle(reaction)),
     dropdownField(
       t("timeline.reactionSource"),
       reactionSourceCandidates(emitters, target.id, reaction.id).map((emitter) => ({
@@ -330,6 +362,7 @@ export function renderReactionInspector(
       (source) => updateReaction(store, target.id, reaction.id, { source }),
       t("timeline.reactionSourceTip"),
     ),
+    eventField(reaction.on, (on) => updateReaction(store, target.id, reaction.id, { on })),
     ...spawnActionFields(
       reaction,
       (patch, live) => updateReaction(store, target.id, reaction.id, patch, live),

@@ -12,8 +12,8 @@
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 
-import { effectiveSpawnConfig } from "../domain/deathReactions";
 import { linkReaction, reactionSourceOf } from "../domain/reactionLinking";
+import { effectiveSpawnConfig } from "../domain/reactions";
 import { TRAIL_GEOMETRY } from "../domain/trailChecks";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
@@ -24,7 +24,7 @@ import {
 } from "../engine/emit/artifactLiterals";
 import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
-import type { DeathReaction, SourceState } from "../model/editorState";
+import type { Reaction, SourceState } from "../model/editorState";
 import type { CompiledShadersByGLSLTier } from "./exportCompile";
 import {
   compileEmitter,
@@ -122,8 +122,8 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   );
   compiled.forEach(({ emitter, ir }, index) => {
     const inherits = ir.kernel.inherit?.entries ?? [];
-    const copiesOf = (reaction: DeathReaction): readonly number[] =>
-      linkReaction(reactionSources.get(reaction.source), inherits).copies;
+    const copiesOf = (reaction: Reaction): readonly number[] =>
+      linkReaction(reactionSources.get(reaction.source), reaction.on, inherits).copies;
     importHelpers(collectBehaviorHelpers(ir.kernel));
     const renderNames = tierNames(`render${String(index)}`);
     const behaviorName = `behavior${String(index)}`;

@@ -3,10 +3,10 @@
  * strings. Rotation is always surfaced as Euler degrees (the key stores a quaternion).
  */
 
-import type { FXEmissionBasis } from "sparcoon";
+import type { FXEmissionBasis, FXParticleEventKind } from "sparcoon";
 
 import { t, type TKey } from "../../i18n";
-import type { DeathReaction, PlayAction, TimelineEvent } from "../../model/editorState";
+import type { PlayAction, Reaction, SpawnAction, TimelineEvent } from "../../model/editorState";
 import type { TransformChannel } from "../../model/transform";
 import { clamp } from "../primitives/math";
 import { channelToDisplay } from "./transformChannel";
@@ -70,15 +70,61 @@ export function describeEvent(event: TimelineEvent): string {
   });
 }
 
-/** A death reaction's tooltip: what it spawns at each death of `sourceName`'s particles. */
-export function describeReaction(reaction: DeathReaction, sourceName: string): string {
+/** A reaction's strings by the event it fires on and its action: its title, the menu item adding
+ *  one, and its tooltip. */
+const REACTION_TEXT: Readonly<
+  Record<
+    FXParticleEventKind,
+    Readonly<Record<SpawnAction["kind"], { title: TKey; add: TKey; tooltip: TKey }>>
+  >
+> = {
+  birth: {
+    burst: {
+      title: "timeline.burstOnBirth",
+      add: "timeline.addBurstOnBirth",
+      tooltip: "timeline.burstOnBirthTooltip",
+    },
+    play: {
+      title: "timeline.playOnBirth",
+      add: "timeline.addPlayOnBirth",
+      tooltip: "timeline.playOnBirthTooltip",
+    },
+  },
+  death: {
+    burst: {
+      title: "timeline.burstOnDeath",
+      add: "timeline.addBurstOnDeath",
+      tooltip: "timeline.burstOnDeathTooltip",
+    },
+    play: {
+      title: "timeline.playOnDeath",
+      add: "timeline.addPlayOnDeath",
+      tooltip: "timeline.playOnDeathTooltip",
+    },
+  },
+};
+
+/** A reaction's title: "Burst on birth", "Play on death"... */
+export function reactionTitle(reaction: Reaction): string {
+  return t(REACTION_TEXT[reaction.on][reaction.kind].title);
+}
+
+/** The menu item adding a `kind` reaction firing `on` a particle event of `sourceName`. */
+export function addReactionLabel(
+  on: FXParticleEventKind,
+  kind: SpawnAction["kind"],
+  sourceName: string,
+): string {
+  return t(REACTION_TEXT[on][kind].add, { source: sourceName });
+}
+
+/** A reaction's tooltip: what it spawns at each birth or death of `sourceName`'s particles. */
+export function describeReaction(reaction: Reaction, sourceName: string): string {
+  const key = REACTION_TEXT[reaction.on][reaction.kind].tooltip;
   if (reaction.kind === "burst") {
-    return t("timeline.burstOnDeathTooltip", {
-      source: sourceName,
-      count: String(reaction.count),
-    });
+    return t(key, { source: sourceName, count: String(reaction.count) });
   }
-  return t("timeline.playOnDeathTooltip", {
+  return t(key, {
     source: sourceName,
     rate: rateText(reaction),
     duration: trimNumber(reaction.duration),

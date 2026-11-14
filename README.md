@@ -89,17 +89,19 @@ value.
 
 ## Reactions and inheritance
 
-A reaction starts emission on one emitter where another emitter's particles die. Firework bursts,
-impact splashes and multi-stage chains are built this way. A reaction is added on the emitter's
-timeline with **Add reaction**.
+A reaction starts emission on one emitter where another emitter's particles are born or die.
+Firework bursts, impact splashes and multi-stage chains are built this way. A reaction is added on
+the emitter's timeline with **Add reaction**, and its **Event** (birth or death) can be switched in
+the inspector.
 
-- The event fires at the point of death, one frame later.
+- The reaction fires at the point of birth or death, one frame later.
 - The source emitter simulates on the CPU.
-- An emitter cannot react to itself, and reactions cannot form a cycle.
+- An emitter cannot react to itself, and reactions cannot form a cycle, whatever their events.
 
-The **Inherited Attribute** node hands a newborn particle an attribute of the dead one: color, size,
-random seed, any attribute of its emitter. If the particle was not born from a reaction, the node
-returns its default value.
+The **Inherited Attribute** node hands a newborn particle an attribute of the source particle:
+color, size, random seed, any attribute of its emitter. At a birth the source particle holds only
+what its spawn wrote, and an attribute written only in the update keeps the default with a warning.
+If the particle was not born from a reaction, the node returns its default value.
 
 ## Nodes
 

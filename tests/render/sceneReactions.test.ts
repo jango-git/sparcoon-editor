@@ -49,19 +49,30 @@ function runTo(seconds: number): void {
 
 afterEach(destroyPreviews);
 
-describe("SceneEmitters: death reactions in the live preview", () => {
+describe("SceneEmitters: reactions in the live preview", () => {
   it("spawns on the reacting emitter where the source's particles die", () => {
     const { store, emitters } = preview();
-    addReaction(store, "sparks", "shell", { kind: "burst", count: 2 });
+    addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 2 });
     emitters.sync(store.getSource().scene);
     emitters.spawn("shell", { kind: "burst", count: 5 });
     runTo(2.5);
     expect(emitters.totalParticleCount()).toBe(10);
   });
 
+  it("spawns on the reacting emitter a tick after the source's particles are born", () => {
+    const { store, emitters } = preview();
+    addReaction(store, "sparks", "shell", "birth", { kind: "burst", count: 2 });
+    emitters.sync(store.getSource().scene);
+    emitters.spawn("shell", { kind: "burst", count: 5 });
+    runTo(0.125); // the shells are born
+    expect(emitters.totalParticleCount()).toBe(5);
+    runTo(0.125);
+    expect(emitters.totalParticleCount()).toBe(5 + 10);
+  });
+
   it("plays a play reaction out once per death, for its duration only", () => {
     const { store, emitters } = preview();
-    addReaction(store, "sparks", "shell", { kind: "play", rate: 20, duration: 0.5 });
+    addReaction(store, "sparks", "shell", "death", { kind: "play", rate: 20, duration: 0.5 });
     emitters.sync(store.getSource().scene);
     emitters.spawn("shell", { kind: "burst", count: 2 });
     runTo(3);
@@ -72,7 +83,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
 
   it("follows a reaction's new numbers after a view edit, without a rebuild", () => {
     const { store, emitters } = preview();
-    const id = addReaction(store, "sparks", "shell", { kind: "burst", count: 1 }) ?? "";
+    const id = addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 1 }) ?? "";
     emitters.sync(store.getSource().scene);
     updateReaction(store, "sparks", id, { count: 4 }); // a view edit: what main.ts rewires on
     emitters.wireReactions(store.getSource().scene);
@@ -83,7 +94,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
 
   it("keeps the link across a rebuild of the source", () => {
     const { store, emitters } = preview();
-    addReaction(store, "sparks", "shell", { kind: "burst", count: 1 });
+    addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 1 });
     emitters.sync(store.getSource().scene);
     // A capacity edit rebuilds the shell's FXEmitter from scratch; a render-mode one swaps it.
     updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 128);
@@ -97,7 +108,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
 
   it("stops spawning once the reaction is removed", () => {
     const { store, emitters } = preview();
-    const id = addReaction(store, "sparks", "shell", { kind: "burst", count: 2 }) ?? "";
+    const id = addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 2 }) ?? "";
     emitters.sync(store.getSource().scene);
     removeReaction(store, "sparks", id);
     emitters.sync(store.getSource().scene);
@@ -108,7 +119,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
 
   it("drops the link with a removed source, keeping the reacting emitter", () => {
     const { store, emitters } = preview();
-    addReaction(store, "sparks", "shell", { kind: "burst", count: 2 });
+    addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 2 });
     emitters.sync(store.getSource().scene);
     emitters.spawn("shell", { kind: "burst", count: 5 });
     removeEmitter(store, "shell");
@@ -122,7 +133,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
 
   it("spawns nothing more once destroyed, even with source particles left to die", () => {
     const { store, emitters } = preview();
-    addReaction(store, "sparks", "shell", { kind: "burst", count: 2 });
+    addReaction(store, "sparks", "shell", "death", { kind: "burst", count: 2 });
     emitters.sync(store.getSource().scene);
     emitters.spawn("shell", { kind: "burst", count: 5 });
     runTo(0.125);
@@ -164,7 +175,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
     });
     const inheritingSparks: EmitterDoc = {
       ...sparks,
-      reactions: [{ id: "r", source: "shell", kind: "burst", count: 2 }],
+      reactions: [{ id: "r", source: "shell", on: "death", kind: "burst", count: 2 }],
       behaviorGraph: {
         ...sparks.behaviorGraph,
         nodes: {
@@ -188,7 +199,7 @@ describe("SceneEmitters: death reactions in the live preview", () => {
       activeEmitterId: "sparks",
     });
     expect(result.behaviorStatus.warnings).toContainEqual(
-      'emitter "Shell" has no attribute "cold" - births its deaths spawn read the default',
+      'emitter "Shell" has no attribute "cold" - births reacting to it read the default',
     );
     expect(emitters.inheritIssues.get("r")).toEqual([
       { kind: "missing", name: "cold", expected: "float" },

@@ -363,13 +363,16 @@
     "message": "target \"{targetName}\" inherited input \"{inputName}\" does not lie inside its inherit layout of {stride} floats"
   },
   "inherit-missing": {
-    "message": "emitter \"{source}\" has no attribute \"{name}\" - births its deaths spawn read the default"
+    "message": "emitter \"{source}\" has no attribute \"{name}\" - births reacting to it read the default"
   },
   "inherit-mistyped": {
-    "message": "emitter \"{source}\" holds \"{name}\" as {found}, not {expected} - births its deaths spawn read the default"
+    "message": "emitter \"{source}\" holds \"{name}\" as {found}, not {expected} - births reacting to it read the default"
   },
   "inherit-unwritten": {
-    "message": "emitter \"{source}\" never writes \"{name}\" - births its deaths spawn read the default"
+    "message": "emitter \"{source}\" never writes \"{name}\" - births reacting to it read the default"
+  },
+  "inherit-late": {
+    "message": "emitter \"{source}\" writes \"{name}\" only after a particle's birth - births reacting to its births read the default"
   },
   "attribute-never-written": {
     "message": "attribute \"{name}\" is read here but the behavior never writes it - it is always 0"

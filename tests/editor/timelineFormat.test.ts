@@ -126,11 +126,20 @@ describe("describeEvent", () => {
 
 describe("describeReaction", () => {
   it("names the source and what each death spawns", () => {
-    expect(describeReaction({ id: "r", source: "s", kind: "burst", count: 4 }, "Shell")).toBe(
-      "When a particle of Shell dies: burst 4 there, one frame later.",
-    );
     expect(
-      describeReaction({ id: "r", source: "s", kind: "play", rate: 12.5, duration: 0.25 }, "Shell"),
+      describeReaction({ id: "r", source: "s", on: "death", kind: "burst", count: 4 }, "Shell"),
+    ).toBe("When a particle of Shell dies: burst 4 there, one frame later.");
+    expect(
+      describeReaction(
+        { id: "r", source: "s", on: "death", kind: "play", rate: 12.5, duration: 0.25 },
+        "Shell",
+      ),
     ).toBe("When a particle of Shell dies: play 12.5/s for 0.25s there, one frame later.");
+  });
+
+  it("says a birth reaction fires when a particle is born", () => {
+    expect(
+      describeReaction({ id: "r", source: "s", on: "birth", kind: "burst", count: 4 }, "Shell"),
+    ).toBe("When a particle of Shell is born: burst 4 there, one frame later.");
   });
 });

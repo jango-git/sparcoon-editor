@@ -1,13 +1,13 @@
 /**
- * What a death reaction hands its births of the dying particle: the step linking two compiled
+ * What a reaction hands its births of the source's particle: the step linking two compiled
  * emitters, after each compiled on its own. The reacting emitter's spawn graph asks for values by
  * name (`inherited-attribute`, see `FXInherit.ts`); the source's compiled slot says where each lies
- * in a dying particle. Matched by name and exact type; a value the source cannot hand over keeps
- * the reacting emitter's default, and is reported. Shared by the live preview and the export, so
+ * in a particle that is born or dies. Matched by name and exact type; a value the source cannot
+ * hand over keeps the reacting emitter's default, and is reported. Shared by the live preview and the export, so
  * the two copy the same floats and warn about the same values.
  */
 
-import { FX_CORE_LIFECYCLE } from "sparcoon";
+import { FX_CORE_LIFECYCLE, type FXParticleEventKind } from "sparcoon";
 import { type FXSlotLayout, slotLayout } from "sparcoon/editor";
 
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
@@ -22,11 +22,11 @@ import type { EmitterDoc } from "../model/editorState";
 import { kernelWrittenBuffers } from "./attributeChecks";
 import type { AttributeTypeName } from "./graphModel";
 
-/** What a source emitter's particles hand out at death: their slot, and which of its fields the
- *  behavior ever writes. */
+/** What a source emitter's particles hand out at birth and at death: their slot, and which of its
+ *  fields are written by then - by the spawn alone at birth, by the spawn or an update at death. */
 export interface ReactionSource {
   readonly slot: FXSlotLayout;
-  readonly written: ReadonlySet<string>;
+  readonly written: Readonly<Record<FXParticleEventKind, ReadonlySet<string>>>;
 }
 
 /** A source as its compiled behavior lays its particles out (as the runtime's `particleSlot`). */
@@ -35,14 +35,17 @@ export function reactionSourceOf(kernel: FXCompiledKernel): ReactionSource {
     slot: slotLayout(
       kernel.update.buffers.map((buffer) => ({ name: buffer.name, components: buffer.stride })),
     ),
-    written: kernelWrittenBuffers(kernel),
+    written: {
+      birth: new Set(kernel.spawn?.writtenBuffers ?? []),
+      death: kernelWrittenBuffers(kernel),
+    },
   };
 }
 
 /** Why an inherited value keeps its default: the source has no such attribute, has it at another
- *  type, or never writes it. */
+ *  type, never writes it, or writes it only in its update while the reaction fires at birth. */
 export interface InheritIssue {
-  readonly kind: "missing" | "mistyped" | "unwritten";
+  readonly kind: "missing" | "mistyped" | "unwritten" | "late";
   /** The attribute's name. */
   readonly name: string;
   /** The type the reacting emitter reads it as. */
@@ -64,12 +67,13 @@ function typeOfComponents(components: number): string {
 }
 
 /**
- * Links a reaction: where each of `inherits` (the reacting emitter's compiled inherit entries)
- * comes from in `source`'s slot. An unbuilt source (`undefined`) hands nothing over and reports
- * nothing - its own graph error says why.
+ * Links a reaction firing `on` a particle event: where each of `inherits` (the reacting emitter's
+ * compiled inherit entries) comes from in `source`'s slot. An unbuilt source (`undefined`) hands
+ * nothing over and reports nothing - its own graph error says why.
  */
 export function linkReaction(
   source: ReactionSource | undefined,
+  on: FXParticleEventKind,
   inherits: readonly FXInheritEntry[],
 ): ReactionLink {
   if (source === undefined) {
@@ -98,8 +102,10 @@ export function linkReaction(
         expected: type.id,
         found: typeOfComponents(field.components),
       });
-    } else if (!source.written.has(from.name)) {
+    } else if (!source.written.death.has(from.name)) {
       issues.push({ kind: "unwritten", name, expected: type.id });
+    } else if (!source.written[on].has(from.name)) {
+      issues.push({ kind: "late", name, expected: type.id });
     } else {
       copies.push(field.offset, entry.offset, field.components);
     }
@@ -191,9 +197,11 @@ const INHERIT_ISSUE_MESSAGES: Readonly<
   >
 > = {
   missing: ({ name, source }) =>
-    `emitter "${source}" has no attribute "${name}" - births its deaths spawn read the default`,
+    `emitter "${source}" has no attribute "${name}" - births reacting to it read the default`,
   mistyped: ({ name, source, expected, found }) =>
-    `emitter "${source}" holds "${name}" as ${found ?? "?"}, not ${expected} - births its deaths spawn read the default`,
+    `emitter "${source}" holds "${name}" as ${found ?? "?"}, not ${expected} - births reacting to it read the default`,
   unwritten: ({ name, source }) =>
-    `emitter "${source}" never writes "${name}" - births its deaths spawn read the default`,
+    `emitter "${source}" never writes "${name}" - births reacting to it read the default`,
+  late: ({ name, source }) =>
+    `emitter "${source}" writes "${name}" only after a particle's birth - births reacting to its births read the default`,
 };

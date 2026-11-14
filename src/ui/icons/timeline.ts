@@ -56,6 +56,17 @@ export const timelineIcons = {
     <path d="M13 4.6v.9M13 10.5v.9"/>
   </svg>`,
 
+  // Birth reaction: a fresh, lit particle handing off along an arrow to a spark - "when its
+  // particles are born, spawn here". The badge of a reaction row firing on births; `reaction`
+  // above marks one firing on deaths.
+  reactionBirth: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="3.6" cy="8" r="1.9" fill="currentColor" stroke="none"/>
+    <path d="M3.6 4.6v.9M3.6 10.5v.9"/>
+    <path d="M6.6 8h3.6M8.8 6.3 10.5 8 8.8 9.7"/>
+    <circle cx="13" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+    <path d="M13 4.6v.9M13 10.5v.9"/>
+  </svg>`,
+
   // Infinite: a lemniscate - the play event's "runs forever" toggle, matching the infinite marker's
   // own gradient.
   infinite: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

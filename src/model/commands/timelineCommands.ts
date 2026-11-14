@@ -3,17 +3,17 @@
  * authoring data that never reaches the compiler, so it's saved/undoable but never recompiles.
  */
 
-import type { FXEmissionBasis, FXKeyEase } from "sparcoon";
+import type { FXEmissionBasis, FXKeyEase, FXParticleEventKind } from "sparcoon";
 
-import { canReact, deathSourceIds } from "../../domain/deathReactions";
+import { canReact } from "../../domain/reactions";
 import { sameElements } from "../../util/arrays";
 import {
   type AnimationTrack,
-  type DeathReaction,
   emissionBasisField,
   type EmitterDoc,
   type Keyframe,
   type PlayEvent,
+  type Reaction,
   type SourceState,
   type SpawnAction,
   type TimelineEvent,
@@ -384,11 +384,13 @@ function patchEvent(event: TimelineEvent, patch: EventPatch): TimelineEvent {
 }
 
 /**
- * A partial edit of a death reaction: its source - another emitter it may react to (no cycle) -
- * and its action's numbers (a play's duration above 0: a reaction never plays forever).
+ * A partial edit of a reaction: its source - another emitter it may react to (no cycle) - the
+ * particle event it fires on, and its action's numbers (a play's duration above 0: a reaction
+ * never plays forever).
  */
 export interface ReactionPatch extends SpawnActionPatch {
   readonly source?: string;
+  readonly on?: FXParticleEventKind;
 }
 
 /** The action a new event or reaction of `kind` carries until the author edits it. */
@@ -399,24 +401,26 @@ export function defaultSpawnAction(kind: SpawnAction["kind"]): SpawnAction {
 }
 
 /**
- * Adds a death reaction on emitter `id`: `action` fired at every death of `sourceId`'s particles,
- * clamped as {@link updateReaction} clamps it. Returns its id, or `undefined` when `id` may not
- * react to `sourceId` (unknown, itself, or a cycle - see `canReact`).
+ * Adds a reaction on emitter `id`: `action` fired at every `on` event (birth or death) of
+ * `sourceId`'s particles, clamped as {@link updateReaction} clamps it. Returns its id, or
+ * `undefined` when `id` may not react to `sourceId` (unknown, itself, or a cycle - see `canReact`).
  */
 export function addReaction(
   store: Store,
   id: string,
   sourceId: string,
+  on: FXParticleEventKind,
   action: SpawnAction = defaultSpawnAction("burst"),
 ): string | undefined {
   const source = store.getSource();
   if (!canReact(source.scene.emitters, id, sourceId)) {
     return undefined;
   }
-  const reaction: DeathReaction = {
+  const reaction: Reaction = {
     ...reactionAction(source, action, action),
     id: nextIdentifier("reaction"),
     source: sourceId,
+    on,
   };
   updateReactions(store, id, (reactions) => [...reactions, reaction]);
   return reaction.id;
@@ -460,7 +464,10 @@ export function updateReaction(
         if (reaction.id !== reactionId) {
           return reaction;
         }
-        const next = reactionAction(source, reaction, patch);
+        const next = {
+          ...reactionAction(source, reaction, patch),
+          ...(patch.on === undefined ? {} : { on: patch.on }),
+        };
         return patch.source !== undefined &&
           canReact(source.scene.emitters, id, patch.source, reactionId)
           ? { ...next, source: patch.source }
@@ -478,15 +485,16 @@ export function removeReaction(store: Store, id: string, reactionId: string): vo
 }
 
 /**
- * Replaces emitter `id`'s reactions via `update`, committing the result. Structural only when the
- * set of death sources changes: that decides where an emitter simulates (`effectiveSpawnConfig`),
- * so the preview must rebuild; any other reaction edit is a view edit, like an event's. No-op for
- * an unknown id, or an `update` that changes nothing.
+ * Replaces emitter `id`'s reactions via `update`, committing the result. Structural when a link
+ * changes - a reaction added or removed, or its source or event: that decides where an emitter
+ * simulates (`effectiveSpawnConfig`) and what its births inherit, with the warnings about it, so
+ * the preview must resync. An edit of a reaction's numbers alone is a view edit, like an event's.
+ * No-op for an unknown id, or an `update` that changes nothing.
  */
 function updateReactions(
   store: Store,
   id: string,
-  update: (reactions: readonly DeathReaction[]) => readonly DeathReaction[],
+  update: (reactions: readonly Reaction[]) => readonly Reaction[],
   live = false,
 ): void {
   const source = store.getSource();
@@ -502,12 +510,10 @@ function updateReactions(
     candidate === emitter ? { ...emitter, reactions } : candidate,
   );
   const next = { ...source, scene: { ...source.scene, emitters } };
-  const before = deathSourceIds(source.scene.emitters);
-  const after = deathSourceIds(emitters);
-  const kind =
-    before.size === after.size && [...after].every((sourceId) => before.has(sourceId))
-      ? "view"
-      : "structural";
+  const linkOf = (reaction: Reaction): string => `${reaction.id}|${reaction.source}|${reaction.on}`;
+  const kind = sameElements(emitter.reactions.map(linkOf), reactions.map(linkOf))
+    ? "view"
+    : "structural";
   if (live) {
     store.commitLive(next, kind);
   } else {

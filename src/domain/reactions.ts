@@ -1,24 +1,25 @@
 /**
- * Death reactions across a scene (see `EmitterDoc.reactions`): which emitters are sources, which
- * links may exist, and what being a source does to an emitter's simulation. The one place these
- * rules live - commands, the agent API, the timeline UI, persistence, the preview and the export
- * all ask here.
+ * Reactions across a scene (see `EmitterDoc.reactions`): which emitters are sources, which links
+ * may exist, and what being a source does to an emitter's simulation. The one place these rules
+ * live - commands, the agent API, the timeline UI, persistence, the preview and the export all ask
+ * here.
  *
- * A reaction is an edge from its source to the emitter it sits on. The edges never form a cycle
- * (an emitter reacting to itself included): a cycle would keep a scene spawning forever, one frame
- * per round.
+ * A reaction is an edge from its source to the emitter it sits on, whichever particle event it
+ * fires on. The edges never form a cycle (an emitter reacting to itself included): a cycle would
+ * keep a scene spawning forever, one frame per round.
  */
 
-import type { DeathReaction, EmitterDoc, SceneModel } from "../model/editorState";
+import type { EmitterDoc, Reaction, SceneModel } from "../model/editorState";
 import type { SpawnSinkConfig } from "./sinkMeta";
 import { readSpawnSinkConfig } from "./sinkMeta";
 
-/** The ids of every emitter whose particles' deaths some reaction in `emitters` listens to. */
-export function deathSourceIds(emitters: readonly EmitterDoc[]): ReadonlySet<string> {
+/** The ids of every emitter whose particles' births or deaths some reaction in `emitters` listens
+ *  to. */
+export function reactionSourceIds(emitters: readonly EmitterDoc[]): ReadonlySet<string> {
   return new Set(emitters.flatMap((emitter) => emitter.reactions.map((r) => r.source)));
 }
 
-/** The emitters reacting to `sourceId`'s particles' deaths, in scene order. */
+/** The emitters reacting to `sourceId`'s particles' births or deaths, in scene order. */
 export function reactingEmitters(
   emitters: readonly EmitterDoc[],
   sourceId: string,
@@ -29,7 +30,7 @@ export function reactingEmitters(
 }
 
 /**
- * Whether `targetId` may react to `sourceId`'s particles' deaths: both exist, and the new edge
+ * Whether `targetId` may react to `sourceId`'s particles: both exist, and the new edge
  * closes no cycle - `targetId` does not already reach `sourceId` (itself included). `ignore` leaves
  * one existing reaction of `targetId` out, so a reaction can be re-pointed.
  */
@@ -74,12 +75,13 @@ export function reactionSourceCandidates(
 }
 
 /**
- * `emitter`'s spawn-sink config as it actually runs: a death source never asks for the GPU - only
- * the CPU simulation sees its particles die. What the preview builds and the export compiles by.
+ * `emitter`'s spawn-sink config as it actually runs: a reaction source never asks for the GPU -
+ * only the CPU simulation sees its particles be born and die. What the preview builds and the
+ * export compiles by.
  */
 export function effectiveSpawnConfig(emitter: EmitterDoc, scene: SceneModel): SpawnSinkConfig {
   const config = readSpawnSinkConfig(emitter.behaviorGraph);
-  return config.tryGpuSimulation && deathSourceIds(scene.emitters).has(emitter.id)
+  return config.tryGpuSimulation && reactionSourceIds(scene.emitters).has(emitter.id)
     ? { ...config, tryGpuSimulation: false }
     : config;
 }
@@ -90,7 +92,7 @@ export function effectiveSpawnConfig(emitter: EmitterDoc, scene: SceneModel): Sp
  * editor's own commands (a file, a hand edit), which never produce either.
  */
 export function withValidReactions(emitters: readonly EmitterDoc[]): readonly EmitterDoc[] {
-  let kept = emitters.map((emitter) => ({ ...emitter, reactions: [] as DeathReaction[] }));
+  let kept = emitters.map((emitter) => ({ ...emitter, reactions: [] as Reaction[] }));
   for (const emitter of emitters) {
     for (const reaction of emitter.reactions) {
       if (canReact(kept, emitter.id, reaction.source)) {
