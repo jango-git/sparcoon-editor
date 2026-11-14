@@ -65,6 +65,21 @@ describe("output sink nodes", () => {
     expect(config.geometry).toEqual({ kind: "primitive", primitive: "sphere" });
   });
 
+  it.each(["plane", "octagon", "box", "sphere"] as const)(
+    "readRenderSinkConfig keeps the %s primitive",
+    (primitive) => {
+      const base = ensureSinks(createEmptyGraph(), GraphKind.Render);
+      const graph = {
+        ...base,
+        nodes: {
+          ...base.nodes,
+          [RENDER_SINK_ID]: { ...base.nodes[RENDER_SINK_ID], parameters: { geometry: primitive } },
+        },
+      };
+      expect(readRenderSinkConfig(graph).geometry).toEqual({ kind: "primitive", primitive });
+    },
+  );
+
   it("readSpawnSinkConfig defaults tryGpuSimulation to on and reads an explicit override from the spawn sink", () => {
     const blank = ensureSinks(createEmptyGraph(), GraphKind.Behavior);
     expect(readSpawnSinkConfig(blank).tryGpuSimulation).toBe(true);

@@ -78,15 +78,18 @@ export function coerceRenderMode(value: unknown): RenderMode {
     : DEFAULT_RENDER_MODE;
 }
 
-/** Built-in per-particle geometry primitives - a plane is the billboard default. */
-export type GeometryKind = "plane" | "box" | "sphere";
-const GEOMETRY_OPTIONS: readonly GeometryKind[] = ["plane", "box", "sphere"];
+/** Built-in per-particle geometry primitives - a plane is the billboard default, an octagon the
+ *  plane less its corners, for a texture empty there. */
+export type GeometryKind = "plane" | "octagon" | "box" | "sphere";
+const GEOMETRY_OPTIONS: readonly GeometryKind[] = ["plane", "octagon", "box", "sphere"];
 export const DEFAULT_GEOMETRY: GeometryKind = "plane";
 
 /** Normalizes an unknown `geometry` parameter value to a known primitive (a `"mesh:"`-prefixed custom
  *  choice - see {@link coerceGeometrySource} - falls through to the primitive default here). */
 export function coerceGeometry(value: unknown): GeometryKind {
-  return value === "box" || value === "sphere" ? value : "plane";
+  return (GEOMETRY_OPTIONS as readonly unknown[]).includes(value)
+    ? (value as GeometryKind)
+    : DEFAULT_GEOMETRY;
 }
 
 /** The discriminated choice an emitter's or VFX mesh's geometry resolves to: a built-in
