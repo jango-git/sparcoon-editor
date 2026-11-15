@@ -11,14 +11,13 @@ import {
   updateNodeParam,
 } from "../../src/model/commands";
 import { emitterEntity, VFX_ENTITY, vfxMeshEntity } from "../../src/model/entity";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
 
 function harness(): { store: Store; emitters: SceneEmitters } {
-  return { store: new Store(createTestState(), new SignalBus()), emitters: createPreview() };
+  return { store: new Store(createTestState()), emitters: createPreview() };
 }
 
 /** Like {@link harness}, but with a caller-controlled mesh-geometry resolver (mutate `geometries`
@@ -30,7 +29,7 @@ function harnessWithMeshGeometries(): {
 } {
   const geometries: Record<string, BufferGeometry> = {};
   const emitters = createPreview({ meshGeometries: () => geometries });
-  return { store: new Store(createTestState(), new SignalBus()), emitters, geometries };
+  return { store: new Store(createTestState()), emitters, geometries };
 }
 
 afterEach(destroyPreviews);

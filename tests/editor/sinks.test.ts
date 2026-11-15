@@ -33,7 +33,6 @@ import {
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { selectBehaviorGraph, selectRenderGraph } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { nodeTextEntry } from "../helpers/nodeTextDictionary";
 
@@ -336,7 +335,7 @@ describe.each(["particle", "mesh"] as const)(
 );
 
 describe("attribute commands", () => {
-  const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+  const freshStore = (): Store => new Store(createInitialState());
 
   it("adds, rejects invalid/duplicate, retypes, and removes attributes", () => {
     const store = freshStore();
@@ -358,7 +357,7 @@ describe("attribute commands", () => {
 });
 
 describe("renameAttribute", () => {
-  const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+  const freshStore = (): Store => new Store(createInitialState());
 
   it("renames the declaration and remaps the attr:<name> output-binding slot", () => {
     const store = freshStore();

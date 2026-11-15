@@ -23,7 +23,6 @@ import {
   type Reaction,
   type SourceState,
 } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { normalizeSource } from "../../src/persistence/loadState";
@@ -42,13 +41,13 @@ function burstOn(source: string, id = `r_${source}`, count = 4): Reaction {
   return { id, source, on: "death", kind: "burst", count };
 }
 
-function storeWith(emitters: readonly EmitterDoc[], signals = new SignalBus()): Store {
+function storeWith(emitters: readonly EmitterDoc[]): Store {
   const state = createTestState();
   state.source = {
     ...state.source,
     scene: { ...state.source.scene, emitters, activeEmitterId: emitters[0]?.id },
   };
-  return new Store(state, signals);
+  return new Store(state);
 }
 
 function emitterOf(store: Store, id: string): EmitterDoc {
@@ -120,11 +119,10 @@ describe("reaction commands", () => {
   });
 
   it("adds a birth reaction, and switches a reaction's event", () => {
-    const signals = new SignalBus();
-    const store = storeWith(chain(), signals);
+    const store = storeWith(chain());
     const kinds: string[] = [];
-    signals.on("sourceStructureChanged", () => kinds.push("structural"));
-    signals.on("sourceViewChanged", () => kinds.push("view"));
+    store.events.sourceStructureChanged.on(() => kinds.push("structural"));
+    store.events.sourceViewChanged.on(() => kinds.push("view"));
     const id = addReaction(store, "b", "a", "birth", defaultSpawnAction("burst")) ?? "";
     expect(emitterOf(store, "b").reactions[0]?.on).toBe("birth");
     updateReaction(store, "b", id, { on: "death" });
@@ -140,11 +138,10 @@ describe("reaction commands", () => {
   });
 
   it("is a structural edit only when a link changes, not a reaction's numbers", () => {
-    const signals = new SignalBus();
-    const store = storeWith(chain(), signals);
+    const store = storeWith(chain());
     const kinds: string[] = [];
-    signals.on("sourceStructureChanged", () => kinds.push("structural"));
-    signals.on("sourceViewChanged", () => kinds.push("view"));
+    store.events.sourceStructureChanged.on(() => kinds.push("structural"));
+    store.events.sourceViewChanged.on(() => kinds.push("view"));
     const first = addReaction(store, "b", "a", "death", defaultSpawnAction("burst")) ?? ""; // a link: a becomes a source
     addReaction(store, "c", "a", "death", defaultSpawnAction("burst")); // a new link to a source
     updateReaction(store, "b", first, { count: 3 });

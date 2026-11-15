@@ -1,9 +1,9 @@
 /**
- * A tiny observable value. The "hold a value, notify a Set of listeners on change, hand back an
- * unsubscribe" pattern was hand-rolled in graphViewState, inputMode and panelFocus (and, in the
- * model/settings layer, a few more that can't import from `ui`). Each UI store now wraps one of
- * these and keeps only its domain-named accessors.
+ * A tiny observable value: holds it and announces each change. The UI stores (graphViewState,
+ * inputMode, panelFocus) each wrap one and keep only their domain-named accessors.
  */
+
+import { Ferrsign1 } from "ferrsign";
 
 export interface Signal<T> {
   get(): T;
@@ -15,7 +15,7 @@ export interface Signal<T> {
 
 export function createSignal<T>(initial: T): Signal<T> {
   let value = initial;
-  const listeners = new Set<(value: T) => void>();
+  const changed = new Ferrsign1<T>();
   return {
     get: () => value,
     set: (next): void => {
@@ -23,15 +23,8 @@ export function createSignal<T>(initial: T): Signal<T> {
         return;
       }
       value = next;
-      for (const listener of listeners) {
-        listener(next);
-      }
+      changed.emit(next);
     },
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    onChange: (listener) => changed.on(listener),
   };
 }

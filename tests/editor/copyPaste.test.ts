@@ -10,7 +10,6 @@ import {
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { selectActiveGraphOwner, selectRenderGraph } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 const node = (id: string, type: string, x: number, y: number): EditorGraph["nodes"][string] => ({
@@ -22,7 +21,7 @@ const node = (id: string, type: string, x: number, y: number): EditorGraph["node
 
 describe("pasteFragment command", () => {
   it("clones nodes and their internal edge with fresh ids, offset, originals untouched", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const fragment: GraphFragment = {
       nodes: [node("a", "constant", 0, 0), node("b", "binary-op", 100, 0)],
       connections: [
@@ -56,7 +55,7 @@ describe("pasteFragment command", () => {
   });
 
   it("drops an edge whose endpoint was not part of the fragment (outside connection)", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     // Only "a" is copied, but the edge references an un-copied "outside" node.
     const fragment: GraphFragment = {
       nodes: [node("a", "constant", 0, 0)],
@@ -78,7 +77,7 @@ describe("pasteFragment command", () => {
   });
 
   it("drops an edge whose source was not part of the fragment (incoming connection)", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const fragment: GraphFragment = {
       nodes: [node("b", "binary-op", 0, 0)],
       connections: [
@@ -99,7 +98,7 @@ describe("pasteFragment command", () => {
   });
 
   it("pastes the fragment's comments with fresh ids, offset like the nodes", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const fragment: GraphFragment = {
       nodes: [node("a", "constant", 10, 10)],
       connections: [],
@@ -128,7 +127,7 @@ describe("pasteFragment command", () => {
   });
 
   it("gives pasted ids that never collide with a freshly minted id", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const fragment: GraphFragment = {
       nodes: [node("a", "constant", 0, 0)],
       connections: [],
@@ -144,7 +143,7 @@ describe("pasteFragment command", () => {
   });
 
   it("drops a particle-only node when pasting into a VFX mesh's render graph", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     addVfxMesh(store); // the active graph owner is now the mesh (render-only)
     const fragment: GraphFragment = {
       // "dissolve" reads PARTICLE_AGE - the add-node menu already hides it for a mesh owner

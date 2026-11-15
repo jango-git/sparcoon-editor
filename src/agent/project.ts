@@ -17,7 +17,8 @@ export interface ProjectApi {
   /**
    * Replaces the document with a project file's text (one undo step) and returns the loaded scene,
    * as `scene.get()` would. Damaged parts of a readable file are repaired or dropped silently, the
-   * same as on the editor's own load; compile problems are reported by `status()`.
+   * same as on the editor's own load; compile problems are reported by `status()`. A project saved
+   * in a later format is rejected.
    */
   load(json: string): Promise<SceneView>;
   /** Ids of the bundled starter projects. */
@@ -39,11 +40,19 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
 
     // Loading is synchronous; the agent API still returns a promise, rejecting rather than throwing.
     load: (json): Promise<SceneView> => {
-      const source = deserializeProject(json);
-      if (source === undefined) {
+      const read = deserializeProject(json);
+      if (read.kind === "newer") {
+        return Promise.reject(
+          new AgentError(
+            "invalid_argument",
+            `The project was saved by Sparcoon Editor ${read.editor ?? "?"} in a later format.`,
+          ),
+        );
+      }
+      if (read.kind === "unreadable") {
         return Promise.reject(new AgentError("invalid_argument", "Not a readable project file."));
       }
-      replaceDocument(target, source);
+      replaceDocument(target, read.source);
       return Promise.resolve(sceneView(target.store.getSource()));
     },
 

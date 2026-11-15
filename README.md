@@ -148,6 +148,7 @@ Using the effect in a game is described in the
 - A project from an earlier version opens in the current one. Missing fields get default values,
   renamed nodes and their renamed inputs and outputs are carried over, and a removed node stays in
   the graph with an error.
+- A project saved by a later version of the editor in a newer project format does not open.
 - After updating the runtime, export your effects again.
 
 ## Interface
@@ -195,6 +196,10 @@ npm test
 npm run typecheck
 npm run lint
 ```
+
+The site is built from releases. A release sets `version` in `package.json`, renames the
+"Unreleased" heading of [CHANGELOG.md](CHANGELOG.md) to that version and its date and pushes the tag
+`v<version>`. Pushes to `main` only run the checks.
 
 When reporting a bug, attach a screen recording and the project `.json`.
 

@@ -151,9 +151,6 @@ export type FXCompilerErrorCode =
   | "trail-with-sort"
   // A Depth Fade node in a graph whose render mode writes depth (domain/depthFadeChecks.ts).
   | "depth-fade-needs-blending"
-  // A warning: depth sorting asked of an emitter simulated on the GPU, where it does nothing
-  // (domain/sortChecks.ts).
-  | "sort-on-gpu-emitter"
   // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
   | "param-value-conflict"
   // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).

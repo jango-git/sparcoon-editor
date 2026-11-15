@@ -229,7 +229,7 @@ export class GraphCanvas {
     this.store = context.store;
     this.transport = context.transport;
     this.inputMode = context.inputMode;
-    const { signals, router } = context;
+    const { router } = context;
     // Three sibling layers, back to front: comment boxes (a background annotation the graph is
     // drawn over), the wire surface, then the node cards. Stacking is DOM order alone.
     this.commentLayer = createElement("div", { className: "graph__comments" });
@@ -317,11 +317,11 @@ export class GraphCanvas {
       this.camera.maybeFrame();
     }).observe(this.root);
 
-    signals.on("sourceStructureChanged", () => this.render());
-    signals.on("sourceViewChanged", () => this.render());
+    this.store.events.sourceStructureChanged.on(() => this.render());
+    this.store.events.sourceViewChanged.on(() => this.render());
     // A recompute may flip nodes in/out of the compiler's error set without any structural
     // change (e.g. the *other* graph was fixed), so repaint the highlights on every derive.
-    signals.on("derivedChanged", () => this.applyErrorHighlights());
+    this.store.events.derivedChanged.on(() => this.applyErrorHighlights());
     this.graphView.onChange(() => {
       this.selected.clear();
       this.selectedComments.clear();

@@ -16,11 +16,10 @@ import {
 } from "../../src/model/commands";
 import type { PlayEvent } from "../../src/model/editorState";
 import { emitterEntity } from "../../src/model/entity";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { createTestState } from "../helpers/testDocument";
 
-const freshStore = (): Store => new Store(createTestState(), new SignalBus());
+const freshStore = (): Store => new Store(createTestState());
 const emitterId = (store: Store): string => store.getSource().scene.emitters[0].id;
 const ent = (id: string) => emitterEntity(id);
 const tracks = (store: Store) => store.getSource().scene.emitters[0].tracks;

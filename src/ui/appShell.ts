@@ -46,7 +46,7 @@ export interface ApplicationShell {
 }
 
 export function mountApplicationShell(root: HTMLElement, context: EditorContext): ApplicationShell {
-  const { store, signals, panelFocus, panelFocusTracker } = context;
+  const { store, panelFocus, panelFocusTracker } = context;
   const graphView = new GraphViewState();
 
   const preview = createPreviewPanel();
@@ -69,8 +69,8 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   // view edit (sourceViewChanged), not structural, so both are listened for.
   const updateCost = (): void => stats.reportCost(selectSceneCost(store));
   updateCost();
-  signals.on("sourceStructureChanged", updateCost);
-  signals.on("sourceViewChanged", updateCost);
+  store.events.sourceStructureChanged.on(updateCost);
+  store.events.sourceViewChanged.on(updateCost);
 
   const graphPanel = createGraphPanel(context, graphView);
   const graph = graphPanel.element;

@@ -6,7 +6,6 @@
 
 import type { SourceState } from "../model/editorState";
 import type { ChangeKind } from "../model/history";
-import { SignalBus } from "../model/signals";
 import { Store } from "../model/store";
 import { AgentError } from "./errors";
 
@@ -25,7 +24,7 @@ class StagingStore extends Store {
   private structural = false;
 
   constructor(source: SourceState) {
-    super({ source, derived: {} }, new SignalBus());
+    super({ source, derived: {} });
   }
 
   /** The kind the whole transaction commits with: structural if any step was. */

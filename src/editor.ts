@@ -1,4 +1,4 @@
-/** Editor composition root: wires the layers UI -> command -> model -> event -> render; store+signals is the single source of truth. */
+/** Editor composition root: wires the layers UI -> command -> model -> event -> render; the store and its events are the single source of truth. */
 
 import { Vector2 } from "three";
 
@@ -10,7 +10,6 @@ import { snapTimeToFrame } from "./model/frames";
 import { Pipeline } from "./model/pipeline";
 import { SelectionStore } from "./model/selectionStore";
 import { hasInfinitePlay, selectActiveGraphOwner } from "./model/selectors";
-import { SignalBus } from "./model/signals";
 import { Store } from "./model/store";
 import { TRANSFORM_CHANNELS } from "./model/transform";
 import { TransportStore } from "./model/transport";
@@ -74,8 +73,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   );
 
   const initialState = await loadInitialState(() => loadPresetSource(DEFAULT_PROJECT_PRESET));
-  const signals = new SignalBus();
-  const store = new Store(initialState, signals);
+  const store = new Store(initialState);
 
   const previewSettings = new PreviewSettingsStore();
   // The timeline transport is transient (playhead + play state); it loops over the authored
@@ -116,7 +114,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   const viewMode = new PreviewViewModeState();
   const context: EditorContext = {
     store,
-    signals,
     transport,
     router,
     panelFocus,
@@ -211,23 +208,23 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       autosave.flush();
     }
   });
-  signals.on("sourceStructureChanged", () => textures.sync(store.getSource().assets));
-  signals.on("sourceStructureChanged", () => meshGeometries.sync(store.getSource().meshAssets));
-  signals.on("sourceStructureChanged", () => pipeline.scheduleRecompute());
-  signals.on("sourceStructureChanged", () => autosave.schedule());
-  signals.on("sourceViewChanged", () => autosave.schedule());
+  store.events.sourceStructureChanged.on(() => textures.sync(store.getSource().assets));
+  store.events.sourceStructureChanged.on(() => meshGeometries.sync(store.getSource().meshAssets));
+  store.events.sourceStructureChanged.on(() => pipeline.scheduleRecompute());
+  store.events.sourceStructureChanged.on(() => autosave.schedule());
+  store.events.sourceViewChanged.on(() => autosave.schedule());
   // Environment-library edits commit as "view" (they feed no compiled graph); a whole-document
   // replace (preset/import) commits "structural" instead and can swap the library entirely, so
   // both need to resync the decode cache and re-resolve the active pointer against it.
-  signals.on("sourceViewChanged", () => environments.sync(store.getSource().environments));
-  signals.on("sourceStructureChanged", () => environments.sync(store.getSource().environments));
-  signals.on("sourceViewChanged", applyActiveEnvironment);
-  signals.on("sourceStructureChanged", applyActiveEnvironment);
+  store.events.sourceViewChanged.on(() => environments.sync(store.getSource().environments));
+  store.events.sourceStructureChanged.on(() => environments.sync(store.getSource().environments));
+  store.events.sourceViewChanged.on(applyActiveEnvironment);
+  store.events.sourceStructureChanged.on(applyActiveEnvironment);
   // A view-only transform edit (gizmo commit / inspector field / transform keyframe) never
   // recompiles, so it doesn't run the pipeline - re-pose the scene directly at the caret.
   // A reaction's numbers are a view edit (no rebuild); its links carry them, so they follow it.
-  signals.on("sourceViewChanged", () => sceneEmitters.wireReactions(store.getSource().scene));
-  signals.on("sourceViewChanged", () =>
+  store.events.sourceViewChanged.on(() => sceneEmitters.wireReactions(store.getSource().scene));
+  store.events.sourceViewChanged.on(() =>
     sceneEmitters.applySceneTransforms(store.getSource().scene, poseTime()),
   );
   // Highlight the selected entity's preview gizmo, and keep it lit across rebuilds.
@@ -235,7 +232,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   timelineSelection.subscribe(() => sceneEmitters.setSelected(timelineSelection.get()));
   // Follow the document's active graph owner with the transient selection (add/remove/switch can
   // move it out from under the selection); the VFX group has no id, so its own pick stays sticky.
-  signals.on("sourceStructureChanged", () => {
+  store.events.sourceStructureChanged.on(() => {
     const selected = timelineSelection.get();
     if (selected.kind === "vfx") {
       return;

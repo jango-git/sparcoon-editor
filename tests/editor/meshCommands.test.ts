@@ -16,10 +16,9 @@ import {
 import { createInitialState } from "../../src/model/editorState";
 import { vfxMeshEntity } from "../../src/model/entity";
 import { selectActiveMesh, selectActiveMeshId, selectMeshes } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createInitialState());
 
 /** The authored (non-sink) node ids across a mesh's render graph. */
 function authoredNodeIds(store: Store, id: string): string[] {

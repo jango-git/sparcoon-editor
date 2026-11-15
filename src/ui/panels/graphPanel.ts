@@ -11,7 +11,6 @@ import { setEmitterTrail } from "../../model/commands";
 import type { LiveApplyStatus } from "../../model/editorState";
 import { authoredGraphs, GRAPH_SLOTS } from "../../model/graphSlots";
 import { selectActiveGraphOwner, selectGraphStatus } from "../../model/selectors";
-import type { SignalBus } from "../../model/signals";
 import type { Store } from "../../model/store";
 import { attachCountdownConfirm } from "../components/countdownConfirm";
 import { attachTooltip, clearTooltip } from "../components/tooltip";
@@ -34,10 +33,10 @@ export interface GraphPanel {
 }
 
 export function createGraphPanel(context: EditorContext, graphView: GraphViewState): GraphPanel {
-  const { store, signals, selection } = context;
+  const { store, selection } = context;
   const graph = createElement("div", { className: "graph" });
   const canvas = new GraphCanvas(graph, context, graphView);
-  graph.append(createGraphSwitch(graphView, store, signals), createArrangeButton(canvas));
+  graph.append(createGraphSwitch(graphView, store), createArrangeButton(canvas));
 
   // The VFX group (the outliner's root row) owns no graph of its own - unlike picking an
   // emitter/mesh, selecting it commits nothing to the model (no id to make active), so nothing
@@ -75,7 +74,7 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
     );
   };
   updateStats();
-  signals.on("sourceStructureChanged", updateStats);
+  store.events.sourceStructureChanged.on(updateStats);
 
   const errors = createElement("div", { className: "graph__errors" });
   errors.hidden = true;
@@ -86,7 +85,7 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
     renderErrors(graph, errors, status, (nodeId) => canvas.focusNode(nodeId));
   };
   updateErrors();
-  signals.on("derivedChanged", updateErrors);
+  store.events.derivedChanged.on(updateErrors);
   graphView.onChange(updateErrors);
 
   return {
@@ -116,11 +115,7 @@ function createArrangeButton(canvas: GraphCanvas): HTMLElement {
  * highlighted. An emitter without a trail shows the Trail button as an "add trail" action, and an
  * emitter with one shows a remove button beside it.
  */
-function createGraphSwitch(
-  graphView: GraphViewState,
-  store: Store,
-  signals: SignalBus,
-): HTMLElement {
+function createGraphSwitch(graphView: GraphViewState, store: Store): HTMLElement {
   const buttons = new Map<GraphMode, HTMLButtonElement>();
 
   const build = (mode: GraphMode, svg: string): HTMLButtonElement => {
@@ -197,7 +192,7 @@ function createGraphSwitch(
   graphView.onChange(refresh);
   // The active owner changes via a structural commit (selecting an emitter/mesh), so re-evaluate
   // whether Behavior should show whenever the source structure changes.
-  signals.on("sourceStructureChanged", refresh);
+  store.events.sourceStructureChanged.on(refresh);
 
   return group;
 }

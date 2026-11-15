@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 describe("Store: undo/redo re-announce the original commit kind", () => {
@@ -9,12 +8,11 @@ describe("Store: undo/redo re-announce the original commit kind", () => {
     { kind: "view", signal: "sourceViewChanged", other: "sourceStructureChanged" },
     { kind: "structural", signal: "sourceStructureChanged", other: "sourceViewChanged" },
   ] as const)("re-emits $signal, never $other, for a $kind commit", ({ kind, signal, other }) => {
-    const signals = new SignalBus();
-    const store = new Store(createInitialState(), signals);
+    const store = new Store(createInitialState());
     let announced = 0;
     let crossed = 0;
-    signals.on(signal, () => announced++);
-    signals.on(other, () => crossed++);
+    store.events[signal].on(() => announced++);
+    store.events[other].on(() => crossed++);
 
     store.commit(store.getSource(), kind);
     expect(announced).toBe(1);
@@ -28,12 +26,11 @@ describe("Store: undo/redo re-announce the original commit kind", () => {
 
 describe("Store.commitLive: applies without touching history", () => {
   it("updates the source and fires the kind's signal, but never historyChanged", () => {
-    const signals = new SignalBus();
-    const store = new Store(createInitialState(), signals);
+    const store = new Store(createInitialState());
     let structural = 0;
     let historyChanged = 0;
-    signals.on("sourceStructureChanged", () => structural++);
-    signals.on("historyChanged", () => historyChanged++);
+    store.events.sourceStructureChanged.on(() => structural++);
+    store.events.historyChanged.on(() => historyChanged++);
 
     store.commitLive(store.getSource(), "structural");
 
@@ -43,8 +40,7 @@ describe("Store.commitLive: applies without touching history", () => {
   });
 
   it("several live calls plus one final commit record exactly one undo step for the whole gesture", () => {
-    const signals = new SignalBus();
-    const store = new Store(createInitialState(), signals);
+    const store = new Store(createInitialState());
     const initial = store.getSource();
 
     // Simulate a scrub drag: many intermediate live steps (no history), then one commit at release.

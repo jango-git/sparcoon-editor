@@ -159,17 +159,23 @@ function downloadText(text: string, name: string, extension: string, mime: strin
 }
 
 /** Reads a picked JSON file and replaces the document (viewport settings reset included - see
- *  {@link replaceDocument}), warning (without touching it) on a bad file. */
+ *  {@link replaceDocument}), warning (without touching it) on a bad file and telling the user
+ *  about one from a later editor. */
 async function importFromFile(file: File | undefined, context: EditorContext): Promise<void> {
   if (file === undefined) {
     return;
   }
-  const source = deserializeProject(await file.text());
-  if (source === undefined) {
-    console.warn(`"${file.name}" is not a readable project file`);
-    return;
+  const read = deserializeProject(await file.text());
+  switch (read.kind) {
+    case "loaded":
+      replaceDocument(context, read.source);
+      return;
+    case "newer":
+      window.alert(t("content.loadNewer", { file: file.name, editor: read.editor ?? "?" }));
+      return;
+    case "unreadable":
+      console.warn(`"${file.name}" is not a readable project file`);
   }
-  replaceDocument(context, source);
 }
 
 /**

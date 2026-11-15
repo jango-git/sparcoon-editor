@@ -350,9 +350,6 @@
   "depth-fade-needs-blending": {
     "message": "Depth Fade works only in the blending render mode, not {mode}: a depth-writing surface would fade against its own depth"
   },
-  "sort-on-gpu-emitter": {
-    "message": "depth sorting has no effect on a GPU-simulated emitter - turn off the spawn sink's Try GPU Simulation, or set Sort Every to 0"
-  },
   "param-value-conflict": {
     "message": "Timeline Value \"{name}\" has a different default here than another declaration of it in this emitter"
   },

@@ -15,7 +15,6 @@ import {
   updateReaction,
 } from "../../src/model/commands";
 import { createDefaultEmitter, type EmitterDoc } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
@@ -33,7 +32,7 @@ function preview(): { store: Store; emitters: SceneEmitters } {
       activeEmitterId: "shell",
     },
   };
-  return { store: new Store(state, new SignalBus()), emitters: createPreview() };
+  return { store: new Store(state), emitters: createPreview() };
 }
 
 /**

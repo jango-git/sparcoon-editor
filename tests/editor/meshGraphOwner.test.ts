@@ -15,11 +15,10 @@ import {
   selectActiveGraphOwner,
   selectMeshes,
 } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { commitEntitySelection } from "../../src/ui/selection";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createInitialState());
 
 /** Authored (non-sink) render-graph node count for the active emitter. */
 function emitterRenderNodeCount(store: Store): number {

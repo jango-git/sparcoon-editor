@@ -159,24 +159,33 @@ export class RenderBudgetMemo {
   }
 }
 
+/** The GPU mesh of an emitter with a GPU kernel: the kernel's `buffers`, and whether it sorts. */
+export interface EmitterGPUMesh {
+  readonly buffers: readonly FXBufferLayout[];
+  readonly sorted: boolean;
+}
+
 /**
  * The findings for an emitter's particle material, each tier's artifact of `renders` measured on
  * its own. Both backends read a particle slot through its packed views - several adjacent fields
  * per attribute, laid out by the editor in the runtime's packing order
  * (`buildParticleBehaviorTargets`); a read nothing writes is a constant zero, free. Each is
- * measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and `kernelBuffers`
- * (the emitter's GPU kernel's, when it has one). A Standard (WebGL2) error is measured on the GPU
- * mesh when there is one, which is what WebGL2 runs; a Baseline (WebGL1) warning is always
- * measured on the JS mesh - the only one WebGL1 ever runs.
+ * measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and `gpu` (the
+ * emitter's GPU kernel's, when it has one - a sorted one reads its views from textures, not
+ * attributes). A Standard (WebGL2) error is measured on the GPU mesh when there is one, which is
+ * what WebGL2 runs; a Baseline (WebGL1) warning is always measured on the JS mesh - the only one
+ * WebGL1 ever runs.
  */
 export function emitterRenderBudgetFindings(
   renders: FXRenderArtifactsByTier,
   behaviorBuffers: readonly FXBufferLayout[],
-  castShadow: boolean,
-  kernelBuffers: readonly FXBufferLayout[] | undefined,
+  options: { readonly castShadow: boolean; readonly gpu?: EmitterGPUMesh },
 ): RenderBudgetFindings {
+  const { castShadow, gpu } = options;
   return renderBudgetFindings(
-    fxEmitterRenderBudget(renders.standard, kernelBuffers ?? behaviorBuffers, { castShadow }),
+    gpu === undefined
+      ? fxEmitterRenderBudget(renders.standard, behaviorBuffers, { castShadow })
+      : fxEmitterRenderBudget(renders.standard, gpu.buffers, { castShadow, sorted: gpu.sorted }),
     fxEmitterRenderBudget(renders.baseline, behaviorBuffers, { castShadow }),
   );
 }

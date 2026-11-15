@@ -10,7 +10,6 @@ import {
   toggleVfxMeshHidden,
   updateNodeParam,
 } from "../../src/model/commands";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
@@ -22,7 +21,7 @@ afterEach(() => {
 
 describe("SceneEmitters: what the scene depth pre-pass is asked", () => {
   it("follows a mute toggle, which reaches the views without a sync", () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     const emitters = createPreview();
     const id = addVfxMesh(store);
     wireDepthFade(store);
@@ -60,7 +59,7 @@ function wireDepthFade(store: Store): string {
 
 describe("MeshView: a rebuild the runtime refuses", () => {
   it("keeps describing the mesh still running, not the artifact it refused", () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     const emitters = createPreview();
     addVfxMesh(store);
     const rgba = wireDepthFade(store);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createInitialState, type SourceState } from "../../src/model/editorState";
 import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
+import { loadedProject } from "../helpers/loadedProject";
 
 /** A tiny opaque data URL - stands in for a base64 asset that must survive the round-trip. */
 const PIXEL_DATA_URL =
@@ -19,7 +20,7 @@ function sourceWithAsset(): SourceState {
 describe("projectFile: serialize/deserialize round-trip", () => {
   it("round-trips the whole document unchanged, its base64 assets included", () => {
     const source = sourceWithAsset();
-    const restored = deserializeProject(serializeProject(source));
+    const restored = loadedProject(serializeProject(source));
     expect(restored).toEqual(source);
     expect(restored?.assets[0]?.dataUrl).toBe(PIXEL_DATA_URL);
   });
@@ -30,10 +31,10 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       source: { timeline: Record<string, unknown> };
     };
     delete legacy.source.timeline["loop"];
-    expect(deserializeProject(JSON.stringify(legacy))?.timeline.loop).toBe(true);
+    expect(loadedProject(JSON.stringify(legacy))?.timeline.loop).toBe(true);
 
     const once = { ...source, timeline: { ...source.timeline, loop: false } };
-    expect(deserializeProject(serializeProject(once))?.timeline.loop).toBe(false);
+    expect(loadedProject(serializeProject(once))?.timeline.loop).toBe(false);
   });
 
   it("keeps an emitter's editor-only events flag, and leaves it off when absent", () => {
@@ -43,16 +44,16 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       ...base,
       scene: { ...base.scene, emitters: [{ ...emitter, liveEvents: true }, ...rest] },
     };
-    expect(deserializeProject(serializeProject(live))?.scene.emitters[0]?.liveEvents).toBe(true);
-    const restored = deserializeProject(serializeProject(base))?.scene.emitters[0];
+    expect(loadedProject(serializeProject(live))?.scene.emitters[0]?.liveEvents).toBe(true);
+    const restored = loadedProject(serializeProject(base))?.scene.emitters[0];
     expect(restored !== undefined && "liveEvents" in restored).toBe(false);
   });
 
   it("rejects unreadable or non-project text", () => {
-    expect(deserializeProject("not json {{")).toBeUndefined();
-    expect(deserializeProject(JSON.stringify({ hello: "world" }))).toBeUndefined();
+    expect(loadedProject("not json {{")).toBeUndefined();
+    expect(loadedProject(JSON.stringify({ hello: "world" }))).toBeUndefined();
     expect(
-      deserializeProject(JSON.stringify({ format: "sparcoon-project", version: 1 })),
+      loadedProject(JSON.stringify({ format: "sparcoon-project", version: 1 })),
     ).toBeUndefined();
   });
 
@@ -62,13 +63,13 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       ...base,
       palette: [{ name: "swatch_1", label: "Accent", color: [1, 0.4, 0, 1] }],
     };
-    const restored = deserializeProject(serializeProject(source));
+    const restored = loadedProject(serializeProject(source));
     expect(restored?.palette).toEqual(source.palette);
   });
 
   it("tolerates a bare source with no envelope", () => {
     const source = sourceWithAsset();
-    expect(deserializeProject(JSON.stringify(source))?.name).toBe("my-effect");
+    expect(loadedProject(JSON.stringify(source))?.name).toBe("my-effect");
   });
 
   it("seeds the id counter from the raw document before backfilling a missing keyframe id", () => {
@@ -95,12 +96,39 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       },
     };
 
-    const restored = deserializeProject(JSON.stringify(raw));
+    const restored = loadedProject(JSON.stringify(raw));
     const keys = restored?.scene.emitters[0]?.tracks[0]?.keys;
     expect(keys).toHaveLength(2);
     const ids = keys?.map((key) => key.id) ?? [];
     expect(ids).toContain("key_1");
     expect(new Set(ids).size).toBe(2); // the backfilled id didn't collide with "key_1"
+  });
+});
+
+describe("projectFile: format", () => {
+  it("names the format's number and the editor that saved it", () => {
+    const file = JSON.parse(serializeProject(createInitialState().source)) as Record<
+      string,
+      unknown
+    >;
+    expect(file["format"]).toBe("sparcoon-project");
+    expect(file["version"]).toBe(1);
+    expect(file["editor"]).toBe(SPARCOON_EDITOR_VERSION);
+  });
+
+  it("refuses a project in a later format, naming the editor that saved it", () => {
+    const file = JSON.parse(serializeProject(createInitialState().source)) as object;
+    expect(deserializeProject(JSON.stringify({ ...file, version: 2, editor: "9.0.0" }))).toEqual({
+      kind: "newer",
+      editor: "9.0.0",
+    });
+  });
+
+  it("reads a project without a number, or with one that is not an integer, as format 1", () => {
+    const file = JSON.parse(serializeProject(createInitialState().source)) as object;
+    for (const version of [undefined, "2", 1.5]) {
+      expect(deserializeProject(JSON.stringify({ ...file, version })).kind).toBe("loaded");
+    }
   });
 });
 
@@ -148,7 +176,7 @@ describe("projectFile: renamed nodes and inputs", () => {
       },
     };
 
-    const loaded = deserializeProject(serializeProject(saved))?.scene.emitters[0].behaviorGraph;
+    const loaded = loadedProject(serializeProject(saved))?.scene.emitters[0].behaviorGraph;
 
     expect(loaded?.nodes["cyl"]?.type).toBe("random-cylinder-point");
     expect(loaded?.nodes["cyl"]?.parameters).toEqual({ radius: 2, height: 3 });
@@ -210,7 +238,7 @@ describe("projectFile: renamed node outputs", () => {
         ],
       },
     };
-    const loaded = deserializeProject(serializeProject(saved))?.scene.emitters[0].renderGraph;
+    const loaded = loadedProject(serializeProject(saved))?.scene.emitters[0].renderGraph;
 
     const fromOf = (id: string) => loaded?.connections.find((c) => c.id === id)?.from;
     expect(fromOf("wire")).toEqual({ nodeId: "flip", socketKey: "uvNext" });
@@ -247,7 +275,7 @@ describe("projectFile: key curves", () => {
         ],
       },
     };
-    const keys = deserializeProject(serializeProject(source))?.scene.emitters[0].tracks[0]?.keys;
+    const keys = loadedProject(serializeProject(source))?.scene.emitters[0].tracks[0]?.keys;
     expect(keys?.[0]).toEqual({ id: "k1", time: 0, value: 0, ease: "inOut" });
     expect(keys?.[1]).toEqual({ id: "k2", time: 1, value: 1 });
   });
@@ -257,9 +285,7 @@ describe("projectFile: corrupt library entries", () => {
   /** `sourceWithAsset()` serialized, then its libraries replaced by `libraries` as raw JSON. */
   function loadWithLibraries(libraries: Record<string, unknown>): SourceState | undefined {
     const file = JSON.parse(serializeProject(sourceWithAsset())) as { source: object };
-    return deserializeProject(
-      JSON.stringify({ ...file, source: { ...file.source, ...libraries } }),
-    );
+    return loadedProject(JSON.stringify({ ...file, source: { ...file.source, ...libraries } }));
   }
 
   it("keeps a texture with its bytes and size, labelled by its name when unlabelled", () => {

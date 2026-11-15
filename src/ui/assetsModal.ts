@@ -27,7 +27,7 @@ export interface AssetsModal {
 }
 
 export function createAssetsModal(context: EditorContext): AssetsModal {
-  const { store, signals } = context;
+  const { store } = context;
   const uploadButton = createElement("button", {
     className: "content-sheet__upload",
     type: "button",
@@ -141,8 +141,8 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
   // are structural; environment/mesh edits are view-only - listen to both so every section refreshes.
   // This also covers the HDRI rows' active-environment badge (ADR-0004: now a document field) -
   // picking one in the Lighting panel while this sheet is open still updates it.
-  signals.on("sourceStructureChanged", render);
-  signals.on("sourceViewChanged", render);
+  store.events.sourceStructureChanged.on(render);
+  store.events.sourceViewChanged.on(render);
   render();
 
   return { element: scrim, open, close };

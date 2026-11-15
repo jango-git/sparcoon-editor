@@ -61,9 +61,9 @@ export async function loadPresetSource(preset: ProjectPreset): Promise<SourceSta
     // (i18n/index.ts) - a bare `preset.fileName` would resolve against the bundle chunk's own
     // location (dist/), one directory short of where copyJsonAssets actually puts it.
     const response = await fetch(new URL(`presets/${preset.fileName}`, import.meta.url));
-    const source = deserializeProject(await response.text());
-    if (source !== undefined) {
-      return source;
+    const read = deserializeProject(await response.text());
+    if (read.kind === "loaded") {
+      return read.source;
     }
     console.warn(`Preset "${preset.id}" is not a readable project file; starting empty`);
   } catch (error) {

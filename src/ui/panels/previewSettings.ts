@@ -7,7 +7,6 @@
 import { t } from "../../i18n";
 import { setActiveEnvironment } from "../../model/commands";
 import { selectEnvironmentAssets } from "../../model/selectors";
-import type { SignalBus } from "../../model/signals";
 import type { Store } from "../../model/store";
 import { environmentThumbnails } from "../../render/assetThumbnails";
 import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
@@ -49,7 +48,6 @@ export function createPreviewSettingsGroups(
   settings: PreviewSettingsStore,
   gizmo: GizmoSettingsStore,
   store: Store,
-  signals: SignalBus,
 ): PreviewSettingsGroup[] {
   const current = settings.get();
   const gizmoCurrent = gizmo.get();
@@ -134,7 +132,7 @@ export function createPreviewSettingsGroups(
     hemisphereGroundRow,
     hemisphereIntensityRow,
   ];
-  const presetPickerRow = presetRow(store, signals);
+  const presetPickerRow = presetRow(store);
   const groundRow = toggleRow(
     t("preview.ground"),
     current.ground,
@@ -200,8 +198,8 @@ export function createPreviewSettingsGroups(
   // source signals too - a whole-project replace (preset/import) commits "structural", a plain
   // pick commits "view", never both (see Store.emitForKind).
   settings.subscribe(applyPreviewState);
-  signals.on("sourceStructureChanged", applyPreviewState);
-  signals.on("sourceViewChanged", applyPreviewState);
+  store.events.sourceStructureChanged.on(applyPreviewState);
+  store.events.sourceViewChanged.on(applyPreviewState);
 
   const spaceRowControl = spaceRow(gizmoCurrent.space, (space) => gizmo.update({ space }));
   const moveSnapRow = snapRow(t("preview.snapMove"), gizmoCurrent.move, (value) =>
@@ -395,7 +393,7 @@ function setRowsHidden(rows: readonly HTMLElement[], hidden: boolean): void {
  * is mutated in place (not replaced) so AssetPicker, which reads it fresh each time its popup opens,
  * always sees the current library without its own resync API.
  */
-function presetRow(store: Store, signals: SignalBus): HTMLElement {
+function presetRow(store: Store): HTMLElement {
   const NONE_VALUE = "";
   const options: AssetPickerOption[] = [{ name: NONE_VALUE, label: t("preview.environmentNone") }];
   // populateOptions's onReady callback closes over `refresh` before it's declared below - safe,
@@ -445,8 +443,8 @@ function presetRow(store: Store, signals: SignalBus): HTMLElement {
   };
   // A plain pick or asset-library edit commits "view"; a whole-project replace (preset/import)
   // commits "structural" - never both (see Store.emitForKind) - so both need a listener here.
-  signals.on("sourceViewChanged", refresh);
-  signals.on("sourceStructureChanged", refresh);
+  store.events.sourceViewChanged.on(refresh);
+  store.events.sourceStructureChanged.on(refresh);
 
   return field(t("preview.preset"), picker.element, PREVIEW_ROW);
 }

@@ -4,7 +4,6 @@ import { createEditApi } from "../../src/agent/editApi";
 import { liveSession } from "../../src/agent/transaction.Internal";
 import { sceneView } from "../../src/agent/views";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 /** Two starter emitters, `emitter_a` and `emitter_b`, through the live agent API. */
@@ -15,7 +14,7 @@ function setup(): { store: Store; api: ReturnType<typeof createEditApi> } {
     ...state.source,
     scene: { ...state.source.scene, emitters, activeEmitterId: "emitter_a" },
   };
-  const store = new Store(state, new SignalBus());
+  const store = new Store(state);
   return { store, api: createEditApi(liveSession(store)) };
 }
 

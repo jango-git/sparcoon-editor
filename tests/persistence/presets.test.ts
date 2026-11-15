@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
 import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
-import { deserializeProject } from "../../src/persistence/projectFile";
+import { loadedProject } from "../helpers/loadedProject";
 
 /**
  * `loadPresetSource` fetches its bundled JSON at runtime (`import.meta.url`-relative), which
@@ -36,7 +36,7 @@ describe("bundled project presets", () => {
 
   it("every bundled preset's JSON parses to a document with something in it", () => {
     for (const preset of PROJECT_PRESETS) {
-      const source = deserializeProject(readBundledPreset(preset.fileName));
+      const source = loadedProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
       expect(source!.scene.emitters.length, preset.fileName).toBeGreaterThan(0);
     }
@@ -44,7 +44,7 @@ describe("bundled project presets", () => {
 
   it("every bundled preset's emitters and meshes actually compile, not just parse", () => {
     for (const preset of PROJECT_PRESETS) {
-      const source = deserializeProject(readBundledPreset(preset.fileName));
+      const source = loadedProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
       // As the export compiles them: against the preset's content library.
       const meshAssetNames = source!.meshAssets.map((asset) => asset.name);

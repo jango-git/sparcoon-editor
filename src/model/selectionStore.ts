@@ -3,13 +3,15 @@
  * and hotkeys target. Transient like the transport - editor focus, never in the model/history/saved doc.
  */
 
+import { Ferrsign0 } from "ferrsign";
+
 import { emitterEntity, sameEntity, type SceneEntity, VFX_ENTITY, vfxMeshEntity } from "./entity";
 
 export type SelectionListener = () => void;
 
 export class SelectionStore {
   private current: SceneEntity = VFX_ENTITY;
-  private readonly listeners = new Set<SelectionListener>();
+  private readonly changed = new Ferrsign0();
 
   /** The entity the gizmo/hotkeys act on. */
   public get(): SceneEntity {
@@ -41,15 +43,10 @@ export class SelectionStore {
 
   /** Subscribes to selection changes; returns an unsubscribe. */
   public subscribe(listener: SelectionListener): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return this.changed.on(listener);
   }
 
   private notify(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
+    this.changed.emit();
   }
 }

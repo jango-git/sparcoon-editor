@@ -11,11 +11,10 @@ import {
   setTransformKeyframe,
 } from "../../src/model/commands";
 import { emitterEntity, VFX_ENTITY, vfxMeshEntity } from "../../src/model/entity";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { createTestState } from "../helpers/testDocument";
 
-const freshStore = (): Store => new Store(createTestState(), new SignalBus());
+const freshStore = (): Store => new Store(createTestState());
 const emitterId = (store: Store): string => store.getSource().scene.emitters[0].id;
 const tracks = (store: Store) => store.getSource().scene.emitters[0].tracks;
 const events = (store: Store) => store.getSource().scene.emitters[0].events;
@@ -126,11 +125,10 @@ describe("pasteTimelineItems", () => {
   });
 
   it("records no edit when every item is dropped", () => {
-    const signals = new SignalBus();
-    const store = new Store(createTestState(), signals);
+    const store = new Store(createTestState());
     const before = store.getSource();
     let historyChanges = 0;
-    signals.on("historyChanged", () => historyChanges++);
+    store.events.historyChanged.on(() => historyChanges++);
     pasteTimelineItems(
       store,
       [{ type: "key", entity: VFX_ENTITY, name: "size", time: 1, value: 1 }],

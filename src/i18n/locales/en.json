@@ -301,6 +301,7 @@
     "projectNamePlaceholder": "my-effect",
     "loadJson": "Load JSON",
     "saveJson": "Save JSON",
+    "loadNewer": "\"{file}\" was saved by Sparcoon Editor {editor} in a later project format. Open it in that version or a later one.",
     "presetsTitle": "Presets",
     "presetEmpty": "Empty",
     "presetSparks": "Sparks",

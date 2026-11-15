@@ -3,6 +3,8 @@
  * settings/camera - playback chrome, never in the model/history/saved doc; `TimelineDispatcher` reads `time` each tick to drive spawns and values into the running emitter.
  */
 
+import { Ferrsign0 } from "ferrsign";
+
 export type TransportListener = () => void;
 
 export class TransportStore {
@@ -12,7 +14,7 @@ export class TransportStore {
   private frameHandle: number | undefined = undefined;
   private lastTimestamp: number | undefined = undefined;
   private restartOnRebuildFlag = true;
-  private readonly listeners = new Set<TransportListener>();
+  private readonly changed = new Ferrsign0();
 
   /**
    * @param duration Accessor for the authored timeline length (seconds); read every tick.
@@ -121,10 +123,7 @@ export class TransportStore {
 
   /** Subscribes to playhead/state changes; returns an unsubscribe. */
   public subscribe(listener: TransportListener): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return this.changed.on(listener);
   }
 
   /** Halts ticking while the tab is hidden, resuming with a fresh timestamp anchor once it is
@@ -177,9 +176,7 @@ export class TransportStore {
   }
 
   private notify(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
+    this.changed.emit();
   }
 }
 

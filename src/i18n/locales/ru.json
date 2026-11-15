@@ -301,6 +301,7 @@
     "projectNamePlaceholder": "my-effect",
     "loadJson": "Загрузить JSON",
     "saveJson": "Сохранить JSON",
+    "loadNewer": "\"{file}\" сохранён в Sparcoon Editor {editor} в более новом формате проекта. Откройте его в этой версии или более новой.",
     "presetsTitle": "Пресеты",
     "presetEmpty": "Пусто",
     "presetSparks": "Искры",

@@ -8,6 +8,9 @@ import type { FXEmitter, FXParticleEventKind, FXParticleEventListener } from "sp
 
 export class ParticleEventForward {
   private readonly listeners = new Set<FXParticleEventListener>();
+  // The listeners an event goes to, taken again only after they change: an event reaches those
+  // attached when it arrives, however its listeners attach or detach.
+  private snapshot: readonly FXParticleEventListener[] | undefined = undefined;
   private detach: (() => void) | undefined = undefined;
 
   constructor(private readonly kind: FXParticleEventKind) {}
@@ -18,8 +21,10 @@ export class ParticleEventForward {
    */
   public listen(listener: FXParticleEventListener, emitter: FXEmitter | undefined): () => void {
     this.listeners.add(listener);
+    this.snapshot = undefined;
     this.attach(emitter);
     return (): void => {
+      this.snapshot = undefined;
       if (this.listeners.delete(listener) && this.listeners.size === 0) {
         this.detach?.();
         this.detach = undefined;
@@ -36,6 +41,7 @@ export class ParticleEventForward {
   /** Drops every listener; the running emitter goes with the view. */
   public clear(): void {
     this.listeners.clear();
+    this.snapshot = undefined;
     this.detach = undefined;
   }
 
@@ -51,7 +57,8 @@ export class ParticleEventForward {
   }
 
   private readonly forward: FXParticleEventListener = (event) => {
-    for (const listener of [...this.listeners]) {
+    this.snapshot ??= [...this.listeners];
+    for (const listener of this.snapshot) {
       listener(event);
     }
   };

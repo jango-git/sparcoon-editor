@@ -5,7 +5,6 @@ import { RENDER_SINK_ID, UPDATE_SINK_ID } from "../../src/domain/nodePalette";
 import { connectSockets, disconnectInput } from "../../src/model/commands";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { selectBehaviorGraph, selectRenderGraph } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 function starterStore(): Store {
@@ -14,7 +13,7 @@ function starterStore(): Store {
     ...state.source,
     scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_1", "Emitter")] },
   };
-  return new Store(state, new SignalBus());
+  return new Store(state);
 }
 
 describe("edge commands", () => {

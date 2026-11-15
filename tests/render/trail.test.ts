@@ -40,7 +40,6 @@ import {
 } from "../../src/model/editorState";
 import { emitterEntity } from "../../src/model/entity";
 import { Pipeline } from "../../src/model/pipeline";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
@@ -51,7 +50,7 @@ import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
 
 function setup(): { store: Store; emitters: SceneEmitters; emitterId: string } {
-  const store = new Store(createTestState(), new SignalBus());
+  const store = new Store(createTestState());
   return { store, emitters: createPreview(), emitterId: store.getSource().scene.emitters[0].id };
 }
 

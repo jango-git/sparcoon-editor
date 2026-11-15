@@ -8,7 +8,6 @@ import {
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
@@ -22,7 +21,7 @@ afterEach(destroyPreviews);
 describe("SceneEmitters: render-only edits do not reset playback", () => {
   // JS driver only - the render-only swap path is backend-agnostic, so this is enough to exercise it.
   function buildScene(): { store: Store; emitters: SceneEmitters } {
-    return { store: new Store(createTestState(), new SignalBus()), emitters: createPreview() };
+    return { store: new Store(createTestState()), emitters: createPreview() };
   }
 
   it("a render-mode change hot-swaps in place: particles survive and recompiled is not reported", () => {

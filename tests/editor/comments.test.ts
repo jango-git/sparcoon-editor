@@ -11,17 +11,16 @@ import {
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { selectRenderGraph } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createInitialState());
 
 /** Counts the structural vs view-only signals a body emits. */
-function countSignals(signals: SignalBus, body: () => void): { structural: number; view: number } {
+function countSignals(store: Store, body: () => void): { structural: number; view: number } {
   let structural = 0;
   let view = 0;
-  signals.on("sourceStructureChanged", () => (structural += 1));
-  signals.on("sourceViewChanged", () => (view += 1));
+  store.events.sourceStructureChanged.on(() => (structural += 1));
+  store.events.sourceViewChanged.on(() => (view += 1));
   body();
   return { structural, view };
 }
@@ -54,9 +53,8 @@ describe("comment commands", () => {
   });
 
   it("commits every comment edit as view-only (never recompiles)", () => {
-    const bus = new SignalBus();
-    const store = new Store(createInitialState(), bus);
-    const { structural, view } = countSignals(bus, () => {
+    const store = freshStore();
+    const { structural, view } = countSignals(store, () => {
       const id = addComment(store, "renderGraph", { x: 0, y: 0 }, { width: 96, height: 72 });
       renameComment(store, "renderGraph", id, "Note");
       resizeComment(store, "renderGraph", id, { width: 120, height: 96 });

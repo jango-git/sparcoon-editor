@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import { resolveGraph, targetGraph } from "../../src/agent/address.Internal";
 import { placedNodeMeta, requireParameterKeys } from "../../src/agent/references.Internal";
-import { deserializeProject } from "../../src/persistence/projectFile";
+import { loadedProject } from "../helpers/loadedProject";
 
 const PRESET_DIRECTORY = "src/persistence/presets";
 
 /** Every parameter a preset's node carries that its node type does not store. */
 function strayParameters(fileName: string): string[] {
-  const source = deserializeProject(readFileSync(`${PRESET_DIRECTORY}/${fileName}`, "utf8"));
+  const source = loadedProject(readFileSync(`${PRESET_DIRECTORY}/${fileName}`, "utf8"));
   expect(source).toBeDefined();
   const owners = [
     ...source!.scene.emitters.flatMap((emitter) => [

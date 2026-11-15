@@ -20,12 +20,12 @@ import {
   selectBehaviorGraph,
   selectEmitters,
 } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
-import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
+import { serializeProject } from "../../src/persistence/projectFile";
+import { loadedProject } from "../helpers/loadedProject";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createInitialState());
 
 /** The authored (non-sink) node ids across both of an emitter's graphs. */
 function authoredNodeIds(store: Store, id: string): string[] {
@@ -187,7 +187,7 @@ describe("an effect of meshes only", () => {
     addVfxMesh(store);
     removeEmitter(store, emitterId);
 
-    const loaded = deserializeProject(serializeProject(store.getSource()));
+    const loaded = loadedProject(serializeProject(store.getSource()));
     expect(loaded?.scene.emitters).toEqual([]);
     expect(loaded?.scene.meshes).toHaveLength(1);
     expect(loaded?.scene.activeGraphKind).toBe("vfxMesh");

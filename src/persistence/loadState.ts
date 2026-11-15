@@ -53,6 +53,7 @@ import {
 } from "../model/transform";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
+import { isNewerProject, type StoredProject, unwrapProject } from "./projectEnvelope";
 import { migrateRenamedNodes } from "./renamedNodes";
 
 /** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
@@ -68,11 +69,14 @@ export async function loadInitialState(
 /** The persisted document, defended down to a valid source, or `undefined` to start fresh. */
 async function restoreSource(): Promise<SourceState | undefined> {
   try {
-    const raw = loadSource();
-    // Seed from the raw document *before* normalizing: normalization can itself backfill a missing
-    // id (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
-    seedIdentifierCounterFromRawSource(raw);
-    const normalized = normalizeSource(raw);
+    const stored = unwrapProject(loadSource());
+    if (isNewerProject(stored)) {
+      // Unlike a file, refusing it would lose it: the next autosave writes over it.
+      console.warn(
+        `The saved document is from a later editor (${stored.editor ?? "unknown"}); keeping what this one reads`,
+      );
+    }
+    const normalized = readStoredSource(stored);
     return normalized === undefined ? undefined : await hydrateSource(normalized);
   } catch (error) {
     // Belt-and-suspenders: normalize defaults every field, but an unforeseen shape must still
@@ -80,6 +84,14 @@ async function restoreSource(): Promise<SourceState | undefined> {
     console.warn("Discarding an unreadable saved document; starting fresh", error);
     return undefined;
   }
+}
+
+/** The valid source a stored project holds, or `undefined`. */
+export function readStoredSource(stored: StoredProject): SourceState | undefined {
+  // Seed from the raw body *before* normalizing: normalization can itself backfill a missing id
+  // (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
+  seedIdentifierCounterFromRawSource(stored.body);
+  return normalizeSource(stored.body);
 }
 
 /** Guarantees a persisted graph's structural containers so a missing/non-object field can't crash

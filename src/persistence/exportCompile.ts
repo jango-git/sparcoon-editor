@@ -32,7 +32,6 @@ import {
   trailRenderBudgetFindings,
 } from "../domain/renderBudget";
 import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
-import { gpuSortWarnings } from "../domain/sortChecks";
 import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
@@ -319,8 +318,12 @@ export function compileEmitter(
         config.renderMode,
       ),
       bundle.kernel.update.buffers,
-      config.castShadow,
-      kernelBuffers,
+      {
+        castShadow: config.castShadow,
+        ...(kernelBuffers === undefined
+          ? {}
+          : { gpu: { buffers: kernelBuffers, sorted: config.sortInterval > 0 } }),
+      },
     ),
   );
 
@@ -344,8 +347,6 @@ export function compileEmitter(
         kernelWrittenBuffers(bundle.kernel),
         emitter.behaviorGraph.attributes,
       ),
-      // A WebGL2 host runs the shipped GPU kernel, and ignores the sort there.
-      ...gpuSortWarnings(config.sortInterval, bundle.standardProgram !== undefined),
       ...unboundedLifetimeWarnings(behaviorSnapshot),
     ],
     ...(emitter.trailGraph === undefined

@@ -5,7 +5,6 @@ import { createProjectApi } from "../../src/agent/project";
 import { readStatus } from "../../src/agent/status.Internal";
 import { GraphKind, isMeshExcludedRenderNode, metaFor } from "../../src/domain/nodePalette";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { serializeProject } from "../../src/persistence/projectFile";
 import type { DocumentReplaceTarget } from "../../src/persistence/replaceDocument";
@@ -59,7 +58,7 @@ function replaceTarget(store: Store): DocumentReplaceTarget & { resets: number }
 
 describe("agent project", () => {
   it("round-trips the project file as one undoable replace", async () => {
-    const original = new Store(createInitialState(), new SignalBus());
+    const original = new Store(createInitialState());
     const state = createInitialState();
     state.source = {
       ...state.source,
@@ -81,9 +80,7 @@ describe("agent project", () => {
   });
 
   it("rejects unreadable project text and unknown presets", async () => {
-    const project = createProjectApi(
-      replaceTarget(new Store(createInitialState(), new SignalBus())),
-    );
+    const project = createProjectApi(replaceTarget(new Store(createInitialState())));
     await expect(project.load("{ nope")).rejects.toThrow(/invalid_argument/);
     await expect(project.loadPreset("missing")).rejects.toThrow(/not_found/);
     expect(project.presets()).toEqual(expect.arrayContaining(["empty", "sparks"]));
@@ -95,7 +92,7 @@ describe("agent project", () => {
       ...state.source,
       scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_1", "Emitter")] },
     };
-    const store = new Store(state, new SignalBus());
+    const store = new Store(state);
     const project = createProjectApi(replaceTarget(store));
     project.setName("bolt sparks");
     expect(store.getSource().name).toBe("bolt sparks");
@@ -119,7 +116,7 @@ describe("agent status", () => {
         activeEmitterId: "emitter_a",
       },
     };
-    const store = new Store(state, new SignalBus());
+    const store = new Store(state);
     store.setDerived({ renderStatus: { status: "recompiled", messages: [] } });
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
       setTimeout(() => callback(0), 0);
@@ -148,7 +145,7 @@ describe("agent status", () => {
         activeEmitterId: "emitter_a",
       },
     };
-    const store = new Store(state, new SignalBus());
+    const store = new Store(state);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
       setTimeout(() => callback(0), 0);
       return 0;
@@ -174,7 +171,7 @@ describe("agent status", () => {
         activeEmitterId: "emitter_a",
       },
     };
-    const store = new Store(state, new SignalBus());
+    const store = new Store(state);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
       setTimeout(() => callback(0), 0);
       return 0;

@@ -33,14 +33,7 @@ const AXIS_KEYS = ["axis.x", "axis.y", "axis.z"] as const;
 
 /** The right-hand tabs: Item, then the view settings. The `N` hotkey toggles them. */
 export function createViewportTransform(context: EditorContext): ViewportTabs {
-  const {
-    store,
-    selection,
-    transport,
-    signals,
-    previewSettings: settings,
-    gizmoSettings: gizmo,
-  } = context;
+  const { store, selection, transport, previewSettings: settings, gizmoSettings: gizmo } = context;
   const name = document.createElement("input");
   name.type = "text";
   name.className = "viewport-transform__name";
@@ -100,7 +93,7 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
     section(t("field.rotation"), controls.rotation),
     section(t("field.scale"), controls.scale),
   ]);
-  for (const settingsGroup of createPreviewSettingsGroups(settings, gizmo, store, signals)) {
+  for (const settingsGroup of createPreviewSettingsGroups(settings, gizmo, store)) {
     tabs.addTab(settingsGroup.label, settingsGroup.glyph, t("viewport.settingsTip"), [
       createElement("div", { className: "preview-settings" }, settingsGroup.rows),
     ]);
@@ -135,8 +128,8 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
 
   transport.subscribe(update);
   selection.subscribe(update);
-  signals.on("sourceViewChanged", update);
-  signals.on("sourceStructureChanged", update);
+  store.events.sourceViewChanged.on(update);
+  store.events.sourceStructureChanged.on(update);
   update();
 
   return tabs;

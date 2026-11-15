@@ -96,7 +96,7 @@ import {
 import { TimelineViewport } from "./timelineViewport";
 
 export function createTimelinePanel(context: EditorContext): HTMLElement {
-  const { store, signals, transport, router, selection: timelineSelection } = context;
+  const { store, transport, router, selection: timelineSelection } = context;
   const selection = new Set<string>();
   let markers: Marker[] = [];
   let refByKey = new Map<string, ItemRef>();
@@ -748,8 +748,8 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   render();
   // Structural changes (add/remove/select/rename) and view changes (keyframes, length, fps) both
   // re-render the rows; the transport itself only drives the playhead position, in place.
-  signals.on("sourceStructureChanged", render);
-  signals.on("sourceViewChanged", render);
+  store.events.sourceStructureChanged.on(render);
+  store.events.sourceViewChanged.on(render);
   // Preview/gizmo selection changes which entity is "active" - re-render so the right row expands
   // (sub-rows) and highlights, following a selection made outside the timeline.
   timelineSelection.subscribe(render);

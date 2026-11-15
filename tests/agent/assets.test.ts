@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createAssetsApi } from "../../src/agent/assets";
 import { createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 /** The browser file plumbing ingestion reads through, over node's own File/Blob. */
@@ -71,7 +70,7 @@ function triangleGltf(): string {
 }
 
 function assets(): { store: Store; api: ReturnType<typeof createAssetsApi> } {
-  const store = new Store(createInitialState(), new SignalBus());
+  const store = new Store(createInitialState());
   return { store, api: createAssetsApi(store) };
 }
 

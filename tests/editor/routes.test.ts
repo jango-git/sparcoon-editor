@@ -15,7 +15,6 @@ import {
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { selectRenderGraph } from "../../src/model/selectors";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 /** A render node with an output, placed so wires can be authored between two of them. */
@@ -150,7 +149,7 @@ describe("route (fake node) serialization", () => {
 
 describe("insertRouteOnConnection command", () => {
   it("replaces the connection with source->route and route->target", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const sourceId = addCatalogNode(store, "renderGraph", "constant", { x: 0, y: 0 })!;
     const targetId = addCatalogNode(store, "renderGraph", "binary-op", { x: 200, y: 0 })!;
     const connId = nextIdentifier("conn");
@@ -193,7 +192,7 @@ describe("insertRouteOnConnection command", () => {
 
 describe("dissolveRoute command", () => {
   it("removes the route but reconnects the wire it carried", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const sourceId = addCatalogNode(store, "renderGraph", "constant", { x: 0, y: 0 })!;
     const targetId = addCatalogNode(store, "renderGraph", "binary-op", { x: 200, y: 0 })!;
     addNode(store, "renderGraph", makeNode("r", ROUTE_TYPE));

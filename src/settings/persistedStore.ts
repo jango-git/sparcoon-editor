@@ -5,13 +5,15 @@
  * touches the document, undo history, or the saved source.
  */
 
+import { Ferrsign1 } from "ferrsign";
+
 import { readJson, writeJson } from "../util/storage";
 
 export type SettingsListener<T> = (value: T) => void;
 
 export class PersistedStore<T extends object> {
   private value: T;
-  private readonly listeners = new Set<SettingsListener<T>>();
+  private readonly changed = new Ferrsign1<T>();
 
   constructor(
     private readonly key: string,
@@ -39,17 +41,12 @@ export class PersistedStore<T extends object> {
   /** Subscribe to changes; returns an unsubscribe. The listener fires on every {@link update} and
    *  {@link reset}. */
   public subscribe(listener: SettingsListener<T>): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return this.changed.on(listener);
   }
 
   private commit(next: T): void {
     this.value = next;
     writeJson(this.key, this.value);
-    for (const listener of this.listeners) {
-      listener(this.value);
-    }
+    this.changed.emit(this.value);
   }
 }

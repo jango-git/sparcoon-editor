@@ -4,10 +4,9 @@ import type { GraphNode } from "../../src/domain/graphModel";
 import { addNode, replaceNodeParams, setKeyframe, updateNodeParam } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { emitterEntity } from "../../src/model/entity";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
-const freshStore = (): Store => new Store(createInitialState(), new SignalBus());
+const freshStore = (): Store => new Store(createInitialState());
 const emitterId = (store: Store): string => store.getSource().scene.emitters[0].id;
 const tracks = (store: Store) => store.getSource().scene.emitters[0].tracks;
 const trackNames = (store: Store): string[] => tracks(store).map((track) => track.name);

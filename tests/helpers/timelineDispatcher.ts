@@ -1,7 +1,6 @@
 import { vi } from "vitest";
 
 import { createInitialState, type TimelineEvent } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { TransportStore } from "../../src/model/transport";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
@@ -36,7 +35,7 @@ export function dispatcherHarness(events: readonly TimelineEvent[] = []): Dispat
     ...state.source,
     scene: { ...state.source.scene, emitters: [{ ...emitter, events }] },
   };
-  const store = new Store(state, new SignalBus());
+  const store = new Store(state);
   const transport = new TransportStore(() => store.getSource().timeline.duration);
   const views: SpyViews = {
     applySceneTransforms: vi.fn(),

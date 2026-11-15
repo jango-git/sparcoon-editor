@@ -1,7 +1,7 @@
 /**
  * The Help block of the Content sheet: a static quick-reference panel - a getting-started note, a
- * few misc mechanics worth knowing, and the editor's keyboard shortcuts. Pure content, no
- * store/signals; it never changes at runtime, so unlike the other two blocks it needs no `sync()`.
+ * few misc mechanics worth knowing, and the editor's keyboard shortcuts. Pure content, no store
+ * or its events; it never changes at runtime, so unlike the other two blocks it needs no `sync()`.
  */
 
 import { t, type TKey } from "../i18n";

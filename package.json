@@ -40,8 +40,7 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "fast-simplex-noise": "^4.0.0",
-    "ferrsign": "^0.0.4",
+    "ferrsign": "0.0.5",
     "sparcoon": "0.21.0",
     "three": "^0.157.0"
   },

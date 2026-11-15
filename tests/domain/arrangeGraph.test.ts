@@ -15,12 +15,11 @@ import {
   connectSockets,
 } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
-import { deserializeProject } from "../../src/persistence/projectFile";
 import { GRID_SIZE } from "../../src/ui/graph/grid";
 import { ROUTE_GEOMETRY } from "../../src/ui/graph/routeView";
 import { wirePoints } from "../../src/ui/graph/wireRenderer";
+import { loadedProject } from "../helpers/loadedProject";
 
 /**
  * The auto-layout's promises, checked on every graph of every bundled preset with the wires drawn
@@ -250,7 +249,7 @@ function layoutProblems(
 const presetGraphs = readdirSync(PRESETS)
   .filter((name) => name.endsWith(".json"))
   .flatMap((fileName) => {
-    const source = deserializeProject(readFileSync(new URL(fileName, PRESETS), "utf8"))!;
+    const source = loadedProject(readFileSync(new URL(fileName, PRESETS), "utf8"))!;
     return [
       ...source.scene.emitters.flatMap((emitter) => [
         {
@@ -311,7 +310,7 @@ describe("arrangeGraph on the bundled presets", () => {
 
 describe("arrangeActiveGraph", () => {
   it("is one undo step that also drops the comments", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const curve = addCatalogNode(store, "renderGraph", "life-ratio", { x: 0, y: 0 })!;
     const remap = addCatalogNode(store, "renderGraph", "remap", { x: 0, y: 0 })!;
     connectSockets(

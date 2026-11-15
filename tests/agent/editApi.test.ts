@@ -4,7 +4,6 @@ import { createEditApi } from "../../src/agent/editApi";
 import { liveSession, runTransaction, stagedSession } from "../../src/agent/transaction.Internal";
 import { RENDER_SINK_ID, SPAWN_SINK_ID } from "../../src/domain/nodePalette";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 /** A store whose document holds two starter emitters (`emitter_a` active) and no meshes. */
@@ -15,7 +14,7 @@ function twoEmitterStore(): Store {
     ...state.source,
     scene: { ...state.source.scene, emitters, activeEmitterId: "emitter_a" },
   };
-  return new Store(state, new SignalBus());
+  return new Store(state);
 }
 
 function undoDepth(store: Store): number {
@@ -310,7 +309,7 @@ describe("agent graph edits", () => {
 
 describe("agent scene and timeline edits", () => {
   it("keeps the scene's last object, but lets an effect be meshes only", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const { api } = apis(store);
     expect(() => api.scene.remove("emitter_1")).toThrow(/rejected.*last object/);
     const mesh = api.scene.addMesh();

@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPreviewApi } from "../../src/agent/preview";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { TransportStore } from "../../src/model/transport";
 import type { OverdrawStats } from "../../src/render/overdrawPass";
@@ -23,7 +22,7 @@ function previewWithRecorder() {
       ],
     },
   };
-  const store = new Store(state, new SignalBus());
+  const store = new Store(state);
   const transport = new TransportStore(() => store.getSource().timeline.duration);
   const requests: FrameCaptureOptions[] = [];
   const bolt = new Object3D();
@@ -156,7 +155,7 @@ describe("agent preview captures", () => {
   it("pauses the transport even when a capture fails mid-replay", async () => {
     const { transport } = previewWithRecorder();
     const failing = createPreviewApi({
-      store: new Store(createInitialState(), new SignalBus()),
+      store: new Store(createInitialState()),
       transport,
       coordinator: {
         advance: () => {},

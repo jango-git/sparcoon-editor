@@ -1,8 +1,7 @@
 /**
  * Persistence: only the *source* is saved - derived data is never written, it is recomputed on
- * load. This is the autosaved-session backing store, a localStorage JSON round-trip;
- * `projectFile.ts`'s file export and the TypeScript effect export are separate formats layered
- * on the same {@link SourceState}.
+ * load. This is the autosaved-session backing store, a localStorage JSON round-trip of a stored
+ * project (`projectEnvelope.ts`), the same one the project file holds.
  *
  * The asset libraries' heavy payloads (texture and HDRI bytes, mesh geometry) are the exception:
  * they are kept in IndexedDB (assetBlobStore.ts), and the document leaves an asset's payload empty
@@ -14,6 +13,7 @@ import type { SourceState } from "../model/editorState";
 import { readString, writeJson } from "../util/storage";
 import type { BlobSync } from "./assetBlobStore";
 import { environmentBlobs, meshBlobs, textureBlobs } from "./assetBlobStore";
+import { wrapProject } from "./projectEnvelope";
 
 const STORAGE_KEY = "sparcoon-editor.document";
 
@@ -106,6 +106,6 @@ export async function hydrateSource(source: SourceState): Promise<SourceState> {
 function writeDocument(source: SourceState): boolean {
   return writeJson(
     STORAGE_KEY,
-    Object.assign({ ...source }, ...LIBRARIES.map((library) => library.strip(source))),
+    wrapProject(Object.assign({ ...source }, ...LIBRARIES.map((library) => library.strip(source)))),
   );
 }

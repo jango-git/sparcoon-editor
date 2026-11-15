@@ -12,6 +12,7 @@ vi.mock("../../src/persistence/localStore", () => ({
 
 // Imported after the mock so loadInitialState picks up the mocked loadSource.
 const { loadInitialState } = await import("../../src/persistence/loadState");
+const { wrapProject } = await import("../../src/persistence/projectEnvelope");
 
 /** A minimal persisted scene with one emitter (the doc requires >= 1) plus the given meshes. */
 function persistedScene(
@@ -106,5 +107,20 @@ describe("VFX mesh persistence normalization", () => {
     ).source.scene.meshes[0].renderGraph.outputBindings.map((binding) => binding.slot);
     expect(slots).toContain("albedo");
     expect(slots).not.toContain("particleTransform");
+  });
+});
+
+describe("saved document envelope", () => {
+  it("reads a document in the project envelope", async () => {
+    loadSourceMock.mockReturnValue(wrapProject(persistedScene(undefined)));
+    expect((await loadInitialState(noFallback)).source.scene.emitters).toHaveLength(1);
+  });
+
+  it("keeps what it reads of a document from a later editor instead of starting fresh", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    loadSourceMock.mockReturnValue({ ...wrapProject(persistedScene(undefined)), version: 2 });
+    expect((await loadInitialState(noFallback)).source.scene.emitters).toHaveLength(1);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 });

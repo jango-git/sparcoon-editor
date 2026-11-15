@@ -137,7 +137,7 @@ function createLanguageSelect(): HTMLElement {
 }
 
 export function createMiddlebar(context: EditorContext, actions: MiddlebarActions): HTMLElement {
-  const { store, signals, transport, inputMode } = context;
+  const { store, transport, inputMode } = context;
   const undoButton = iconButton(actionIcons.undo, t("middlebar.undo"), t("middlebar.undoTip"), () =>
     store.undo(),
   );
@@ -166,7 +166,7 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
     redoButton.disabled = !store.canRedo;
   };
   refreshHistoryButtons();
-  signals.on("historyChanged", refreshHistoryButtons);
+  store.events.historyChanged.on(refreshHistoryButtons);
 
   // Left cluster: history + content. Centre: the transport (framed by flexible spacers). Right,
   // most important nearest the centre: input mode, theme, language, GitHub link.
@@ -176,7 +176,7 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
     contentButton,
     separator,
     createElement("div", { className: "middlebar__spacer" }),
-    createTransportControls(store, signals, transport),
+    createTransportControls(store, transport),
     createElement("div", { className: "middlebar__spacer" }),
     inputModeToggle,
     createElement("div", { className: "middlebar__separator" }),

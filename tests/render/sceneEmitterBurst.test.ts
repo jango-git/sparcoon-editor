@@ -7,7 +7,6 @@ import {
   SPAWN_TRY_GPU_SIMULATION_PARAM,
 } from "../../src/domain/nodePalette";
 import { updateNodeParam } from "../../src/model/commands";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
@@ -18,7 +17,7 @@ afterEach(destroyPreviews);
 // via "sparcoon/editor"), end to end.
 describe("SceneEmitters: emitter burst through the live-preview path", () => {
   it("burst on the default emitter spawns particles and they survive FXWorld ticks", () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     // The default emitter has "Try GPU simulation" on by default, but the stub claims WebGL1 -
     // installEmitter's isWebGL2 gate keeps the compiled program unused, falling back to the JS driver.
     const emitters = createPreview();
@@ -37,7 +36,7 @@ describe("SceneEmitters: emitter burst through the live-preview path", () => {
   });
 
   it('burst still works with "Try GPU simulation" on, degrading to the JS driver in this headless suite', () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     // Claims WebGL2 so EmitterView.installEmitter actually wires the compiled standard-family
     // program through as gpuKernel - but it is not a real WebGL2 context, so FXEmitter.
     // fromArtifacts's own driver construction still falls back to the JS driver (FXEmitter.ts's
@@ -65,7 +64,7 @@ describe("SceneEmitters: particle overflow for the viewport stats", () => {
   });
 
   it("counts births lost to an emitter whose Expected Capacity is too small", () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 16);
     const emitters = createPreview();
     emitters.sync(store.getSource().scene);
@@ -82,7 +81,7 @@ describe("SceneEmitters: particle overflow for the viewport stats", () => {
   });
 
   it("counts each run from its stop or rewind, not from the build", () => {
-    const store = new Store(createTestState(), new SignalBus());
+    const store = new Store(createTestState());
     updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 16);
     const emitters = createPreview();
     emitters.sync(store.getSource().scene);

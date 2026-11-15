@@ -115,7 +115,9 @@ describe("emitterRenderBudgetFindings", () => {
     const decls = floats(12);
     // The base geometry's three, lifecycle + a float, position + a float, then ten floats in three.
     expect(
-      emitterRenderBudgetFindings(bothTiers(reading(decls)), kernelSlot(decls), false, undefined),
+      emitterRenderBudgetFindings(bothTiers(reading(decls)), kernelSlot(decls), {
+        castShadow: false,
+      }),
     ).toEqual({ errors: [], warnings: [] });
   });
 
@@ -124,8 +126,7 @@ describe("emitterRenderBudgetFindings", () => {
     const { errors, warnings } = emitterRenderBudgetFindings(
       bothTiers(reading(decls)),
       kernelSlot(decls),
-      false,
-      undefined,
+      { castShadow: false },
     );
     expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
     expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
@@ -138,8 +139,7 @@ describe("emitterRenderBudgetFindings", () => {
     const { errors, warnings } = emitterRenderBudgetFindings(
       bothTiers(reading(decls)),
       kernelSlot(decls.slice(0, 4)),
-      false,
-      kernelSlot(decls),
+      { castShadow: false, gpu: { buffers: kernelSlot(decls), sorted: false } },
     );
     expect(errors.map((error) => error.code)).toEqual(["render-attribute-budget"]);
     expect(errors[0]?.params).toEqual({ used: 17, limit: 16 });
@@ -149,11 +149,20 @@ describe("emitterRenderBudgetFindings", () => {
     const within = emitterRenderBudgetFindings(
       bothTiers(reading(decls.slice(0, 4))),
       kernelSlot(decls.slice(0, 4)),
-      false,
-      kernelSlot(decls.slice(0, 4)),
+      { castShadow: false, gpu: { buffers: kernelSlot(decls.slice(0, 4)), sorted: false } },
     );
     expect(within.errors).toEqual([]);
     expect(within.warnings[0]?.params).toEqual({ used: 9, limit: 8 });
+  });
+
+  it("charges a sorted GPU mesh no attribute for the views it reads from textures", () => {
+    const decls = vec4s(12);
+    const { errors } = emitterRenderBudgetFindings(
+      bothTiers(reading(decls)),
+      kernelSlot(decls.slice(0, 4)),
+      { castShadow: false, gpu: { buffers: kernelSlot(decls), sorted: true } },
+    );
+    expect(errors).toEqual([]);
   });
 });
 
@@ -198,8 +207,7 @@ describe("each tier's artifact, counted on its own", () => {
     const findings = emitterRenderBudgetFindings(
       { standard: parameters(70), baseline: unlitArtifact() },
       kernelSlot([]),
-      false,
-      undefined,
+      { castShadow: false },
     );
     expect(findings).toEqual({ errors: [], warnings: [] });
   });
@@ -208,16 +216,14 @@ describe("each tier's artifact, counted on its own", () => {
     const { errors, warnings } = emitterRenderBudgetFindings(
       { standard: parameters(230), baseline: parameters(70) },
       kernelSlot([]),
-      false,
-      undefined,
+      { castShadow: false },
     );
     expect(errors.map((error) => error.code)).toEqual(["render-fragment-uniform-budget"]);
     expect(warnings).toEqual([]);
     const baselineOnly = emitterRenderBudgetFindings(
       { standard: unlitArtifact(), baseline: parameters(70) },
       kernelSlot([]),
-      false,
-      undefined,
+      { castShadow: false },
     );
     expect(baselineOnly.warnings.map((warning) => warning.code)).toEqual([
       "render-fragment-uniform-budget-baseline",

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createInitialState } from "../../src/model/editorState";
 import { Pipeline, type SceneApplier, type SceneApplyResult } from "../../src/model/pipeline";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 
 function result(recompiled: boolean): SceneApplyResult {
@@ -18,7 +17,7 @@ function result(recompiled: boolean): SceneApplyResult {
 
 describe("Pipeline: restart only on a real rebuild", () => {
   it("fires onRecompiled when the sync rebuilt, but not when it only rebound", () => {
-    const store = new Store(createInitialState(), new SignalBus());
+    const store = new Store(createInitialState());
     const onRecompiled = vi.fn();
     let recompiled = true;
     const applier: SceneApplier = { sync: () => result(recompiled) };

@@ -6,7 +6,6 @@
  */
 
 import type { SelectionStore } from "../model/selectionStore";
-import type { SignalBus } from "../model/signals";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
@@ -19,7 +18,6 @@ import type { PreviewViewModeState } from "./previewViewMode";
 
 export interface EditorContext {
   readonly store: Store;
-  readonly signals: SignalBus;
   readonly transport: TransportStore;
   readonly router: HotkeyRouter;
   readonly panelFocus: PanelFocus;

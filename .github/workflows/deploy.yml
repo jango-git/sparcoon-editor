@@ -1,23 +1,33 @@
 name: Deploy to GitHub Pages
 
+# The site is a release: it is built from a version tag. Run by hand on a tag, it deploys that
+# release again, for example to roll the site back.
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Creating the GitHub release.
+  contents: write
   pages: write
   id-token: write
 
+# Releases deploy in turn, each completing with its GitHub release.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Check that the run is on a tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "The site deploys from a version tag, not from $GITHUB_REF_NAME"
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -25,8 +35,30 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Check that the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+      # Checked before building, so a version without a CHANGELOG entry is not released at all.
+      - name: Take the release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## $version " '
+            index($0, heading) == 1 { inside = 1; next }
+            inside && /^## / { exit }
+            inside { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+
       - run: npm ci
-      # A failing check stops the deploy, and the site keeps the last version that passed.
+      # A failing check stops the deploy, and the site keeps the last release that passed.
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -43,6 +75,11 @@ jobs:
         with:
           path: _site
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes.md
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -52,3 +89,20 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    needs: deploy
+    # A hand run deploys an existing release again.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME"
+          --notes-file notes.md --verify-tag

@@ -12,7 +12,6 @@ import {
   createDefaultTrailGraph,
   type EmitterDoc,
 } from "../../src/model/editorState";
-import { SignalBus } from "../../src/model/signals";
 import { Store } from "../../src/model/store";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { SceneEmitters } from "../../src/render/sceneEmitters";
@@ -146,7 +145,7 @@ describe("live preview: a read of an attribute nothing writes", () => {
       ...state.source,
       scene: { ...state.source.scene, emitters: [emitter], activeEmitterId: emitter.id },
     };
-    const store = new Store(state, new SignalBus());
+    const store = new Store(state);
     const renderer = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
     const emitters = new SceneEmitters(
       new Scene(),

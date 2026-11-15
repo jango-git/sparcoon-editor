@@ -1,26 +1,29 @@
 /**
  * The single point of access to editor state. Commands mutate source only by producing a new
  * `SourceState` and calling `commit`, which distinguishes structural edits (recompute derived)
- * from view-only ones and announces each via the signal bus.
+ * from view-only ones and announces each through {@link events}.
  */
 
 import type { DerivedState, EditorState, SourceState } from "./editorState";
 import type { ChangeKind } from "./history";
 import { History } from "./history";
-import type { SignalBus } from "./signals";
+import { type EditorEvents, EditorSignals } from "./signals";
 
 export type { ChangeKind };
 
 export class Store {
   private readonly state: EditorState;
   private readonly history: History;
+  private readonly signals = new EditorSignals();
 
-  constructor(
-    initial: EditorState,
-    private readonly signals: SignalBus,
-  ) {
+  constructor(initial: EditorState) {
     this.state = initial;
     this.history = new History(initial.source);
+  }
+
+  /** What changed, announced after each change. */
+  public get events(): EditorEvents {
+    return this.signals;
   }
 
   public get canUndo(): boolean {
@@ -45,7 +48,7 @@ export class Store {
     this.state.source = next;
     this.history.record(next, kind);
     this.emitForKind(kind);
-    this.signals.emit("historyChanged", undefined);
+    this.signals.historyChanged.emit();
   }
 
   /**
@@ -61,7 +64,7 @@ export class Store {
   /** Replaces derived data (called by the pipeline) and announces it. */
   public setDerived(patch: Partial<DerivedState>): void {
     Object.assign(this.state.derived, patch);
-    this.signals.emit("derivedChanged", undefined);
+    this.signals.derivedChanged.emit();
   }
 
   /** Undoes the last commit, re-announcing the same kind that commit was made with. */
@@ -70,7 +73,7 @@ export class Store {
     if (restored !== undefined) {
       this.state.source = restored.state;
       this.emitForKind(restored.kind);
-      this.signals.emit("historyChanged", undefined);
+      this.signals.historyChanged.emit();
     }
   }
 
@@ -80,15 +83,15 @@ export class Store {
     if (restored !== undefined) {
       this.state.source = restored.state;
       this.emitForKind(restored.kind);
-      this.signals.emit("historyChanged", undefined);
+      this.signals.historyChanged.emit();
     }
   }
 
   private emitForKind(kind: ChangeKind): void {
     if (kind === "structural") {
-      this.signals.emit("sourceStructureChanged", undefined);
+      this.signals.sourceStructureChanged.emit();
     } else {
-      this.signals.emit("sourceViewChanged", undefined);
+      this.signals.sourceViewChanged.emit();
     }
   }
 }

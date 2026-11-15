@@ -100,8 +100,9 @@ interface SavedDocument {
   meshAssets: MeshAsset[];
 }
 
+/** The saved document's source; it is stored in the project envelope. */
 function saved(): SavedDocument {
-  return loadSource() as SavedDocument;
+  return (loadSource() as { source: SavedDocument }).source;
 }
 
 /** Lets the save's queued syncs and their follow-up write run. */

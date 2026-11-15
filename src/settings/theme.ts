@@ -5,12 +5,14 @@
  * with that script.
  */
 
+import { Ferrsign0 } from "ferrsign";
+
 import { readString, writeString } from "../util/storage";
 
 export type ThemeMode = "dark" | "light" | "auto";
 
 const STORAGE_KEY = "sparcoon-editor.theme";
-const listeners = new Set<() => void>();
+const changed = new Ferrsign0();
 let systemDark: MediaQueryList | undefined;
 
 /** Lazily acquired so importing this module has no DOM side effect at load time. */
@@ -34,10 +36,7 @@ export function setThemeMode(mode: ThemeMode): void {
 
 /** Subscribe to theme-mode changes (a user toggle or, in auto mode, an OS flip). */
 export function onThemeChanged(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  return changed.on(listener);
 }
 
 /** Re-applies the persisted theme and installs the live OS-preference listener; only `auto`
@@ -54,9 +53,7 @@ export function initTheme(): void {
 }
 
 function emit(): void {
-  for (const listener of listeners) {
-    listener();
-  }
+  changed.emit();
 }
 
 function applyThemeMode(mode: ThemeMode): void {

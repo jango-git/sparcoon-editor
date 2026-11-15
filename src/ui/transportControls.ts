@@ -9,7 +9,6 @@
 import { t } from "../i18n";
 import { setTimelineDuration, setTimelineFps, setTimelineLoop } from "../model/commands";
 import { frameOf, timeOfFrame } from "../model/frames";
-import type { SignalBus } from "../model/signals";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
 import { NumberControl } from "./components/numberControl";
@@ -18,11 +17,7 @@ import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
 import { controlIcons, icon } from "./icons";
 
-export function createTransportControls(
-  store: Store,
-  signals: SignalBus,
-  transport: TransportStore,
-): HTMLElement {
+export function createTransportControls(store: Store, transport: TransportStore): HTMLElement {
   const duration = (): number => store.getSource().timeline.duration;
   const fps = (): number => store.getSource().timeline.fps;
 
@@ -123,8 +118,8 @@ export function createTransportControls(
   };
 
   transport.subscribe(updateTransport);
-  signals.on("sourceViewChanged", syncSettings);
-  signals.on("sourceStructureChanged", syncSettings);
+  store.events.sourceViewChanged.on(syncSettings);
+  store.events.sourceStructureChanged.on(syncSettings);
   syncSettings();
   updateTransport();
 

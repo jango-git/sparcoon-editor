@@ -45,7 +45,6 @@ import {
   RenderBudgetMemo,
 } from "../domain/renderBudget";
 import { undeclaredAttributeErrors } from "../domain/serialize";
-import { gpuSortWarnings } from "../domain/sortChecks";
 import { trailSortError } from "../domain/trailChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
@@ -475,6 +474,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         toArtifactGeometrySource(geometry),
         renderMode,
         castShadow,
+        config.sortInterval > 0,
       );
     } catch (error) {
       return hold({ render: invalid([describeError(error)]) });
@@ -506,13 +506,6 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     const renderWarnings = [
       ...budget.warnings,
       ...unwrittenAttributeWarnings(this.renderLive.graphView, written, declaredAttributes),
-      // The same "does this emitter run on the GPU" installEmitter decides by.
-      ...gpuSortWarnings(
-        config.sortInterval,
-        spawnConfig.tryGpuSimulation &&
-          this.renderer.capabilities.isWebGL2 &&
-          artifacts.gpuBehavior !== undefined,
-      ),
     ];
     const trailWarnings =
       trail === undefined || trailBudget === undefined
@@ -695,7 +688,11 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       spawnConfig.expectedCapacity !== this.builtExpectedCapacity ||
       this.kernel !== this.builtKernel;
 
-    if (this.emitter === undefined || behaviorStructural) {
+    // Whether an emitter sorts is fixed for its life.
+    const sorts = sortInterval > 0;
+    const sortingStructural = sorts !== (this.emitter?.sort !== undefined);
+
+    if (this.emitter === undefined || behaviorStructural || sortingStructural) {
       return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
     }
 
@@ -750,7 +747,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // unswapped trail's or render's uniforms. Scrub them into the running emitter so live particles
     // never reset (external textures ride the value path too, so a texture swap rebinds).
     this.emitter.applyValues(this.valuesFromArtifacts(artifacts));
-    this.applySorting(sortInterval);
+    if (this.emitter.sort !== undefined) {
+      this.emitter.sort.fraction = 1 / sortInterval;
+    }
     this.artifacts = artifacts;
     // Particle buffers/instance count/simulation were never touched - no rebuild happened, so
     // playback must not restart over this (see emitterRebuilt on GraphApplyResult).
@@ -772,6 +771,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     geometry: FXGeometrySource,
     renderMode: RenderMode,
     castShadow: boolean,
+    sorted: boolean,
   ): RenderBudgetFindings {
     const program = this.standardProgram;
     return this.budget.get(
@@ -782,13 +782,16 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         program,
         renderMode,
         castShadow,
+        sorted,
       ],
       () =>
         emitterRenderBudgetFindings(
           this.everyTierArtifacts(artifacts.render, geometry, renderMode),
           artifacts.behavior.buffers,
-          castShadow,
-          program?.buffers,
+          {
+            castShadow,
+            ...(program === undefined ? {} : { gpu: { buffers: program.buffers, sorted } }),
+          },
         ),
     );
   }
@@ -836,15 +839,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     spawnConfig: SpawnSinkConfig,
     currentCustomGeometryRef: BufferGeometry | undefined,
   ): GraphApplyResult {
-    const { geometry, renderMode, sortInterval, castShadow, receiveShadow } = config;
+    const { geometry, renderMode, castShadow, receiveShadow } = config;
     try {
-      this.installEmitter(
-        artifacts,
-        castShadow,
-        receiveShadow,
-        spawnConfig.tryGpuSimulation,
-        spawnConfig.expectedCapacity,
-      );
+      this.installEmitter(artifacts, config, spawnConfig);
     } catch (error) {
       // The runtime rejected the artifact pair; installEmitter builds the new emitter before
       // dropping the old, so the last good preview still runs - hold rather than crash.
@@ -867,7 +864,6 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     this.builtTryGpuSimulation = spawnConfig.tryGpuSimulation;
     this.builtExpectedCapacity = spawnConfig.expectedCapacity;
     artifacts.trail?.live.markBuilt(artifacts.trail);
-    this.applySorting(sortInterval);
     this.artifacts = artifacts;
     return {
       render: RECOMPILED,
@@ -885,22 +881,6 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       textures[paramUniformName(slot.paramName)] = this.resolveTexture(slot.paramName);
     }
     return textures;
-  }
-
-  /** Configures camera depth-sorting from `sortInterval` (frames/sort; 0 disables). Applied on
-   * every reconcile, so live-editing the field updates in place. */
-  private applySorting(sortInterval: number): void {
-    if (this.emitter === undefined) {
-      return;
-    }
-    if (sortInterval > 0) {
-      this.emitter.sortCamera = this.camera;
-      this.emitter.sortFraction = 1 / sortInterval;
-    } else {
-      // The runtime disables sorting when `sortCamera` is absent; clear it rather than assign
-      // `undefined` (rejected under exactOptionalPropertyTypes).
-      delete this.emitter.sortCamera;
-    }
   }
 
   /** The live uniform/binding values to scrub into a running emitter on a rebind: each material's
@@ -985,10 +965,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   /** Replaces the running emitter with a fresh one for the new artifacts. May throw (see caller). */
   private installEmitter(
     artifacts: PreviewArtifacts,
-    castShadow: boolean,
-    receiveShadow: boolean,
-    tryGpuSimulation: boolean,
-    expectedCapacity: number,
+    config: RenderSinkConfig,
+    spawnConfig: SpawnSinkConfig,
   ): void {
     // Every external sampler slot must be bound at build time (a missing one throws); a
     // deleted/absent texture resolves to a transparent fallback, keeping the preview alive.
@@ -1001,18 +979,23 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // isWebGL2 gates USE here only, never whether to compile (already compiled/cached above
     // regardless, so exportCompile.ts - which has no live renderer to gate on - stays consistent).
     const gpuKernel =
-      tryGpuSimulation && this.renderer.capabilities.isWebGL2 ? artifacts.gpuBehavior : undefined;
+      spawnConfig.tryGpuSimulation && this.renderer.capabilities.isWebGL2
+        ? artifacts.gpuBehavior
+        : undefined;
     // Build the new emitter BEFORE dropping the old one: fromArtifacts can throw on a bad artifact
     // pair, and the caller holds the last good preview on a throw - so the old emitter must survive.
     const next = FXEmitter.fromArtifacts(artifacts.render, artifacts.behavior, {
       textures,
       geometries: this.resolveMeshGeometries(),
-      castShadow,
-      receiveShadow,
+      castShadow: config.castShadow,
+      receiveShadow: config.receiveShadow,
       renderer: this.renderer,
-      expectedCapacity,
+      expectedCapacity: spawnConfig.expectedCapacity,
       ...(gpuKernel !== undefined ? { gpuKernel } : {}),
       ...(artifacts.trail !== undefined ? { trail: artifacts.trail.options } : {}),
+      ...(config.sortInterval > 0
+        ? { sort: { camera: this.camera, fraction: 1 / config.sortInterval } }
+        : {}),
     });
     this.emitter?.destroy();
     this.emitter = next;
