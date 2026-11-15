@@ -18,9 +18,11 @@ import {
   GraphKind,
   readRenderSinkConfig,
   readSpawnSinkConfig,
-  readTrailSinkConfig,
+  readStripSinkConfig,
   type RenderMode,
   type SpawnSinkConfig,
+  type StripRuntimeFields,
+  stripRuntimeFields,
   timelineValueConflicts,
   toArtifactGeometrySource,
 } from "../domain/nodePalette";
@@ -29,10 +31,17 @@ import {
   type FXRenderArtifactsByTier,
   meshRenderBudgetFindings,
   type RenderBudgetFindings,
-  trailRenderBudgetFindings,
+  stripRenderBudgetFindings,
 } from "../domain/renderBudget";
 import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
-import { TRAIL_GEOMETRY, trailAttributeErrors, trailSortError } from "../domain/trailChecks";
+import {
+  emitterDrawsNothingWarnings,
+  hiddenParticlesSortError,
+  STRIP_GEOMETRY,
+  stripAttributeErrors,
+  stripSortError,
+  stripSpawnWarnings,
+} from "../domain/stripChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
@@ -73,11 +82,12 @@ import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
 import {
   buildParticleTarget,
-  buildTrailTarget,
+  buildStripTarget,
   FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import type { FXTarget } from "../engine/render/target/FXTarget";
 import { type EmitterDoc, emitterGraphs, type VfxMeshDoc } from "../model/editorState";
+import { stripGraphs, type StripName } from "../model/graphSlots";
 
 /**
  * Compiled helper source (matched by identity) -> the `sparcoon` export name(s) it corresponds to.
@@ -170,6 +180,9 @@ export interface EmitterIR {
   readonly sortInterval: number;
   readonly castShadow: boolean;
   readonly receiveShadow: boolean;
+  /** Whether the particles are drawn (the render sink's Draw Particles): without, the render graph
+   *  is still compiled and checked, but not shipped. */
+  readonly drawParticles: boolean;
   // From the spawn sink (readSpawnSinkConfig), not the surface sink - the same authored number
   // the live preview builds with, so an exported project's capacity never drifts from the editor's.
   readonly expectedCapacity: number;
@@ -177,7 +190,9 @@ export interface EmitterIR {
    *  does not tell. */
   readonly maxLifetime?: number;
   /** The emitter's trail; absent when it has none. */
-  readonly trail?: TrailIR;
+  readonly trail?: StripIR<"trail">;
+  /** The emitter's ribbon; absent when it has none. */
+  readonly ribbon?: StripIR<"ribbon">;
   /**
    * What the export ships but the author may not mean - the live preview shows the same ones on
    * the render graph (domain/attributeChecks.ts). Never stops an export.
@@ -185,41 +200,43 @@ export interface EmitterIR {
   readonly warnings: readonly FXCompilerError[];
 }
 
-/** An emitter's trail graph, compiled through every GLSL tier like its render graph. */
-export interface TrailIR {
+/** An emitter's strip graph, compiled through every GLSL tier like its render graph. */
+export interface StripIR<K extends StripName = StripName> {
   readonly shaders: CompiledShadersByGLSLTier;
   readonly renderAttributes: readonly FXAttributeRequest[];
   readonly renderMode: RenderMode;
-  readonly frames: number;
-  readonly sampleInterval: number;
-  /** The same as {@link EmitterIR.warnings}, for the trail graph. */
+  /** What the strip's runtime options take from its sink, besides the render artifact. */
+  readonly fields: StripRuntimeFields[K];
+  /** The same as {@link EmitterIR.warnings}, for the strip's graph. */
   readonly warnings: readonly FXCompilerError[];
 }
 
 /**
- * Compiles an emitter's trail graph, held to the same checks as the live preview
- * (domain/trailChecks.ts) and the same GPU budget (domain/renderBudget.ts) - counting the GPU
- * backend's history over `kernelBuffers`, the slot of the GPU kernel the emitter ships, if any.
+ * Compiles an emitter's trail or ribbon (`strip`) graph, drawn in `renderMode`, held to the same
+ * checks as the live preview (domain/stripChecks.ts) and the same GPU budget
+ * (domain/renderBudget.ts) - counting the GPU backend over `kernelBuffers`, the slot of the GPU
+ * kernel the emitter ships, if any.
  */
-function compileTrail(
+function compileStrip<K extends StripName>(
+  strip: K,
   emitter: EmitterDoc,
-  trailGraph: EditorGraph,
+  stripGraph: EditorGraph,
   sortInterval: number,
   behaviorAttributes: readonly FXAttributeRequest[],
   kernel: FXCompiledKernel,
   kernelBuffers: readonly FXBufferLayout[] | undefined,
-): TrailIR {
+): StripIR<K> {
   const fail = (message: string): never => {
-    throw new Error(`exportTypeScript: ${emitter.name} (trail): ${message}`);
+    throw new Error(`exportTypeScript: ${emitter.name} (${strip}): ${message}`);
   };
-  const sortError = trailSortError(sortInterval);
+  const sortError = stripSortError(strip, sortInterval);
   if (sortError !== undefined) {
     fail(sortError.message);
   }
-  const graph = buildRenderGraph(trailGraph);
-  const config = readTrailSinkConfig(trailGraph);
+  const graph = buildRenderGraph(stripGraph);
+  const config = readStripSinkConfig(strip, stripGraph);
   const renderAttributes = collectAttributeRequests(graph).requests;
-  const [attributeError] = trailAttributeErrors(
+  const [attributeError] = stripAttributeErrors(
     renderAttributes,
     behaviorAttributes,
     emitter.behaviorGraph.attributes,
@@ -231,9 +248,10 @@ function compileTrail(
   if (depthFadeError !== undefined) {
     fail(depthFadeError.message);
   }
-  const shaders = compileForEveryGLSLTier(graph, buildTrailTarget(renderAttributes));
-  const [budgetError] = trailRenderBudgetFindings(
-    assembleForEveryGLSLTier(shaders, TRAIL_GEOMETRY, renderAttributes, config.renderMode),
+  const shaders = compileForEveryGLSLTier(graph, buildStripTarget(strip, renderAttributes));
+  const [budgetError] = stripRenderBudgetFindings(
+    strip,
+    assembleForEveryGLSLTier(shaders, STRIP_GEOMETRY, renderAttributes, config.renderMode),
     kernel.update.buffers,
     kernelBuffers,
   ).errors;
@@ -244,13 +262,15 @@ function compileTrail(
     shaders,
     renderAttributes,
     renderMode: config.renderMode,
-    frames: config.frames,
-    sampleInterval: config.sampleInterval,
-    warnings: unwrittenAttributeWarnings(
-      graph,
-      kernelWrittenBuffers(kernel),
-      emitter.behaviorGraph.attributes,
-    ),
+    fields: stripRuntimeFields(strip, config),
+    warnings: [
+      ...unwrittenAttributeWarnings(
+        graph,
+        kernelWrittenBuffers(kernel),
+        emitter.behaviorGraph.attributes,
+      ),
+      ...stripSpawnWarnings(strip, emitter),
+    ],
   };
 }
 
@@ -295,6 +315,10 @@ export function compileEmitter(
   if (depthFadeError !== undefined) {
     throw new Error(`exportTypeScript: ${emitter.name}: ${depthFadeError.message}`);
   }
+  const hiddenSortError = hiddenParticlesSortError(config);
+  if (hiddenSortError !== undefined) {
+    throw new Error(`exportTypeScript: ${emitter.name}: ${hiddenSortError.message}`);
+  }
   const [meshError] = missingMeshAssetErrors(behaviorGraph, meshAssetNames);
   if (meshError !== undefined) {
     throw new Error(`exportTypeScript: ${emitter.name}: ${meshError.message}`);
@@ -308,24 +332,37 @@ export function compileEmitter(
     particleBehaviorTargetsFor(behaviorGraph, spawnConfig.tryGpuSimulation, behaviorAttributes),
   );
   const kernelBuffers = bundle.standardProgram?.buffers;
-  requireWithinRenderBudget(
-    emitter.name,
-    emitterRenderBudgetFindings(
-      assembleForEveryGLSLTier(
-        shaders,
-        toArtifactGeometrySource(config.geometry),
-        renderAttributes,
-        config.renderMode,
+  // Particles that are not drawn take nothing of a GPU.
+  if (config.drawParticles) {
+    requireWithinRenderBudget(
+      emitter.name,
+      emitterRenderBudgetFindings(
+        assembleForEveryGLSLTier(
+          shaders,
+          toArtifactGeometrySource(config.geometry),
+          renderAttributes,
+          config.renderMode,
+        ),
+        bundle.kernel.update.buffers,
+        {
+          castShadow: config.castShadow,
+          ...(kernelBuffers === undefined
+            ? {}
+            : { gpu: { buffers: kernelBuffers, sorted: config.sortInterval > 0 } }),
+        },
       ),
-      bundle.kernel.update.buffers,
-      {
-        castShadow: config.castShadow,
-        ...(kernelBuffers === undefined
-          ? {}
-          : { gpu: { buffers: kernelBuffers, sorted: config.sortInterval > 0 } }),
-      },
-    ),
-  );
+    );
+  }
+  const strip = <K extends StripName>(name: K, graph: EditorGraph): StripIR<K> =>
+    compileStrip(
+      name,
+      emitter,
+      graph,
+      config.sortInterval,
+      behaviorAttributes,
+      bundle.kernel,
+      kernelBuffers,
+    );
 
   return {
     shaders,
@@ -339,6 +376,7 @@ export function compileEmitter(
     sortInterval: config.sortInterval,
     castShadow: config.castShadow,
     receiveShadow: config.receiveShadow,
+    drawParticles: config.drawParticles,
     expectedCapacity: spawnConfig.expectedCapacity,
     ...withMaxLifetime(lifetimeUpperBound(behaviorSnapshot)),
     warnings: [
@@ -348,19 +386,11 @@ export function compileEmitter(
         emitter.behaviorGraph.attributes,
       ),
       ...unboundedLifetimeWarnings(behaviorSnapshot),
+      ...emitterDrawsNothingWarnings(emitter),
     ],
-    ...(emitter.trailGraph === undefined
-      ? {}
-      : {
-          trail: compileTrail(
-            emitter,
-            emitter.trailGraph,
-            config.sortInterval,
-            behaviorAttributes,
-            bundle.kernel,
-            kernelBuffers,
-          ),
-        }),
+    ...Object.fromEntries(
+      stripGraphs(emitter).map(({ name, graph }) => [name, strip(name, graph)]),
+    ),
   };
 }
 

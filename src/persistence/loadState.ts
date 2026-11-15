@@ -10,10 +10,11 @@ import { createEmptyGraph, type EditorGraph } from "../domain/graphModel";
 import {
   DEFAULT_RENDER_HOST,
   GraphKind,
-  NON_TRAIL_SURFACE_SLOTS,
+  NON_STRIP_SURFACE_SLOTS,
   PARTICLE_ONLY_SURFACE_SLOTS,
   RENDER_SINK_ID,
   type RenderHost,
+  type StripHost,
 } from "../domain/nodePalette";
 import { withValidReactions } from "../domain/reactions";
 import { ensureSinks } from "../domain/sinks";
@@ -190,15 +191,15 @@ function pruneParticleOnlyBindings(graph: EditorGraph): EditorGraph {
   return kept.length === graph.outputBindings.length ? graph : { ...graph, outputBindings: kept };
 }
 
-/** Drops trail-graph bindings to a slot the trail target lacks (the particle transforms). */
-function pruneNonTrailBindings(graph: EditorGraph): EditorGraph {
-  const kept = graph.outputBindings.filter((binding) => !NON_TRAIL_SURFACE_SLOTS.has(binding.slot));
+/** Drops strip-graph bindings to a slot the strip targets lack (the particle transforms). */
+function pruneNonStripBindings(graph: EditorGraph): EditorGraph {
+  const kept = graph.outputBindings.filter((binding) => !NON_STRIP_SURFACE_SLOTS.has(binding.slot));
   return kept.length === graph.outputBindings.length ? graph : { ...graph, outputBindings: kept };
 }
 
-/** Drops the `geometry` parameter a trail's surface sink was once created with: a trail builds its
+/** Drops the `geometry` parameter a strip's surface sink was once created with: a strip builds its
  *  own segment quad, and its sink offers no geometry choice. */
-function pruneTrailSinkGeometry(graph: EditorGraph): EditorGraph {
+function pruneStripSinkGeometry(graph: EditorGraph): EditorGraph {
   const sink = graph.nodes[RENDER_SINK_ID];
   if (sink === undefined || !("geometry" in sink.parameters)) {
     return graph;
@@ -208,11 +209,9 @@ function pruneTrailSinkGeometry(graph: EditorGraph): EditorGraph {
   return { ...graph, nodes: { ...graph.nodes, [RENDER_SINK_ID]: { ...sink, parameters } } };
 }
 
-/** A persisted trail graph: normalized on the trail host, minus what a trail has no place for. */
-function normalizeTrailGraph(raw: unknown): EditorGraph {
-  return pruneTrailSinkGeometry(
-    pruneNonTrailBindings(normalizeGraph(raw, GraphKind.Render, "trail")),
-  );
+/** A persisted trail or ribbon graph: normalized on its host, minus what a strip has no place for. */
+function normalizeStripGraph(raw: unknown, host: StripHost): EditorGraph {
+  return pruneStripSinkGeometry(pruneNonStripBindings(normalizeGraph(raw, GraphKind.Render, host)));
 }
 
 function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
@@ -375,9 +374,12 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     name: typeof name === "string" && name.trim() !== "" ? name : "Emitter",
     renderGraph: normalizeGraph(value["renderGraph"], GraphKind.Render),
     behaviorGraph: normalizeGraph(value["behaviorGraph"], GraphKind.Behavior),
-    // Omitted when the emitter has no trail, like `hidden` below.
+    // Omitted when the emitter has no trail or ribbon, like `hidden` below.
     ...(isRecord(value["trailGraph"])
-      ? { trailGraph: normalizeTrailGraph(value["trailGraph"]) }
+      ? { trailGraph: normalizeStripGraph(value["trailGraph"], "trail") }
+      : {}),
+    ...(isRecord(value["ribbonGraph"])
+      ? { ribbonGraph: normalizeStripGraph(value["ribbonGraph"], "ribbon") }
       : {}),
     tracks: normalizeTracks(value["tracks"]),
     events: normalizeEvents(value["events"]),

@@ -40,10 +40,14 @@ export {
   type GeometryKind,
   type GeometrySource,
   isSinkType,
+  isStripHost,
   readRenderSinkConfig,
+  readRibbonSinkConfig,
   readSpawnSinkConfig,
+  readStripSinkConfig,
   readTrailSinkConfig,
   RENDER_CAST_SHADOW_PARAM,
+  RENDER_DRAW_PARTICLES_PARAM,
   RENDER_MODE_PARAM_KEY,
   RENDER_RECEIVE_SHADOW_PARAM,
   RENDER_SINK_ID,
@@ -52,6 +56,11 @@ export {
   type RenderHost,
   type RenderMode,
   type RenderSinkConfig,
+  RIBBON_HEAD_PARAM_KEY,
+  RIBBON_TILE_PARAM_KEY,
+  RIBBON_UV_PARAM_KEY,
+  type RibbonSinkConfig,
+  type RibbonUVMode,
   sinkMeta,
   type SinkMetaOptions,
   sinkPhase,
@@ -60,6 +69,11 @@ export {
   SPAWN_SINK_TYPE,
   SPAWN_TRY_GPU_SIMULATION_PARAM,
   type SpawnSinkConfig,
+  STRIP_HOSTS,
+  type StripHost,
+  type StripRuntimeFields,
+  stripRuntimeFields,
+  type StripSinkConfigs,
   toArtifactGeometrySource,
   TRAIL_FRAMES_PARAM_KEY,
   TRAIL_INTERVAL_PARAM_KEY,
@@ -264,8 +278,9 @@ export const PARTICLE_ONLY_SURFACE_SLOTS: ReadonlySet<string> = new Set(
     .filter((slot) => !FX_MESH_TARGET.outputs.some((output) => output.slot === slot)),
 );
 
-/** Target inputs the particle host provides but a trail does not (the surface frame); a render
- *  node reading any of these cannot resolve in a trail graph. Derived from the two targets. */
+/** Target inputs the particle host provides but a trail or ribbon does not (the surface frame); a
+ *  render node reading any of these cannot resolve in their graphs. Derived from the targets (the
+ *  ribbon's builtins are the trail's). */
 const TRAIL_MISSING_RENDER_INPUTS: ReadonlySet<string> = new Set(
   buildParticleTarget()
     .inputs.map((input) => input.name)
@@ -273,19 +288,19 @@ const TRAIL_MISSING_RENDER_INPUTS: ReadonlySet<string> = new Set(
 );
 
 /**
- * Whether a render node can't be offered in a trail graph: it reads an input the trail target
- * lacks (the lighting and surface-normal nodes). Attribute-dynamic reads are fine - a trail reads
- * attributes off the recorded path.
+ * Whether a render node can't be offered in a trail or ribbon graph: it reads an input their
+ * targets lack (the lighting and surface-normal nodes). Attribute-dynamic reads are fine - a strip
+ * reads attributes off the particles it runs through.
  */
-export function isTrailExcludedRenderNode(metadata: FXNodeMeta): boolean {
+export function isStripExcludedRenderNode(metadata: FXNodeMeta): boolean {
   return metadata.reads === "dynamic"
     ? false
     : metadata.reads.some((name) => TRAIL_MISSING_RENDER_INPUTS.has(name));
 }
 
-/** Surface slots a trail has no place for (the particle transforms), derived from the targets.
- *  A trail binding to one of these is pruned on load like a mesh's. */
-export const NON_TRAIL_SURFACE_SLOTS: ReadonlySet<string> = new Set(
+/** Surface slots a trail or ribbon has no place for (the particle transforms), derived from the
+ *  targets. A strip binding to one of these is pruned on load like a mesh's. */
+export const NON_STRIP_SURFACE_SLOTS: ReadonlySet<string> = new Set(
   buildParticleTarget()
     .outputs.map((output) => output.slot)
     .filter((slot) => !FX_TRAIL_TARGET.outputs.some((output) => output.slot === slot)),

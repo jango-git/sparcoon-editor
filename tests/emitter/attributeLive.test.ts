@@ -174,14 +174,16 @@ describe("cross-artifact attribute width conflict", () => {
     // refuse to size one buffer two ways.
     expect(() =>
       FXEmitter.fromArtifacts(
-        unlitArtifact({
-          attributeReads: [{ name: "tint", components: 4 }],
-          outputs: { albedo: "p_fx_tint" },
-        }),
         behaviorArtifact({
           lifetime: 4,
           attributes: [{ name: "tint", components: 3, value: [1, 0, 0] }],
         }),
+        {
+          particles: unlitArtifact({
+            attributeReads: [{ name: "tint", components: 4 }],
+            outputs: { albedo: "p_fx_tint" },
+          }),
+        },
       ),
     ).toThrow(/conflicting widths/);
   });

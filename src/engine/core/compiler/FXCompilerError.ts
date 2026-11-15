@@ -147,8 +147,17 @@ export type FXCompilerErrorCode =
   | "render-fragment-sampler-budget"
   | "render-fragment-sampler-budget-baseline"
   | "mesh-ignores-transform"
-  // An emitter's trail graph on a depth-sorted emitter (domain/trailChecks.ts).
+  // An emitter's trail or ribbon graph on a depth-sorted emitter, a depth-sorted emitter that
+  // does not draw its particles, and an emitter that draws nothing (domain/stripChecks.ts).
   | "trail-with-sort"
+  | "ribbon-with-sort"
+  | "sort-without-particles"
+  | "emitter-draws-nothing"
+  // Warnings on an emitter's ribbon from its spawns: births that do not follow one another
+  // (bursts of several particles, reactions), and a Head with no play to show it
+  // (domain/stripChecks.ts).
+  | "ribbon-interleaved-births"
+  | "ribbon-head-without-play"
   // A Depth Fade node in a graph whose render mode writes depth (domain/depthFadeChecks.ts).
   | "depth-fade-needs-blending"
   // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).

@@ -123,6 +123,12 @@ export interface EmitterDoc {
    * (the default), so a document saved before trails existed round-trips unchanged.
    */
   readonly trailGraph?: EditorGraph;
+  /**
+   * The emitter's ribbon graph - a band through its particles in the order they were born. A
+   * render-kind graph compiled against the ribbon target; omitted when the emitter has no ribbon,
+   * like {@link trailGraph}.
+   */
+  readonly ribbonGraph?: EditorGraph;
   /** This emitter's animation tracks (one per animated Timeline Value); the timeline shows them. */
   readonly tracks: readonly AnimationTrack[];
   /** This emitter's timeline spawn events (burst / play), sorted by time; the timeline drives them. */
@@ -157,7 +163,7 @@ export interface EmitterDoc {
 }
 
 /**
- * Every graph an emitter authors: render, behavior, and the trail when it has one - one parameter
+ * Every graph an emitter authors: render, behavior, and the trail and ribbon when it has them - one parameter
  * namespace across all of them (a Timeline Value name drives every graph that declares it).
  */
 export function emitterGraphs(emitter: EmitterDoc): readonly EditorGraph[] {
@@ -413,6 +419,9 @@ export interface DerivedState {
    *  recompute, so a trail that went away (or another owner's) never lingers. */
   trailSnapshot?: FXGraphSnapshotData | undefined;
   trailStatus?: LiveApplyStatus | undefined;
+  /** The active emitter's ribbon graph, as {@link trailSnapshot} for its trail. */
+  ribbonSnapshot?: FXGraphSnapshotData | undefined;
+  ribbonStatus?: LiveApplyStatus | undefined;
 }
 
 /** The whole editor state. */
@@ -541,6 +550,27 @@ export function createDefaultTrailGraph(): EditorGraph {
     [{ slot: "albedo", from: { nodeId: "n_trail_albedo", socketKey: "out" } }],
     [],
     "trail",
+  );
+}
+
+/**
+ * The ribbon graph an emitter starts with when its ribbon is turned on: a flat color on the
+ * surface sink, the width and UV left at the sink's defaults.
+ */
+export function createDefaultRibbonGraph(): EditorGraph {
+  return buildGraph(
+    GraphKind.Render,
+    [
+      {
+        id: "n_ribbon_albedo",
+        type: "constant",
+        parameters: { type: "vec4", value: [0.95, 0.68, 0.4, 0.6] },
+        position: { x: 168, y: 96 },
+      },
+    ],
+    [{ slot: "albedo", from: { nodeId: "n_ribbon_albedo", socketKey: "out" } }],
+    [],
+    "ribbon",
   );
 }
 

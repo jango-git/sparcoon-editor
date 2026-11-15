@@ -6,11 +6,21 @@
  */
 
 import { computeGraphStats } from "../../domain/graphStats";
-import { t } from "../../i18n";
-import { setEmitterTrail } from "../../model/commands";
+import { t, type TKey } from "../../i18n";
+import { setEmitterStrip } from "../../model/commands";
 import type { LiveApplyStatus } from "../../model/editorState";
-import { authoredGraphs, GRAPH_SLOTS } from "../../model/graphSlots";
-import { selectActiveGraphOwner, selectGraphStatus } from "../../model/selectors";
+import {
+  authoredGraphs,
+  GRAPH_SLOTS,
+  STRIP_NAMES,
+  type StripName,
+  stripSlot,
+} from "../../model/graphSlots";
+import {
+  type ActiveGraphOwner,
+  selectActiveGraphOwner,
+  selectGraphStatus,
+} from "../../model/selectors";
 import type { Store } from "../../model/store";
 import { attachCountdownConfirm } from "../components/countdownConfirm";
 import { attachTooltip, clearTooltip } from "../components/tooltip";
@@ -21,8 +31,8 @@ import { GraphMode, graphModeLabel, type GraphViewState } from "../graphViewStat
 import { actionIcons, graphModeIcons, icon } from "../icons";
 import { createGraphStats } from "./graphStats";
 
-/** Presses to confirm removing an emitter's trail (see {@link attachCountdownConfirm}). */
-const REMOVE_TRAIL_CLICKS = 3;
+/** Presses to confirm removing an emitter's trail or ribbon (see {@link attachCountdownConfirm}). */
+const REMOVE_STRIP_CLICKS = 3;
 /** Presses to confirm auto-arranging the graph: it rewires routes and drops comments (undoable). */
 const ARRANGE_CLICKS = 2;
 
@@ -110,9 +120,107 @@ function createArrangeButton(canvas: GraphCanvas): HTMLElement {
   return button;
 }
 
+/** What the graph switch shows for one strip: its button, doubling as "add", and its remove. */
+const STRIP_SWITCH: Readonly<
+  Record<
+    StripName,
+    {
+      readonly mode: GraphMode;
+      readonly icon: string;
+      readonly add: TKey;
+      readonly addTip: TKey;
+      readonly remove: TKey;
+      readonly removeTip: TKey;
+    }
+  >
+> = {
+  trail: {
+    mode: GraphMode.Trail,
+    icon: graphModeIcons.trail,
+    add: "graph.addTrail",
+    addTip: "graph.addTrailTip",
+    remove: "graph.removeTrail",
+    removeTip: "graph.removeTrailTip",
+  },
+  ribbon: {
+    mode: GraphMode.Ribbon,
+    icon: graphModeIcons.ribbon,
+    add: "graph.addRibbon",
+    addTip: "graph.addRibbonTip",
+    remove: "graph.removeRibbon",
+    removeTip: "graph.removeRibbonTip",
+  },
+};
+
 /**
- * The floating Behavior/Render/Trail switch in the graph's top-left corner; the active graph is
- * highlighted. An emitter without a trail shows the Trail button as an "add trail" action, and an
+ * One strip's part of the graph switch: a button showing its graph - doubling as an "add" action
+ * while the emitter has none - and a remove button beside it while it has one. `refresh` follows
+ * the active owner.
+ */
+function createStripSwitch(
+  strip: StripName,
+  graphView: GraphViewState,
+  store: Store,
+): {
+  readonly button: HTMLButtonElement;
+  readonly remove: HTMLButtonElement;
+  readonly refresh: (owner: ActiveGraphOwner) => void;
+} {
+  const labels = STRIP_SWITCH[strip];
+  const slot = stripSlot(strip);
+  const button = createElement("button", {
+    className: "graph-switch__button",
+    type: "button",
+  });
+  const label = createElement("span");
+  button.append(icon(labels.icon), label);
+  button.addEventListener("click", () => {
+    const owner = selectActiveGraphOwner(store);
+    if (owner.kind === "emitter" && owner[slot] === undefined) {
+      setEmitterStrip(store, owner.id, strip, true);
+    }
+    graphView.setMode(labels.mode);
+  });
+
+  // A trash button guarded like every other delete (countdownConfirm.ts): a whole graph goes with it.
+  const remove = createElement("button", {
+    className: "graph-switch__remove confirm-danger",
+    type: "button",
+  });
+  remove.innerHTML = actionIcons.trash;
+  attachTooltip(remove, t(labels.remove), t(labels.removeTip));
+  attachCountdownConfirm(remove, actionIcons.trash, REMOVE_STRIP_CLICKS, () => {
+    const owner = selectActiveGraphOwner(store);
+    if (owner.kind === "emitter") {
+      setEmitterStrip(store, owner.id, strip, false);
+    }
+  });
+
+  // Whether the button currently shows as the plain switch (`undefined` before the first refresh).
+  let isSwitch: boolean | undefined;
+  const refresh = (owner: ActiveGraphOwner): void => {
+    const has = owner[slot] !== undefined;
+    label.textContent = has ? graphModeLabel(labels.mode) : t(labels.add);
+    button.classList.toggle("graph-switch__button--add", !has);
+    // Doubling as "add", the button says what a click will do; as the plain switch it needs no
+    // more than its label, like Behavior and Render. Only on a flip: clearing hides whichever
+    // tooltip is showing.
+    if (has !== isSwitch) {
+      isSwitch = has;
+      if (has) {
+        clearTooltip(button);
+      } else {
+        attachTooltip(button, t(labels.add), t(labels.addTip));
+      }
+    }
+    remove.hidden = !has;
+  };
+  return { button, remove, refresh };
+}
+
+/**
+ * The floating Behavior/Render/Trail/Ribbon switch in the graph's top-left corner; the active graph
+ * is highlighted. An emitter without a trail or ribbon shows its button as an "add" action, and an
  * emitter with one shows a remove button beside it.
  */
 function createGraphSwitch(graphView: GraphViewState, store: Store): HTMLElement {
@@ -126,64 +234,26 @@ function createGraphSwitch(graphView: GraphViewState, store: Store): HTMLElement
     return button;
   };
 
-  const trailButton = createElement("button", {
-    className: "graph-switch__button",
-    type: "button",
-  });
-  const trailLabel = createElement("span");
-  trailButton.append(icon(graphModeIcons.trail), trailLabel);
-  trailButton.addEventListener("click", () => {
-    const owner = selectActiveGraphOwner(store);
-    if (owner.kind === "emitter" && owner.trailGraph === undefined) {
-      setEmitterTrail(store, owner.id, true);
-    }
-    graphView.setMode(GraphMode.Trail);
-  });
-  buttons.set(GraphMode.Trail, trailButton);
-
-  // A trash button guarded like every other delete (countdownConfirm.ts): a whole graph goes with it.
-  const removeTrail = createElement("button", {
-    className: "graph-switch__remove confirm-danger",
-    type: "button",
-  });
-  removeTrail.innerHTML = actionIcons.trash;
-  attachTooltip(removeTrail, t("graph.removeTrail"), t("graph.removeTrailTip"));
-  attachCountdownConfirm(removeTrail, actionIcons.trash, REMOVE_TRAIL_CLICKS, () => {
-    const owner = selectActiveGraphOwner(store);
-    if (owner.kind === "emitter") {
-      setEmitterTrail(store, owner.id, false);
-    }
+  const strips = STRIP_NAMES.map((strip) => {
+    const parts = createStripSwitch(strip, graphView, store);
+    buttons.set(STRIP_SWITCH[strip].mode, parts.button);
+    return parts;
   });
 
   const group = createElement("div", { className: "graph-switch graph-switch--floating" }, [
     build(GraphMode.Behavior, graphModeIcons.behavior),
     build(GraphMode.Render, graphModeIcons.render),
-    trailButton,
-    removeTrail,
+    ...strips.flatMap(({ button, remove }) => [button, remove]),
   ]);
 
-  // Whether the Trail button currently shows as the plain switch (`undefined` before the first refresh).
-  let trailButtonIsSwitch: boolean | undefined;
   const refresh = (): void => {
     // A VFX mesh has no authorable graph choice (render only, no behavior), so hide the whole
     // switch for it; the canvas already coerces the mode to Render.
     const owner = selectActiveGraphOwner(store);
     group.hidden = owner.kind === "vfxMesh";
-    const hasTrail = owner.trailGraph !== undefined;
-    trailLabel.textContent = hasTrail ? graphModeLabel(GraphMode.Trail) : t("graph.addTrail");
-    trailButton.classList.toggle("graph-switch__button--add", !hasTrail);
-    // Doubling as "add trail", the button says what a click will do; as the plain Trail switch it
-    // needs no more than its label, like Behavior and Render. Only on a flip: clearing hides
-    // whichever tooltip is showing.
-    if (hasTrail !== trailButtonIsSwitch) {
-      trailButtonIsSwitch = hasTrail;
-      if (hasTrail) {
-        clearTooltip(trailButton);
-      } else {
-        attachTooltip(trailButton, t("graph.addTrail"), t("graph.addTrailTip"));
-      }
+    for (const strip of strips) {
+      strip.refresh(owner);
     }
-    removeTrail.hidden = !hasTrail;
     for (const [mode, button] of buttons) {
       button.classList.toggle("graph-switch__button--active", mode === graphView.mode);
     }

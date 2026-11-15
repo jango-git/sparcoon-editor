@@ -14,7 +14,7 @@ import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 
 import { linkReaction, reactionSourceOf } from "../domain/reactionLinking";
 import { effectiveSpawnConfig } from "../domain/reactions";
-import { TRAIL_GEOMETRY } from "../domain/trailChecks";
+import { STRIP_GEOMETRY } from "../domain/stripChecks";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
   behaviorArtifactBody,
@@ -25,6 +25,7 @@ import {
 import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
 import type { Reaction, SourceState } from "../model/editorState";
+import { STRIP_NAMES, type StripName } from "../model/graphSlots";
 import type { CompiledShadersByGLSLTier } from "./exportCompile";
 import {
   compileEmitter,
@@ -37,6 +38,7 @@ import {
   assetsInterface,
   classDeclaration,
   classNameFor,
+  type EmitterArtifactNames,
   emitterSpecLiteral,
   importLine,
   meshSpecLiteral,
@@ -129,9 +131,13 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     const copiesOf = (reaction: Reaction): readonly number[] =>
       linkReaction(reactionSources.get(reaction.source), reaction.on, inherits).copies;
     importHelpers(collectBehaviorHelpers(ir.kernel));
-    const renderNames = tierNames(`render${String(index)}`);
     const behaviorName = `behavior${String(index)}`;
-    pushRenderArtifacts(renderNames, ir.shaders, ir.geometry, ir.renderAttributes, ir.renderMode);
+    // Particles that are not drawn ship no render artifact.
+    let renderNames: RenderArtifactNames | undefined;
+    if (ir.drawParticles) {
+      renderNames = tierNames(`render${String(index)}`);
+      pushRenderArtifacts(renderNames, ir.shaders, ir.geometry, ir.renderAttributes, ir.renderMode);
+    }
     artifactBlocks.push(
       `const ${behaviorName}: FXBehaviorArtifact = ${behaviorArtifactBody(ir.kernel)};`,
     );
@@ -142,23 +148,39 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
       importHelpers(collectKernelDrawHelpers(ir.gpuProgram));
       artifactBlocks.push(...kernelWriter.declarations(gpuKernelName, ir.gpuProgram));
     }
-    let trailNames: RenderArtifactNames | undefined;
-    if (ir.trail !== undefined) {
-      const trail = ir.trail;
-      trailNames = tierNames(`trail${String(index)}`);
+    // Each strip's artifacts, under `trail<index>` / `ribbon<index>`.
+    const stripNames = (name: StripName): RenderArtifactNames | undefined => {
+      const strip = ir[name];
+      if (strip === undefined) {
+        return undefined;
+      }
+      const names = tierNames(`${name}${String(index)}`);
       pushRenderArtifacts(
-        trailNames,
-        trail.shaders,
-        TRAIL_GEOMETRY,
-        trail.renderAttributes,
-        trail.renderMode,
+        names,
+        strip.shaders,
+        STRIP_GEOMETRY,
+        strip.renderAttributes,
+        strip.renderMode,
       );
-    }
-    // One external-slot list per emitter: its particles' and its trail's textures together.
+      return names;
+    };
+    const names: EmitterArtifactNames = {
+      ...(renderNames === undefined ? {} : { render: renderNames }),
+      ...Object.fromEntries(
+        STRIP_NAMES.flatMap((name) => {
+          const written = stripNames(name);
+          return written === undefined ? [] : [[name, written]];
+        }),
+      ),
+    };
+    // One external-slot list per emitter: the textures of every graph it ships, together.
     const slots = [
       ...new Set([
-        ...externalParamNames(ir.shaders.baseline),
-        ...(ir.trail === undefined ? [] : externalParamNames(ir.trail.shaders.baseline)),
+        ...(renderNames === undefined ? [] : externalParamNames(ir.shaders.baseline)),
+        ...STRIP_NAMES.flatMap((name) => {
+          const strip = ir[name];
+          return strip === undefined ? [] : externalParamNames(strip.shaders.baseline);
+        }),
       ]),
     ];
     slots.forEach((name) => externalTextureNames.add(name));
@@ -167,14 +189,13 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     emitterSpecs.push(
       emitterSpecLiteral(
         emitter,
-        renderNames,
+        names,
         behaviorName,
         ir,
         slots,
         emitterIndex,
         copiesOf,
         gpuKernelName,
-        trailNames,
       ),
     );
   });

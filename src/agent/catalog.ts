@@ -7,11 +7,12 @@
 import {
   type FXNodeMeta,
   isMeshExcludedRenderNode,
-  isTrailExcludedRenderNode,
+  isStripExcludedRenderNode,
   metaFor,
   paletteForKind,
 } from "../domain/nodePalette";
 import { nodeDescription, nodeLabel } from "../i18n/nodeText";
+import { isStripName } from "../model/graphSlots";
 import { graphKindFor, parseGraphName } from "./address.Internal";
 import { requireKnownKeys } from "./arguments.Internal";
 import { AgentError } from "./errors";
@@ -66,7 +67,7 @@ export function createCatalogApi(): CatalogApi {
       const name = parseGraphName(graph);
       return paletteForKind(graphKindFor(name))
         .filter((metadata) => options.mesh !== true || !isMeshExcludedRenderNode(metadata))
-        .filter((metadata) => name !== "trail" || !isTrailExcludedRenderNode(metadata))
+        .filter((metadata) => !isStripName(name) || !isStripExcludedRenderNode(metadata))
         .map(summarize);
     },
     nodeType: (graph, type): NodeTypeInfo => {

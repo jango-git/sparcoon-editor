@@ -24,6 +24,14 @@ export const graphModeIcons = {
     <path d="M7.5 5.5 3.5 9.5"/>
   </svg>`,
 
+  // A wavy band threaded through three dots - the ribbon through the particles.
+  ribbon: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2.5 11.5C5 11.5 5 4.5 8 4.5s3 7 5.5 7"/>
+    <circle cx="2.5" cy="11.5" r="1"/>
+    <circle cx="8" cy="4.5" r="1"/>
+    <circle cx="13.5" cy="11.5" r="1"/>
+  </svg>`,
+
   // A mouse with a scroll seam - wheel-driven zoom, drag-to-pan.
   mouse: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="4.5" y="2.5" width="7" height="11" rx="3.5"/>

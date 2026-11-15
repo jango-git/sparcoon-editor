@@ -11,6 +11,7 @@ import {
   DEFAULT_RENDER_MODE,
   GraphKind,
   isSinkType,
+  isStripHost,
   RENDER_SINK_ID,
   RENDER_SINK_TYPE,
   type RenderHost,
@@ -46,13 +47,13 @@ function createBehaviorSinks(): readonly GraphNode[] {
 }
 
 /** The surface sink for `host`: albedo + transforms + render mode, and the geometry choice on a
- *  particle or mesh host - a trail builds its own segment quad, so its sink carries none. */
+ *  particle or mesh host - a trail or ribbon builds its own segment quad, so its sink carries none. */
 export function createRenderSink(host: RenderHost = DEFAULT_RENDER_HOST): GraphNode {
   return makeSink(
     RENDER_SINK_ID,
     RENDER_SINK_TYPE,
     RENDER_SINK_POSITION,
-    host === "trail"
+    isStripHost(host)
       ? { renderMode: DEFAULT_RENDER_MODE }
       : { geometry: DEFAULT_GEOMETRY, renderMode: DEFAULT_RENDER_MODE },
   );

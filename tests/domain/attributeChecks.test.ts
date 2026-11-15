@@ -164,13 +164,13 @@ describe("live preview: a read of an attribute nothing writes", () => {
     const result = sync(heatEmitter({ written: false, trail: true }));
     expect(result.renderStatus.status).not.toBe("invalid");
     expect(result.renderStatus.warnings).toEqual([expect.stringMatching(NEVER_WRITTEN)]);
-    expect(result.trailStatus?.status).not.toBe("invalid");
-    expect(result.trailStatus?.warnings).toEqual([expect.stringMatching(NEVER_WRITTEN)]);
+    expect(result.strips?.trail?.status.status).not.toBe("invalid");
+    expect(result.strips?.trail?.status.warnings).toEqual([expect.stringMatching(NEVER_WRITTEN)]);
   });
 
   it("warns about nothing once the behavior writes it", () => {
     const result = sync(heatEmitter({ written: true, trail: true }));
     expect(result.renderStatus.warnings ?? []).toEqual([]);
-    expect(result.trailStatus?.warnings ?? []).toEqual([]);
+    expect(result.strips?.trail?.status.warnings ?? []).toEqual([]);
   });
 });

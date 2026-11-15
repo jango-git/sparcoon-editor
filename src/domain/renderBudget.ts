@@ -15,11 +15,12 @@ import {
   fxEmitterRenderBudget,
   fxMeshRenderBudget,
   type FXRenderBudget,
-  fxTrailRenderBudget,
+  fxStripRenderBudget,
 } from "sparcoon/editor";
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+import type { StripHost } from "./sinkMeta";
 
 /** One material's render artifact, assembled for each GLSL tier. */
 export type FXRenderArtifactsByTier = Readonly<Record<FXGLSLRenderTier, FXRenderArtifact>>;
@@ -191,21 +192,22 @@ export function emitterRenderBudgetFindings(
 }
 
 /**
- * The findings for an emitter's trail, by the same split as {@link emitterRenderBudgetFindings}:
- * with `kernelBuffers` a Standard error is measured on the GPU history - which copies the kernel's
- * slot whole, so it takes that slot's packed views - else on the JS history alone, while a
- * Baseline warning is always measured on the JS history.
+ * The findings for an emitter's trail or ribbon (`strip`), by the same split as
+ * {@link emitterRenderBudgetFindings}: with `kernelBuffers` a Standard error is measured on the GPU
+ * backend - which copies the kernel's slot whole, so it takes that slot's packed views - else on
+ * the JS backend alone, while a Baseline warning is always measured on the JS backend.
  */
-export function trailRenderBudgetFindings(
+export function stripRenderBudgetFindings(
+  strip: StripHost,
   renders: FXRenderArtifactsByTier,
   behaviorBuffers: readonly FXBufferLayout[],
   kernelBuffers: readonly FXBufferLayout[] | undefined,
 ): RenderBudgetFindings {
   return renderBudgetFindings(
     kernelBuffers === undefined
-      ? fxTrailRenderBudget(renders.standard, behaviorBuffers)
-      : fxTrailRenderBudget(renders.standard, kernelBuffers, { backend: "gpu" }),
-    fxTrailRenderBudget(renders.baseline, behaviorBuffers),
+      ? fxStripRenderBudget(strip, renders.standard, behaviorBuffers)
+      : fxStripRenderBudget(strip, renders.standard, kernelBuffers, { backend: "gpu" }),
+    fxStripRenderBudget(strip, renders.baseline, behaviorBuffers),
   );
 }
 

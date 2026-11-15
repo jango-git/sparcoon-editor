@@ -1,8 +1,9 @@
 /**
- * Turns an emitter's authored graphs (render, behavior, and its trail when it has one) into
- * artifacts and runs them through the runtime executor - the editor's own live gate (the runtime
- * has none), deciding between a full rebuild, an in-place render or trail swap, and a value-only
- * rebind. The trail graph's own live compile and built state live in {@link EmitterTrail}.
+ * Turns an emitter's authored graphs (render, behavior, and its trail and ribbon when it has them)
+ * into artifacts and runs them through the runtime executor - the editor's own live gate (the
+ * runtime has none), deciding between a full rebuild, an in-place render or strip swap, and a
+ * value-only rebind. Each strip graph's own live compile and built state live in
+ * {@link EmitterStrip}.
  */
 
 import type {
@@ -45,7 +46,7 @@ import {
   RenderBudgetMemo,
 } from "../domain/renderBudget";
 import { undeclaredAttributeErrors } from "../domain/serialize";
-import { trailSortError } from "../domain/trailChecks";
+import { hiddenParticlesSortError } from "../domain/stripChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
@@ -79,7 +80,13 @@ import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
 import { buildParticleTarget } from "../engine/render/target/FXParticleRenderTarget";
 import type { LiveApplyStatus } from "../model/editorState";
-import type { GraphApplier, GraphApplyResult, TrailApplyInput } from "../model/pipeline";
+import { STRIP_NAMES, type StripName } from "../model/graphSlots";
+import type {
+  GraphApplier,
+  GraphApplyResult,
+  StripApplyInput,
+  StripApplyInputs,
+} from "../model/pipeline";
 import type { Transform } from "../model/transform";
 import { normalizeQuat } from "../model/transform";
 import {
@@ -91,7 +98,7 @@ import {
   withWarnings,
 } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
-import { type AssembledTrail, EmitterTrail } from "./emitterTrail.Internal";
+import { type AssembledStrip, EmitterStrip } from "./emitterStrip.Internal";
 import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
 import { ParticleEventForward } from "./particleEventForward";
@@ -99,40 +106,58 @@ import { ParticleEventForward } from "./particleEventForward";
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
 export type TextureResolver = (paramName: string) => Texture;
 
+/** A strip assembled for one apply, with the live graph it came from. */
+type LiveStrip<K extends StripName> = AssembledStrip<K> & { readonly live: EmitterStrip<K> };
+
 /** The runnable artifacts assembled from the live graphs' compiled IR. */
 interface PreviewArtifacts {
   readonly render: FXRenderArtifact;
+  /** Whether the particles are drawn with {@link render} (the render sink's Draw Particles). */
+  readonly drawParticles: boolean;
   readonly behavior: FXBehaviorArtifact;
   /** The compiled behavior `behavior` was assembled from: what its births and deaths hand out and
    *  what its births inherit (see `reactionLinking.ts`). */
   readonly kernel: FXCompiledKernel;
   readonly gpuBehavior?: FXParticleKernelArtifact;
-  /** The trail's runtime options and the sink config they were assembled from, with the live
-   *  trail graph they came from; absent when the emitter has no trail. */
-  readonly trail?: AssembledTrail & { readonly live: EmitterTrail };
+  /** Each strip's runtime options and the sink config they were assembled from, with the live
+   *  graph they came from; a strip the emitter does not have is absent. */
+  readonly strips: { readonly [K in StripName]?: LiveStrip<K> };
 }
 
-/** Every material `artifacts` draws with: the particles', then the trail's. One parameter
+/** The particles' render artifact, when they are drawn. */
+function particlesOf(artifacts: PreviewArtifacts): FXRenderArtifact | undefined {
+  return artifacts.drawParticles ? artifacts.render : undefined;
+}
+
+/** Every material `artifacts` draws with: the particles', then each strip's. One parameter
  *  namespace spans them all - the runtime routes a value to every material that declares it. */
 function renderArtifactsOf(artifacts: PreviewArtifacts): readonly FXRenderArtifact[] {
-  return artifacts.trail === undefined
-    ? [artifacts.render]
-    : [artifacts.render, artifacts.trail.options.render];
+  return [
+    particlesOf(artifacts),
+    ...STRIP_NAMES.map((name) => artifacts.strips[name]?.options.render),
+  ].filter((render) => render !== undefined);
 }
 
 /** The statuses of a held apply: each graph named here gets its own, every other one is blocked. */
-interface HeldStatuses {
-  readonly render?: LiveApplyStatus | undefined;
-  readonly behavior?: LiveApplyStatus | undefined;
-  readonly trail?: LiveApplyStatus | undefined;
-}
+type HeldStatuses = {
+  readonly [K in "render" | "behavior" | StripName]?: LiveApplyStatus | undefined;
+};
 
-/** An apply that changed nothing in the running emitter; the trail's status only with a trail. */
-function heldResult(hasTrail: boolean, statuses: HeldStatuses): GraphApplyResult {
+/** An apply that changed nothing in the running emitter; a strip's status only with that strip. */
+function heldResult(
+  strips: ReadonlySet<StripName> | readonly StripName[],
+  statuses: HeldStatuses,
+): GraphApplyResult {
+  const has = new Set(strips);
   return {
     render: statuses.render ?? blocked(),
     behavior: statuses.behavior ?? blocked(),
-    ...(hasTrail ? { trail: statuses.trail ?? blocked() } : {}),
+    ...Object.fromEntries(
+      STRIP_NAMES.filter((name) => has.has(name)).map((name) => [
+        name,
+        statuses[name] ?? blocked(),
+      ]),
+    ),
     emitterRebuilt: false,
   };
 }
@@ -158,8 +183,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // The render snapshot last applied: what the budget compiles the other tier from.
   private renderSnapshot: FXGraphSnapshotData | undefined = undefined;
   private readonly behaviorLive: FXLiveGraph<FXBehaviorNode, FXCompiledBehaviorBundle>;
-  // The trail graph's live part, created when the emitter first has a trail and dropped with it.
-  private liveTrail: EmitterTrail | undefined = undefined;
+  // Each strip graph's live part, created when the emitter first has that strip and dropped with it.
+  private readonly liveStrips: Partial<Record<StripName, EmitterStrip>> = {};
   private emitter: FXEmitter | undefined = undefined;
   // Who listens to this view's particles' births and deaths, fed from the running emitter - its
   // subscriptions re-made on every rebuild (see installEmitter).
@@ -199,6 +224,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // is a new geometry, which only a rebuild reads.
   private builtSurfaceGeometries: readonly (BufferGeometry | undefined)[] = [];
   private builtRenderMode: RenderMode | undefined = undefined;
+  // The render sink's Draw Particles, as built - invisible to the IR hash like the shadow flags.
+  private builtDrawParticles = true;
   // Surface-sink params, invisible to the live gate's IR hash - tracked to force a rebuild on
   // flip (the depth material is attached at build time in installEmitter).
   private builtCastShadow = false;
@@ -224,7 +251,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // The persistent preview gizmo (wireframe box), re-parented onto each rebuilt emitter Object3D.
   private readonly marker: GizmoMarker = createGizmoMarker("emitter");
 
-  // Kept to build the trail's live graph lazily, the same way the render one is built.
+  // Kept to build each strip's live graph lazily, the same way the render one is built.
   private readonly renderRegistry: FXNodeRegistry<FXRenderNode>;
   private readonly renderBackend: FXGLSLRenderTier;
 
@@ -324,9 +351,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
 
   /** Whether the running emitter draws a material that reads the scene depth (a Depth Fade). */
   public get readsSceneDepth(): boolean {
+    const artifacts = this.artifacts;
     return (
-      this.artifacts?.render.sceneDepth === true ||
-      this.artifacts?.trail?.options.render.sceneDepth === true
+      artifacts !== undefined && renderArtifactsOf(artifacts).some((render) => render.sceneDepth)
     );
   }
 
@@ -344,23 +371,23 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // custom-attribute request in either graph, so a name left over after a
     // removal/retype is a held error.
     declaredAttributes: readonly EditorAttribute[],
-    trailInput?: TrailApplyInput,
+    stripInputs: StripApplyInputs = {},
   ): GraphApplyResult {
     const { geometry, renderMode, castShadow } = config;
-    // The trail's live part and this apply's input to it, narrowed once: both or neither.
-    const trail = this.liveTrailFor(trailInput);
+    // Each strip's live part and this apply's input to it, narrowed once: both or neither.
+    const strips = this.liveStripsFor(stripInputs);
+    const stripNames = strips.map(({ name }) => name);
     // Read by the behaviorLive target-builder closure (constructor) - must be set before
     // behaviorLive.apply runs below, since validate/previewHash/compile all read it synchronously.
     this.currentTryGpuSimulation = spawnConfig.tryGpuSimulation;
-    const hold = (statuses: HeldStatuses): GraphApplyResult =>
-      heldResult(trail !== undefined, statuses);
+    const hold = (statuses: HeldStatuses): GraphApplyResult => heldResult(stripNames, statuses);
 
     // Each live graph reconciles + gates internally and never throws: a bad edit (unknown node,
     // failed validation, a codegen fault) comes back in its `errors`, holding the last good IR.
     const renderResult = this.renderLive.apply(renderSnapshot);
     this.renderSnapshot = renderSnapshot;
     const behaviorResult = this.behaviorLive.apply(behaviorSnapshot);
-    const trailResult = trail?.live.apply(trail.input.snapshot);
+    const stripResults = strips.map((strip) => strip.live.apply(strip.input.snapshot));
 
     // The preview is all-or-nothing (the artifacts run as one emitter). If any graph is invalid,
     // surface its node-attributed errors and leave the last emitter running.
@@ -371,12 +398,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     if (
       renderResult.status === "invalid" ||
       behaviorResult.status === "invalid" ||
-      trailResult?.status === "invalid"
+      stripResults.some((result) => result.status === "invalid")
     ) {
       return hold({
         render: invalidOf(renderResult),
         behavior: invalidOf(behaviorResult),
-        trail: invalidOf(trailResult),
+        ...Object.fromEntries(
+          strips.map((strip, index) => [strip.name, invalidOf(stripResults[index])]),
+        ),
       });
     }
 
@@ -386,8 +415,12 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       const held = invalid(["EmitterView: no compiled IR after a valid apply"]);
       return hold({ render: held, behavior: held });
     }
-    if (trail !== undefined && !trail.live.compiled) {
-      return hold({ trail: invalid(["EmitterView: no compiled trail IR after a valid apply"]) });
+    for (const strip of strips) {
+      if (!strip.live.compiled) {
+        return hold({
+          [strip.name]: invalid([`EmitterView: no compiled ${strip.name} IR after a valid apply`]),
+        });
+      }
     }
 
     // A *cross-graph* attribute conflict (behavior writes `foo` as vec3, render reads vec2) is
@@ -404,9 +437,11 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         declaredAttributes,
       ),
     ];
+    const hiddenSortError = hiddenParticlesSortError(config);
     const renderErrors = [
       ...attributeErrors,
       ...depthFadeModeErrors(this.renderLive.graphView, renderMode),
+      ...(hiddenSortError === undefined ? [] : [hiddenSortError]),
     ];
     if (renderErrors.length > 0) {
       return hold({ render: invalidFromErrors(renderErrors) });
@@ -419,22 +454,18 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     if (meshErrors.length > 0) {
       return hold({ behavior: invalidFromErrors(meshErrors) });
     }
-    if (trail !== undefined) {
-      // A sort scrambles the per-slot path a trail records: the fix is on the render graph's
-      // sink, so the error is pinned there, and repeated on the trail.
-      const sortError = trailSortError(config.sortInterval);
-      if (sortError !== undefined) {
+    for (const strip of strips) {
+      const check = strip.live.check(
+        config.sortInterval,
+        strip.input.config,
+        this.behaviorAttributes,
+        declaredAttributes,
+      );
+      if (check.render.length > 0 || check.strip.length > 0) {
         return hold({
-          render: invalidFromErrors([sortError]),
-          trail: invalidFromErrors([{ code: sortError.code, message: sortError.message }]),
+          ...(check.render.length > 0 ? { render: invalidFromErrors(check.render) } : {}),
+          [strip.name]: invalidFromErrors(check.strip),
         });
-      }
-      const trailErrors = [
-        ...trail.live.attributeErrors(this.behaviorAttributes, declaredAttributes),
-        ...trail.live.depthFadeErrors(trail.input.config.renderMode),
-      ];
-      if (trailErrors.length > 0) {
-        return hold({ trail: invalidFromErrors(trailErrors) });
       }
     }
 
@@ -450,55 +481,73 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
           this.renderAttributes,
           renderMode,
         ),
+        drawParticles: config.drawParticles,
         behavior: assembleBehaviorArtifact(this.kernel),
         kernel: this.kernel,
         ...(this.standardProgram !== undefined
           ? { gpuBehavior: assembleGpuKernelArtifact(this.standardProgram) }
           : {}),
-        ...(trail === undefined
-          ? {}
-          : { trail: { ...trail.live.assemble(trail.input.config), live: trail.live } }),
+        // Each entry is the strip of its own name, which `Object.fromEntries` cannot carry.
+        strips: Object.fromEntries(
+          strips.map((strip) => [
+            strip.name,
+            { ...strip.live.assemble(strip.input.config), live: strip.live },
+          ]),
+        ),
       };
     } catch (error) {
       const held = invalid([describeError(error)]);
-      return hold({ render: held, behavior: held, trail: held });
+      return hold({
+        render: held,
+        behavior: held,
+        ...Object.fromEntries(stripNames.map((name) => [name, held])),
+      });
     }
 
     // An effect some GPUs could not link is held like any other graph error, before it replaces
     // anything; one past only the Baseline tier's limits runs, with a warning. Each graph's count
-    // is its own: a failure counting the trail's materials is the trail's.
-    let budget: RenderBudgetFindings;
-    try {
-      budget = this.budgetFindings(
-        artifacts,
-        toArtifactGeometrySource(geometry),
-        renderMode,
-        castShadow,
-        config.sortInterval > 0,
-      );
-    } catch (error) {
-      return hold({ render: invalid([describeError(error)]) });
-    }
-    if (budget.errors.length > 0) {
-      return hold({ render: invalidFromErrors(budget.errors) });
-    }
-    let trailBudget: RenderBudgetFindings | undefined;
-    if (artifacts.trail !== undefined) {
+    // is its own: a failure counting a strip's materials is the strip's. Particles that are not
+    // drawn take nothing.
+    let budget: RenderBudgetFindings = { errors: [], warnings: [] };
+    if (config.drawParticles) {
       try {
-        trailBudget = artifacts.trail.live.budgetFindings(
-          artifacts.trail,
+        budget = this.budgetFindings(
+          artifacts,
+          toArtifactGeometrySource(geometry),
+          renderMode,
+          castShadow,
+          config.sortInterval > 0,
+        );
+      } catch (error) {
+        return hold({ render: invalid([describeError(error)]) });
+      }
+      if (budget.errors.length > 0) {
+        return hold({ render: invalidFromErrors(budget.errors) });
+      }
+    }
+    const stripBudgets: Partial<Record<StripName, RenderBudgetFindings>> = {};
+    for (const name of stripNames) {
+      const strip = artifacts.strips[name];
+      if (strip === undefined) {
+        continue;
+      }
+      let findings: RenderBudgetFindings;
+      try {
+        findings = strip.live.budgetFindings(
+          strip,
           artifacts.behavior.buffers,
           this.behaviorAttributes,
           // The same "can this emitter run on the GPU" the export counts by: a compiled kernel,
-          // whose slot (in its order) the GPU history copies.
+          // whose slot (in its order) the GPU strip copies.
           this.standardProgram?.buffers,
         );
       } catch (error) {
-        return hold({ trail: invalid([describeError(error)]) });
+        return hold({ [name]: invalid([describeError(error)]) });
       }
-      if (trailBudget.errors.length > 0) {
-        return hold({ trail: invalidFromErrors(trailBudget.errors) });
+      if (findings.errors.length > 0) {
+        return hold({ [name]: invalidFromErrors(findings.errors) });
       }
+      stripBudgets[name] = findings;
     }
 
     // A read of an attribute nothing writes runs (as a constant 0) - the same check the export runs.
@@ -507,26 +556,27 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       ...budget.warnings,
       ...unwrittenAttributeWarnings(this.renderLive.graphView, written, declaredAttributes),
     ];
-    const trailWarnings =
-      trail === undefined || trailBudget === undefined
-        ? undefined
-        : [
-            ...trailBudget.warnings,
-            ...trail.live.unwrittenAttributeWarnings(written, declaredAttributes),
-          ];
 
     const result = this.applyArtifacts(artifacts, config, spawnConfig, {
       render: renderResult.status === "recompiled",
       behavior: behaviorResult.status === "recompiled",
     });
+    const stripStatuses: Partial<Record<StripName, LiveApplyStatus>> = {};
+    for (const strip of strips) {
+      const status = result[strip.name];
+      if (status !== undefined) {
+        stripStatuses[strip.name] = withWarnings(status, [
+          ...(stripBudgets[strip.name]?.warnings ?? []),
+          ...strip.live.unwrittenAttributeWarnings(written, declaredAttributes),
+        ]);
+      }
+    }
     return {
       ...result,
       render: withWarnings(result.render, renderWarnings),
       // The preview runs without the bound (only an export settles by it), but warns as the export.
       behavior: withWarnings(result.behavior, unboundedLifetimeWarnings(behaviorSnapshot)),
-      ...(result.trail === undefined || trailWarnings === undefined
-        ? {}
-        : { trail: withWarnings(result.trail, trailWarnings) }),
+      ...stripStatuses,
     };
   }
 
@@ -542,8 +592,10 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     this.drivenParams.clear();
     this.renderLive.destroy();
     this.behaviorLive.destroy();
-    this.liveTrail?.destroy();
-    this.liveTrail = undefined;
+    for (const name of STRIP_NAMES) {
+      this.liveStrips[name]?.destroy();
+      delete this.liveStrips[name];
+    }
   }
 
   /** Highlights this emitter's preview gizmo as the selected one (accent tint), or not. */
@@ -626,27 +678,37 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   }
 
   /**
-   * The trail's live part for this apply, paired with its input: built the first time the emitter
-   * has a trail, and dropped (with everything compiled from it) once it has none, so turning a
-   * trail back on starts from a clean compile.
+   * Each strip's live part for this apply, paired with its input, in strip order: built the first
+   * time the emitter has that strip, and dropped (with everything compiled from it) once it has
+   * none, so turning a strip back on starts from a clean compile.
    */
-  private liveTrailFor(
-    input: TrailApplyInput | undefined,
-  ): { readonly live: EmitterTrail; readonly input: TrailApplyInput } | undefined {
-    if (input === undefined) {
-      this.liveTrail?.destroy();
-      this.liveTrail = undefined;
-      return undefined;
-    }
-    this.liveTrail ??= new EmitterTrail(this.renderRegistry, this.renderBackend);
-    return { live: this.liveTrail, input };
+  private liveStripsFor(inputs: StripApplyInputs): readonly {
+    readonly name: StripName;
+    readonly live: EmitterStrip;
+    readonly input: StripApplyInput;
+  }[] {
+    return STRIP_NAMES.flatMap((name) => {
+      const input = inputs[name];
+      if (input === undefined) {
+        this.liveStrips[name]?.destroy();
+        delete this.liveStrips[name];
+        return [];
+      }
+      const live = (this.liveStrips[name] ??= new EmitterStrip(
+        name,
+        this.renderRegistry,
+        this.renderBackend,
+      ));
+      return [{ name, live, input }];
+    });
   }
 
   /**
    * Puts valid `artifacts` into effect the cheapest way their changes allow: a full rebuild when
-   * the behavior half reshaped; else an in-place trail swap when the trail turned on/off or
-   * reshaped, and an in-place render swap when the render half did; values (behavior bindings,
-   * the uniforms of whichever material was not swapped) are scrubbed in on every in-place path.
+   * the behavior half reshaped; else an in-place strip swap when a trail or ribbon turned on/off or
+   * reshaped, and an in-place render swap when the render half did (Draw Particles included);
+   * values (behavior bindings, the uniforms of whichever material was not swapped) are scrubbed in
+   * on every in-place path.
    * `recompiled` says which half's graph just recompiled. `artifacts` become the installed ones
    * only once the emitter has taken them.
    */
@@ -676,6 +738,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       // Shadow flags reshape the runtime mesh (attach/detach the depth material), not the IR.
       castShadow !== this.builtCastShadow ||
       receiveShadow !== this.builtReceiveShadow ||
+      config.drawParticles !== this.builtDrawParticles ||
       // The emitter fell behind during an invalid interlude on the other graph - resync.
       this.shader !== this.builtShader;
     // Everything that reshapes the behavior half specifically (simulation, capacity, CPU/GPU
@@ -696,30 +759,34 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       return this.rebuildEmitter(artifacts, config, spawnConfig, currentCustomGeometryRef);
     }
 
-    // The trail turning on/off, a new trail shader, or new history settings - swapped in place.
-    const { trail } = artifacts;
-    const trailStructural =
-      trail === undefined
-        ? this.emitter.hasTrail
-        : trail.live.needsSwap(trail, this.emitter.hasTrail);
-    if (trailStructural) {
-      try {
-        this.emitter.applyTrailArtifact(
-          trail?.options,
-          trail === undefined ? {} : this.resolveExternalTextures(trail.options.render),
-        );
-      } catch (error) {
-        return heldResult(true, { trail: invalid([describeError(error)]) });
+    // A strip turning on/off, a new strip shader, or new sink settings - swapped in place.
+    const stripResults: Partial<Record<StripName, LiveApplyStatus>> = {};
+    for (const name of STRIP_NAMES) {
+      const strip = artifacts.strips[name];
+      const has = this.emitter.hasStrip(name);
+      const structural = strip === undefined ? has : strip.live.needsSwap(strip, has);
+      if (structural) {
+        try {
+          this.emitter.applyStripArtifact(
+            name,
+            strip?.options,
+            strip === undefined ? {} : this.resolveExternalTextures(strip.options.render),
+          );
+        } catch (error) {
+          return heldResult([name], { [name]: invalid([describeError(error)]) });
+        }
+        strip?.live.markBuilt(strip);
       }
-      trail?.live.markBuilt(trail);
+      if (strip !== undefined) {
+        stripResults[name] = structural ? RECOMPILED : REBOUND;
+      }
     }
-    const trailResult =
-      trail === undefined ? {} : { trail: trailStructural ? RECOMPILED : REBOUND };
 
     if (renderStructural) {
+      const particles = particlesOf(artifacts);
       try {
-        this.emitter.applyRenderArtifact(artifacts.render, {
-          textures: this.resolveExternalTextures(artifacts.render),
+        this.emitter.applyRenderArtifact(particles, {
+          textures: particles === undefined ? {} : this.resolveExternalTextures(particles),
           geometries: this.resolveMeshGeometries(),
           castShadow,
           receiveShadow,
@@ -741,10 +808,11 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       this.builtRenderMode = renderMode;
       this.builtCastShadow = castShadow;
       this.builtReceiveShadow = receiveShadow;
+      this.builtDrawParticles = config.drawParticles;
     }
 
     // Only values changed in whatever was not swapped above - the behavior bindings always, and an
-    // unswapped trail's or render's uniforms. Scrub them into the running emitter so live particles
+    // unswapped strip's or render's uniforms. Scrub them into the running emitter so live particles
     // never reset (external textures ride the value path too, so a texture swap rebinds).
     this.emitter.applyValues(this.valuesFromArtifacts(artifacts));
     if (this.emitter.sort !== undefined) {
@@ -756,7 +824,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     return {
       render: renderStructural ? RECOMPILED : REBOUND,
       behavior: REBOUND,
-      ...trailResult,
+      ...stripResults,
       emitterRebuilt: false,
     };
   }
@@ -849,7 +917,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       return {
         render: held,
         behavior: held,
-        ...(artifacts.trail === undefined ? {} : { trail: held }),
+        ...this.stripStatuses(artifacts, held),
         emitterRebuilt: false,
       };
     }
@@ -861,16 +929,33 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     this.builtRenderMode = renderMode;
     this.builtCastShadow = castShadow;
     this.builtReceiveShadow = receiveShadow;
+    this.builtDrawParticles = config.drawParticles;
     this.builtTryGpuSimulation = spawnConfig.tryGpuSimulation;
     this.builtExpectedCapacity = spawnConfig.expectedCapacity;
-    artifacts.trail?.live.markBuilt(artifacts.trail);
+    for (const name of STRIP_NAMES) {
+      const strip = artifacts.strips[name];
+      strip?.live.markBuilt(strip);
+    }
     this.artifacts = artifacts;
     return {
       render: RECOMPILED,
       behavior: RECOMPILED,
-      ...(artifacts.trail === undefined ? {} : { trail: RECOMPILED }),
+      ...this.stripStatuses(artifacts, RECOMPILED),
       emitterRebuilt: true,
     };
+  }
+
+  /** `status` for every strip `artifacts` has. */
+  private stripStatuses(
+    artifacts: PreviewArtifacts,
+    status: LiveApplyStatus,
+  ): Partial<Record<StripName, LiveApplyStatus>> {
+    return Object.fromEntries(
+      STRIP_NAMES.filter((name) => artifacts.strips[name] !== undefined).map((name) => [
+        name,
+        status,
+      ]),
+    );
   }
 
   /** Every external sampler slot `artifact` declares, bound to its live texture - shared by
@@ -885,16 +970,19 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
 
   /** The live uniform/binding values to scrub into a running emitter on a rebind: each material's
    *  own, by its artifact's names - a generated name is its graph's alone, so the particles' and
-   *  the trail's may coincide for two different uniforms. */
+   *  a strip's may coincide for two different uniforms. */
   private valuesFromArtifacts(artifacts: PreviewArtifacts): FXApplyValues {
-    const trail = artifacts.trail?.options.render;
+    const particles = particlesOf(artifacts);
+    const trail = artifacts.strips.trail?.options.render;
+    const ribbon = artifacts.strips.ribbon?.options.render;
     const bindings: Record<string, number | Float32Array> = {};
     for (const [name, slot] of Object.entries(artifacts.behavior.bindings)) {
       bindings[name] = slot.value;
     }
     return {
-      particleMaterial: this.materialValues(artifacts.render),
+      ...(particles === undefined ? {} : { particleMaterial: this.materialValues(particles) }),
       ...(trail === undefined ? {} : { trailMaterial: this.materialValues(trail) }),
+      ...(ribbon === undefined ? {} : { ribbonMaterial: this.materialValues(ribbon) }),
       bindings,
     };
   }
@@ -984,7 +1072,10 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         : undefined;
     // Build the new emitter BEFORE dropping the old one: fromArtifacts can throw on a bad artifact
     // pair, and the caller holds the last good preview on a throw - so the old emitter must survive.
-    const next = FXEmitter.fromArtifacts(artifacts.render, artifacts.behavior, {
+    const particles = particlesOf(artifacts);
+    const { trail, ribbon } = artifacts.strips;
+    const next = FXEmitter.fromArtifacts(artifacts.behavior, {
+      ...(particles === undefined ? {} : { particles }),
       textures,
       geometries: this.resolveMeshGeometries(),
       castShadow: config.castShadow,
@@ -992,7 +1083,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       renderer: this.renderer,
       expectedCapacity: spawnConfig.expectedCapacity,
       ...(gpuKernel !== undefined ? { gpuKernel } : {}),
-      ...(artifacts.trail !== undefined ? { trail: artifacts.trail.options } : {}),
+      ...(trail === undefined ? {} : { trail: trail.options }),
+      ...(ribbon === undefined ? {} : { ribbon: ribbon.options }),
       ...(config.sortInterval > 0
         ? { sort: { camera: this.camera, fraction: 1 / config.sortInterval } }
         : {}),

@@ -70,7 +70,6 @@ function spawnedPositions(output: "position" | "normal", count: number): number[
   const positions: number[][] = [];
   const spawn = behavior.spawn;
   const emitter = FXEmitter.fromArtifacts(
-    unlitArtifact(),
     {
       ...behavior,
       spawn(slots, start, births, ...rest): void {
@@ -80,7 +79,7 @@ function spawnedPositions(output: "position" | "normal", count: number): number[
         }
       },
     },
-    { geometries: { rock: rock() }, expectedCapacity: count },
+    { particles: unlitArtifact(), geometries: { rock: rock() }, expectedCapacity: count },
   );
   try {
     emitter.burst(count);

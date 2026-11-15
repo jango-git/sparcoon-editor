@@ -6,7 +6,8 @@
  */
 
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
-import { FX_TRAIL_MAX_FRAMES } from "sparcoon/editor";
+import type { FXRibbonUV, FXStripKind, FXStripOptions } from "sparcoon/editor";
+import { FX_STRIP_KINDS, FX_TRAIL_MAX_FRAMES } from "sparcoon/editor";
 
 import { killSlotOutput } from "../engine/behavior/FXKernelLifecycle.Internal";
 import {
@@ -17,8 +18,10 @@ import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../engine/core/nodes
 import {
   buildParticleTarget,
   FX_MESH_TARGET,
+  FX_RIBBON_TARGET,
   FX_TRAIL_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
+import type { FXTarget } from "../engine/render/target/FXTarget";
 import type { EditorAttribute, EditorGraph } from "./graphModel";
 
 /**
@@ -60,11 +63,24 @@ export function sinkPhase(type: string): "spawn" | "update" | undefined {
 /**
  * Which render entity a render graph drives. A `"mesh"` has no `particleTransform` slot or
  * `sortInterval` parameter (posed by its own scene transform, no runtime emitter). A `"trail"` is
- * an emitter's trail graph: a ribbon behind every particle, with its own `width` slot and history
- * parameters instead of geometry, sorting and shadows.
+ * an emitter's trail graph: a band behind every particle, with its own `width` slot and history
+ * parameters instead of geometry, sorting and shadows. A `"ribbon"` is an emitter's ribbon graph:
+ * a band through its particles in birth order, with the trail's slots and its own UV parameters.
  */
-export type RenderHost = "particle" | "mesh" | "trail";
+export type RenderHost = "particle" | "mesh" | "trail" | "ribbon";
 export const DEFAULT_RENDER_HOST: RenderHost = "particle";
+
+/** The hosts of an emitter's strips - the graphs drawn through its particles, beside them: the
+ *  runtime's kinds of strip. */
+export type StripHost = FXStripKind;
+
+/** Every strip host, in the order an emitter lists and draws them. */
+export const STRIP_HOSTS: readonly StripHost[] = FX_STRIP_KINDS;
+
+/** Whether `name` (a render host or a graph name) is a strip's (see {@link StripHost}). */
+export function isStripHost(name: string): name is StripHost {
+  return (STRIP_HOSTS as readonly string[]).includes(name);
+}
 
 /** How the surface sink composites the fragment's alpha (see the runtime `FXRenderMode`). */
 export type RenderMode = FXRenderMode;
@@ -184,10 +200,16 @@ function showsSurfaceSlot(slot: string, renderMode: RenderMode): boolean {
 /** The surface (`$out`) input sockets for a render mode and host - the host's target output
  *  slots gated by the mode: a `"mesh"` host draws from {@link FX_MESH_TARGET}, a `"trail"` from
  *  {@link FX_TRAIL_TARGET}, a `"particle"` from the particle target. */
+/** The target each render host's surface sink draws its slots from. */
+const HOST_TARGETS: Readonly<Record<RenderHost, FXTarget>> = {
+  particle: buildParticleTarget(),
+  mesh: FX_MESH_TARGET,
+  trail: FX_TRAIL_TARGET,
+  ribbon: FX_RIBBON_TARGET,
+};
+
 function renderSinkInputsFor(renderMode: RenderMode, host: RenderHost): readonly FXSocketMeta[] {
-  const target =
-    host === "mesh" ? FX_MESH_TARGET : host === "trail" ? FX_TRAIL_TARGET : buildParticleTarget();
-  return target.outputs
+  return HOST_TARGETS[host].outputs
     .filter((output) => showsSurfaceSlot(output.slot, renderMode))
     .map(slotSocket);
 }
@@ -263,6 +285,17 @@ const RECEIVE_SHADOW_PARAM: FXParamMeta = {
 /** The surface sink parameter key carrying the receive-shadow flag. */
 export const RENDER_RECEIVE_SHADOW_PARAM = "receiveShadow";
 
+/** An emitter's render sink's Draw Particles flag: off, the particles are simulated but not drawn,
+ *  for an emitter shown by its trail or ribbon alone. Defaults on (see {@link readRenderSinkConfig}). */
+const DRAW_PARTICLES_PARAM: FXParamMeta = {
+  kind: "structural",
+  type: "flag",
+  default: true,
+};
+
+/** The surface sink parameter key carrying the Draw Particles flag. */
+export const RENDER_DRAW_PARTICLES_PARAM = "drawParticles";
+
 /**
  * The spawn sink's "Try GPU simulation" flag: a best-effort request to also compile this
  * emitter's behavior graph to the standard-tier (WebGL2, transform-feedback) GLSL kernel. Named
@@ -327,17 +360,21 @@ export function readSpawnSinkConfig(behaviorGraph: EditorGraph): SpawnSinkConfig
   };
 }
 
-/** The render graph's runtime config: geometry source, render mode, sort toggle, and shadow flags. */
+/** The render graph's runtime config: geometry source, render mode, sort toggle, shadow flags, and
+ *  whether an emitter draws its particles at all. */
 export interface RenderSinkConfig {
   readonly geometry: GeometrySource;
   readonly renderMode: RenderMode;
   readonly sortInterval: number;
   readonly castShadow: boolean;
   readonly receiveShadow: boolean;
+  /** Always true on a mesh, whose sink has no such flag. */
+  readonly drawParticles: boolean;
 }
 
 /** Reads a render graph's reserved-node parameters into a {@link RenderSinkConfig}; a
- *  missing/blank node falls back to every parameter's default. */
+ *  missing/blank node falls back to every parameter's default (Draw Particles on: only an explicit
+ *  `false` turns it off). */
 export function readRenderSinkConfig(renderGraph: EditorGraph): RenderSinkConfig {
   const surface = renderGraph.nodes[RENDER_SINK_ID]?.parameters;
   return {
@@ -346,6 +383,7 @@ export function readRenderSinkConfig(renderGraph: EditorGraph): RenderSinkConfig
     sortInterval: coerceSortInterval(surface?.[RENDER_SORT_INTERVAL_PARAM]),
     castShadow: surface?.[RENDER_CAST_SHADOW_PARAM] === true,
     receiveShadow: surface?.[RENDER_RECEIVE_SHADOW_PARAM] === true,
+    drawParticles: surface?.[RENDER_DRAW_PARTICLES_PARAM] !== false,
   };
 }
 
@@ -413,6 +451,114 @@ export function readTrailSinkConfig(trailGraph: EditorGraph): TrailSinkConfig {
   };
 }
 
+/** How `p_uv.x` runs along a ribbon: each point's age over its lifetime, or a repeat every few
+ *  particles. */
+export type RibbonUVMode = FXRibbonUV["mode"];
+const RIBBON_UV_OPTIONS: readonly RibbonUVMode[] = ["stretch", "tile"];
+const DEFAULT_RIBBON_UV: RibbonUVMode = "stretch";
+const DEFAULT_RIBBON_TILE = 4;
+
+/** The ribbon sink's UV mode. Structural: it is fixed when the ribbon is built. */
+const RIBBON_UV_PARAM: FXParamMeta = {
+  kind: "structural",
+  type: "enum",
+  options: RIBBON_UV_OPTIONS,
+  default: DEFAULT_RIBBON_UV,
+};
+
+/** The ribbon sink parameter key carrying the UV mode. */
+export const RIBBON_UV_PARAM_KEY = "ribbonUV";
+
+/** The ribbon sink's particles per repeat of `p_uv.x`, in the tile mode. */
+const RIBBON_TILE_PARAM: FXParamMeta = {
+  kind: "value",
+  type: "float",
+  default: DEFAULT_RIBBON_TILE,
+  min: 1,
+  step: 1,
+};
+
+/** The ribbon sink parameter key carrying the particles per repeat. */
+export const RIBBON_TILE_PARAM_KEY = "ribbonTile";
+
+/**
+ * The ribbon sink's Head flag: the ribbon reaches on to the particle a birth would seed now, while a
+ * play emits from the emitter's pose. Structural: it is fixed when the ribbon is built.
+ */
+const RIBBON_HEAD_PARAM: FXParamMeta = {
+  kind: "structural",
+  type: "flag",
+  default: false,
+};
+
+/** The ribbon sink parameter key carrying the Head flag. */
+export const RIBBON_HEAD_PARAM_KEY = "ribbonHead";
+
+/** A whole particle count of at least 1, defaulting on anything unreadable. */
+function coerceRibbonTile(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : DEFAULT_RIBBON_TILE;
+}
+
+/**
+ * An emitter ribbon graph's runtime config: how it composites, how `p_uv.x` runs along it, and
+ * whether it ends at the particle a birth would seed now.
+ */
+export interface RibbonSinkConfig {
+  readonly renderMode: RenderMode;
+  readonly uv: FXRibbonUV;
+  readonly head: boolean;
+}
+
+/** Each strip's sink config. */
+export interface StripSinkConfigs {
+  readonly trail: TrailSinkConfig;
+  readonly ribbon: RibbonSinkConfig;
+}
+
+/** Reads strip `host`'s graph's surface-sink parameters into its config. */
+export function readStripSinkConfig<K extends StripHost>(
+  host: K,
+  graph: EditorGraph,
+): StripSinkConfigs[K] {
+  const readers: { readonly [H in StripHost]: (graph: EditorGraph) => StripSinkConfigs[H] } = {
+    trail: readTrailSinkConfig,
+    ribbon: readRibbonSinkConfig,
+  };
+  return readers[host](graph);
+}
+
+/** What a strip's runtime options take from its sink config, besides its render artifact. */
+export type StripRuntimeFields = { readonly [K in StripHost]: Omit<FXStripOptions[K], "render"> };
+
+/** The runtime option fields strip `host` takes from `config` (see {@link StripRuntimeFields}). */
+export function stripRuntimeFields<K extends StripHost>(
+  host: K,
+  config: StripSinkConfigs[K],
+): StripRuntimeFields[K] {
+  const fields: {
+    readonly [H in StripHost]: (config: StripSinkConfigs[H]) => StripRuntimeFields[H];
+  } = {
+    trail: ({ frames, sampleInterval }) => ({ frames, sampleInterval }),
+    ribbon: ({ uv, head }) => ({ uv, head }),
+  };
+  return fields[host](config);
+}
+
+/** Reads a ribbon graph's surface-sink parameters into a {@link RibbonSinkConfig}. */
+export function readRibbonSinkConfig(ribbonGraph: EditorGraph): RibbonSinkConfig {
+  const surface = ribbonGraph.nodes[RENDER_SINK_ID]?.parameters;
+  return {
+    renderMode: coerceRenderMode(surface?.[RENDER_MODE_PARAM_KEY]),
+    uv:
+      surface?.[RIBBON_UV_PARAM_KEY] === "tile"
+        ? { mode: "tile", particles: coerceRibbonTile(surface[RIBBON_TILE_PARAM_KEY]) }
+        : { mode: "stretch" },
+    // Off unless set: a sink is created with an empty parameters bag.
+    head: surface?.[RIBBON_HEAD_PARAM_KEY] === true,
+  };
+}
+
 /**
  * Metadata for a reserved sink: inputs are the target's output slots, no outputs. Not in
  * `NODE_PALETTE`; resolved by `metaForNode` so the canvas renders a sink like any node.
@@ -459,18 +605,26 @@ export function sinkMeta(type: string, options: SinkMetaOptions = {}): FXNodeMet
   }
   const host = options.renderHost ?? DEFAULT_RENDER_HOST;
   const isMesh = host === "mesh";
-  if (host === "trail") {
+  if (isStripHost(host)) {
     return {
       type: RENDER_SINK_TYPE,
       category: "source",
       domain: "render",
       inputs: renderSinkInputsFor(options.renderMode ?? DEFAULT_RENDER_MODE, host),
       outputs: [],
-      params: {
-        [RENDER_MODE_PARAM_KEY]: RENDER_MODE_PARAM,
-        [TRAIL_FRAMES_PARAM_KEY]: TRAIL_FRAMES_PARAM,
-        [TRAIL_INTERVAL_PARAM_KEY]: TRAIL_INTERVAL_PARAM,
-      },
+      params:
+        host === "trail"
+          ? {
+              [RENDER_MODE_PARAM_KEY]: RENDER_MODE_PARAM,
+              [TRAIL_FRAMES_PARAM_KEY]: TRAIL_FRAMES_PARAM,
+              [TRAIL_INTERVAL_PARAM_KEY]: TRAIL_INTERVAL_PARAM,
+            }
+          : {
+              [RENDER_MODE_PARAM_KEY]: RENDER_MODE_PARAM,
+              [RIBBON_UV_PARAM_KEY]: RIBBON_UV_PARAM,
+              [RIBBON_TILE_PARAM_KEY]: RIBBON_TILE_PARAM,
+              [RIBBON_HEAD_PARAM_KEY]: RIBBON_HEAD_PARAM,
+            },
       reads: [],
     };
   }
@@ -490,6 +644,7 @@ export function sinkMeta(type: string, options: SinkMetaOptions = {}): FXNodeMet
           [RENDER_RECEIVE_SHADOW_PARAM]: RECEIVE_SHADOW_PARAM,
         }
       : {
+          [RENDER_DRAW_PARTICLES_PARAM]: DRAW_PARTICLES_PARAM,
           [RENDER_MODE_PARAM_KEY]: RENDER_MODE_PARAM,
           geometry,
           [RENDER_SORT_INTERVAL_PARAM]: SORT_INTERVAL_PARAM,

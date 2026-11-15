@@ -7,7 +7,7 @@ import {
   type FXRenderArtifactsByTier,
   renderBudgetFindings,
   RenderBudgetMemo,
-  trailRenderBudgetFindings,
+  stripRenderBudgetFindings,
 } from "../../src/domain/renderBudget";
 import { SPAWN_SINK_ID, SPAWN_TRY_GPU_SIMULATION_PARAM } from "../../src/domain/sinkMeta";
 import { interpolate } from "../../src/i18n/interpolate";
@@ -231,7 +231,7 @@ describe("each tier's artifact, counted on its own", () => {
   });
 });
 
-describe("trailRenderBudgetFindings", () => {
+describe("stripRenderBudgetFindings", () => {
   // Five vec4 attributes the trail reads and the behavior writes: 15 vertex attributes over the
   // JS history (within WebGL2's 16, past WebGL1's 8), 18 over the GPU one (which also records the
   // position and the lifecycle, a view each, two per segment).
@@ -242,14 +242,20 @@ describe("trailRenderBudgetFindings", () => {
   const render = bothTiers(reading(decls));
 
   it("measures a JS-only emitter's trail on the JS history alone", () => {
-    const { errors, warnings } = trailRenderBudgetFindings(render, kernelSlot(decls), undefined);
+    const { errors, warnings } = stripRenderBudgetFindings(
+      "trail",
+      render,
+      kernelSlot(decls),
+      undefined,
+    );
     expect(errors).toEqual([]);
     expect(warnings.map((warning) => warning.code)).toEqual(["render-attribute-budget-baseline"]);
     expect(warnings[0]?.params).toEqual({ used: 15, limit: 8 });
   });
 
   it("errs on the GPU history when the emitter has a GPU kernel, without also warning", () => {
-    const { errors, warnings } = trailRenderBudgetFindings(
+    const { errors, warnings } = stripRenderBudgetFindings(
+      "trail",
       render,
       kernelSlot(decls),
       kernelSlot(decls),
@@ -264,7 +270,8 @@ describe("trailRenderBudgetFindings", () => {
     // Twelve floats: 32 attributes if every recorded field had a view of its own, 14 over the
     // kernel's slot, where they pack four to a view.
     const many = floats(12);
-    const { errors, warnings } = trailRenderBudgetFindings(
+    const { errors, warnings } = stripRenderBudgetFindings(
+      "trail",
       bothTiers(reading(many)),
       kernelSlot(many),
       kernelSlot(many),
@@ -275,11 +282,11 @@ describe("trailRenderBudgetFindings", () => {
 
   it("finds nothing for a light trail on either backend", () => {
     const light = bothTiers(unlitArtifact());
-    expect(trailRenderBudgetFindings(light, kernelSlot([]), kernelSlot([]))).toEqual({
+    expect(stripRenderBudgetFindings("trail", light, kernelSlot([]), kernelSlot([]))).toEqual({
       errors: [],
       warnings: [],
     });
-    expect(trailRenderBudgetFindings(light, kernelSlot([]), undefined)).toEqual({
+    expect(stripRenderBudgetFindings("trail", light, kernelSlot([]), undefined)).toEqual({
       errors: [],
       warnings: [],
     });

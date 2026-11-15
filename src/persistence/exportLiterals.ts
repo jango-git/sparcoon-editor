@@ -17,6 +17,7 @@ import {
   type TimelineEvent,
   type VfxMeshDoc,
 } from "../model/editorState";
+import { STRIP_NAMES, type StripName } from "../model/graphSlots";
 import {
   type Transform,
   TRANSFORM_CHANNELS,
@@ -173,30 +174,51 @@ export interface RenderArtifactNames {
   readonly standard: string;
 }
 
+/** The constants an emitter's render artifacts were written to: its particles' (absent when they
+ *  are not drawn), and its trail's and ribbon's when it has them. */
+export type EmitterArtifactNames = {
+  readonly [K in "render" | StripName]?: RenderArtifactNames;
+};
+
+/** A strip's spec: its artifacts by tier, and the option fields its sink gave, as literals. */
+function stripLiteral(names: RenderArtifactNames, fields: object): string {
+  const entries = Object.entries(fields).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
+  return `{ ${[`render: ${byTier(names)}`, ...entries].join(", ")} }`;
+}
+
+/** `{ baseline, standard }` of `names`, as `FXRenderArtifactsByGLSLTier`. */
+function byTier(names: RenderArtifactNames): string {
+  return `{ baseline: ${names.baseline}, standard: ${names.standard} }`;
+}
+
 export function emitterSpecLiteral(
   emitter: EmitterDoc,
-  renderNames: RenderArtifactNames,
+  names: EmitterArtifactNames,
   behaviorName: string,
   ir: EmitterIR,
   slots: readonly string[],
   emitterIndex: ReadonlyMap<string, number>,
   copiesOf: (reaction: Reaction) => readonly number[],
   gpuKernelName?: string,
-  trailNames?: RenderArtifactNames,
 ): string {
-  const trail = ir.trail;
-  // The names are the constants the trail's artifacts were written to - one without the other is
-  // a caller bug, never an emitter to export without its trail.
-  if ((trail === undefined) !== (trailNames === undefined)) {
-    throw new Error(
-      `exportTypeScript: ${emitter.name}: trail artifact names must be given exactly when the ` +
-        "emitter has a trail",
-    );
+  // The names are the constants each artifact was written to - one without the other is a caller
+  // bug, never an emitter to export without its particles or a strip.
+  for (const [what, has, named] of [
+    ["render", ir.drawParticles, names.render] as const,
+    ...STRIP_NAMES.map((name) => [name, ir[name] !== undefined, names[name]] as const),
+  ]) {
+    if (has !== (named !== undefined)) {
+      throw new Error(
+        `exportTypeScript: ${emitter.name}: ${what} artifact names must be given exactly when ` +
+          `the emitter draws one`,
+      );
+    }
   }
   return [
     "    {",
     `      name: ${JSON.stringify(emitter.name)},`,
-    `      render: { baseline: ${renderNames.baseline}, standard: ${renderNames.standard} },`,
+    // Omitted when the particles are not drawn.
+    ...(names.render === undefined ? [] : [`      render: ${byTier(names.render)},`]),
     `      behavior: ${behaviorName},`,
     // Present only when GPU simulation compiled (ir.gpuProgram); the JS `behavior` above is
     // always present, so an omitted gpuBehavior just means this emitter falls back to JS, as at runtime.
@@ -209,12 +231,14 @@ export function emitterSpecLiteral(
     // omit-when-false optional FXEffectEmitterSpec fields.
     ...(ir.castShadow ? ["      castShadow: true,"] : []),
     ...(ir.receiveShadow ? ["      receiveShadow: true,"] : []),
-    // Present only when the emitter has a trail graph.
-    ...(trail !== undefined && trailNames !== undefined
-      ? [
-          `      trail: { render: { baseline: ${trailNames.baseline}, standard: ${trailNames.standard} }, frames: ${String(trail.frames)}, sampleInterval: ${String(trail.sampleInterval)} },`,
-        ]
-      : []),
+    // Present only when the emitter has a trail or ribbon graph.
+    ...STRIP_NAMES.flatMap((name) => {
+      const strip = ir[name];
+      const stripNames = names[name];
+      return strip === undefined || stripNames === undefined
+        ? []
+        : [`      ${name}: ${stripLiteral(stripNames, strip.fields)},`];
+    }),
     `      externalSlots: ${JSON.stringify(slots)},`,
     `      transform: ${transformLiteral(emitter.transform)},`,
     `      transformTracks: ${transformTracksLiteral(emitter.transformTracks, emitter.liveChannels)},`,
@@ -239,7 +263,7 @@ export function meshSpecLiteral(
   return [
     "    {",
     `      name: ${JSON.stringify(mesh.name)},`,
-    `      render: { baseline: ${renderNames.baseline}, standard: ${renderNames.standard} },`,
+    `      render: ${byTier(renderNames)},`,
     `      geometry: ${JSON.stringify(ir.geometry)},`,
     ...(ir.castShadow ? ["      castShadow: true,"] : []),
     ...(ir.receiveShadow ? ["      receiveShadow: true,"] : []),

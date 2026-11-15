@@ -29,7 +29,7 @@ export {
   removeEmitter,
   renameEmitter,
   selectEmitter,
-  setEmitterTrail,
+  setEmitterStrip,
   toggleEmitterHidden,
 } from "./emitterCommands";
 export { type GraphFragment, pasteFragment } from "./fragmentCommands";

@@ -10,12 +10,14 @@ import {
   removeVfxMesh,
   renameEmitter,
   renameVfxMesh,
-  setEmitterTrail,
+  setEmitterStrip,
   setEntityBaseChannel,
   toggleEmitterHidden,
   toggleVfxMeshHidden,
 } from "../model/commands";
 import { canRemoveObject } from "../model/editorState";
+import type { StripName } from "../model/graphSlots";
+import type { Store } from "../model/store";
 import { eulerToQuat } from "../model/transform";
 import { resolveEntity, resolveOwner } from "./address.Internal";
 import { requireKnownKeys, requireVector3 } from "./arguments.Internal";
@@ -49,13 +51,31 @@ export interface SceneEdits {
    */
   setHidden(ownerId: string, hidden: boolean): void;
   /**
-   * Turns an emitter's trail on (a ribbon behind every particle, authored in its `"trail"` graph,
+   * Turns an emitter's trail on (a band behind every particle, authored in its `"trail"` graph,
    * seeded with a flat color) or off (the trail graph is dropped). A trail cannot be combined with
    * depth sorting.
    */
   setTrail(emitterId: string, enabled: boolean): void;
+  /**
+   * Turns an emitter's ribbon on (a band through its particles in the order they were born,
+   * authored in its `"ribbon"` graph, seeded with a flat color) or off (the ribbon graph is
+   * dropped). A ribbon cannot be combined with depth sorting, and follows one stream of births:
+   * bursts of several particles and reactions weave it between them. Its UV, and whether the
+   * particles themselves are drawn (`drawParticles` on the render graph's surface sink), are sink
+   * parameters.
+   */
+  setRibbon(emitterId: string, enabled: boolean): void;
   /** Sets the base (un-keyframed) transform channels given; the others stay as they are. */
   setTransform(entityId: string, patch: TransformPatch): void;
+}
+
+/** Turns `emitterId`'s `strip` on or off. */
+function setStrip(store: Store, emitterId: string, strip: StripName, enabled: boolean): void {
+  const owner = resolveOwner(store.getSource(), emitterId);
+  if (owner.kind !== "emitter") {
+    throw new AgentError("invalid_argument", `"${emitterId}" is not an emitter.`);
+  }
+  setEmitterStrip(store, owner.id, strip, enabled);
 }
 
 export function createSceneEdits(session: EditSession): SceneEdits {
@@ -117,11 +137,12 @@ export function createSceneEdits(session: EditSession): SceneEdits {
 
     setTrail: (emitterId, enabled) =>
       session.mutate((store) => {
-        const owner = resolveOwner(store.getSource(), emitterId);
-        if (owner.kind !== "emitter") {
-          throw new AgentError("invalid_argument", `"${emitterId}" is not an emitter.`);
-        }
-        setEmitterTrail(store, owner.id, enabled);
+        setStrip(store, emitterId, "trail", enabled);
+      }),
+
+    setRibbon: (emitterId, enabled) =>
+      session.mutate((store) => {
+        setStrip(store, emitterId, "ribbon", enabled);
       }),
 
     setTransform: (entityId, patch) =>

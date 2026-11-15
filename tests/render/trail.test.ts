@@ -10,7 +10,7 @@ import { liveSession } from "../../src/agent/transaction.Internal";
 import type { EditorGraph } from "../../src/domain/graphModel";
 import {
   GraphKind,
-  isTrailExcludedRenderNode,
+  isStripExcludedRenderNode,
   metaFor,
   readTrailSinkConfig,
   RENDER_CAST_SHADOW_PARAM,
@@ -23,12 +23,12 @@ import {
   TRAIL_FRAMES_PARAM_KEY,
   TRAIL_INTERVAL_PARAM_KEY,
 } from "../../src/domain/nodePalette";
-import { trailAttributeErrors } from "../../src/domain/trailChecks";
+import { stripAttributeErrors } from "../../src/domain/stripChecks";
 import { resolveValueType } from "../../src/engine/core/socket/FXValueType";
 import {
   addCatalogNode,
   connectSockets,
-  setEmitterTrail,
+  setEmitterStrip,
   updateNodeParam,
 } from "../../src/model/commands";
 import {
@@ -44,7 +44,7 @@ import { Store } from "../../src/model/store";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { normalizeSource } from "../../src/persistence/loadState";
-import { EmitterTrail } from "../../src/render/emitterTrail.Internal";
+import { EmitterStrip } from "../../src/render/emitterStrip.Internal";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
 import { createTestState } from "../helpers/testDocument";
@@ -68,7 +68,8 @@ function runtimeEmitter(emitters: SceneEmitters, id: string): FXEmitter {
 }
 
 function trailMaterial(emitter: FXEmitter): ShaderMaterial {
-  const trail = (emitter as unknown as { trail: { mesh: Mesh } }).trail;
+  const trail = (emitter as unknown as { strips: { strips: { trail: { mesh: Mesh } } } }).strips
+    .strips.trail;
   return trail.mesh.material as ShaderMaterial;
 }
 
@@ -79,7 +80,7 @@ function particleMaterial(emitter: FXEmitter): ShaderMaterial {
 
 /** The runtime emitter's trail object (replaced by every trail swap), or `undefined`. */
 function runtimeTrail(emitter: FXEmitter): unknown {
-  return (emitter as unknown as { trail: unknown }).trail;
+  return (emitter as unknown as { strips: { strips: { trail: unknown } } }).strips.strips.trail;
 }
 
 /** Wires `nodeId`'s `out` into the trail sink's ribbon `width`. */
@@ -118,13 +119,13 @@ describe("emitter trail: document", () => {
     const { store, emitterId } = setup();
     expect(emitterDoc(store).trailGraph).toBeUndefined();
 
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const trailGraph = emitterDoc(store).trailGraph;
     expect(trailGraph?.nodes[RENDER_SINK_ID]).toBeDefined();
     expect(trailGraph?.outputBindings.map((binding) => binding.slot)).toEqual(["albedo"]);
     expect(emitterGraphs(emitterDoc(store))).toHaveLength(3);
 
-    setEmitterTrail(store, emitterId, false);
+    setEmitterStrip(store, emitterId, "trail", false);
     expect(emitterDoc(store).trailGraph).toBeUndefined();
     store.undo();
     expect(emitterDoc(store).trailGraph).toEqual(trailGraph);
@@ -132,7 +133,7 @@ describe("emitter trail: document", () => {
 
   it("drops the trail's own timeline tracks with it, keeping a name another graph declares", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     addTimelineValue(store, "trailGraph", "fade");
     addTimelineValue(store, "trailGraph", "glow");
     addTimelineValue(store, "renderGraph", "glow");
@@ -152,7 +153,7 @@ describe("emitter trail: document", () => {
       },
     };
     store.commit(withTracks, "structural");
-    setEmitterTrail(store, emitterId, false);
+    setEmitterStrip(store, emitterId, "trail", false);
     expect(emitterDoc(store).tracks.map((track) => track.name)).toEqual(["glow"]);
   });
 
@@ -161,14 +162,14 @@ describe("emitter trail: document", () => {
     const plain = normalizeSource(JSON.parse(JSON.stringify(store.getSource())));
     expect(plain?.scene.emitters[0].trailGraph).toBeUndefined();
 
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const loaded = normalizeSource(JSON.parse(JSON.stringify(store.getSource())));
     expect(loaded?.scene.emitters[0].trailGraph).toEqual(emitterDoc(store).trailGraph);
   });
 
   it("load drops trail bindings to the particle transforms and the sink's stale geometry", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const trailGraph = emitterDoc(store).trailGraph;
     expect(trailGraph?.nodes[RENDER_SINK_ID]?.parameters).not.toHaveProperty("geometry");
     const raw = JSON.parse(JSON.stringify(store.getSource())) as {
@@ -207,7 +208,7 @@ describe("emitter trail: document", () => {
 
   it("reads its history settings off the surface sink, clamped", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     updateNodeParam(store, "trailGraph", RENDER_SINK_ID, TRAIL_FRAMES_PARAM_KEY, 500);
     const trailGraph = emitterDoc(store).trailGraph;
     expect(trailGraph).toBeDefined();
@@ -224,15 +225,15 @@ describe("emitter trail: document", () => {
   it("keeps the nodes that read a surface normal out of a trail graph", () => {
     const lambert = metaFor(GraphKind.Render, "lambert-shading");
     const constant = metaFor(GraphKind.Render, "constant");
-    expect(lambert !== undefined && isTrailExcludedRenderNode(lambert)).toBe(true);
-    expect(constant !== undefined && isTrailExcludedRenderNode(constant)).toBe(false);
+    expect(lambert !== undefined && isStripExcludedRenderNode(lambert)).toBe(true);
+    expect(constant !== undefined && isStripExcludedRenderNode(constant)).toBe(false);
   });
 });
 
 describe("timeline values across an emitter's graphs", () => {
   it("flags one name declared at two types, attributed to the later declaration", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     addTimelineValue(store, "renderGraph", "glow", "float");
     const clash = addTimelineValue(store, "trailGraph", "glow", "vec3");
     const conflicts = timelineValueConflicts(emitterGraphs(emitterDoc(store)));
@@ -243,7 +244,7 @@ describe("timeline values across an emitter's graphs", () => {
 
   it("flags one name with two defaults in two graphs", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const render = addTimelineValue(store, "renderGraph", "glow");
     updateNodeParam(store, "renderGraph", render, "value", 1);
     const trail = addTimelineValue(store, "trailGraph", "glow");
@@ -256,7 +257,7 @@ describe("timeline values across an emitter's graphs", () => {
 
   it("treats a color as the vec4 it is", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     addTimelineValue(store, "renderGraph", "tint", "vec4");
     addTimelineValue(store, "trailGraph", "tint", "color");
     expect(timelineValueConflicts(emitterGraphs(emitterDoc(store)))).toEqual([]);
@@ -272,7 +273,7 @@ describe("timeline values across an emitter's graphs", () => {
     ];
     for (const [type, first, second] of cases) {
       const { store, emitterId } = setup();
-      setEmitterTrail(store, emitterId, true);
+      setEmitterStrip(store, emitterId, "trail", true);
       const render = addTimelineValue(store, "renderGraph", "glow", type);
       updateNodeParam(store, "renderGraph", render, "value", first);
       const trail = addTimelineValue(store, "trailGraph", "glow", type);
@@ -283,7 +284,7 @@ describe("timeline values across an emitter's graphs", () => {
 
   it("still flags two genuinely different vector defaults", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const render = addTimelineValue(store, "renderGraph", "tint", "vec3");
     updateNodeParam(store, "renderGraph", render, "value", [1, 2, 3]);
     const trail = addTimelineValue(store, "trailGraph", "tint", "vec3");
@@ -307,7 +308,7 @@ describe("timeline values across an emitter's graphs", () => {
 
   it("refuses to export an emitter whose value has two defaults", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const render = addTimelineValue(store, "renderGraph", "glow");
     updateNodeParam(store, "renderGraph", render, "value", 1);
     addTimelineValue(store, "trailGraph", "glow");
@@ -316,11 +317,11 @@ describe("timeline values across an emitter's graphs", () => {
 
   it("holds the preview on a clash", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     addTimelineValue(store, "renderGraph", "glow", "float");
     addTimelineValue(store, "trailGraph", "glow", "vec2");
     const result = emitters.sync(store.getSource().scene);
-    expect(result.trailStatus?.status).toBe("invalid");
+    expect(result.strips?.trail?.status.status).toBe("invalid");
     expect(result.renderStatus.status).toBe("invalid");
   });
 });
@@ -332,27 +333,27 @@ describe("emitter trail: live preview", () => {
     emitters.spawn(emitterId, { kind: "burst", count: 8 });
     FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
 
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const on = emitters.sync(store.getSource().scene);
-    expect(on.trailStatus?.status).toBe("recompiled");
+    expect(on.strips?.trail?.status.status).toBe("recompiled");
     expect(on.recompiled).not.toBe(true);
-    expect(runtimeEmitter(emitters, emitterId).hasTrail).toBe(true);
+    expect(runtimeEmitter(emitters, emitterId).hasStrip("trail")).toBe(true);
     expect(emitters.totalParticleCount()).toBe(8);
 
-    setEmitterTrail(store, emitterId, false);
+    setEmitterStrip(store, emitterId, "trail", false);
     const off = emitters.sync(store.getSource().scene);
-    expect(off.trailStatus).toBeUndefined();
-    expect(runtimeEmitter(emitters, emitterId).hasTrail).toBe(false);
+    expect(off.strips?.trail?.status).toBeUndefined();
+    expect(runtimeEmitter(emitters, emitterId).hasStrip("trail")).toBe(false);
     expect(emitters.totalParticleCount()).toBe(8);
   });
 
   it("refuses a trail on a depth-sorted emitter", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     updateNodeParam(store, "renderGraph", RENDER_SINK_ID, RENDER_SORT_INTERVAL_PARAM, 2);
     const result = emitters.sync(store.getSource().scene);
-    expect(result.trailStatus?.status).toBe("invalid");
-    expect(result.trailStatus?.messages[0]).toMatch(/depth sorting/);
+    expect(result.strips?.trail?.status.status).toBe("invalid");
+    expect(result.strips?.trail?.status.messages[0]).toMatch(/depth sorting/);
     // The fix is the render graph's Sort Every, so the error is pinned on its surface sink.
     expect(result.renderStatus.errors?.[0]?.nodeId).toBe(RENDER_SINK_ID);
   });
@@ -360,11 +361,11 @@ describe("emitter trail: live preview", () => {
   it("clears the trail's status once the emitter has no trail", () => {
     const { store, emitters, emitterId } = setup();
     const pipeline = new Pipeline(store, emitters);
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     updateNodeParam(store, "renderGraph", RENDER_SINK_ID, RENDER_SORT_INTERVAL_PARAM, 2);
     pipeline.recomputeNow();
     expect(store.getState().derived.trailStatus?.status).toBe("invalid");
-    setEmitterTrail(store, emitterId, false);
+    setEmitterStrip(store, emitterId, "trail", false);
     pipeline.recomputeNow();
     expect(store.getState().derived.trailStatus).toBeUndefined();
     expect(store.getState().derived.trailSnapshot).toBeUndefined();
@@ -372,7 +373,7 @@ describe("emitter trail: live preview", () => {
 
   it("drives a value both graphs declare into both materials", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     // Each wired into a sink so the value reaches its shader (an unread value compiles out).
     const trailValue = addTimelineValue(store, "trailGraph", "glow");
     wireTrailWidth(store, trailValue);
@@ -392,7 +393,7 @@ describe("emitter trail: live preview", () => {
 
   it("rebinds a trail value edited in the same sync as a render swap", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const trailValue = addTimelineValue(store, "trailGraph", "glow");
     wireTrailWidth(store, trailValue);
     emitters.sync(store.getSource().scene);
@@ -403,7 +404,7 @@ describe("emitter trail: live preview", () => {
     updateNodeParam(store, "renderGraph", RENDER_SINK_ID, RENDER_CAST_SHADOW_PARAM, true);
     const result = emitters.sync(store.getSource().scene);
     expect(result.renderStatus.status).toBe("recompiled");
-    expect(result.trailStatus?.status).toBe("rebound");
+    expect(result.strips?.trail?.status.status).toBe("rebound");
     expect(result.recompiled).not.toBe(true);
     expect(runtimeEmitter(emitters, emitterId)).toBe(emitter);
     expect(trailMaterial(emitter).uniforms["u_param_glow"].value).toBe(0.7);
@@ -411,7 +412,7 @@ describe("emitter trail: live preview", () => {
 
   it("swaps the trail in place on a trail-graph structural edit", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     emitters.sync(store.getSource().scene);
     emitters.spawn(emitterId, { kind: "burst", count: 8 });
     FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
@@ -421,7 +422,7 @@ describe("emitter trail: live preview", () => {
     const width = addCatalogNode(store, "trailGraph", "constant", { x: 0, y: 0 });
     wireTrailWidth(store, width ?? "");
     const result = emitters.sync(store.getSource().scene);
-    expect(result.trailStatus?.status).toBe("recompiled");
+    expect(result.strips?.trail?.status.status).toBe("recompiled");
     expect(result.renderStatus.status).toBe("rebound");
     expect(result.recompiled).not.toBe(true);
     expect(runtimeEmitter(emitters, emitterId)).toBe(emitter);
@@ -431,7 +432,7 @@ describe("emitter trail: live preview", () => {
 
   it("swaps the trail in place when its history length or interval changes", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     emitters.sync(store.getSource().scene);
     emitters.spawn(emitterId, { kind: "burst", count: 8 });
     FXWorld.update(0); // births land in a tick; a paused one seeds without simulating
@@ -444,7 +445,7 @@ describe("emitter trail: live preview", () => {
       const before = runtimeTrail(emitter);
       updateNodeParam(store, "trailGraph", RENDER_SINK_ID, key, value);
       const result = emitters.sync(store.getSource().scene);
-      expect(result.trailStatus?.status, key).toBe("recompiled");
+      expect(result.strips?.trail?.status.status, key).toBe("recompiled");
       expect(result.recompiled, key).not.toBe(true);
       expect(runtimeTrail(emitter), key).not.toBe(before);
     }
@@ -454,27 +455,27 @@ describe("emitter trail: live preview", () => {
 
   it("keeps the trail through a behavior-structural rebuild", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     emitters.sync(store.getSource().scene);
     const emitter = runtimeEmitter(emitters, emitterId);
 
     updateNodeParam(store, "behaviorGraph", SPAWN_SINK_ID, SPAWN_EXPECTED_CAPACITY_PARAM, 64);
     const result = emitters.sync(store.getSource().scene);
     expect(result.recompiled).toBe(true);
-    expect(result.trailStatus?.status).toBe("recompiled");
+    expect(result.strips?.trail?.status.status).toBe("recompiled");
     const rebuilt = runtimeEmitter(emitters, emitterId);
     expect(rebuilt).not.toBe(emitter);
-    expect(rebuilt.hasTrail).toBe(true);
+    expect(rebuilt.hasStrip("trail")).toBe(true);
 
     // Nothing changed since: the rebuilt emitter's trail is current, so the next sync only rebinds.
-    expect(emitters.sync(store.getSource().scene).trailStatus?.status).toBe("rebound");
+    expect(emitters.sync(store.getSource().scene).strips?.trail?.status.status).toBe("rebound");
   });
 
   it("disposes the trail's live graph with the emitter view", () => {
     const { store, emitters, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     emitters.sync(store.getSource().scene);
-    const destroy = vi.spyOn(EmitterTrail.prototype, "destroy");
+    const destroy = vi.spyOn(EmitterStrip.prototype, "destroy");
     emitters.destroy();
     expect(destroy).toHaveBeenCalledTimes(1);
   });
@@ -483,7 +484,7 @@ describe("emitter trail: live preview", () => {
 describe("emitter trail: export", () => {
   it("exports the trail's artifacts per tier and its history on the emitter spec", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const text = emitProjectModule(store.getSource());
     const { frames, sampleInterval } = readTrailSinkConfig(emitterDoc(store).trailGraph!);
     expect(text).toContain("const trail0Baseline: FXRenderArtifact");
@@ -500,7 +501,7 @@ describe("emitter trail: export", () => {
 
   it("lists a texture only the trail samples among the emitter's external slots", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const texture = addCatalogNode(store, "trailGraph", "texture", { x: 0, y: 0 });
     updateNodeParam(store, "trailGraph", texture ?? "", "name", "spark");
     connectSockets(
@@ -514,7 +515,7 @@ describe("emitter trail: export", () => {
 
   it("tapers the width along the trail from the same uv read that colours it", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const uv = addCatalogNode(store, "trailGraph", "uv", { x: 0, y: 0 }) ?? "";
     const along = addCatalogNode(store, "trailGraph", "split", { x: 0, y: 0 }) ?? "";
     const texture = addCatalogNode(store, "trailGraph", "texture", { x: 0, y: 0 }) ?? "";
@@ -575,7 +576,7 @@ describe("emitter trail: export", () => {
 
   it("refuses to export a trail on a depth-sorted emitter", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     updateNodeParam(store, "renderGraph", RENDER_SINK_ID, RENDER_SORT_INTERVAL_PARAM, 3);
     expect(() => emitProjectModule(store.getSource())).toThrow(/depth sorting/);
   });
@@ -586,7 +587,7 @@ describe("trail attribute checks", () => {
 
   it("accepts a read the behavior writes at the same width and the emitter declares", () => {
     expect(
-      trailAttributeErrors(
+      stripAttributeErrors(
         [vec("heat", "vec3")],
         [vec("heat", "vec3")],
         [{ name: "heat", type: "vec3" }],
@@ -595,7 +596,7 @@ describe("trail attribute checks", () => {
   });
 
   it("flags a read at another width than the behavior writes", () => {
-    const errors = trailAttributeErrors(
+    const errors = stripAttributeErrors(
       [vec("heat", "vec2")],
       [vec("heat", "vec3")],
       [{ name: "heat", type: "vec3" }],
@@ -604,7 +605,7 @@ describe("trail attribute checks", () => {
   });
 
   it("flags a read of an attribute the emitter does not declare", () => {
-    const errors = trailAttributeErrors([vec("ghost", "vec3")], [], []);
+    const errors = stripAttributeErrors([vec("ghost", "vec3")], [], []);
     expect(errors.length).toBeGreaterThan(0);
   });
 });
@@ -617,9 +618,10 @@ describe("agent API: trail graphs", () => {
   it("names the trail graph, and refuses it on an emitter without one", () => {
     const { store, emitterId } = setup();
     expect(parseGraphName("trail")).toBe("trail");
-    expect(() => parseGraphName("ribbon")).toThrow(/invalid_argument/);
+    expect(parseGraphName("ribbon")).toBe("ribbon");
+    expect(() => parseGraphName("smoke")).toThrow(/invalid_argument/);
     expect(() => resolveGraph(store.getSource(), emitterId, "trail")).toThrow(/no trail/);
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const target = resolveGraph(store.getSource(), emitterId, "trail");
     expect(target.slot).toBe("trailGraph");
     expect(target.kind).toBe(GraphKind.Render);
@@ -628,7 +630,7 @@ describe("agent API: trail graphs", () => {
 
   it("refuses a surface-normal node on the trail host", () => {
     const { store, emitterId } = setup();
-    setEmitterTrail(store, emitterId, true);
+    setEmitterStrip(store, emitterId, "trail", true);
     const graph = createEditApi(liveSession(store)).graph(emitterId, "trail");
     expect(() => graph.addNode("lambert-shading")).toThrow(/invalid_argument/);
     expect(() => graph.addNode("constant")).not.toThrow();

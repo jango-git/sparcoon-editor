@@ -30,8 +30,9 @@ import {
   GraphKind,
   isFakeNodeType,
   isMeshExcludedRenderNode,
+  isStripExcludedRenderNode,
+  isStripHost,
   isTimelineValueType,
-  isTrailExcludedRenderNode,
   metaForNode,
   paletteForKind,
   RENDER_SINK_ID,
@@ -78,7 +79,7 @@ import {
 } from "../../model/commands";
 import { resolveGraphOwner } from "../../model/editorState";
 import { emitterEntity, vfxMeshEntity } from "../../model/entity";
-import { GRAPH_SLOTS, renderHostFor } from "../../model/graphSlots";
+import { GRAPH_SLOTS, renderHostFor, stripSlot } from "../../model/graphSlots";
 import {
   selectActiveGraphOwner,
   selectBehaviorGraph,
@@ -394,7 +395,7 @@ export class GraphCanvas {
   }
 
   /** Which render entity the active graph drives - reshapes the surface sink (mesh, particle, or
-   *  an emitter's trail). */
+   *  an emitter's trail or ribbon). */
   private activeRenderHost(): RenderHost {
     return renderHostFor(selectActiveGraphOwner(this.store).kind, this.graphView.mode);
   }
@@ -411,8 +412,8 @@ export class GraphCanvas {
     if (host === "mesh") {
       return palette.filter((metadata) => !isMeshExcludedRenderNode(metadata));
     }
-    if (host === "trail") {
-      return palette.filter((metadata) => !isTrailExcludedRenderNode(metadata));
+    if (isStripHost(host)) {
+      return palette.filter((metadata) => !isStripExcludedRenderNode(metadata));
     }
     return palette;
   }
@@ -423,14 +424,11 @@ export class GraphCanvas {
   }
 
   private activeGraph(): EditorGraph {
-    switch (this.graphView.mode) {
-      case GraphMode.Render:
-        return selectActiveGraphOwner(this.store).renderGraph;
-      case GraphMode.Behavior:
-        return selectBehaviorGraph(this.store);
-      case GraphMode.Trail:
-        return selectActiveGraphOwner(this.store).trailGraph ?? createEmptyGraph();
+    const mode = this.graphView.mode;
+    if (mode === GraphMode.Behavior) {
+      return selectBehaviorGraph(this.store);
     }
+    return selectActiveGraphOwner(this.store)[GRAPH_SLOTS[mode].slot] ?? createEmptyGraph();
   }
 
   private render(): void {
@@ -441,8 +439,10 @@ export class GraphCanvas {
       this.graphView.setMode(GraphMode.Render);
       return;
     }
-    // Likewise an emitter whose trail is off (removed, or never added) has no trail graph to show.
-    if (this.graphView.mode === GraphMode.Trail && owner.trailGraph === undefined) {
+    // Likewise an emitter whose trail or ribbon is off (removed, or never added) has no graph to
+    // show for it.
+    const mode = this.graphView.mode;
+    if (isStripHost(mode) && owner[stripSlot(mode)] === undefined) {
       this.graphView.setMode(GraphMode.Render);
       return;
     }
@@ -1064,7 +1064,7 @@ export class GraphCanvas {
    * Pastes the clipboard as fresh nodes/comments with new ids (a structural clone, not a second
    * reference), positioned so the group's AABB centre lands under the cursor, and selects the
    * paste. Only pastes into a graph of the kind it was copied from - behavior and render have
-   * disjoint node types, while a render and a trail graph share theirs.
+   * disjoint node types, while a render, a trail and a ribbon graph share theirs.
    */
   private pasteClipboard(): void {
     if (

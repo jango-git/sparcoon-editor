@@ -8,11 +8,12 @@ import type {
 } from "../../domain/graphModel";
 import {
   isMeshExcludedRenderNode,
-  isTrailExcludedRenderNode,
+  isStripExcludedRenderNode,
   metaFor,
 } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
 import { resolveGraphOwner } from "../editorState";
+import { STRIP_NAMES, stripSlot } from "../graphSlots";
 import type { Store } from "../store";
 import { comments } from "./commentCommands";
 import { type GraphSlot, kindForSlot, withGraph } from "./graphAccess.Internal";
@@ -39,18 +40,19 @@ export function pasteFragment(
   // there; the add-node menu hides these via `isMeshExcludedRenderNode` - paste needs the same gate.
   const pastingIntoMeshRender =
     slot === "renderGraph" && resolveGraphOwner(store.getSource().scene)?.kind === "vfxMesh";
-  // A trail graph has no surface frame, so the lighting/normal nodes are kept out the same way.
-  const pastingIntoTrail = slot === "trailGraph";
+  // A trail or ribbon graph has no surface frame, so the lighting/normal nodes are kept out the
+  // same way.
+  const pastingIntoStrip = STRIP_NAMES.some((name) => stripSlot(name) === slot);
   const eligible = (node: GraphNode): boolean => {
-    if (!pastingIntoMeshRender && !pastingIntoTrail) {
+    if (!pastingIntoMeshRender && !pastingIntoStrip) {
       return true;
     }
     const metadata = metaFor(kindForSlot(slot), node.type);
     if (metadata === undefined) {
       return true;
     }
-    return pastingIntoTrail
-      ? !isTrailExcludedRenderNode(metadata)
+    return pastingIntoStrip
+      ? !isStripExcludedRenderNode(metadata)
       : !isMeshExcludedRenderNode(metadata);
   };
   // Old id => fresh id, so the copied edges can be rewired onto the pasted nodes.

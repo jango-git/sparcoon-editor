@@ -387,3 +387,29 @@ export function buildTrailTarget(attributes: readonly FXAttributeRequest[] = [])
 
 /** The trail render target with no user attributes. */
 export const FX_TRAIL_TARGET: FXTarget = buildTrailTarget();
+
+/**
+ * The ribbon render target (an emitter's ribbon graph): the trail's builtins and surface, each
+ * builtin interpolated between two particles born one after the other instead of two points of one
+ * particle's path. `p_uv.x` runs along the ribbon from its newest particle (0): each point's age
+ * over its lifetime, or a repeat every few particles (the ribbon sink's UV).
+ */
+export function buildRibbonTarget(attributes: readonly FXAttributeRequest[] = []): FXTarget {
+  return {
+    name: `ribbon${canonicalAttributeSuffix(attributes)}`,
+    inputs: [...TRAIL_BUILTINS, ...attributeRenderInputs(attributes, "vertex")],
+    outputs: TRAIL_OUTPUTS,
+  };
+}
+
+/** The ribbon render target with no user attributes. */
+export const FX_RIBBON_TARGET: FXTarget = buildRibbonTarget();
+
+/** The target strip `strip`'s graph compiles against, with a `p_fx_<name>` input per requested
+ *  attribute. */
+export function buildStripTarget(
+  strip: "trail" | "ribbon",
+  attributes: readonly FXAttributeRequest[] = [],
+): FXTarget {
+  return strip === "trail" ? buildTrailTarget(attributes) : buildRibbonTarget(attributes);
+}

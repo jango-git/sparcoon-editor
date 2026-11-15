@@ -1,5 +1,5 @@
 /**
- * Which graph is shown - Behavior, Render, or the emitter's Trail. UI state (not document state): the graph panel's own
+ * Which graph is shown - Behavior, Render, or the emitter's Trail or Ribbon. UI state (not document state): the graph panel's own
  * switch sets it, and both the graph panel and its status display read it. A tiny observable so both
  * stay in sync.
  */
@@ -13,6 +13,7 @@ export enum GraphMode {
   Render = "render",
   Behavior = "behavior",
   Trail = "trail",
+  Ribbon = "ribbon",
 }
 
 export class GraphViewState {
@@ -37,6 +38,7 @@ const MODE_BY_NAME: Readonly<Record<GraphName, GraphMode>> = {
   render: GraphMode.Render,
   behavior: GraphMode.Behavior,
   trail: GraphMode.Trail,
+  ribbon: GraphMode.Ribbon,
 };
 
 /** The mode showing the graph the model and the agent API call `name`. */
@@ -52,5 +54,7 @@ export function graphModeLabel(mode: GraphMode): string {
       return t("graph.modeBehavior");
     case GraphMode.Trail:
       return t("graph.modeTrail");
+    case GraphMode.Ribbon:
+      return t("graph.modeRibbon");
   }
 }

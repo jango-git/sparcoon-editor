@@ -18,7 +18,7 @@ import type {
   TimelineEvent,
 } from "../model/editorState";
 import { resolveGraphOwner } from "../model/editorState";
-import type { GraphName } from "../model/graphSlots";
+import { type GraphName, STRIP_NAMES, type StripName, stripSlot } from "../model/graphSlots";
 import {
   type Quat,
   quatToEuler,
@@ -31,7 +31,7 @@ import { renderGraphLighting } from "../persistence/exportCompile";
 import { type GraphTarget, targetGraph } from "./address.Internal";
 
 /** Which of an owner's graphs: the material (render), the simulation (behavior), or an emitter's
- *  trail (render-kind, on the trail host) - see `model/graphSlots.ts`. */
+ *  trail or ribbon (render-kind, each on its own host) - see `model/graphSlots.ts`. */
 export type { GraphName };
 
 /** A socket as the agent names it: a node id and that node's socket key. */
@@ -82,6 +82,8 @@ export interface EmitterView extends AnimatedView {
   readonly reactions: readonly Reaction[];
   /** Whether the emitter draws a trail - its `"trail"` graph exists (`scene.setTrail`). */
   readonly trail: boolean;
+  /** Whether the emitter draws a ribbon - its `"ribbon"` graph exists (`scene.setRibbon`). */
+  readonly ribbon: boolean;
 }
 
 export interface MeshView extends AnimatedView {
@@ -175,7 +177,7 @@ export interface GraphStatusView {
 
 /**
  * The compile status of an owner's graphs. Which graphs there are depends on the owner: an emitter
- * has a render and a behavior graph (and a trail one when it has a trail), a VFX mesh only the
+ * has a render and a behavior graph (and a trail and a ribbon one when it has them), a VFX mesh only the
  * render one - its `behavior` is `undefined`, so check before reading it.
  */
 export interface StatusView {
@@ -185,6 +187,8 @@ export interface StatusView {
   readonly behavior: GraphStatusView | undefined;
   /** The trail graph's status; `undefined` without a trail. */
   readonly trail: GraphStatusView | undefined;
+  /** The ribbon graph's status; `undefined` without a ribbon. */
+  readonly ribbon: GraphStatusView | undefined;
 }
 
 export function transformView(transform: Transform): TransformView {
@@ -243,7 +247,9 @@ export function sceneView(source: SourceState): SceneView {
       events: emitter.events,
       eventsExcluded: emitter.liveEvents === true,
       reactions: emitter.reactions,
-      trail: emitter.trailGraph !== undefined,
+      ...(Object.fromEntries(
+        STRIP_NAMES.map((name) => [name, emitter[stripSlot(name)] !== undefined]),
+      ) as Record<StripName, boolean>),
       ...animatedView(emitter),
     })),
     meshes: scene.meshes.map((mesh) => ({

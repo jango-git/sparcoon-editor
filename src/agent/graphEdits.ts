@@ -10,7 +10,8 @@ import {
   ATTRIBUTE_TYPES,
   isMeshExcludedRenderNode,
   isSinkType,
-  isTrailExcludedRenderNode,
+  isStripExcludedRenderNode,
+  isStripHost,
   metaFor,
 } from "../domain/nodePalette";
 import {
@@ -129,10 +130,10 @@ export function createGraphHandle(
         if (target.host === "mesh" && isMeshExcludedRenderNode(metadata)) {
           throw new AgentError("invalid_argument", `Node type "${type}" needs a particle host.`);
         }
-        if (target.host === "trail" && isTrailExcludedRenderNode(metadata)) {
+        if (isStripHost(target.host) && isStripExcludedRenderNode(metadata)) {
           throw new AgentError(
             "invalid_argument",
-            `Node type "${type}" reads a surface normal, which a trail does not have.`,
+            `Node type "${type}" reads a surface normal, which a ${target.host} does not have.`,
           );
         }
         requireKnownKeys("options", options, ["params", "position"]);

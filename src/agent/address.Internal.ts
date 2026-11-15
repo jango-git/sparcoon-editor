@@ -10,7 +10,13 @@ import type { GraphKind, RenderHost } from "../domain/nodePalette";
 import { selectEmitter, selectVfxMesh } from "../model/commands";
 import type { GraphOwnerRef, SourceState } from "../model/editorState";
 import { emitterEntity, type SceneEntity, VFX_ENTITY, vfxMeshEntity } from "../model/entity";
-import { GRAPH_SLOTS, type GraphSlot, renderHostFor } from "../model/graphSlots";
+import {
+  GRAPH_SLOTS,
+  type GraphSlot,
+  isStripName,
+  renderHostFor,
+  type StripName,
+} from "../model/graphSlots";
 import type { Store } from "../model/store";
 import { AgentError } from "./errors";
 import type { GraphName } from "./views";
@@ -46,34 +52,41 @@ export function resolveEntity(source: SourceState, entityId: string): SceneEntit
 }
 
 export function parseGraphName(graph: string): GraphName {
-  if (graph !== "render" && graph !== "behavior" && graph !== "trail") {
+  if (graph !== "render" && graph !== "behavior" && graph !== "trail" && graph !== "ribbon") {
     throw new AgentError(
       "invalid_argument",
-      `Graph must be "render", "behavior" or "trail", got "${graph}".`,
+      `Graph must be "render", "behavior", "trail" or "ribbon", got "${graph}".`,
     );
   }
   return graph;
 }
 
-/** The palette a graph draws from: the trail graph is render-kind. */
+/** The palette a graph draws from: the trail and ribbon graphs are render-kind. */
 export function graphKindFor(graph: GraphName): GraphKind {
   return GRAPH_SLOTS[graph].kind;
 }
 
+/** The scene edit that turns each strip on. */
+const STRIP_SWITCHES: { readonly [K in StripName]: string } = {
+  trail: "scene.setTrail",
+  ribbon: "scene.setRibbon",
+};
+
 /** Resolves `ownerId`'s `graph`; a VFX mesh has only a render graph, and only an emitter whose
- *  trail is on has a trail graph. */
+ *  trail or ribbon is on has that graph. */
 export function resolveGraph(source: SourceState, ownerId: string, graph: GraphName): GraphTarget {
   const owner = resolveOwner(source, ownerId);
   if (owner.kind === "vfxMesh" && graph !== "render") {
     throw new AgentError("invalid_argument", `Mesh "${ownerId}" has no ${graph} graph.`);
   }
   if (
-    graph === "trail" &&
-    source.scene.emitters.find((emitter) => emitter.id === ownerId)?.trailGraph === undefined
+    isStripName(graph) &&
+    source.scene.emitters.find((emitter) => emitter.id === ownerId)?.[GRAPH_SLOTS[graph].slot] ===
+      undefined
   ) {
     throw new AgentError(
       "invalid_argument",
-      `Emitter "${ownerId}" has no trail - turn it on with scene.setTrail first.`,
+      `Emitter "${ownerId}" has no ${graph} - turn it on with ${STRIP_SWITCHES[graph]} first.`,
     );
   }
   return {
@@ -100,7 +113,7 @@ export function targetGraph(source: SourceState, target: GraphTarget): EditorGra
   }
   const graph = emitter[target.slot];
   if (graph === undefined) {
-    throw new AgentError("not_found", `Emitter "${target.owner.id}" has no trail.`);
+    throw new AgentError("not_found", `Emitter "${target.owner.id}" has no ${target.name}.`);
   }
   return graph;
 }

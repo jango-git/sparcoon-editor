@@ -20,7 +20,7 @@ import type {
 } from "./editorState";
 import { resolveGraphOwner } from "./editorState";
 import type { SceneEntity } from "./entity";
-import { GRAPH_SLOTS, type GraphName } from "./graphSlots";
+import { GRAPH_SLOTS, type GraphName, stripGraphs, type StripSlot, stripSlot } from "./graphSlots";
 import type { Store } from "./store";
 
 /** The scene's VFX group (the container every emitter sits under). */
@@ -57,9 +57,7 @@ export function selectTextureAssetUsage(store: Store): ReadonlyMap<string, numbe
   const scene = store.getSource().scene;
   const renderGraphs = [
     ...scene.emitters.map((emitter) => emitter.renderGraph),
-    ...scene.emitters.flatMap((emitter) =>
-      emitter.trailGraph === undefined ? [] : [emitter.trailGraph],
-    ),
+    ...scene.emitters.flatMap((emitter) => stripGraphs(emitter).map(({ graph }) => graph)),
     ...scene.meshes.map((mesh) => mesh.renderGraph),
   ];
   for (const graph of renderGraphs) {
@@ -93,8 +91,8 @@ export function selectSceneCost(store: Store): number {
     }
     total += computeGraphStats(GraphKind.Render, emitter.renderGraph).cost;
     total += computeGraphStats(GraphKind.Behavior, emitter.behaviorGraph).cost;
-    if (emitter.trailGraph !== undefined) {
-      total += computeGraphStats(GraphKind.Render, emitter.trailGraph).cost;
+    for (const { graph } of stripGraphs(emitter)) {
+      total += computeGraphStats(GraphKind.Render, graph).cost;
     }
   }
   for (const mesh of scene.meshes) {
@@ -145,18 +143,19 @@ export function selectBehaviorGraph(store: Store): EditorGraph {
 }
 
 /** The active graph owner: the emitter or the VFX mesh the shared canvas currently edits. */
-export interface ActiveGraphOwner {
+export type ActiveGraphOwner = {
   readonly kind: GraphOwnerKind;
   readonly id: string;
   readonly renderGraph: EditorGraph;
   /** An emitter's simulation graph (spawn + update sinks). Absent for a VFX mesh - it has no
    *  behavior graph at all - so callers summing "every graph this owner authors" skip it then. */
   readonly behaviorGraph?: EditorGraph;
-  /** An emitter's trail graph, when its trail is on. */
-  readonly trailGraph?: EditorGraph;
   /** The owner's animated Timeline Value tracks (an emitter's or a mesh's render-graph values). */
   readonly tracks: readonly AnimationTrack[];
-}
+} & {
+  /** An emitter's strip graphs, each while that strip is on. */
+  readonly [K in StripSlot]?: EditorGraph;
+};
 
 /**
  * Resolves the active graph owner (see {@link resolveGraphOwner}): what the canvas reads. Always
@@ -180,7 +179,7 @@ export function selectActiveGraphOwner(store: Store): ActiveGraphOwner {
     id: emitter.id,
     renderGraph: emitter.renderGraph,
     behaviorGraph: emitter.behaviorGraph,
-    ...(emitter.trailGraph === undefined ? {} : { trailGraph: emitter.trailGraph }),
+    ...Object.fromEntries(stripGraphs(emitter).map(({ name, graph }) => [stripSlot(name), graph])),
     tracks: emitter.tracks,
   };
 }

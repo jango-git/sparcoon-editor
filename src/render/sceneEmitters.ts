@@ -20,12 +20,13 @@ import {
 import {
   GraphKind,
   readRenderSinkConfig,
-  readTrailSinkConfig,
+  readStripSinkConfig,
   timelineValueConflicts,
 } from "../domain/nodePalette";
 import { type InheritIssue, inheritIssueWarnings, linkReaction } from "../domain/reactionLinking";
 import { effectiveSpawnConfig } from "../domain/reactions";
 import { serializeGraph } from "../domain/serialize";
+import { emitterDrawsNothingWarnings, stripSpawnWarnings } from "../domain/stripChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
 import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
@@ -47,10 +48,16 @@ import {
   type VfxMeshDoc,
 } from "../model/editorState";
 import { entityKey, type SceneEntity, VFX_ENTITY } from "../model/entity";
-import { authoredGraphs, type GraphName } from "../model/graphSlots";
-import type { SceneApplier, SceneApplyResult } from "../model/pipeline";
+import {
+  authoredGraphs,
+  type GraphName,
+  STRIP_NAMES,
+  stripGraphs,
+  type StripName,
+} from "../model/graphSlots";
+import type { SceneApplier, SceneApplyResult, StripApplyInputs } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
-import { blocked, invalidFromErrors } from "./applyStatus.Internal";
+import { blocked, invalidFromErrors, withWarnings } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
@@ -516,13 +523,29 @@ export class SceneEmitters implements SceneApplier {
     }
     const renderSnapshot = serializeGraph(emitter.renderGraph, GraphKind.Render);
     const behaviorSnapshot = serializeGraph(emitter.behaviorGraph, GraphKind.Behavior);
-    const trail =
-      emitter.trailGraph === undefined
-        ? undefined
-        : {
-            snapshot: serializeGraph(emitter.trailGraph, GraphKind.Render),
-            config: readTrailSinkConfig(emitter.trailGraph),
-          };
+    // Each entry is the strip of its own name, which `Object.fromEntries` cannot carry.
+    const strips = Object.fromEntries(
+      stripGraphs(emitter).map(({ name, graph }) => [
+        name,
+        {
+          snapshot: serializeGraph(graph, GraphKind.Render),
+          config: readStripSinkConfig(name, graph),
+        },
+      ]),
+    ) as StripApplyInputs;
+    // Each strip's outcome, by the status `statusOf` gives it.
+    const stripOutcomes = (
+      statusOf: (name: StripName) => LiveApplyStatus | undefined,
+    ): NonNullable<SceneApplyResult["strips"]> =>
+      Object.fromEntries(
+        STRIP_NAMES.flatMap((name) => {
+          const snapshot = strips[name]?.snapshot;
+          const status = statusOf(name);
+          return snapshot === undefined || status === undefined
+            ? []
+            : [[name, { snapshot, status }]];
+        }),
+      );
     // One Timeline Value name is one value across the emitter's graphs, so it must have one type
     // and one default: a clash is held like any graph error (the running emitter is left as it was).
     const graphs = authoredGraphs(emitter);
@@ -539,9 +562,7 @@ export class SceneEmitters implements SceneApplier {
         behaviorSnapshot,
         renderStatus: statusOf("render"),
         behaviorStatus: statusOf("behavior"),
-        ...(trail === undefined
-          ? {}
-          : { trailSnapshot: trail.snapshot, trailStatus: statusOf("trail") }),
+        strips: stripOutcomes(statusOf),
         emitterRebuilt: false,
       };
     }
@@ -552,15 +573,21 @@ export class SceneEmitters implements SceneApplier {
       // A reaction source simulates on the CPU whatever its spawn node asks (reactions.ts).
       effectiveSpawnConfig(emitter, scene),
       emitter.behaviorGraph.attributes,
-      trail,
+      strips,
     );
     return {
       renderSnapshot,
       behaviorSnapshot,
-      renderStatus: result.render,
+      // Drawing neither the particles nor a strip is no error, only nothing to see.
+      renderStatus: withWarnings(result.render, emitterDrawsNothingWarnings(emitter)),
       behaviorStatus: result.behavior,
-      ...(trail === undefined ? {} : { trailSnapshot: trail.snapshot }),
-      ...(result.trail === undefined ? {} : { trailStatus: result.trail }),
+      // What a strip joins can follow from the emitter's spawns, not from its graph.
+      strips: stripOutcomes((name) => {
+        const status = result[name];
+        return status === undefined
+          ? undefined
+          : withWarnings(status, stripSpawnWarnings(name, emitter));
+      }),
       emitterRebuilt: result.emitterRebuilt,
     };
   }

@@ -3,6 +3,7 @@ import {
   FX_CORE_LIFECYCLE,
   FX_ID,
   FX_LIFETIME,
+  FX_PARTICLE_ID_RANGE,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
@@ -214,7 +215,11 @@ export function assembleTransformFeedbackProgram(
   // with a graph write. The age is the one the birth prologue read from the pass's birth ages.
   const lifecycleBirthOverride = new Map([
     [FX_AGE, BIRTH_AGE_LOCAL],
-    [FX_ID, `float(${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex)`],
+    // Modulo the id range, as the runtime wraps the base (see FX_PARTICLE_ID_RANGE).
+    [
+      FX_ID,
+      `float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)})`,
+    ],
   ]);
 
   const spawnAssignments = buffers.flatMap((buffer) =>

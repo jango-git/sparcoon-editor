@@ -103,7 +103,7 @@ function assembled(
   render: FXRenderArtifact,
   behavior: FXBehaviorArtifact,
 ): { vertexShader: string; fragmentShader: string } {
-  const emitter = FXEmitter.fromArtifacts(render, behavior);
+  const emitter = FXEmitter.fromArtifacts(behavior, { particles: render });
   try {
     const mesh = emitter.children[0] as unknown as {
       material: { vertexShader: string; fragmentShader: string };

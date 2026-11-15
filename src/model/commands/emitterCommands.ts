@@ -9,11 +9,13 @@ import { isSink } from "../../domain/sinks";
 import {
   canRemoveObject,
   createDefaultEmitter,
+  createDefaultRibbonGraph,
   createDefaultTrailGraph,
   type EmitterDoc,
   emitterGraphs,
   type SceneModel,
 } from "../editorState";
+import { type StripName, stripSlot } from "../graphSlots";
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
 
@@ -139,15 +141,27 @@ export function toggleEmitterHidden(store: Store, id: string): void {
   );
 }
 
+/** The graph each strip starts with when it is turned on. */
+const DEFAULT_STRIP_GRAPHS: Readonly<Record<StripName, () => EditorGraph>> = {
+  trail: createDefaultTrailGraph,
+  ribbon: createDefaultRibbonGraph,
+};
+
 /**
- * Turns emitter `id`'s trail on (seeded with the default trail graph) or off (its trail graph is
- * dropped - an undo brings it back). Structural: the preview rebuilds the trail. No-op if unknown
- * or already in that state.
+ * Turns emitter `id`'s trail or ribbon (`strip`) on (seeded with its default graph) or off (its
+ * graph is dropped - an undo brings it back). Structural: the preview rebuilds the strip. No-op if
+ * unknown or already in that state.
  */
-export function setEmitterTrail(store: Store, id: string, enabled: boolean): void {
+export function setEmitterStrip(
+  store: Store,
+  id: string,
+  strip: StripName,
+  enabled: boolean,
+): void {
+  const slot = stripSlot(strip);
   const scene = store.getSource().scene;
   const emitter = scene.emitters.find((candidate) => candidate.id === id);
-  if (emitter === undefined || (emitter.trailGraph !== undefined) === enabled) {
+  if (emitter === undefined || (emitter[slot] !== undefined) === enabled) {
     return;
   }
   commitScene(
@@ -159,11 +173,11 @@ export function setEmitterTrail(store: Store, id: string, enabled: boolean): voi
           return candidate;
         }
         if (enabled) {
-          return { ...candidate, trailGraph: withFreshIds(createDefaultTrailGraph()) };
+          return { ...candidate, [slot]: withFreshIds(DEFAULT_STRIP_GRAPHS[strip]()) };
         }
-        const { trailGraph: removed, ...rest } = candidate;
+        const { [slot]: removed, ...rest } = candidate;
         void removed;
-        // The trail's Timeline Values go with it, unless another graph declares the same name.
+        // The strip's Timeline Values go with it, unless another graph declares the same name.
         const referenced = timelineValueNames(emitterGraphs(rest));
         return { ...rest, tracks: rest.tracks.filter((track) => referenced.has(track.name)) };
       }),

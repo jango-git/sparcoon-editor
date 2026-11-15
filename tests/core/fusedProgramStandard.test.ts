@@ -1,4 +1,5 @@
 import {
+  FX_PARTICLE_ID_RANGE,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
   FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM,
@@ -148,7 +149,7 @@ describe("fused transform-feedback program assembly", () => {
     const program = compileMotionGraph();
     const [birthBranch] = program.vertexSource.split("} else {");
     expect(birthBranch).toContain(
-      `out_lifecycle.z = float(${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex);`,
+      `out_lifecycle.z = float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)});`,
     );
     expect(program.vertexSource).toContain(
       `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM};`,

@@ -167,7 +167,7 @@ export function expectPlumeLaunchesAndSimulates(
   renderArtifact: FXRenderArtifact,
   behaviorArtifact: FXBehaviorArtifact,
 ): void {
-  const emitter = FXEmitter.fromArtifacts(renderArtifact, behaviorArtifact);
+  const emitter = FXEmitter.fromArtifacts(behaviorArtifact, { particles: renderArtifact });
   try {
     emitter.burst(4);
     FXWorld.update(0); // births land in a tick; a paused one seeds without simulating

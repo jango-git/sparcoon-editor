@@ -57,7 +57,8 @@ engine (Babylon.js, PlayCanvas, PixiJS).
 An effect is a root **VFX group** and the objects in it:
 
 - **Emitter** - a particle system with a behavior graph (how particles are born and move), a render
-  graph (how they look) and an optional trail graph (a ribbon behind every particle).
+  graph (how they look), and optional trail and ribbon graphs: a band behind every particle, and a
+  band through the particles in the order they were born.
 - **VFX mesh** - a single mesh with a render graph, for example a shockwave, a shield or a scene
   object.
 
@@ -68,9 +69,16 @@ Every graph ends in sinks, the nodes its results flow into:
 - **Update** - values at every simulation step, and killing a particle, for example when it touches
   a collider.
 - **Surface** - color, particle shape (billboard, primitive or mesh), blend mode, sorting and
-  shadows.
-- **Surface** of a trail graph - the ribbon's color and width, its length and how often it records
-  a point.
+  shadows. With Draw Particles off the particles are simulated but not drawn, for an emitter shown
+  by its trail or ribbon alone.
+- **Surface** of a trail graph - the band's color and width, its length and how often it records a
+  point.
+- **Surface** of a ribbon graph - the band's color and width, and how its UV runs along it: each
+  point's age over its lifetime, or a repeat every few particles. A ribbon joins each particle to
+  the one born right after it, so it follows one stream of births, as a play makes; bursts of
+  several particles and reactions weave it between them. With Head on, while a play emits, the
+  ribbon reaches on to the particle a birth would seed now, so it does not lag behind a moving
+  emitter.
 
 If a material does not fit the device limits, its graph is marked with an error for WebGL2 or a
 warning for WebGL1.

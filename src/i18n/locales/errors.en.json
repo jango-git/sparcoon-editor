@@ -344,6 +344,21 @@
   "trail-with-sort": {
     "message": "a trail cannot be combined with depth sorting - set the render graph's Sort Every to 0"
   },
+  "ribbon-with-sort": {
+    "message": "a ribbon cannot be combined with depth sorting - set the render graph's Sort Every to 0"
+  },
+  "sort-without-particles": {
+    "message": "an emitter that does not draw its particles cannot sort - set Sort Every to 0 or turn Draw Particles on"
+  },
+  "ribbon-interleaved-births": {
+    "message": "bursts of several particles or reactions weave this emitter's ribbon between births from different places - a ribbon joins each particle to the one born right after it, so it follows one stream of births, as a play makes"
+  },
+  "ribbon-head-without-play": {
+    "message": "this ribbon's Head never shows, since it shows only while a play emits from the emitter - add a play or turn Head off"
+  },
+  "emitter-draws-nothing": {
+    "message": "this emitter draws neither its particles nor a trail or ribbon - turn Draw Particles on or add a trail or ribbon"
+  },
   "missing-mesh-asset": {
     "message": "No mesh asset \"{name}\" in the content library"
   },

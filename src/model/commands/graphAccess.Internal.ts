@@ -7,16 +7,16 @@
 import type { EditorGraph, GraphOutputBinding } from "../../domain/graphModel";
 import { createEmptyGraph } from "../../domain/graphModel";
 import { resolveGraphOwner, type SourceState } from "../editorState";
-import type { GraphSlot } from "../graphSlots";
+import { GRAPH_SLOTS, type GraphSlot, STRIP_NAMES } from "../graphSlots";
 
 export { type GraphSlot, kindForSlot } from "../graphSlots";
 
 /**
  * The active owner's graph for `slot`. A VFX mesh is render-only, so its behavior slot resolves to
  * an empty graph, symmetric with {@link withGraph}'s no-op write - inert at this boundary, not just
- * UI-hidden. An emitter's trail slot throws while its trail is off: unlike a mesh's behavior slot,
- * that graph can exist, so an edit aimed at it must not silently vanish (turn the trail on with
- * `setEmitterTrail` first).
+ * UI-hidden. An emitter's trail or ribbon slot throws while that strip is off: unlike a mesh's
+ * behavior slot, that graph can exist, so an edit aimed at it must not silently vanish (turn the
+ * strip on with `setEmitterStrip` first).
  */
 export function activeGraph(source: SourceState, slot: GraphSlot): EditorGraph {
   const owner = resolveGraphOwner(source.scene);
@@ -39,19 +39,20 @@ export function activeGraph(source: SourceState, slot: GraphSlot): EditorGraph {
   }
   const graph = emitter[slot];
   if (graph === undefined) {
-    throw new Error(missingTrailMessage(emitter.name));
+    throw new Error(missingStripMessage(emitter.name, slot));
   }
   return graph;
 }
 
-function missingTrailMessage(emitterName: string): string {
-  return `Emitter "${emitterName}" has no trail graph - turn its trail on first`;
+function missingStripMessage(emitterName: string, slot: GraphSlot): string {
+  const strip = STRIP_NAMES.find((name) => GRAPH_SLOTS[name].slot === slot) ?? slot;
+  return `Emitter "${emitterName}" has no ${strip} graph - turn its ${strip} on first`;
 }
 
 /**
  * Applies `update` to the active owner's `slot` graph, replacing just that owner. A VFX mesh's
- * behavior-slot write (attributes included) leaves the source unchanged, while a write to the
- * trail of an emitter whose trail is off throws - see {@link activeGraph}.
+ * behavior-slot write (attributes included) leaves the source unchanged, while a write to a strip
+ * of an emitter whose strip is off throws - see {@link activeGraph}.
  */
 export function withGraph(
   source: SourceState,
@@ -84,7 +85,7 @@ export function withGraph(
         }
         const graph = emitter[slot];
         if (graph === undefined) {
-          throw new Error(missingTrailMessage(emitter.name));
+          throw new Error(missingStripMessage(emitter.name, slot));
         }
         return { ...emitter, [slot]: update(graph) };
       }),
@@ -93,7 +94,7 @@ export function withGraph(
 }
 
 /** Whether the active owner authors a `slot` graph: a mesh only its render graph, an emitter its
- *  render and behavior graphs, and its trail graph while its trail is on. */
+ *  render and behavior graphs, and its trail and ribbon graphs while they are on. */
 export function activeOwnerHasGraph(source: SourceState, slot: GraphSlot): boolean {
   const owner = resolveGraphOwner(source.scene);
   if (owner?.kind === "vfxMesh") {

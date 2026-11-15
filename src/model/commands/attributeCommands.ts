@@ -2,6 +2,7 @@ import type { AttributeTypeName, EditorGraph } from "../../domain/graphModel";
 import { isReservedAttributeName } from "../../domain/nodePalette";
 import { attributeSlot } from "../../engine/behavior/FXParticleBehaviorTarget";
 import { isValidAttributeName } from "../../engine/core/socket/FXAttribute";
+import { STRIP_NAMES, stripSlot } from "../graphSlots";
 import type { Store } from "../store";
 import {
   activeGraph,
@@ -98,7 +99,7 @@ export function renameAttribute(
       binding.slot === oldSlot ? { ...binding, slot: newSlot } : binding,
     ),
   }));
-  const next = (["behaviorGraph", "renderGraph", "trailGraph"] as const)
+  const next = (["behaviorGraph", "renderGraph", ...STRIP_NAMES.map(stripSlot)] as const)
     .filter((graphSlot) => activeOwnerHasGraph(renamed, graphSlot))
     .reduce(
       (source, graphSlot) =>
