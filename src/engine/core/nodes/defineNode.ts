@@ -5,6 +5,7 @@ import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { deepFreeze } from "./deepFreeze.Internal";
 import type { FXDescriptorBuild } from "./defineNode.Internal";
 import { FXDescriptorNode, narrowestGenericType } from "./defineNode.Internal";
+import { FX_ASSET_PARAM_KINDS, type FXAssetKind } from "./FXAssetKind";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
 import type {
   FXNodeCategory,
@@ -92,7 +93,8 @@ export type FXNodeParams<P extends Record<string, FXParamSpec>> = {
 
 /** Arguments a node's {@link FXNodeCost} function receives. */
 export interface FXNodeCostArgs {
-  /** The node's current structural/value param values, keyed by name (not input-socket pins). */
+  /** The node's current structural/value param values and picked asset names (`""` for none),
+   *  keyed by name (not input-socket pins). */
   readonly params: Readonly<Record<string, unknown>>;
   /** The node's resolved generic type; `float` for a non-generic node. */
   readonly resolvedT: FXValueType;
@@ -139,6 +141,13 @@ export interface FXNodeDescriptor<
   readonly outputs: Readonly<Record<string, FXSocketSpec>>;
   readonly params: P;
   /**
+   * Behavior - content-library assets the node samples, each picked by a param of this key (the
+   * asset's name, `""` while none is picked) - surfaced as a picker (`FXNodeMeta.customParams`) and
+   * as {@link FXGraphNode.assetReads}. A pick recompiles. `build` reads each as the backend's
+   * sampler value in `assets`, `undefined` while none is picked.
+   */
+  readonly assets?: Readonly<Record<string, FXAssetKind>>;
+  /**
    * Target inputs {@link build} reads via `target.read(...)` - explicit reads only; an
    * input socket's target-input default is folded in automatically. A function form is for
    * a read keyed off a structural param (e.g. `read-state`'s `builtin` enum). Surfaces as
@@ -152,8 +161,9 @@ export interface FXNodeDescriptor<
    */
   readonly lightingIntrinsic?: string;
   /**
-   * Whether {@link build} calls the runtime's `fxDepthFade` ({@link FXGraphNode.readsSceneDepth}).
-   * Omit for a node that does not.
+   * Whether {@link build} reads the scene depth ({@link FXGraphNode.readsSceneDepth}) - a render
+   * node through the runtime's `fxDepthFade`, a behavior node through `sceneDepthContact`. Omit for
+   * a node that does not.
    */
   readonly readsSceneDepth?: boolean;
   /**
@@ -174,6 +184,9 @@ export interface FXNodeDescriptor<
     /** Emits a deduplicated JS/GLSL helper - escape hatch for a helper used by a single node. */
     emitHelper: (key: string, source: string) => void;
     fn: FXExprBuilderApi;
+    /** Each of {@link assets} as the sampler value it is read through. `undefined` while none is
+     *  picked. */
+    assets: Readonly<Record<string, FXExpr | undefined>>;
   }) => Record<string, FXExpr>;
   /**
    * Render-only: an alternate `build` the baseline (WebGL1) compiler prefers when present, for a
@@ -378,6 +391,19 @@ export function defineNode<
   if (descriptor.phase === "param" && "phase" in descriptor.params) {
     throw new Error(`defineNode("${descriptor.type}"): "phase" is reserved for a phase-param node`);
   }
+  // An asset pick lives in the same `values` map as the params and editable inputs.
+  for (const key of Object.keys(descriptor.assets ?? {})) {
+    if (descriptor.domain !== "behavior") {
+      throw new Error(
+        `defineNode("${descriptor.type}"): asset "${key}" is sampled by a behavior node only`,
+      );
+    }
+    if (key in descriptor.params || key in descriptor.inputs) {
+      throw new Error(
+        `defineNode("${descriptor.type}"): "${key}" is both an asset and a param or input socket`,
+      );
+    }
+  }
   // A param name and an editable input socket key both live in the instance's `values` map
   // keyed by name, so a collision silently overwrites one with the other - the `cacheKey`
   // `s`/`i` tags hash them apart but the stored value is shared. Reject it at define time.
@@ -474,6 +500,7 @@ export function defineNode<
     inputSpecs: descriptor.inputs,
     outputSpecs: descriptor.outputs,
     params: descriptor.params,
+    ...(descriptor.assets !== undefined ? { assets: descriptor.assets } : {}),
     ...(descriptor.reads !== undefined ? { reads: descriptor.reads } : {}),
     ...(descriptor.lightingIntrinsic !== undefined
       ? { lightingIntrinsic: descriptor.lightingIntrinsic }
@@ -526,6 +553,15 @@ export function defineNode<
         ...(descriptor.stage !== undefined ? { stage: descriptor.stage } : {}),
         ...(descriptor.phase !== undefined ? { phase: descriptor.phase } : {}),
         ...(descriptor.generic !== undefined ? { generic: descriptor.generic } : {}),
+        ...(descriptor.assets !== undefined
+          ? {
+              customParams: Object.entries(descriptor.assets).map(([key, kind]) => ({
+                key,
+                kind: FX_ASSET_PARAM_KINDS[kind],
+                required: false,
+              })),
+            }
+          : {}),
       });
     },
   };

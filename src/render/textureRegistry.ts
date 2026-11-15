@@ -8,50 +8,33 @@ import type { Texture } from "three";
 import { DataTexture, SRGBColorSpace, TextureLoader } from "three";
 
 import type { TextureAsset } from "../model/editorState";
-
-/** One cached entry: the source data URL (to detect a changed image) and its texture. */
-interface CachedTexture {
-  readonly dataUrl: string;
-  readonly texture: Texture;
-}
+import { LibraryCache } from "./libraryCache";
 
 export class TextureRegistry {
   private readonly loader = new TextureLoader();
-  private readonly entries = new Map<string, CachedTexture>();
+  // A replaced image (another data URL) is a new texture; a relabelled asset is not.
+  private readonly cache = new LibraryCache<TextureAsset, Texture>(
+    (asset) => this.load(asset.dataUrl),
+    (texture) => texture.dispose(),
+    (previous, next) => previous.dataUrl !== next.dataUrl,
+  );
   /** A shared 1x1 transparent texture bound wherever an asset is missing. */
   private readonly fallback = createTransparentTexture();
 
   /** @param onLoaded Called once an image finishes decoding, so the preview can rebind. */
   constructor(private readonly onLoaded: () => void) {}
 
-  /** Reconciles the cache with the current asset set: add new, replace changed, drop gone. */
   public sync(assets: readonly TextureAsset[]): void {
-    const live = new Set(assets.map((asset) => asset.name));
-    for (const [name, entry] of this.entries) {
-      if (!live.has(name)) {
-        entry.texture.dispose();
-        this.entries.delete(name);
-      }
-    }
-    for (const asset of assets) {
-      const existing = this.entries.get(asset.name);
-      if (existing?.dataUrl !== asset.dataUrl) {
-        existing?.texture.dispose();
-        this.entries.set(asset.name, { dataUrl: asset.dataUrl, texture: this.load(asset.dataUrl) });
-      }
-    }
+    this.cache.sync(assets);
   }
 
   /** The texture for an asset name, or the shared transparent fallback if absent. */
   public resolve(name: string): Texture {
-    return this.entries.get(name)?.texture ?? this.fallback;
+    return this.cache.get(name) ?? this.fallback;
   }
 
   public destroy(): void {
-    for (const entry of this.entries.values()) {
-      entry.texture.dispose();
-    }
-    this.entries.clear();
+    this.cache.destroy();
     this.fallback.dispose();
   }
 

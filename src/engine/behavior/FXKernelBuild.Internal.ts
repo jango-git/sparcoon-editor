@@ -11,6 +11,7 @@ import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelSh
 import {
   bufferAccess,
   bufferBaseName,
+  resourceNames,
   SLOTS_PARAMETER,
   SPAWN_KERNEL_PARAMETERS,
 } from "./FXKernelShared.Internal";
@@ -21,10 +22,10 @@ import {
  * compiled data and the shared buffer helpers.
  */
 
-/** Reads each captured binding and mesh surface once into a local, ahead of the per-particle
+/** Reads each captured binding and resource once into a local, ahead of the per-particle
  *  loop. */
 function bindingPreamble(phase: FXCompiledKernelPhase): string {
-  return [...Object.keys(phase.bindings), ...Object.keys(phase.surfaces ?? {})]
+  return [...Object.keys(phase.bindings), ...resourceNames(phase)]
     .map((name) => `const ${name} = bindings[${JSON.stringify(name)}].value;`)
     .join("\n");
 }

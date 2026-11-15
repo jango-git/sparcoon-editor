@@ -1,5 +1,6 @@
 import type { FXExpr } from "../ir/FXExpr";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
+import type { FXAssetKind } from "../nodes/FXAssetKind";
 import type { FXValueType } from "../socket/FXValueType";
 
 /** Publishes an edited value into a value parameter's live resource(s); held by the node. */
@@ -22,6 +23,13 @@ export interface FXValueParam {
 export interface FXCompilerContext {
   /** The IR-builder facade for a node's `build`, with `call` bound to this backend's signature registry. */
   readonly builders: FXExprBuilderApi;
+
+  /**
+   * The asset `name` of `kind`, as the sampler value the backend reads it through - no binding, but
+   * a resource the runtime fills from the app's asset of that name. Every call for one asset in a
+   * phase reads the same resource. Behavior backends only.
+   */
+  readonly allocateAsset?: (kind: FXAssetKind, name: string) => FXExpr;
 
   /** Whether the given input socket has a connected source. */
   hasInput(socketKey: string): boolean;

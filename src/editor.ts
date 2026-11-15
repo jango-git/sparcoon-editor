@@ -24,6 +24,7 @@ import { SceneEmitters } from "./render/sceneEmitters";
 import { TextureRegistry } from "./render/textureRegistry";
 import { TimelineDispatcher } from "./render/timelineDispatcher";
 import { TransformGuides } from "./render/transformGuides";
+import { VolumeTextureRegistry } from "./render/volumeTextureRegistry";
 import { GizmoSettingsStore } from "./settings/gizmoSettings";
 import { PreviewSettingsStore } from "./settings/previewSettings";
 import { detectRenderBackend } from "./settings/renderBackend";
@@ -170,6 +171,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   // Mesh-geometry registry turns baked mesh assets into live BufferGeometry for "custom" geometry
   // sources; fully synchronous (no decode), so unlike TextureRegistry it needs no load-callback.
   const meshGeometries = new MeshGeometryRegistry();
+  const volumes = new VolumeTextureRegistry(() => pipeline.scheduleRecompute());
   const sceneEmitters = new SceneEmitters(
     coordinator.scene,
     (name) => textures.resolve(name),
@@ -177,7 +179,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     coordinator.getRenderer(),
     renderBackend,
     poseTime,
-    () => meshGeometries.resolveAll(),
+    () => ({ geometries: meshGeometries.resolveAll(), volumes: volumes.resolveAll() }),
   );
   // The FPS readout reports the live particle count alongside it; wire the source now that the
   // scene emitters exist (before the first frame).
@@ -199,7 +201,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     () => store.getSource().timeline.duration,
   );
 
-  // Model -> render: sync texture/mesh caches before the coalesced recompute reads them;
+  // Model -> render: sync texture/mesh/volume caches before the coalesced recompute reads them;
   // autosave follows every commit, saving only source, flushed before the tab goes away.
   const autosave = createAutosave(() => saveSource(store.getSource()));
   window.addEventListener("pagehide", () => autosave.flush());
@@ -210,6 +212,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   });
   store.events.sourceStructureChanged.on(() => textures.sync(store.getSource().assets));
   store.events.sourceStructureChanged.on(() => meshGeometries.sync(store.getSource().meshAssets));
+  store.events.sourceStructureChanged.on(() => volumes.sync(store.getSource().volumeAssets));
   store.events.sourceStructureChanged.on(() => pipeline.scheduleRecompute());
   store.events.sourceStructureChanged.on(() => autosave.schedule());
   store.events.sourceViewChanged.on(() => autosave.schedule());
@@ -348,9 +351,10 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     arrangeGraph: shell.arrangeGraph,
   });
 
-  // Initial derive: seed the texture and mesh caches, then run the source through the library once.
+  // Initial derive: seed the texture, mesh and volume caches, then run the source through the library once.
   textures.sync(store.getSource().assets);
   meshGeometries.sync(store.getSource().meshAssets);
+  volumes.sync(store.getSource().volumeAssets);
   environments.sync(store.getSource().environments);
   pipeline.recomputeNow();
 }

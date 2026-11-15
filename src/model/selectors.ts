@@ -3,9 +3,12 @@
  * panels from the state shape. They read live state; callers must treat results as read-only.
  */
 
+import type { LibraryAssetNames } from "../domain/assetChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import { computeGraphStats } from "../domain/graphStats";
-import { GraphKind } from "../domain/nodePalette";
+import { GraphKind, metaFor } from "../domain/nodePalette";
+import { coerceGeometrySource, RENDER_SINK_TYPE } from "../domain/sinkMeta";
+import { assetParamsOf, type FXAssetKind } from "../engine/core/nodes/FXAssetKind";
 import type {
   AnimationTrack,
   EmitterDoc,
@@ -14,13 +17,22 @@ import type {
   LiveApplyStatus,
   MeshAsset,
   PaletteSwatch,
+  SourceState,
   TextureAsset,
   VfxDoc,
   VfxMeshDoc,
+  VolumeAsset,
 } from "./editorState";
 import { resolveGraphOwner } from "./editorState";
 import type { SceneEntity } from "./entity";
-import { GRAPH_SLOTS, type GraphName, stripGraphs, type StripSlot, stripSlot } from "./graphSlots";
+import {
+  authoredGraphs,
+  GRAPH_SLOTS,
+  type GraphName,
+  stripGraphs,
+  type StripSlot,
+  stripSlot,
+} from "./graphSlots";
 import type { Store } from "./store";
 
 /** The scene's VFX group (the container every emitter sits under). */
@@ -41,6 +53,52 @@ export function selectEnvironmentAssets(store: Store): readonly EnvironmentAsset
 /** The GLB mesh-asset library, in upload order. */
 export function selectMeshAssets(store: Store): readonly MeshAsset[] {
   return store.getSource().meshAssets;
+}
+
+/** The volume-asset library, in bake order. */
+export function selectVolumeAssets(store: Store): readonly VolumeAsset[] {
+  return store.getSource().volumeAssets;
+}
+
+/** The names of the content library's assets nodes sample, by kind. */
+export function libraryAssetNames(source: SourceState): LibraryAssetNames {
+  return {
+    mesh: source.meshAssets.map((asset) => asset.name),
+    volume: source.volumeAssets.map((asset) => asset.name),
+  };
+}
+
+/**
+ * How many nodes use each asset of `kind`, keyed by name - every node picking it (Random Mesh Point,
+ * SDF Sample) and, for a mesh, every surface sink drawing it as the geometry. Names with no users
+ * are absent (caller reads 0).
+ */
+export function selectAssetUsage(store: Store, kind: FXAssetKind): ReadonlyMap<string, number> {
+  const usage = new Map<string, number>();
+  const count = (name: unknown): void => {
+    if (typeof name === "string" && name !== "") {
+      usage.set(name, (usage.get(name) ?? 0) + 1);
+    }
+  };
+  const scene = store.getSource().scene;
+  for (const owner of [...scene.emitters, ...scene.meshes]) {
+    for (const { name, graph } of authoredGraphs(owner)) {
+      for (const node of Object.values(graph.nodes)) {
+        if (kind === "mesh" && node.type === RENDER_SINK_TYPE) {
+          const geometry = coerceGeometrySource(node.parameters["geometry"]);
+          if (geometry.kind === "custom") {
+            count(geometry.meshAssetName);
+          }
+        }
+        for (const parameter of assetParamsOf(metaFor(GRAPH_SLOTS[name].kind, node.type))) {
+          if (parameter.kind === kind) {
+            count(node.parameters[parameter.key]);
+          }
+        }
+      }
+    }
+  }
+  return usage;
 }
 
 /** The saved-color palette, in save order. */

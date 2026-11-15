@@ -2,20 +2,33 @@
  * The envelope every stored project is kept in - the project file, the presets and the autosaved
  * document alike: the whole `SourceState` and what says how to read it.
  *
- * `version` is the format's number. A change an older project cannot be read through as it is bumps
- * it, and the load converts an older project step by step up to the current number before
- * `normalizeSource` reads it. Changes it can be read through - added fields, renamed nodes - keep
- * the number: `normalizeSource` gives a missing field its default and maps old names whatever the
- * project's number. `editor` is the version of the editor that saved the project, for the reader;
- * the load does not depend on it.
+ * `version` is the format's number. A change to what a saved project means - a renamed or removed
+ * node, input, output or field, a new shape, a missing field that should read as something other
+ * than its default - adds a step to {@link PROJECT_UPGRADES}, which bumps the number, and the load
+ * runs an older project through the steps from its number up. `normalizeSource` then reads the
+ * current format only: it drops what is damaged and gives a missing field its default. A field
+ * added with a default an older project reads right with keeps the number. `editor` is the version
+ * of the editor that saved the project, for the reader; the load does not depend on it.
  *
- * A bare source (no envelope) and an envelope without a number read as format 1.
+ * A bare source (no envelope) and an envelope without a valid number read as format 1.
  */
 
 import { isRecord } from "../util/guards";
+import { upgradeFromFormat1 } from "./upgrades/fromFormat1";
 
 const PROJECT_FORMAT = "sparcoon-project";
-const PROJECT_VERSION = 1;
+
+/** Converts a project body of one format to the next. The body is untrusted, as the stored one. */
+export type ProjectUpgrade = (body: unknown) => unknown;
+
+/**
+ * The steps between formats, in order: step `i` converts format `i + 1` to `i + 2`. A step is
+ * never edited or removed once released, since projects saved in its formats still load through it.
+ */
+const PROJECT_UPGRADES: readonly ProjectUpgrade[] = [upgradeFromFormat1];
+
+/** The current format: one past the last step. */
+const PROJECT_VERSION = PROJECT_UPGRADES.length + 1;
 
 export interface ProjectEnvelope {
   readonly format: typeof PROJECT_FORMAT;
@@ -50,7 +63,7 @@ export function unwrapProject(raw: unknown): StoredProject {
   const editor = raw["editor"];
   return {
     body: raw["source"],
-    version: typeof version === "number" && Number.isInteger(version) ? version : 1,
+    version: typeof version === "number" && Number.isInteger(version) && version >= 1 ? version : 1,
     editor: typeof editor === "string" ? editor : undefined,
   };
 }
@@ -58,4 +71,13 @@ export function unwrapProject(raw: unknown): StoredProject {
 /** Whether `stored` is in a format later than this editor's: reading it would lose data. */
 export function isNewerProject(stored: StoredProject): boolean {
   return stored.version > PROJECT_VERSION;
+}
+
+/** `stored`'s body in the current format: run through every step from its format up. A project in a
+ *  later format comes back as it is. */
+export function upgradeProject(
+  stored: StoredProject,
+  upgrades: readonly ProjectUpgrade[] = PROJECT_UPGRADES,
+): unknown {
+  return upgrades.slice(stored.version - 1).reduce((body, upgrade) => upgrade(body), stored.body);
 }

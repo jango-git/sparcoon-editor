@@ -10,10 +10,12 @@ import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
   FXKernelBindingHandle,
+  FXKernelResourceFields,
 } from "../behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
 import {
-  kernelMeshSurfaces,
+  kernelResourceFields,
+  resourceFieldsOf,
   SLOTS_PARAMETER,
   SPAWN_KERNEL_PARAMETERS,
 } from "../behavior/FXKernelShared.Internal";
@@ -260,12 +262,12 @@ function bindingsLiteral(kernel: FXCompiledKernel): string {
   return `{ ${entries.join(", ")} }`;
 }
 
-/** The `meshSurfaces` line of an artifact literal at `indent`; none when it samples no surface. */
-function meshSurfacesLines(
-  surfaces: Readonly<Record<string, string>> | undefined,
-  indent: string,
-): string[] {
-  return surfaces === undefined ? [] : [`${indent}meshSurfaces: ${JSON.stringify(surfaces)},`];
+/** The resource lines (`meshSurfaces`, `volumes`) of an artifact literal at `indent`. None for a
+ *  resource kind it does not sample. */
+function resourceLines(fields: FXKernelResourceFields, indent: string): string[] {
+  return Object.entries(resourceFieldsOf(fields)).map(
+    ([key, resources]) => `${indent}${key}: ${JSON.stringify(resources)},`,
+  );
 }
 
 /** Indents each line of a kernel body by `indent`, for the emitted method block. */
@@ -287,7 +289,7 @@ export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""):
     "{",
     `${inner}buffers: ${JSON.stringify(kernel.update.buffers)},`,
     `${inner}bindings: ${bindingsLiteral(kernel)},`,
-    ...meshSurfacesLines(kernelMeshSurfaces(kernel), inner),
+    ...resourceLines(kernelResourceFields(kernel), inner),
     ...(kernel.inherit === undefined
       ? []
       : [`${inner}inherit: ${JSON.stringify(kernel.inherit.layout)},`]),
@@ -341,7 +343,8 @@ export function gpuKernelArtifactBody(
     `  buffers: ${JSON.stringify(program.buffers)},`,
     `  transformFeedbackVaryings: ${JSON.stringify(program.transformFeedbackVaryings)},`,
     `  bindings: ${gpuBindingsLiteral(program.bindings, program.draw?.uniforms ?? {})},`,
-    ...meshSurfacesLines(program.surfaces, "  "),
+    ...resourceLines(program, "  "),
+    ...(program.sceneDepth === true ? ["  sceneDepth: true,"] : []),
     ...(program.draw === undefined ? [] : [drawComputeLiteral(program.draw.stage)]),
     "}",
   ].join("\n");

@@ -1,5 +1,5 @@
 /**
- * What the preview's offscreen passes (the scene depth for Depth Fade, the overdraw view) share:
+ * What the preview's offscreen passes (the scene depth, the overdraw view) share:
  * the studio drawn into depth alone, the editor's furniture left out of a draw, and a target kept
  * at the size of the frame it serves.
  */

@@ -362,8 +362,14 @@
   "missing-mesh-asset": {
     "message": "No mesh asset \"{name}\" in the content library"
   },
+  "missing-volume-asset": {
+    "message": "No volume asset \"{name}\" in the content library"
+  },
   "depth-fade-needs-blending": {
     "message": "Depth Fade works only in the blending render mode, not {mode}: a depth-writing surface would fade against its own depth"
+  },
+  "scene-depth-on-cpu": {
+    "message": "Depth Sample reads the scene depth only in the GPU simulation - turn Try GPU Simulation on, and keep the emitter from being the source of a reaction"
   },
   "param-value-conflict": {
     "message": "Timeline Value \"{name}\" has a different default here than another declaration of it in this emitter"

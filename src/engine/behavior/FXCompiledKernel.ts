@@ -61,11 +61,22 @@ export interface FXKernelIntegration {
 }
 
 /**
+ * The fields naming the resources a compiled phase (or a GPU program) reads - each one's asset, by
+ * the name it is read under - a binding of the JS kernel, a sampler uniform of the GPU program.
+ */
+export interface FXKernelResourceFields {
+  /** Mesh assets, read as their surface tables (`sampler2D`). Absent when none. */
+  readonly meshSurfaces?: Readonly<Record<string, string>>;
+  /** Volume assets, read as their R8 3D textures (`sampler3D`). Absent when none. */
+  readonly volumes?: Readonly<Record<string, string>>;
+}
+
+/**
  * One compiled phase (spawn or update) of a behavior kernel, SSA-style like the render IR.
  * Phases run as separate invocations at different times (birth vs. per frame) and share
  * nothing but persisted particle state, so each carries its own helpers/body/writes/bindings.
  */
-export interface FXCompiledKernelPhase {
+export interface FXCompiledKernelPhase extends FXKernelResourceFields {
   /** Deduplicated helper function sources, hoisted outside the per-particle loop. */
   readonly helpers: readonly string[];
   /** Particle-invariant locals (bindings/`dt`/emitter transform/constants), hoisted before
@@ -83,9 +94,6 @@ export interface FXCompiledKernelPhase {
   readonly kill?: string;
   /** Captured bindings keyed by generated name; passed to the kernel at runtime. */
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
-  /** The mesh asset each surface samples, by the name the kernel reads it under (see
-   *  `FXKernelContext.allocateSurface`); absent when none. */
-  readonly surfaces?: Readonly<Record<string, string>>;
   /** State buffers this phase reads/writes (name + stride), in slot order - each one's field
    *  offset in the slot comes from it (`slotLayout`). */
   readonly buffers: readonly FXKernelBufferLayout[];

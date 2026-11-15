@@ -357,6 +357,32 @@ export interface MeshAsset {
   readonly byteSize: number;
 }
 
+/**
+ * One volume asset in the content library - an R8 3D texture baked from a mesh asset by the SDF
+ * baker, a stand-in for the 3D texture the app supplies by `name`. `dataUrl` is a PNG atlas of its
+ * slices (`domain/volumeAtlas.ts`), also what its download gives. `boxMin`/`boxMax` are the box its
+ * texels fill, in the mesh's space, and a texel's byte `b` holds the distance `b / 255 * scale +
+ * bias`: what an SDF Sample node picking it starts from.
+ */
+export interface VolumeAsset {
+  readonly name: string;
+  readonly label: string;
+  readonly dataUrl: string;
+  readonly size: readonly [number, number, number];
+  readonly boxMin: readonly [number, number, number];
+  readonly boxMax: readonly [number, number, number];
+  readonly scale: number;
+  readonly bias: number;
+}
+
+/** What a volume asset says about its texels, under the names of the SDF Sample inputs they set. */
+export const VOLUME_DESCRIPTION_KEYS = [
+  "boxMin",
+  "boxMax",
+  "scale",
+  "bias",
+] as const satisfies readonly (keyof VolumeAsset)[];
+
 /** The authored document - the only thing persisted and versioned by history. */
 export interface SourceState {
   /** The project's display name; the export filename derives from it, and it round-trips in the file. */
@@ -369,8 +395,10 @@ export interface SourceState {
   /** The `name` of the environment currently driving the viewport background/light probe, or
    *  `undefined` for manual Sun + Hemisphere lighting. */
   readonly activeEnvironmentName: string | undefined;
-  /** The GLB mesh-asset library; listed in the content sheet, not node-referenced yet. */
+  /** The GLB mesh-asset library - geometries and surfaces nodes sample. */
   readonly meshAssets: readonly MeshAsset[];
+  /** The volume-asset library - 3D textures baked from mesh assets, which nodes sample. */
+  readonly volumeAssets: readonly VolumeAsset[];
   /** The saved-color palette, offered as quick picks by every color picker's palette panel (see
    *  `ui/components/paletteAccess.ts`); never node-referenced, and has no library screen of its
    *  own - the picker is the only place it is listed or managed. */
@@ -657,6 +685,7 @@ export function createInitialState(): EditorState {
       environments: [],
       activeEnvironmentName: undefined,
       meshAssets: [],
+      volumeAssets: [],
       palette: [],
       timeline: DEFAULT_TIMELINE,
     },

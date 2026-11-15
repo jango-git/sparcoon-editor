@@ -12,9 +12,9 @@
  *   `edit((transaction) => ...)` makes a whole body one step, all or nothing.
  * - A graph edit makes that graph's owner the active one, like a click on it in the editor.
  * - `arrange()` lays a graph out from its cards on the live canvas, so it shows that graph.
- * - Reads are synchronous, except `status()`, `preview.capture*()`, `assets.add()` and the
- *   `project` loads: those wait for the editor (a recompute, a decode, a fetch) and return a
- *   Promise to await.
+ * - Reads are synchronous, except `status()`, `preview.capture*()`, `assets.add()`,
+ *   `assets.bakeVolume()` and the `project` loads - those wait for the editor (a recompute, a
+ *   decode, a bake, a fetch) and return a Promise to await.
  */
 
 import type { Object3D } from "three";

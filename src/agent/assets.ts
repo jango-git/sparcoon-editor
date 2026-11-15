@@ -1,22 +1,35 @@
 /**
  * The content library for the agent. An added file goes through the same ingestion a drop onto
  * the Content screen does (images to textures, `.hdr` to environments, `.glb`/`.gltf` to meshes),
- * so the agent hands over bytes and a file name, and nothing is decoded twice.
+ * so the agent hands over bytes and a file name, and nothing is decoded twice. A volume is baked
+ * from a mesh asset, as the Content screen's SDF baker does.
  */
 
 import {
+  bakeSettingsProblem,
+  bakeVolume,
+  defaultBakeSettings,
+  isClosedMesh,
+  type VolumeBakeSettings,
+} from "../domain/volumeBake";
+import {
+  addVolumeAsset,
   removeEnvironmentAsset,
   removeMeshAsset,
   removeTextureAsset,
+  removeVolumeAsset,
   setActiveEnvironment,
 } from "../model/commands";
 import type { SourceState } from "../model/editorState";
+import { libraryAssetNames } from "../model/selectors";
 import type { Store } from "../model/store";
+import { volumeAssetOf } from "../model/volumeAssets";
 import { ingestFiles } from "../ui/assetIngestion";
+import { base64ToBytes } from "../util/bytes";
 import { AgentError } from "./errors";
 import { type AssetsView, assetsView } from "./views";
 
-export type AssetKind = "texture" | "mesh" | "environment";
+export type AssetKind = "texture" | "mesh" | "environment" | "volume";
 
 /** A file's bytes: a `data:` URL, bare base64 text, or the raw bytes themselves. */
 export type AssetData = string | Blob | ArrayBuffer | Uint8Array;
@@ -38,6 +51,14 @@ export interface AssetsApi {
    * returned name, never the file name.
    */
   add(fileName: string, data: AssetData): Promise<readonly AssetReference[]>;
+  /**
+   * Bakes mesh asset `mesh` into a volume asset (an SDF) and returns it. `settings` override the
+   * baker's defaults for the mesh - its bounds padded by the band, `resolution` 64 texels along the
+   * longest side (4 to 128), a `band` of a tenth of its longest side, `"solid"` when it is closed
+   * and `"shell"` (of `thickness`) when it is open. An SDF Sample node picking the volume takes its
+   * box and distance encoding.
+   */
+  bakeVolume(mesh: string, settings?: Partial<VolumeBakeSettings>): Promise<AssetReference>;
   remove(kind: AssetKind, name: string): void;
   /** Lights the viewport with an environment asset; `undefined` restores the manual sun + sky. */
   setEnvironment(name: string | undefined): void;
@@ -56,12 +77,33 @@ const IMAGE_TYPES: Readonly<Record<string, string>> = {
 function libraryNames(source: SourceState): Readonly<Record<AssetKind, readonly string[]>> {
   return {
     texture: source.assets.map((asset) => asset.name),
-    mesh: source.meshAssets.map((asset) => asset.name),
     environment: source.environments.map((asset) => asset.name),
+    ...libraryAssetNames(source),
   };
 }
 
-const ASSET_KINDS: readonly AssetKind[] = ["texture", "mesh", "environment"];
+const ASSET_KINDS: readonly AssetKind[] = ["texture", "mesh", "environment", "volume"];
+
+/** Each library's remove command. */
+const REMOVE: Readonly<Record<AssetKind, (store: Store, name: string) => void>> = {
+  texture: removeTextureAsset,
+  mesh: removeMeshAsset,
+  environment: removeEnvironmentAsset,
+  volume: removeVolumeAsset,
+};
+
+/** `defaults` with `overrides`, checked. */
+function bakeSettings(defaults: VolumeBakeSettings, overrides: unknown): VolumeBakeSettings {
+  if (overrides !== undefined && (typeof overrides !== "object" || !overrides)) {
+    throw new AgentError("invalid_argument", "settings must be an object.");
+  }
+  const settings = { ...defaults, ...(overrides as Partial<VolumeBakeSettings> | undefined) };
+  const problem = bakeSettingsProblem(settings);
+  if (problem !== undefined) {
+    throw new AgentError("invalid_argument", `${problem}.`);
+  }
+  return settings;
+}
 
 /** The bytes of `data` as a blob, whichever of the accepted forms it arrives in. */
 async function blobFrom(data: unknown): Promise<Blob> {
@@ -84,16 +126,14 @@ async function blobFrom(data: unknown): Promise<Blob> {
   if (data.startsWith("data:")) {
     return (await fetch(data)).blob();
   }
-  let binary: string;
   try {
-    binary = atob(data);
+    return new Blob([base64ToBytes(data)]);
   } catch {
     throw new AgentError(
       "invalid_argument",
       "data is a string but neither a data: URL nor base64.",
     );
   }
-  return new Blob([Uint8Array.from(binary, (character) => character.charCodeAt(0))]);
 }
 
 async function fileFrom(fileName: string, data: unknown): Promise<File> {
@@ -127,17 +167,27 @@ export function createAssetsApi(store: Store): AssetsApi {
       return added;
     },
 
+    bakeVolume: async (meshName, overrides): Promise<AssetReference> => {
+      const mesh = store.getSource().meshAssets.find((asset) => asset.name === meshName);
+      if (mesh === undefined) {
+        throw new AgentError("not_found", `No mesh asset "${meshName}".`);
+      }
+      const defaults = defaultBakeSettings(mesh.geometry, isClosedMesh(mesh.geometry));
+      const settings = bakeSettings(defaults, overrides);
+      const baked = await bakeVolume(mesh.geometry, settings);
+      const asset = await volumeAssetOf(store.getSource(), mesh, baked);
+      addVolumeAsset(store, asset);
+      return { kind: "volume", name: asset.name };
+    },
+
     remove: (kind, name): void => {
+      if (!(kind in REMOVE)) {
+        throw new AgentError("invalid_argument", `kind must be one of ${ASSET_KINDS.join(", ")}.`);
+      }
       if (!libraryNames(store.getSource())[kind].includes(name)) {
         throw new AgentError("not_found", `No ${kind} asset "${name}".`);
       }
-      if (kind === "texture") {
-        removeTextureAsset(store, name);
-      } else if (kind === "mesh") {
-        removeMeshAsset(store, name);
-      } else {
-        removeEnvironmentAsset(store, name);
-      }
+      REMOVE[kind](store, name);
     },
 
     setEnvironment: (name): void => {

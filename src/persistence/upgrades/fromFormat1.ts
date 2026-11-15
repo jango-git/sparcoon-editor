@@ -1,15 +1,22 @@
 /**
- * Node types, inputs and outputs renamed since projects started being saved. A saved project names
- * a node's type in the node itself, an input in two places - the inline value in the node's
- * `parameters` and the `to.socketKey` of a wire feeding it - and an output in the `from.socketKey`
- * of every wire or sink binding reading it, so a rename that only touched the node definition
- * would silently break them on load: the node as an unknown type, the value back to its default,
- * the wire as dangling. Loading maps every old name to its new one before anything else reads the
- * graph: the type first, then the inputs and outputs of the type it now has.
+ * Format 1 -> 2: a format-1 project under today's names and without what the editor no longer
+ * writes. Format 1 was kept through these changes, so a format-1 file may hold any of them, or none.
+ *
+ * - Node types, inputs and outputs renamed. A saved project names a node's type in the node itself,
+ *   an input in two places - the inline value in the node's `parameters` and the `to.socketKey` of a
+ *   wire feeding it - and an output in the `from.socketKey` of every wire or sink binding reading
+ *   it. Each old name is mapped to its new one: the type first, then the inputs and outputs of the
+ *   type it now has.
+ * - The `geometry` parameter a trail's or ribbon's surface sink was once created with: a strip
+ *   builds its own segment quad, and its sink offers no geometry choice.
+ *
+ * The body is untrusted: what is not shaped as format 1 is passed through for the load to defend.
  */
 
-import type { EditorGraph, GraphConnection, GraphNode } from "../domain/graphModel";
-import { isRecord } from "../util/guards";
+import type { EditorGraph, GraphConnection, GraphNode } from "../../domain/graphModel";
+import { RENDER_SINK_ID } from "../../domain/nodePalette";
+import { isRecord } from "../../util/guards";
+import type { ProjectUpgrade } from "../projectEnvelope";
 
 /**
  * Old node type -> current node type. A new name never reuses an old one, so a file saved after
@@ -76,10 +83,13 @@ function migrateNode(node: GraphNode, renames: Readonly<Record<string, string>>)
   return { ...node, parameters };
 }
 
+/** The parts of a graph a rename touches. */
+type RenamableGraph = Pick<EditorGraph, "nodes" | "connections" | "outputBindings">;
+
 /** `graph` with every renamed node type under its current name, and every renamed input's stored
  *  value and incoming wire, and every wire or sink binding reading a renamed output, under its
  *  current key. */
-export function migrateRenamedNodes(graph: EditorGraph): EditorGraph {
+export function migrateRenamedNodes<G extends RenamableGraph>(graph: G): G {
   const renamesOf = (node: unknown): Readonly<Record<string, string>> | undefined => {
     const type = typeOf(node);
     return type !== undefined ? own(RENAMED_INPUTS, type) : undefined;
@@ -140,3 +150,89 @@ export function migrateRenamedNodes(graph: EditorGraph): EditorGraph {
   });
   return { ...graph, nodes, connections, outputBindings };
 }
+
+/** A stored graph with its renames mapped; the containers it lacks stay absent. */
+function renamedGraph(raw: unknown): unknown {
+  if (!isRecord(raw) || !isRecord(raw["nodes"])) {
+    return raw;
+  }
+  const connections = raw["connections"];
+  const outputBindings = raw["outputBindings"];
+  const migrated = migrateRenamedNodes({
+    nodes: raw["nodes"] as EditorGraph["nodes"],
+    connections: Array.isArray(connections) ? (connections as EditorGraph["connections"]) : [],
+    outputBindings: Array.isArray(outputBindings)
+      ? (outputBindings as EditorGraph["outputBindings"])
+      : [],
+  });
+  return {
+    ...raw,
+    nodes: migrated.nodes,
+    ...(Array.isArray(connections) ? { connections: migrated.connections } : {}),
+    ...(Array.isArray(outputBindings) ? { outputBindings: migrated.outputBindings } : {}),
+  };
+}
+
+/** A stored strip graph without the `geometry` parameter on its surface sink. */
+function withoutSinkGeometry(raw: unknown): unknown {
+  if (!isRecord(raw) || !isRecord(raw["nodes"])) {
+    return raw;
+  }
+  const sink = own(raw["nodes"], RENDER_SINK_ID);
+  if (
+    !isRecord(sink) ||
+    !isRecord(sink["parameters"]) ||
+    !Object.hasOwn(sink["parameters"], "geometry")
+  ) {
+    return raw;
+  }
+  const parameters = { ...sink["parameters"] };
+  delete parameters["geometry"];
+  return { ...raw, nodes: { ...raw["nodes"], [RENDER_SINK_ID]: { ...sink, parameters } } };
+}
+
+/** `owner` with `upgrade` applied to each of its graphs under `keys` it holds. */
+function withGraphs(
+  owner: unknown,
+  keys: readonly string[],
+  upgrade: (graph: unknown) => unknown,
+): unknown {
+  if (!isRecord(owner)) {
+    return owner;
+  }
+  const upgraded = { ...owner };
+  for (const key of keys) {
+    if (Object.hasOwn(owner, key)) {
+      upgraded[key] = upgrade(owner[key]);
+    }
+  }
+  return upgraded;
+}
+
+function upgradeEmitter(emitter: unknown): unknown {
+  const strips = withGraphs(emitter, ["trailGraph", "ribbonGraph"], (graph) =>
+    withoutSinkGeometry(renamedGraph(graph)),
+  );
+  return withGraphs(strips, ["renderGraph", "behaviorGraph"], renamedGraph);
+}
+
+function upgradeMesh(mesh: unknown): unknown {
+  return withGraphs(mesh, ["renderGraph"], renamedGraph);
+}
+
+export const upgradeFromFormat1: ProjectUpgrade = (body) => {
+  if (!isRecord(body) || !isRecord(body["scene"])) {
+    return body;
+  }
+  const scene = body["scene"];
+  const emitters = scene["emitters"];
+  const meshes = scene["meshes"];
+  return {
+    ...body,
+    scene: {
+      ...scene,
+      ...(Array.isArray(emitters) ? { emitters: emitters.map(upgradeEmitter) } : {}),
+      ...(Array.isArray(meshes) ? { meshes: meshes.map(upgradeMesh) } : {}),
+    },
+  };
+};

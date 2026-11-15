@@ -1,24 +1,27 @@
 /**
  * Content screen: a modal sheet (opens from the middlebar, closes on scrim/Escape) rather than a
  * persistent panel, since content isn't always needed. Three blocks sit side by side, all on one
- * screen with no tabs: Content (one unified, vertically-scrolling asset list - images, HDRIs and
- * GLB meshes stack as sections rather than three parallel columns), Project (name/save-load/
+ * screen with no tabs: Content (one unified, vertically-scrolling asset list - images, HDRIs, GLB
+ * meshes and baked volumes stack as sections rather than parallel columns), Project (name/save-load/
  * examples/export) and Help (a static quick-reference). A single "Upload asset" affordance
  * (button or drag-drop) routes dropped files to their library by type, and drag-drop is live over
- * the whole sheet regardless of which block it lands on. A row's user count is real for textures
- * (node references) and HDRIs (active or not, ADR-0004), 0 for the not-yet-consumed mesh kind.
+ * the whole sheet regardless of which block it lands on. A row's user count is the nodes using the
+ * asset (and the surfaces drawing a mesh), for an HDRI whether it is the active one (ADR-0004).
  */
 
 import { t } from "../i18n";
+import type { MeshAsset } from "../model/editorState";
 import { selectTextureAssetUsage } from "../model/selectors";
 import { HDRI_EXTENSIONS, ingestFiles, MESH_EXTENSIONS } from "./assetIngestion";
-import { environmentRows, fillColumn, meshRows, textureRows } from "./assetRows";
+import { environmentRows, fillColumn, meshRows, textureRows, volumeRows } from "./assetRows";
 import { attachTooltip } from "./components/tooltip";
 import { helpBlock } from "./contentHelpPanel";
 import { createElement } from "./dom";
 import type { EditorContext } from "./editorContext";
 import { assetIcons, glyphIcons, icon } from "./icons";
+import { outlineButton } from "./outlineButton";
 import { exportBlock } from "./projectExportPanel";
+import { createVolumeBaker } from "./volumeBaker";
 
 export interface AssetsModal {
   readonly element: HTMLElement;
@@ -28,15 +31,12 @@ export interface AssetsModal {
 
 export function createAssetsModal(context: EditorContext): AssetsModal {
   const { store } = context;
-  const uploadButton = createElement("button", {
-    className: "content-sheet__upload",
-    type: "button",
-  });
-  uploadButton.append(
-    icon(assetIcons.upload),
-    createElement("span", { textContent: t("content.uploadAsset") }),
+  const uploadButton = outlineButton(
+    assetIcons.upload,
+    t("content.uploadAsset"),
+    t("content.uploadTip"),
+    "content-sheet__upload",
   );
-  attachTooltip(uploadButton, t("content.uploadAsset"), t("content.uploadTip"));
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
@@ -47,6 +47,7 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
   const imageList = createElement("div", { className: "content-group__rows" });
   const hdriList = createElement("div", { className: "content-group__rows" });
   const meshList = createElement("div", { className: "content-group__rows" });
+  const volumeList = createElement("div", { className: "content-group__rows" });
 
   // The Content block: a header (title + upload) over one unified, vertically-scrolling list - the
   // three asset types stack as sections (see assetGroup) rather than side-by-side columns, so the
@@ -61,6 +62,7 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
     createElement("div", { className: "content-list" }, [
       assetGroup(t("content.columnImages"), imageList),
       assetGroup(t("content.columnMeshes"), meshList),
+      assetGroup(t("content.columnVolumes"), volumeList),
       assetGroup(t("content.columnHdri"), hdriList),
     ]),
   ]);
@@ -76,20 +78,26 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
   });
   closeButton.append(icon(glyphIcons.close));
   attachTooltip(closeButton, t("content.close"), t("content.closeTip"));
-  const sheet = createElement("div", { className: "content-sheet" }, [
-    main,
-    exportPanel.element,
-    help.element,
-    closeButton,
-  ]);
+  const blocks = [main, exportPanel.element, help.element];
+  const sheet = createElement("div", { className: "content-sheet" }, [...blocks, closeButton]);
   const scrim = createElement("div", { className: "modal-scrim" }, [sheet]);
+
+  // The SDF baker takes the sheet in place of the blocks and the close button, and gives it back
+  // when done.
+  const showBlocks = (): void => sheet.replaceChildren(...blocks, closeButton);
+  const baker = createVolumeBaker(store, showBlocks);
+  const openBaker = (mesh: MeshAsset): void => {
+    sheet.replaceChildren(baker.element);
+    baker.open(mesh);
+  };
 
   const render = (): void => {
     const usage = selectTextureAssetUsage(store);
     const environments = environmentRows(store, render);
     fillColumn(imageList, t("content.emptyImages"), textureRows(store, usage));
     fillColumn(hdriList, t("content.emptyHdri"), environments);
-    fillColumn(meshList, t("content.emptyMeshes"), meshRows(store));
+    fillColumn(meshList, t("content.emptyMeshes"), meshRows(store, openBaker));
+    fillColumn(volumeList, t("content.emptyVolumes"), volumeRows(store));
     exportPanel.sync();
   };
 
@@ -97,7 +105,11 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
     void ingestFiles(files, store);
   };
 
-  const close = (): void => scrim.classList.remove("modal-scrim--open");
+  const close = (): void => {
+    baker.close();
+    showBlocks();
+    scrim.classList.remove("modal-scrim--open");
+  };
   const open = (): void => {
     render();
     scrim.classList.add("modal-scrim--open");

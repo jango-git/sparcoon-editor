@@ -1,18 +1,28 @@
 import type { GraphNode } from "../../domain/graphModel";
-import { t } from "../../i18n";
+import type { FXAssetKind } from "../../engine/core/nodes/FXAssetKind";
+import { t, type TKey } from "../../i18n";
 import { AssetPicker, type AssetPickerOption } from "../components/assetPicker";
 import { createElement } from "../dom";
 import type { NodeRow } from "./nodeGrid";
 import type { NodeWidgets } from "./nodeWidgets";
 
+/** The row label of each asset kind's picker, and the hint it shows while the library has none. */
+const ASSET_ROW_TEXT: Readonly<
+  Record<FXAssetKind, { readonly label: TKey; readonly empty: TKey }>
+> = {
+  mesh: { label: "graph.mesh", empty: "graph.uploadMeshHint" },
+  volume: { label: "graph.volume", empty: "graph.bakeVolumeHint" },
+};
+
 /**
- * The mesh picker of a node with a `mesh-asset` parameter (Random Mesh Point): an {@link AssetPicker}
- * over the library's mesh assets. Choosing one commits its name into parameter `key`; with no
- * mesh assets yet it shows a hint pointing at the Assets library.
+ * The picker of a node's asset parameter (Random Mesh Point's mesh, SDF Sample's volume) - an
+ * {@link AssetPicker} over the library's assets of `kind`. Choosing one commits its name into
+ * parameter `key`. With none in the library it shows a hint pointing at the Assets library.
  */
-export function buildMeshAssetRow(
+export function buildAssetRow(
   node: GraphNode,
   key: string,
+  kind: FXAssetKind,
   options: readonly AssetPickerOption[],
   dependencies: {
     readonly widgets: NodeWidgets;
@@ -21,11 +31,12 @@ export function buildMeshAssetRow(
     readonly scale?: (() => number) | undefined;
   },
 ): NodeRow {
-  const label = createElement("span", { className: "param__label", textContent: t("graph.mesh") });
+  const text = ASSET_ROW_TEXT[kind];
+  const label = createElement("span", { className: "param__label", textContent: t(text.label) });
   if (options.length === 0) {
     const placeholder = createElement("span", {
       className: "param__placeholder",
-      textContent: t("graph.uploadMeshHint"),
+      textContent: t(text.empty),
     });
     return dependencies.labelledRow(label, placeholder);
   }

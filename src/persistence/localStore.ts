@@ -12,7 +12,7 @@
 import type { SourceState } from "../model/editorState";
 import { readString, writeJson } from "../util/storage";
 import type { BlobSync } from "./assetBlobStore";
-import { environmentBlobs, meshBlobs, textureBlobs } from "./assetBlobStore";
+import { environmentBlobs, meshBlobs, textureBlobs, volumeBlobs } from "./assetBlobStore";
 import { wrapProject } from "./projectEnvelope";
 
 const STORAGE_KEY = "sparcoon-editor.document";
@@ -55,6 +55,11 @@ const LIBRARIES: readonly StoredLibrary[] = [
     meshBlobs,
     (source) => source.meshAssets,
     (meshAssets) => ({ meshAssets }),
+  ),
+  storedLibrary(
+    volumeBlobs,
+    (source) => source.volumeAssets,
+    (volumeAssets) => ({ volumeAssets }),
   ),
 ];
 

@@ -123,8 +123,8 @@ describe("random-mesh-point", () => {
     if (program === undefined) {
       return;
     }
-    const [uniform] = Object.keys(program.surfaces ?? {});
-    expect(program.surfaces).toEqual({ [uniform]: "rock" });
+    const [uniform] = Object.keys(program.meshSurfaces ?? {});
+    expect(program.meshSurfaces).toEqual({ [uniform]: "rock" });
     expect(program.vertexSource).toContain("precision highp sampler2D;");
     expect(program.vertexSource).toContain(`uniform sampler2D ${uniform};`);
     expect(program.vertexSource).toContain("texelFetch(");
@@ -147,6 +147,6 @@ describe("random-mesh-point", () => {
     const graph = graphPlacingAt("position", "");
     const bundle = compileBehaviorBundle(graph, particleBehaviorTargetsFor(graph, true));
     expect(assembleBehaviorArtifact(bundle.kernel).meshSurfaces).toBeUndefined();
-    expect(bundle.standardProgram?.surfaces).toBeUndefined();
+    expect(bundle.standardProgram?.meshSurfaces).toBeUndefined();
   });
 });

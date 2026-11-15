@@ -12,7 +12,6 @@ import {
   GraphKind,
   NON_STRIP_SURFACE_SLOTS,
   PARTICLE_ONLY_SURFACE_SLOTS,
-  RENDER_SINK_ID,
   type RenderHost,
   type StripHost,
 } from "../domain/nodePalette";
@@ -42,6 +41,7 @@ import {
   type TimelineState,
   type VfxDoc,
   type VfxMeshDoc,
+  type VolumeAsset,
 } from "../model/editorState";
 import {
   IDENTITY_TRANSFORM,
@@ -54,8 +54,12 @@ import {
 } from "../model/transform";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
-import { isNewerProject, type StoredProject, unwrapProject } from "./projectEnvelope";
-import { migrateRenamedNodes } from "./renamedNodes";
+import {
+  isNewerProject,
+  type StoredProject,
+  unwrapProject,
+  upgradeProject,
+} from "./projectEnvelope";
 
 /** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
  *  returning user with an existing document never pays for it. */
@@ -80,19 +84,25 @@ async function restoreSource(): Promise<SourceState | undefined> {
     const normalized = readStoredSource(stored);
     return normalized === undefined ? undefined : await hydrateSource(normalized);
   } catch (error) {
-    // Belt-and-suspenders: normalize defaults every field, but an unforeseen shape must still
-    // start fresh rather than brick the editor.
+    // Filling the asset payloads back in can still throw: start fresh rather than brick the editor.
     console.warn("Discarding an unreadable saved document; starting fresh", error);
     return undefined;
   }
 }
 
-/** The valid source a stored project holds, or `undefined`. */
+/** The valid source a stored project holds, upgraded to the current format, or `undefined` - also
+ *  when an upgrade step or the normalization throws on a damaged body. */
 export function readStoredSource(stored: StoredProject): SourceState | undefined {
-  // Seed from the raw body *before* normalizing: normalization can itself backfill a missing id
-  // (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
-  seedIdentifierCounterFromRawSource(stored.body);
-  return normalizeSource(stored.body);
+  try {
+    const body = upgradeProject(stored);
+    // Seed from the raw body *before* normalizing: normalization can itself backfill a missing id
+    // (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
+    seedIdentifierCounterFromRawSource(body);
+    return normalizeSource(body);
+  } catch (error) {
+    console.warn("A stored project failed to load", error);
+    return undefined;
+  }
 }
 
 /** Guarantees a persisted graph's structural containers so a missing/non-object field can't crash
@@ -119,7 +129,7 @@ function normalizeGraph(
       ? (record["comments"] as EditorGraph["comments"])
       : empty.comments,
   };
-  return ensureSinks(migrateRenamedNodes(graph), kind, host);
+  return ensureSinks(graph, kind, host);
 }
 
 /** Normalizes a persisted document to the current source shape; anything unrecognized (not a
@@ -169,6 +179,7 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
     environments: normalizeEnvironments(raw["environments"]),
     activeEnvironmentName: asOptionalString(raw["activeEnvironmentName"]),
     meshAssets: normalizeMeshAssets(raw["meshAssets"]),
+    volumeAssets: normalizeVolumeAssets(raw["volumeAssets"]),
     palette: normalizePalette(raw["palette"]),
     timeline: normalizeTimeline(raw["timeline"]),
   };
@@ -197,21 +208,9 @@ function pruneNonStripBindings(graph: EditorGraph): EditorGraph {
   return kept.length === graph.outputBindings.length ? graph : { ...graph, outputBindings: kept };
 }
 
-/** Drops the `geometry` parameter a strip's surface sink was once created with: a strip builds its
- *  own segment quad, and its sink offers no geometry choice. */
-function pruneStripSinkGeometry(graph: EditorGraph): EditorGraph {
-  const sink = graph.nodes[RENDER_SINK_ID];
-  if (sink === undefined || !("geometry" in sink.parameters)) {
-    return graph;
-  }
-  const parameters = { ...sink.parameters };
-  delete parameters["geometry"];
-  return { ...graph, nodes: { ...graph.nodes, [RENDER_SINK_ID]: { ...sink, parameters } } };
-}
-
 /** A persisted trail or ribbon graph: normalized on its host, minus what a strip has no place for. */
 function normalizeStripGraph(raw: unknown, host: StripHost): EditorGraph {
-  return pruneStripSinkGeometry(pruneNonStripBindings(normalizeGraph(raw, GraphKind.Render, host)));
+  return pruneNonStripBindings(normalizeGraph(raw, GraphKind.Render, host));
 }
 
 function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
@@ -256,6 +255,53 @@ function normalizeAssets(raw: unknown): readonly TextureAsset[] {
         height: value["height"],
       });
     }
+  }
+  return assets;
+}
+
+/** A finite `[x, y, z]` from `raw`, or `undefined`. */
+function vec3(raw: unknown): readonly [number, number, number] | undefined {
+  return Array.isArray(raw) && raw.length === 3 && raw.every(isFiniteNumber)
+    ? [raw[0] as number, raw[1] as number, raw[2] as number]
+    : undefined;
+}
+
+/** Keeps only well-formed persisted volume-asset library entries (a positive integer size, a box
+ *  and a distance encoding). The payload may be empty, filled back in from the blob store. */
+function normalizeVolumeAssets(raw: unknown): readonly VolumeAsset[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const assets: VolumeAsset[] = [];
+  for (const value of raw) {
+    if (!isRecord(value) || typeof value["name"] !== "string") {
+      continue;
+    }
+    const size = vec3(value["size"]);
+    const boxMin = vec3(value["boxMin"]);
+    const boxMax = vec3(value["boxMax"]);
+    const { scale, bias, dataUrl } = value;
+    if (
+      size === undefined ||
+      !size.every((count) => Number.isInteger(count) && count > 0) ||
+      boxMin === undefined ||
+      boxMax === undefined ||
+      !isFiniteNumber(scale) ||
+      !isFiniteNumber(bias) ||
+      typeof dataUrl !== "string"
+    ) {
+      continue;
+    }
+    assets.push({
+      name: value["name"],
+      label: typeof value["label"] === "string" ? value["label"] : value["name"],
+      dataUrl,
+      size,
+      boxMin,
+      boxMax,
+      scale,
+      bias,
+    });
   }
   return assets;
 }

@@ -10,14 +10,13 @@ import { FXBehaviorNodeBuiltinAttribute } from "./FXBehaviorNodeBuiltinAttribute
 import { FXBehaviorNodeCustomAttribute } from "./FXBehaviorNodeCustomAttribute";
 import { FXBehaviorNodeCustomAttributeSplit } from "./FXBehaviorNodeCustomAttributeSplit";
 import { FXBehaviorNodeInheritedAttribute } from "./FXBehaviorNodeInheritedAttribute";
-import { FXBehaviorNodeRandomMeshPoint } from "./FXBehaviorNodeRandomMeshPoint";
 import { FXBehaviorNodeStoreAttribute } from "./FXBehaviorNodeStoreAttribute";
 import { FXBehaviorNodeTimelineValue } from "./FXBehaviorNodeTimelineValue";
 
 /**
  * Registers the hand-written **behavior** manual nodes: `store-attribute`/`custom-attribute`/
  * `custom-attribute-split`/`builtin-attribute` (the attribute channel), `inherited-attribute`
- * (what a newborn inherits), `timeline-value` and `random-mesh-point` (a binding the runtime fills).
+ * (what a newborn inherits) and `timeline-value`.
  * The attribute nodes carry an `attributeRequest` (so they cannot be `defineNode` descriptors),
  * but need no `three` resource, so the factories rebuild straight from snapshot params - no
  * resolver required.
@@ -51,10 +50,6 @@ export function registerManualBehaviorNodes(registry: FXNodeRegistry<FXBehaviorN
       ),
   );
   registry.register("builtin-attribute", () => new FXBehaviorNodeBuiltinAttribute());
-  registry.register(
-    "random-mesh-point",
-    (parameters) => new FXBehaviorNodeRandomMeshPoint(parameters?.["mesh"]),
-  );
   registry.register(
     "inherited-attribute",
     (parameters) =>

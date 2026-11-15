@@ -22,6 +22,13 @@ import { createToggleButton } from "../components/toggleButton";
 import { createElement } from "../dom";
 import { assetIcons, controlIcons, viewportIcons } from "../icons";
 import { field } from "../primitives/field";
+import {
+  numberRow,
+  sectionTitle,
+  setRowsHidden,
+  SETTINGS_ROW,
+  type SettingsRow,
+} from "./settingsRows";
 
 /** A view-settings tab: a label, its glyph and the rows of controls that fill its panel. */
 export interface PreviewSettingsGroup {
@@ -29,20 +36,6 @@ export interface PreviewSettingsGroup {
   readonly glyph: string;
   readonly rows: readonly HTMLElement[];
 }
-
-/** A settings row plus a resync hook, so a store {@link PersistedStore.reset} (preset apply /
- *  project load) can push the restored value into the control that renders it, not just the
- *  store behind it. */
-interface SettingsRow<TValue> {
-  readonly element: HTMLElement;
-  readonly setValue: (value: TValue) => void;
-}
-
-/** The class pair every Lighting/Scene/Gizmo settings row shares. */
-const PREVIEW_ROW = {
-  rowClassName: "preview-settings__row",
-  labelClassName: "preview-settings__label",
-} as const;
 
 export function createPreviewSettingsGroups(
   settings: PreviewSettingsStore,
@@ -62,7 +55,7 @@ export function createPreviewSettingsGroups(
     value: current.sun,
     onChange: (on) => settings.update({ sun: on }),
   });
-  const sunToggleRow = field(t("preview.enabled"), sunEnabledControl.element, PREVIEW_ROW);
+  const sunToggleRow = field(t("preview.enabled"), sunEnabledControl.element, SETTINGS_ROW);
   const sunColorControl = new ColorPicker({
     value: current.sunColor,
     alpha: false,
@@ -93,10 +86,10 @@ export function createPreviewSettingsGroups(
     onChange: (value): void => settings.update({ sunElevation: value }),
   });
   const sunValueRows = [
-    field(t("field.color"), sunColorControl.element, PREVIEW_ROW),
-    field(t("field.intensity"), sunIntensityControl.element, PREVIEW_ROW),
-    field(t("preview.azimuth"), sunAzimuthControl.element, PREVIEW_ROW),
-    field(t("preview.elevation"), sunElevationControl.element, PREVIEW_ROW),
+    field(t("field.color"), sunColorControl.element, SETTINGS_ROW),
+    field(t("field.intensity"), sunIntensityControl.element, SETTINGS_ROW),
+    field(t("preview.azimuth"), sunAzimuthControl.element, SETTINGS_ROW),
+    field(t("preview.elevation"), sunElevationControl.element, SETTINGS_ROW),
   ];
   const sunRows = [sunToggleRow, ...sunValueRows];
   // The manual Sun+Hemisphere fallback fields - hidden outright once a preset takes over (see
@@ -267,7 +260,7 @@ function toggleRow(
 ): SettingsRow<boolean> {
   const control = createSwitchControl({ title: label, description, value: initial, onChange });
   return {
-    element: field(label, control.element, PREVIEW_ROW),
+    element: field(label, control.element, SETTINGS_ROW),
     setValue: (value) => control.set(value),
   };
 }
@@ -296,7 +289,7 @@ function spaceRow(
     onChange,
   );
   return {
-    element: field(t("preview.space"), control.element, PREVIEW_ROW),
+    element: field(t("preview.space"), control.element, SETTINGS_ROW),
     setValue: (value) => control.setValue(value),
   };
 }
@@ -335,7 +328,7 @@ function snapRow(
     step.element,
   ]);
   return {
-    element: field(label, value, PREVIEW_ROW),
+    element: field(label, value, SETTINGS_ROW),
     setValue(setting: SnapSetting): void {
       state = setting;
       toggle.set(setting.enabled);
@@ -353,38 +346,9 @@ function colorRow(
 ): SettingsRow<Rgba> {
   const picker = new ColorPicker({ value: initial, alpha: false, onChange, palette });
   return {
-    element: field(label, picker.element, PREVIEW_ROW),
+    element: field(label, picker.element, SETTINGS_ROW),
     setValue: (value) => picker.setValue(value),
   };
-}
-
-/** A labelled scrubbable numeric row. */
-function numberRow(
-  label: string,
-  initial: number,
-  bounds: { min?: number; max?: number; step?: number; precision?: number },
-  onChange: (value: number) => void,
-): SettingsRow<number> {
-  const control = new NumberControl({ value: initial, ...bounds, onChange });
-  return {
-    element: field(label, control.element, PREVIEW_ROW),
-    setValue: (value) => control.setValue(value),
-  };
-}
-
-/** A muted subsection caption spanning the tab's full width (grid-column set in CSS). */
-function sectionTitle(label: string): HTMLElement {
-  return createElement("div", {
-    className: "preview-settings__section-title",
-    textContent: label,
-  });
-}
-
-/** Hides every row in `rows` entirely (not just greyed), or restores them. */
-function setRowsHidden(rows: readonly HTMLElement[], hidden: boolean): void {
-  for (const row of rows) {
-    row.classList.toggle("preview-settings__row--hidden", hidden);
-  }
 }
 
 /**
@@ -446,5 +410,5 @@ function presetRow(store: Store): HTMLElement {
   store.events.sourceViewChanged.on(refresh);
   store.events.sourceStructureChanged.on(refresh);
 
-  return field(t("preview.preset"), picker.element, PREVIEW_ROW);
+  return field(t("preview.preset"), picker.element, SETTINGS_ROW);
 }

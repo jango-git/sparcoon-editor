@@ -27,6 +27,7 @@ import type { FXExpr } from "../core/ir/FXExpr";
 import type { FXExprBuilderApi } from "../core/ir/FXExprBuilder";
 import { coerceNumeric, construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { FX_FUNCTIONS, signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
@@ -36,17 +37,23 @@ import type {
   FXKernelBindingDescriptor,
   FXKernelBindingHandle,
   FXKernelBufferLayout,
+  FXKernelResourceFields,
   FXKernelWrite,
 } from "./FXCompiledKernel";
 import type { FXKernelContext } from "./FXKernelContext";
 import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
-import { BUILTIN_BUFFER, FXKernelSurfaces } from "./FXKernelShared.Internal";
+import {
+  BUILTIN_BUFFER,
+  FXKernelResources,
+  KERNEL_RESOURCE_KINDS,
+} from "./FXKernelShared.Internal";
 import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import {
   type FXKernelUniform,
   inheritedUniform,
   inheritedUniformRead,
+  SCENE_DEPTH_UNIFORMS,
   transformFeedbackUniformBudget,
 } from "./FXKernelUniformsStandard.Internal";
 import {
@@ -122,7 +129,7 @@ const SYNTHESIZED_UNIFORM_NAMES: Readonly<
  *  `FXCompiledKernelPhase` (that shape assumes JS's untyped, string-keyed bindings-as-closures;
  *  GLSL needs each binding's declared type to print a `uniform` statement, so uniform
  *  declarations are tracked as real text here, not derived later from a value's runtime shape). */
-export interface FXCompiledPhaseStandard {
+export interface FXCompiledPhaseStandard extends FXKernelResourceFields {
   readonly helpers: readonly string[];
   /** The uniforms this phase declares: its bindings, then its draw uniforms. */
   readonly uniforms: readonly FXKernelUniform[];
@@ -130,14 +137,14 @@ export interface FXCompiledPhaseStandard {
   readonly writes: readonly FXKernelWrite[];
   /** The bound kill value (a float variable); update phase only. */
   readonly kill?: string;
+  /** Its resources are declared uniforms too (see {@link FXKernelResourceFields}), not bindings. */
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
-  /** The mesh asset each `sampler2D` surface uniform samples, by uniform; absent when none. A
-   *  surface is a declared uniform, not one of {@link bindings}. */
-  readonly surfaces?: Readonly<Record<string, string>>;
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly writtenBuffers: readonly string[];
   /** What is one for the whole pass, computed once per pass on the CPU (see `liftDrawStage`). */
   readonly draw?: FXCompiledKernelDrawStage;
+  /** Whether it reads the scene depth (a node {@link FXGraphNode.readsSceneDepth}); absent when not. */
+  readonly sceneDepth?: true;
 }
 
 /** A phase's draw stage: `compute`'s body, and the draw uniforms it fills, by type. */
@@ -169,7 +176,8 @@ class FXKernelStateStandard {
   private readonly helperMap = new Map<string, string>();
   private readonly uniforms: FXKernelUniform[] = [];
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
-  private readonly surfaces = new FXKernelSurfaces();
+  private readonly resources = new FXKernelResources();
+  private readsSceneDepth = false;
 
   /** `names` is the fused program's: shared with the other phase, whose uniforms sit beside
    *  this phase's in one program. */
@@ -212,13 +220,13 @@ class FXKernelStateStandard {
     return handle;
   }
 
-  /** The uniform `mesh`'s surface table is sampled through: a `sampler2D` the runtime binds a
-   *  texture to, not a value it uploads, so no binding. */
-  public allocateSurface(mesh: string): string {
-    return this.surfaces.nameOf(mesh, () => {
-      const name = this.uniqueName();
-      this.declareUniform(name, "sampler2D");
-      return name;
+  /** The sampler uniform asset `name` of `kind` is read through - the runtime binds a texture to
+   *  it, not a value it uploads, so no binding. */
+  public allocateAsset(kind: FXAssetKind, name: string): string {
+    return this.resources.nameOf(kind, name, () => {
+      const uniform = this.uniqueName();
+      this.declareUniform(uniform, KERNEL_RESOURCE_KINDS[kind].sampler.glslTypeName);
+      return uniform;
     });
   }
 
@@ -293,18 +301,27 @@ class FXKernelStateStandard {
       writes,
       ...(kill === undefined ? {} : { kill }),
       bindings,
-      ...this.surfaces.phaseField(),
+      ...this.resources.fields(),
       buffers,
       writtenBuffers: [...written],
       ...(lifted.stage === undefined
         ? {}
         : { draw: { stage: lifted.stage, uniforms: drawUniforms } }),
+      ...(this.readsSceneDepth ? { sceneDepth: true } : {}),
     };
   }
 
   /** Declares a uniform of the runtime's contract this phase needs, such as the inherited one. */
   public declareContractUniform(uniform: FXKernelUniform): void {
     this.uniforms.push(uniform);
+  }
+
+  /** Declares the scene depth's contract uniforms, for a phase with a node reading it. */
+  public declareSceneDepth(): void {
+    this.readsSceneDepth = true;
+    for (const uniform of SCENE_DEPTH_UNIFORMS) {
+      this.declareContractUniform(uniform);
+    }
   }
 
   private declareUniform(name: string, glslTypeName: string): void {
@@ -387,8 +404,12 @@ class FXParticleKernelContextStandard
     return this.state.allocateBinding(descriptor);
   }
 
-  public allocateSurface(mesh: string): FXExpr {
-    return ref("binding", this.state.allocateSurface(mesh), FX_VALUE_TYPES.sampler2D);
+  public allocateAsset(kind: FXAssetKind, name: string): FXExpr {
+    return ref(
+      "binding",
+      this.state.allocateAsset(kind, name),
+      KERNEL_RESOURCE_KINDS[kind].sampler,
+    );
   }
 
   public allocateValueParam(
@@ -456,6 +477,9 @@ function buildPhaseStandard(
   const inherited = inheritedUniform(target.inherit?.layout.stride ?? 0);
   if (inherited !== undefined) {
     state.declareContractUniform(inherited);
+  }
+  if (order.some((id) => view.getNode(id)?.readsSceneDepth === true)) {
+    state.declareSceneDepth();
   }
   const outputVariables = new Map<string, string>();
 

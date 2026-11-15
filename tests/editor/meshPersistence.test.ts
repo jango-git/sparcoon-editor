@@ -118,7 +118,7 @@ describe("saved document envelope", () => {
 
   it("keeps what it reads of a document from a later editor instead of starting fresh", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    loadSourceMock.mockReturnValue({ ...wrapProject(persistedScene(undefined)), version: 2 });
+    loadSourceMock.mockReturnValue({ ...wrapProject(persistedScene(undefined)), version: 3 });
     expect((await loadInitialState(noFallback)).source.scene.emitters).toHaveLength(1);
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();

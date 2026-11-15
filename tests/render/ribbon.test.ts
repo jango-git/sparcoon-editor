@@ -126,9 +126,9 @@ describe("emitter ribbon: document", () => {
     expect(stripSpawnWarnings("ribbon", burst).map((warning) => warning.code)).toEqual([
       "ribbon-interleaved-births",
     ]);
-    expect(
-      stripSpawnWarnings("ribbon", { ...burst, ribbonGraph: undefined } as EmitterDoc),
-    ).toEqual([]);
+    const { ribbonGraph, ...withoutRibbon } = burst;
+    expect(ribbonGraph).toBeDefined();
+    expect(stripSpawnWarnings("ribbon", withoutRibbon)).toEqual([]);
   });
 
   it("reads its Head off the surface sink, off by default, and warns when no play shows it", () => {

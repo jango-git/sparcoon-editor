@@ -22,6 +22,7 @@ import type { FXGraph } from "../core/FXGraph";
 import type { FXExpr } from "../core/ir/FXExpr";
 import { construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
@@ -46,7 +47,8 @@ import {
 import {
   BUILTIN_BUFFER,
   FX_BEHAVIOR_ALL_FUNCTIONS,
-  FXKernelSurfaces,
+  FXKernelResources,
+  KERNEL_RESOURCE_KINDS,
 } from "./FXKernelShared.Internal";
 import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
@@ -89,7 +91,7 @@ class FXKernelState {
   private readonly localsIR: FXKernelLocal[] = [];
   private readonly helperMap = new Map<string, string>();
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
-  private readonly surfaces = new FXKernelSurfaces();
+  private readonly resources = new FXKernelResources();
 
   /** `names` is the kernel's: shared with the other phase, whose bindings merge with this
    *  phase's by name. */
@@ -158,10 +160,12 @@ class FXKernelState {
     return handle;
   }
 
-  /** The name `mesh`'s surface table is read under: the kernel reads it from `bindings` like a
+  /** The name asset `name` of `kind` is read under - the kernel reads it from `bindings` like a
    *  binding, but the runtime adds it, so no value scrub reaches it. */
-  public allocateSurface(mesh: string): string {
-    return this.surfaces.nameOf(mesh, () => this.uniqueName("b_surface"));
+  public allocateAsset(kind: FXAssetKind, name: string): string {
+    return this.resources.nameOf(kind, name, () =>
+      this.uniqueName(`b_${KERNEL_RESOURCE_KINDS[kind].hint}`),
+    );
   }
 
   public assemblePhase(
@@ -193,7 +197,7 @@ class FXKernelState {
       epilogue,
       ...(kill === undefined ? {} : { kill }),
       bindings,
-      ...this.surfaces.phaseField(),
+      ...this.resources.fields(),
       buffers,
       writtenBuffers: [...written],
     };
@@ -294,8 +298,12 @@ class FXParticleKernelContext
     return this.state.allocateBinding(descriptor);
   }
 
-  public allocateSurface(mesh: string): FXExpr {
-    return ref("binding", this.state.allocateSurface(mesh), FX_VALUE_TYPES.sampler2D);
+  public allocateAsset(kind: FXAssetKind, name: string): FXExpr {
+    return ref(
+      "binding",
+      this.state.allocateAsset(kind, name),
+      KERNEL_RESOURCE_KINDS[kind].sampler,
+    );
   }
 
   /**

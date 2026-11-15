@@ -23,10 +23,4 @@ export abstract class FXBehaviorNode extends FXGraphNode<FXKernelContext> {
   public get inheritRequest(): FXInheritRequest | undefined {
     return undefined;
   }
-
-  /** The mesh asset this node samples, which the app must supply by that name. Absent for every
-   *  node but `random-mesh-point` with a mesh picked. */
-  public get meshSurface(): string | undefined {
-    return undefined;
-  }
 }

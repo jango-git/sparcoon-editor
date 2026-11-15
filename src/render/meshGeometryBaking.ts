@@ -1,11 +1,12 @@
 /**
  * Converts between a live `BufferGeometry` and the plain `position`/`normal`/`uv`/`index` arrays a
  * {@link MeshAsset} persists (ADR-0001). Baking runs once at upload; rebuilding runs wherever a
- * mesh asset needs a live geometry again (preview, or the content sheet's GLB re-download).
+ * mesh asset needs a live geometry again (preview, or a GLB written for download).
  */
 
 import type { BufferAttribute, InterleavedBufferAttribute } from "three";
-import { BufferGeometry, Float32BufferAttribute } from "three";
+import { BufferGeometry, Float32BufferAttribute, Mesh } from "three";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 
 import type { BakedMeshGeometry } from "../model/editorState";
 
@@ -70,4 +71,18 @@ export function buildGeometryFromArrays(baked: BakedMeshGeometry): BufferGeometr
   geometry.setAttribute("uv", new Float32BufferAttribute(baked.uv, 2));
   geometry.setIndex(Array.from(baked.index));
   return geometry;
+}
+
+/** A single-mesh GLB of a mesh asset's baked arrays - written anew, as the upload's own bytes are not
+ *  kept (ADR-0001). */
+export async function encodeMeshGlb(baked: BakedMeshGeometry): Promise<ArrayBuffer> {
+  const geometry = buildGeometryFromArrays(baked);
+  try {
+    // `binary: true` makes the result an ArrayBuffer.
+    return (await new GLTFExporter().parseAsync(new Mesh(geometry), {
+      binary: true,
+    })) as ArrayBuffer;
+  } finally {
+    geometry.dispose();
+  }
 }

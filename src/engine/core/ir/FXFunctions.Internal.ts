@@ -1,4 +1,11 @@
-import { FX_SURFACE_TEXEL_FLOATS } from "sparcoon";
+import {
+  FX_SURFACE_TEXEL_FLOATS,
+  FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_VIEW_PROJECTION_UNIFORM,
+  FX_VOLUME_HEADER_FLOATS,
+} from "sparcoon";
 
 import type { FXGLSLTypeName } from "../socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../socket/FXValueType";
@@ -439,13 +446,118 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     js: (args) => `${args[0]}[${args[1]} * ${String(FX_SURFACE_TEXEL_FLOATS)} + ${args[2]}]`,
   });
 
+  // A volume (sparcoon's `volumeTableLayout.ts`) at texture coordinates `uvw`, filtered linearly
+  // between texel centres and clamped to the edge texels - the R8 3D texture on the GPU, and the
+  // table's Float32Array read the same way on the CPU. No baseline form, as `meshFetch`.
+  definitions.push({
+    name: "volumeFetch",
+    signatures: [{ args: ["sampler3D", "vec3"], result: "float" }],
+    standardOnly: true,
+    packed: true,
+    glslStandard: (args) => `texture(${args[0]}, ${args[1]}).r`,
+    js: (args) => `fxVolumeFetch(${args.join(", ")})`,
+    jsHelper: FX_VOLUME_FETCH_HELPER,
+  });
+  // A volume's size in texels.
+  definitions.push({
+    name: "volumeSize",
+    signatures: [{ args: ["sampler3D"], result: "vec3" }],
+    standardOnly: true,
+    packed: true,
+    glslStandard: (args) => `vec3(textureSize(${args[0]}, 0))`,
+    // The header's components lie at the table's start.
+    js: (args) => `${args[0]}[${args[1]}]`,
+  });
+
+  // The surface of the scene depth at a world-space point, as `vec4(normal, distance)` - see
+  // FX_SCENE_DEPTH_CONTACT_HELPER. The depth reaches only the GPU simulation: on the CPU, as where
+  // the GPU has no depth to read, there is no surface.
+  definitions.push({
+    name: "sceneDepthContact",
+    signatures: [{ args: ["vec3", "float"], result: "vec4" }],
+    standardOnly: true,
+    packed: true,
+    glslStandard: (args) => `fxSceneDepthContact(${args[0]}, ${args[1]})`,
+    glslStandardHelper: FX_SCENE_DEPTH_CONTACT_HELPER,
+    // The component index comes last, after the point's three components and the thickness.
+    js: (args) => `[${NO_SURFACE_CONTACT.join(", ")}][${args[4]}]`,
+  });
+
   return new Map(definitions.map((definition) => [definition.name, definition]));
 }
+
+/** How far a point with no surface near it is from one - what a surface sample reads where there
+ *  is none. */
+export const FX_NO_SURFACE_DISTANCE = 1e6;
+
+/** `sceneDepthContact` where there is no surface: an up normal and {@link FX_NO_SURFACE_DISTANCE}. */
+const NO_SURFACE_CONTACT = [0, 1, 0, FX_NO_SURFACE_DISTANCE] as const;
+
+/** `volumeFetch` on the CPU - the trilinear blend of the 8 texels around `(u, v, w)` - sparcoon's
+ *  `fxVolumeFetch`, which an exported kernel imports in its place. */
+export const FX_VOLUME_FETCH_HELPER = `function fxVolumeFetch(t, u, v, w) {
+  var nx = t[0], ny = t[1], nz = t[2];
+  var x = Math.min(Math.max(u * nx - 0.5, 0), nx - 1);
+  var y = Math.min(Math.max(v * ny - 0.5, 0), ny - 1);
+  var z = Math.min(Math.max(w * nz - 0.5, 0), nz - 1);
+  var x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z);
+  var fx = x - x0, fy = y - y0, fz = z - z0;
+  var dx = x0 + 1 < nx ? 1 : 0, dy = y0 + 1 < ny ? nx : 0, dz = z0 + 1 < nz ? nx * ny : 0;
+  var i = ${String(FX_VOLUME_HEADER_FLOATS)} + x0 + nx * (y0 + ny * z0);
+  var a = t[i] + (t[i + dx] - t[i]) * fx;
+  var b = t[i + dy] + (t[i + dy + dx] - t[i + dy]) * fx;
+  var c = t[i + dz] + (t[i + dz + dx] - t[i + dz]) * fx;
+  var d = t[i + dz + dy] + (t[i + dz + dy + dx] - t[i + dz + dy]) * fx;
+  var e = a + (b - a) * fy;
+  return e + (c + (d - c) * fy - e) * fz;
+}`;
 
 const FX_MESH_FETCH_GLSL_STANDARD_HELPER = `vec4 fxMeshFetch(sampler2D table, float texel) {
   int index = int(texel);
   int width = textureSize(table, 0).x;
   return texelFetch(table, ivec2(index % width, index / width), 0);
+}`;
+
+/**
+ * `sceneDepthContact` on the GPU. The point is projected onto the depth texture with the
+ * view-projection the depth was drawn with, and the depth around it is unprojected back to world
+ * points with the inverse. The normal crosses the shorter of the two one-sided differences on each
+ * axis, so it does not bend across the edge of a silhouette, and faces the camera. There is no
+ * surface without depth, off screen, behind the camera, on the far plane (nothing drawn), or
+ * deeper than `thickness` behind the surface (the point is behind an occluder, not in it).
+ */
+const FX_SCENE_DEPTH_CONTACT_HELPER = `vec3 fxSceneDepthPoint(vec2 uv) {
+  vec4 point = ${FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM} * vec4(vec3(uv, texture(${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM}, uv).r) * 2.0 - 1.0, 1.0);
+  return point.xyz / point.w;
+}
+vec4 fxSceneDepthContact(vec3 position, float thickness) {
+  vec4 none = vec4(${NO_SURFACE_CONTACT.map((value) => value.toFixed(1)).join(", ")});
+  if (${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM}.z == 0.0) {
+    return none;
+  }
+  vec4 clip = ${FX_TRANSFORM_FEEDBACK_VIEW_PROJECTION_UNIFORM} * vec4(position, 1.0);
+  if (clip.w <= 0.0 || any(greaterThan(abs(clip.xy), vec2(clip.w)))) {
+    return none;
+  }
+  vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
+  if (texture(${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM}, uv).r >= 1.0) {
+    return none;
+  }
+  vec2 texel = ${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM}.xy;
+  vec3 center = fxSceneDepthPoint(uv);
+  vec3 right = fxSceneDepthPoint(uv + vec2(texel.x, 0.0)) - center;
+  vec3 left = center - fxSceneDepthPoint(uv - vec2(texel.x, 0.0));
+  vec3 up = fxSceneDepthPoint(uv + vec2(0.0, texel.y)) - center;
+  vec3 down = center - fxSceneDepthPoint(uv - vec2(0.0, texel.y));
+  vec3 normal = cross(dot(right, right) < dot(left, left) ? right : left, dot(up, up) < dot(down, down) ? up : down);
+  float area = length(normal);
+  if (area == 0.0) {
+    return none;
+  }
+  vec4 near = ${FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM} * vec4(uv * 2.0 - 1.0, -1.0, 1.0);
+  normal /= dot(normal, near.xyz / near.w - center) < 0.0 ? -area : area;
+  float distance = dot(position - center, normal);
+  return distance < -thickness ? none : vec4(normal, distance);
 }`;
 
 /** The canonical, backend-neutral function registry. */

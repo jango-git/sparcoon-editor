@@ -1,5 +1,5 @@
 /**
- * The asset libraries' heavy payloads - texture and HDRI bytes, mesh geometry - kept out of the
+ * The asset libraries' heavy payloads - texture, HDRI and volume bytes, mesh geometry - kept out of the
  * autosaved document: they quickly pass `localStorage`'s ~5-10MB per-origin quota, and then the
  * whole document write fails, not just the payloads. The document keeps each asset's metadata and
  * leaves its payload empty once the payload is confirmed stored here; on load it is filled back in.
@@ -16,6 +16,7 @@ import type {
   EnvironmentAsset,
   MeshAsset,
   TextureAsset,
+  VolumeAsset,
 } from "../model/editorState";
 import { isRecord } from "../util/guards";
 import {
@@ -23,6 +24,7 @@ import {
   MESH_BLOB_STORE,
   runBlobRequest,
   TEXTURE_BLOB_STORE,
+  VOLUME_BLOB_STORE,
 } from "./blobDatabase.Internal";
 
 /** Where one library's payloads go. An IndexedDB store in the editor; an in-memory map in tests. */
@@ -186,3 +188,7 @@ export const environmentBlobs = new BlobSync(
   indexedDbBlobBackend(ENVIRONMENT_BLOB_STORE),
 );
 export const meshBlobs = new BlobSync(MESH_GEOMETRY_PAYLOAD, indexedDbBlobBackend(MESH_BLOB_STORE));
+export const volumeBlobs = new BlobSync(
+  dataUrlPayload<VolumeAsset>(),
+  indexedDbBlobBackend(VOLUME_BLOB_STORE),
+);

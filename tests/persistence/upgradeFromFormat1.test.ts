@@ -7,8 +7,12 @@ import type {
   GraphOutputBinding,
 } from "../../src/domain/graphModel";
 import { createEmptyGraph } from "../../src/domain/graphModel";
+import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
-import { migrateRenamedNodes } from "../../src/persistence/renamedNodes";
+import {
+  migrateRenamedNodes,
+  upgradeFromFormat1,
+} from "../../src/persistence/upgrades/fromFormat1";
 
 function node(id: string, type: string, parameters: Record<string, unknown> = {}): GraphNode {
   return { id, type, parameters, position: { x: 0, y: 0 } };
@@ -205,5 +209,92 @@ describe("migrateRenamedNodes", () => {
     expect(migrated?.nodes["cyl"]).toEqual({ ...noParameters, type: "random-cylinder-point" });
     expect(migrated?.connections).toEqual([noTarget, notAWire]);
     expect(migrated?.outputBindings).toEqual([noSource]);
+  });
+});
+
+describe("upgradeFromFormat1", () => {
+  const cylinder = node("cyl", "spawn-cylinder", { length: 3 });
+  const renamed = node("cyl", "random-cylinder-point", { height: 3 });
+  const sink = node(RENDER_SINK_ID, "surface-sink", { renderMode: "lit", geometry: "box" });
+  const stripSink = node(RENDER_SINK_ID, "surface-sink", { renderMode: "lit" });
+
+  it("maps the renames in every graph of every emitter and mesh", () => {
+    const graph = { nodes: { cyl: cylinder }, connections: [], outputBindings: [] };
+    const upgraded = { nodes: { cyl: renamed }, connections: [], outputBindings: [] };
+    const body = {
+      name: "fx",
+      scene: {
+        emitters: [
+          {
+            id: "e",
+            renderGraph: graph,
+            behaviorGraph: graph,
+            trailGraph: graph,
+            ribbonGraph: graph,
+          },
+        ],
+        meshes: [{ id: "m", renderGraph: graph }],
+      },
+    };
+    expect(upgradeFromFormat1(body)).toEqual({
+      name: "fx",
+      scene: {
+        emitters: [
+          {
+            id: "e",
+            renderGraph: upgraded,
+            behaviorGraph: upgraded,
+            trailGraph: upgraded,
+            ribbonGraph: upgraded,
+          },
+        ],
+        meshes: [{ id: "m", renderGraph: upgraded }],
+      },
+    });
+  });
+
+  it("drops the geometry of a trail's and a ribbon's sink, and only theirs", () => {
+    const graph = { nodes: { [RENDER_SINK_ID]: sink } };
+    const body = {
+      scene: {
+        emitters: [{ id: "e", renderGraph: graph, trailGraph: graph, ribbonGraph: graph }],
+        meshes: [{ id: "m", renderGraph: graph }],
+      },
+    };
+    expect(upgradeFromFormat1(body)).toEqual({
+      scene: {
+        emitters: [
+          {
+            id: "e",
+            renderGraph: graph,
+            trailGraph: { nodes: { [RENDER_SINK_ID]: stripSink } },
+            ribbonGraph: { nodes: { [RENDER_SINK_ID]: stripSink } },
+          },
+        ],
+        meshes: [{ id: "m", renderGraph: graph }],
+      },
+    });
+  });
+
+  it("adds nothing a format-1 body lacks", () => {
+    const body = {
+      scene: { emitters: [{ id: "e", trailGraph: { nodes: { cyl: cylinder } } }] },
+    };
+    expect(upgradeFromFormat1(body)).toEqual({
+      scene: { emitters: [{ id: "e", trailGraph: { nodes: { cyl: renamed } } }] },
+    });
+  });
+
+  it("passes a body, a scene, an emitter or a graph not shaped as format 1 through as it is", () => {
+    for (const body of [undefined, "junk", [], { scene: "junk" }, { scene: { emitters: "x" } }]) {
+      expect(upgradeFromFormat1(body)).toEqual(body);
+    }
+    const damaged = {
+      scene: {
+        emitters: ["junk", { id: "e", renderGraph: "junk", trailGraph: { nodes: [] } }],
+        meshes: [0, { id: "m", renderGraph: { nodes: { [RENDER_SINK_ID]: "junk" } } }],
+      },
+    };
+    expect(upgradeFromFormat1(damaged)).toEqual(damaged);
   });
 });

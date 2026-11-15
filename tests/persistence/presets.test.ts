@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { libraryAssetNames } from "../../src/model/selectors";
 import { compileEmitter, compileMesh } from "../../src/persistence/exportCompile";
 import { EMPTY_PRESET, PROJECT_PRESETS, SPARKS_PRESET } from "../../src/persistence/presets";
 import { loadedProject } from "../helpers/loadedProject";
@@ -47,10 +48,10 @@ describe("bundled project presets", () => {
       const source = loadedProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
       // As the export compiles them: against the preset's content library.
-      const meshAssetNames = source!.meshAssets.map((asset) => asset.name);
+      const library = libraryAssetNames(source!);
       for (const emitter of source!.scene.emitters) {
         expect(
-          () => compileEmitter(emitter, undefined, meshAssetNames),
+          () => compileEmitter(emitter, undefined, library),
           `${preset.fileName}: ${emitter.name}`,
         ).not.toThrow();
       }

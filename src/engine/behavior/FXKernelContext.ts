@@ -1,5 +1,6 @@
 import type { FXCompilerContext } from "../core/compiler/FXCompilerContext";
 import type { FXExpr } from "../core/ir/FXExpr";
+import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type { FXKernelBindingDescriptor, FXKernelBindingHandle } from "./FXCompiledKernel";
 
@@ -15,9 +16,8 @@ export interface FXKernelContext extends FXCompilerContext {
   allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle;
 
   /**
-   * The surface table of mesh asset `mesh`, as a `sampler2D` value for `meshFetch`: no binding,
-   * but a resource the runtime fills from the app's geometry of that name (the phase's `surfaces`).
-   * Every call for one mesh in a phase reads the same table.
+   * A mesh asset as its surface table, a `sampler2D` for `meshFetch` (the phase's `meshSurfaces`), or a
+   * volume asset as its R8 3D texture, a `sampler3D` for `volumeFetch` (the phase's `volumes`).
    */
-  allocateSurface(mesh: string): FXExpr;
+  allocateAsset(kind: FXAssetKind, name: string): FXExpr;
 }

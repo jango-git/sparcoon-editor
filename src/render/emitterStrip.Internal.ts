@@ -9,7 +9,6 @@ import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
 import type { FXStripOptions } from "sparcoon/editor";
 
 import { unwrittenAttributeWarnings } from "../domain/attributeChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorAttribute } from "../domain/graphModel";
 import {
   type FXRenderArtifactsByTier,
@@ -17,6 +16,7 @@ import {
   RenderBudgetMemo,
   stripRenderBudgetFindings,
 } from "../domain/renderBudget";
+import { depthFadeModeErrors } from "../domain/sceneDepthChecks";
 import { stripRuntimeFields, type StripSinkConfigs } from "../domain/sinkMeta";
 import { STRIP_GEOMETRY, stripAttributeErrors, stripSortError } from "../domain/stripChecks";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";

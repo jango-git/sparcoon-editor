@@ -11,8 +11,8 @@
  */
 
 const DATABASE_NAME = "sparcoon-editor";
-// 1: environmentBlobs. 2: + textureBlobs, meshBlobs.
-const DATABASE_VERSION = 2;
+// Version 1 holds environmentBlobs, 2 adds textureBlobs and meshBlobs, 3 adds volumeBlobs.
+const DATABASE_VERSION = 3;
 
 /**
  * How long an open may take before it counts as failed. Some browsers' private modes leave
@@ -28,7 +28,10 @@ export const TEXTURE_BLOB_STORE = "textureBlobs";
 /** Mesh assets' baked geometry (see assetBlobStore.ts). */
 export const MESH_BLOB_STORE = "meshBlobs";
 
-const STORES = [ENVIRONMENT_BLOB_STORE, TEXTURE_BLOB_STORE, MESH_BLOB_STORE];
+/** Volume assets' PNG atlas `dataUrl`s (see assetBlobStore.ts). */
+export const VOLUME_BLOB_STORE = "volumeBlobs";
+
+const STORES = [ENVIRONMENT_BLOB_STORE, TEXTURE_BLOB_STORE, MESH_BLOB_STORE, VOLUME_BLOB_STORE];
 
 /** The session's connection while it is usable (or being opened); `undefined` opens a new one. */
 let connection: Promise<IDBDatabase> | undefined;
@@ -70,7 +73,7 @@ function openDatabase(): Promise<IDBDatabase> {
       clearTimeout(timer);
       fail(request.error ?? new Error("indexedDB open failed"));
     };
-    // Another tab still holds version 1 open: fail this attempt (the caller degrades) instead of
+    // Another tab still holds an older version open - fail this attempt (the caller degrades) instead of
     // waiting on it. Should it open after all, onsuccess closes it.
     request.onblocked = (): void => {
       clearTimeout(timer);

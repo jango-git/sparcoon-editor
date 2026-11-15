@@ -2,6 +2,7 @@ import type { FXBehaviorNode } from "../behavior/FXBehaviorNode";
 import type { FXNodeRegistry } from "../core/live/FXNodeRegistry";
 import type { FXNodeDefinition } from "../core/nodes/defineNode";
 import type { FXRenderNode } from "../render/FXRenderNode";
+import { FX_BEHAVIOR_ASSET_NODES } from "./behavior/assets";
 import { FX_BEHAVIOR_COLLISION_NODES } from "./behavior/collision";
 import { FX_BEHAVIOR_FORCE_NODES } from "./behavior/forces";
 import { FX_BEHAVIOR_INTEGRATE_NODES } from "./behavior/integrate";
@@ -27,6 +28,7 @@ export const FX_STANDARD_NODES: readonly FXNodeDefinition[] = [
   ...FX_BEHAVIOR_INTEGRATE_NODES,
   ...FX_BEHAVIOR_COLLISION_NODES,
   ...FX_BEHAVIOR_SPAWN_NODES,
+  ...FX_BEHAVIOR_ASSET_NODES,
   ...FX_RENDER_SOURCE_NODES,
   ...FX_RENDER_CONTENT_NODES,
   ...FX_RENDER_EFFECT_NODES,

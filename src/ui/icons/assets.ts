@@ -35,6 +35,18 @@ export const assetIcons = {
     <path d="M2.5 5 8 8l5.5-3M8 8v6"/>
   </svg>`,
 
+  // Nested rounded squares, the outer dashed - a volume asset, a distance field's contours.
+  volume: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="5" y="5" width="6" height="6" rx="1.5"/>
+    <rect x="2" y="2" width="12" height="12" rx="3.5" stroke-dasharray="2.4 2.2"/>
+  </svg>`,
+
+  // A cube inside a dashed contour - bake a mesh into a volume.
+  bakeVolume: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M8 5 11 6.6v3.3L8 11.5 5 9.9V6.6z"/>
+    <rect x="1.5" y="1.5" width="13" height="13" rx="3.5" stroke-dasharray="2.4 2.2"/>
+  </svg>`,
+
   // A dashed empty square: the blank-project preset's preview, no thumbnail applies.
   blank: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="3" y="3" width="10" height="10" rx="1.5" stroke-dasharray="2.4 2.2"/>

@@ -158,8 +158,10 @@ export type FXCompilerErrorCode =
   // (domain/stripChecks.ts).
   | "ribbon-interleaved-births"
   | "ribbon-head-without-play"
-  // A Depth Fade node in a graph whose render mode writes depth (domain/depthFadeChecks.ts).
+  // A Depth Fade node in a graph whose render mode writes depth, and a warning on a Depth Sample
+  // on an emitter simulated on the CPU (domain/sceneDepthChecks.ts).
   | "depth-fade-needs-blending"
+  | "scene-depth-on-cpu"
   // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
   | "param-value-conflict"
   // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).
@@ -167,9 +169,9 @@ export type FXCompilerErrorCode =
   // A warning: an emitter whose longest particle lifetime cannot be read off its graph
   // (domain/lifetimeBound.ts).
   | "lifetime-unbounded"
-  // A Random Mesh Point node naming a mesh asset the content library does not hold
-  // (domain/meshSurfaceChecks.ts).
+  // A node sampling a mesh / volume asset the content library does not hold (domain/assetChecks.ts).
   | "missing-mesh-asset"
+  | "missing-volume-asset"
   | "inherit-missing"
   | "inherit-mistyped"
   | "inherit-unwritten"

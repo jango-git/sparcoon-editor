@@ -5,6 +5,7 @@ import type {
   MeshAsset,
   SourceState,
   TextureAsset,
+  VolumeAsset,
 } from "../../src/model/editorState";
 import type * as assetBlobStore from "../../src/persistence/assetBlobStore";
 
@@ -14,6 +15,7 @@ const backends = vi.hoisted(() => ({
   texture: new Map<string, unknown>(),
   environment: new Map<string, unknown>(),
   mesh: new Map<string, unknown>(),
+  volume: new Map<string, unknown>(),
   available: true,
   renew: (): void => undefined,
 }));
@@ -37,6 +39,7 @@ vi.mock("../../src/persistence/assetBlobStore", async (importOriginal) => {
     textureBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.texture)),
     environmentBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.environment)),
     meshBlobs: new actual.BlobSync(actual.MESH_GEOMETRY_PAYLOAD, memory(backends.mesh)),
+    volumeBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.volume)),
   });
   let current = fresh();
   backends.renew = (): void => {
@@ -56,6 +59,7 @@ vi.mock("../../src/persistence/assetBlobStore", async (importOriginal) => {
     textureBlobs: delegate("textureBlobs"),
     environmentBlobs: delegate("environmentBlobs"),
     meshBlobs: delegate("meshBlobs"),
+    volumeBlobs: delegate("volumeBlobs"),
   };
 });
 
@@ -76,6 +80,19 @@ function environment(name: string, dataUrl: string): EnvironmentAsset {
   return { name, label: `${name}.hdr`, dataUrl, byteSize: 3 };
 }
 
+function volume(name: string, dataUrl: string): VolumeAsset {
+  return {
+    name,
+    label: name,
+    dataUrl,
+    size: [2, 2, 2],
+    boxMin: [-1, -1, -1],
+    boxMax: [1, 1, 1],
+    scale: 2,
+    bias: -1,
+  };
+}
+
 function mesh(name: string, position: readonly number[]): MeshAsset {
   return {
     name,
@@ -90,14 +107,16 @@ function sourceWith(
   assets: readonly TextureAsset[],
   environments: readonly EnvironmentAsset[] = [],
   meshAssets: readonly MeshAsset[] = [],
+  volumeAssets: readonly VolumeAsset[] = [],
 ): SourceState {
-  return { assets, environments, meshAssets } as unknown as SourceState;
+  return { assets, environments, meshAssets, volumeAssets } as unknown as SourceState;
 }
 
 interface SavedDocument {
   assets: TextureAsset[];
   environments: EnvironmentAsset[];
   meshAssets: MeshAsset[];
+  volumeAssets: VolumeAsset[];
 }
 
 /** The saved document's source; it is stored in the project envelope. */
@@ -114,6 +133,7 @@ beforeEach(() => {
   backends.texture.clear();
   backends.environment.clear();
   backends.mesh.clear();
+  backends.volume.clear();
   backends.available = true;
   storage.setItem = (key, value): void => void written.set(key, value);
 });
@@ -127,7 +147,12 @@ describe("saveSource", () => {
     };
     const rock = mesh("Rock", [1, 2, 3]);
     saveSource(
-      sourceWith([texture("tSmoke", "data:a")], [environment("studio", "data:h")], [rock]),
+      sourceWith(
+        [texture("tSmoke", "data:a")],
+        [environment("studio", "data:h")],
+        [rock],
+        [volume("Rock SDF", "data:v")],
+      ),
     );
     expect(writes).toEqual([]);
     await settle();
@@ -136,6 +161,8 @@ describe("saveSource", () => {
     expect(backends.mesh.get("Rock")).toBe(rock.geometry);
     expect(saved().meshAssets[0]).toMatchObject({ name: "Rock", byteSize: 10 });
     expect(saved().meshAssets[0]?.geometry.position).toEqual([]);
+    expect(backends.volume.get("Rock SDF")).toBe("data:v");
+    expect(saved().volumeAssets[0]).toMatchObject({ name: "Rock SDF", dataUrl: "", scale: 2 });
     expect(writes).toHaveLength(1);
     expect(writes[0]).not.toContain("data:a");
     expect(saved().assets[0]).toMatchObject({ name: "tSmoke", dataUrl: "", width: 4 });
@@ -180,11 +207,18 @@ describe("hydrateSource", () => {
     backends.texture.set("tSmoke", "data:a");
     backends.environment.set("studio", "data:h");
     backends.mesh.set("Rock", { position: [1, 2, 3], normal: [0, 1, 0], uv: [0, 0], index: [0] });
+    backends.volume.set("Rock SDF", "data:v");
     const source = await hydrateSource(
-      sourceWith([texture("tSmoke", "")], [environment("studio", "")], [mesh("Rock", [])]),
+      sourceWith(
+        [texture("tSmoke", "")],
+        [environment("studio", "")],
+        [mesh("Rock", [])],
+        [volume("Rock SDF", "")],
+      ),
     );
     expect(source.assets[0]?.dataUrl).toBe("data:a");
     expect(source.environments[0]?.dataUrl).toBe("data:h");
     expect(source.meshAssets[0]?.geometry.position).toEqual([1, 2, 3]);
+    expect(source.volumeAssets[0]?.dataUrl).toBe("data:v");
   });
 });

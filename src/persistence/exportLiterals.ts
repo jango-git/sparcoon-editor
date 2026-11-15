@@ -325,28 +325,49 @@ export function importLine(
   return lines.join("\n");
 }
 
-/** The `<Name>Assets` constructor-parameter interface: one entry per external slot, a single flat
- *  namespace shared by textures and mesh geometries (ADR-0002), not a nested shape. A texture slot
- *  takes the runtime's `FXExternalTexture`: a whole `Texture`, or an atlas region of one. */
-export function assetsInterface(
-  className: string,
-  textureNames: readonly string[],
-  geometryNames: readonly string[],
-): string {
-  const collision = geometryNames.find((name) => textureNames.includes(name));
-  if (collision !== undefined) {
-    throw new Error(
-      `exportTypeScript: "${collision}" names both a Texture-node parameter and a custom mesh-asset ` +
-        "geometry source - rename one so the exported Assets interface has one entry per name.",
-    );
+/** The names of an exported effect's external assets, by what the app supplies for each. */
+export interface ExternalAssetNames {
+  /** Texture-node parameters - an `FXExternalTexture`. */
+  readonly textures: readonly string[];
+  /** Custom geometries and the mesh surfaces a behavior samples - a `BufferGeometry`. */
+  readonly geometries: readonly string[];
+  /** The volumes a behavior samples - an R8 `Data3DTexture`. */
+  readonly volumes: readonly string[];
+}
+
+/** The type the app supplies an asset of each list as. */
+const EXTERNAL_ASSET_TYPES: Readonly<Record<keyof ExternalAssetNames, string>> = {
+  textures: "FXExternalTexture",
+  geometries: "BufferGeometry",
+  volumes: "Data3DTexture",
+};
+
+/** The `<Name>Assets` constructor-parameter interface - one entry per external asset, a single flat
+ *  namespace shared by every kind (ADR-0002), not a nested shape. A texture slot takes the runtime's
+ *  `FXExternalTexture` - a whole `Texture`, or an atlas region of one. */
+export function assetsInterface(className: string, names: ExternalAssetNames): string {
+  const lists = Object.keys(EXTERNAL_ASSET_TYPES) as (keyof ExternalAssetNames)[];
+  const owners = new Map<string, keyof ExternalAssetNames>();
+  for (const list of lists) {
+    for (const name of names[list]) {
+      const owner = owners.get(name);
+      if (owner !== undefined) {
+        throw new Error(
+          `exportTypeScript: "${name}" names both one of the ${owner} and one of the ${list} - ` +
+            "rename one so the exported Assets interface has one entry per name.",
+        );
+      }
+      owners.set(name, list);
+    }
   }
-  if (textureNames.length === 0 && geometryNames.length === 0) {
+  if (owners.size === 0) {
     return `export type ${className}Assets = Record<string, never>;`;
   }
-  const fields = [
-    ...textureNames.map((name) => `  ${propertyKey(name)}: FXExternalTexture;`),
-    ...geometryNames.map((name) => `  ${propertyKey(name)}: BufferGeometry;`),
-  ].join("\n");
+  const fields = lists
+    .flatMap((list) =>
+      names[list].map((name) => `  ${propertyKey(name)}: ${EXTERNAL_ASSET_TYPES[list]};`),
+    )
+    .join("\n");
   return `export interface ${className}Assets {\n${fields}\n}`;
 }
 

@@ -202,3 +202,36 @@ describe("standard behavior collision - cone-collision numerics", () => {
     }
   });
 });
+
+describe("standard behavior collision - field-collision numerics", () => {
+  /** A field collider fed a constant distance and normal. */
+  function field(distance: number, normal: readonly number[]): FXGraph<FXBehaviorNode> {
+    return graphOf(
+      {
+        rv: readAttr("velocity", VEC3),
+        d: reg.create("constant", { type: "float", value: distance, phase: "update" }),
+        n: reg.create("constant", { type: "vec3", value: [...normal], phase: "update" }),
+        c: reg.create("field-collision", { radius: 0.05, restitution: 0.5, friction: 0 }),
+        sv: storeAttr("velocity", VEC3),
+      },
+      [
+        edge("rv", "value", "c", "velocity"),
+        edge("d", "out", "c", "distance"),
+        edge("n", "out", "c", "normal"),
+        edge("c", "velocity", "sv", "value"),
+      ],
+      [bind(attributeSlot("velocity"), "sv", "value")],
+    );
+  }
+
+  it("bounces off the surface it is given, along its normal, unnormalized", () => {
+    const v = runOneStep(field(0, [0, 2, 0]), [0, 0, 0], [0, -2, 0]);
+    expect(v[Y]).toBeCloseTo(1, 6);
+    expect(v[X]).toBeCloseTo(0, 6);
+  });
+
+  it("passes velocity through clear of the surface, and with a zero normal", () => {
+    expect(runOneStep(field(1, [0, 1, 0]), [0, 0, 0], [0, -2, 0])[Y]).toBeCloseTo(-2, 6);
+    expect(runOneStep(field(0, [0, 0, 0]), [0, 0, 0], [0, -2, 0])[Y]).toBeCloseTo(-2, 6);
+  });
+});

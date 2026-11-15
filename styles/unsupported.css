@@ -28,3 +28,19 @@
   line-height: 1.5;
   color: var(--muted);
 }
+
+.unsupported__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+}
+
+.unsupported__link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.unsupported__link:hover {
+  text-decoration: underline;
+}

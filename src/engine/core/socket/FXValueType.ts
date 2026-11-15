@@ -18,6 +18,7 @@ export type FXValueTypeId =
   | "mat3"
   | "mat4"
   | "sampler2D"
+  | "sampler3D"
   | "int"
   | "ivec2"
   | "ivec3"
@@ -49,6 +50,12 @@ export const FX_VALUE_TYPES: Readonly<Record<FXValueTypeId, FXValueType>> = Obje
   sampler2D: Object.freeze({
     id: "sampler2D",
     glslTypeName: "sampler2D",
+    components: -1,
+    instantiable: false,
+  }),
+  sampler3D: Object.freeze({
+    id: "sampler3D",
+    glslTypeName: "sampler3D",
     components: -1,
     instantiable: false,
   }),

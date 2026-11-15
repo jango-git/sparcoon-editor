@@ -4,10 +4,12 @@ export {
   addMeshAsset,
   addPaletteSwatch,
   addTextureAsset,
+  addVolumeAsset,
   removeEnvironmentAsset,
   removeMeshAsset,
   removePaletteSwatch,
   removeTextureAsset,
+  removeVolumeAsset,
   setActiveEnvironment,
 } from "./assetCommands";
 export {
@@ -45,6 +47,7 @@ export {
   removeNode,
   replaceNodeParams,
   updateNodeParam,
+  updateNodeParams,
 } from "./graphCommands";
 export { nextIdentifier } from "./identifier";
 export { arrangeActiveGraph } from "./layoutCommands";

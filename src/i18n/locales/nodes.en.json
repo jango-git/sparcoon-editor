@@ -1295,6 +1295,39 @@
     },
     "searchTags": ["floor", "ground", "bounce", "collide", "collision"]
   },
+  "field-collision": {
+    "description": "Bounces particles off any surface given as the particle's signed distance to it and the outward normal there, such as an SDF Sample's, with radius, restitution and friction.",
+    "inputs": {
+      "distance": {
+        "label": "Distance"
+      },
+      "friction": {
+        "label": "Friction"
+      },
+      "normal": {
+        "label": "Normal"
+      },
+      "radius": {
+        "label": "Radius"
+      },
+      "restitution": {
+        "label": "Restitution"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "label": "Field Collision",
+    "outputs": {
+      "contact": {
+        "label": "Contact"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["sdf", "distance", "field", "bounce", "collide", "collision", "surface", "mesh"]
+  },
   "point-force": {
     "description": "Accelerates particles toward or away from a point, with a falloff mode.",
     "inputs": {
@@ -1416,6 +1449,67 @@
       }
     },
     "searchTags": ["random", "point", "sample", "surface", "geometry", "model", "shape", "emit"]
+  },
+  "sdf-sample": {
+    "description": "The signed distance from Position to the surface a volume asset holds (an SDF), negative inside, and the outward normal there. The volume fills the box from Box Min to Box Max, in the space Position is in, and a texel's value v (its byte over 255) is the distance v * Scale + Bias; picking a volume sets these from its bake. Outside the box the distance grows by the distance to the box. The app supplies the volume as an R8 3D texture under the asset's name.",
+    "inputs": {
+      "position": {
+        "label": "Position"
+      },
+      "boxMin": {
+        "label": "Box Min"
+      },
+      "boxMax": {
+        "label": "Box Max"
+      },
+      "scale": {
+        "label": "Scale"
+      },
+      "bias": {
+        "label": "Bias"
+      }
+    },
+    "label": "SDF Sample",
+    "outputs": {
+      "distance": {
+        "label": "Distance"
+      },
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "searchTags": [
+      "sdf",
+      "signed",
+      "distance",
+      "field",
+      "volume",
+      "3d",
+      "texture",
+      "surface",
+      "mesh"
+    ]
+  },
+  "scene-depth-sample": {
+    "description": "The signed distance from Position to the opaque scene the emitter's camera sees, and the normal there facing the camera, both in world space, read from the camera's depth of the frame before. A point more than Thickness behind the surface is behind an occluder and finds none, as does a point off screen or behind the camera. Only the GPU simulation reads the depth: simulated on the CPU, it finds no surface. Wire it into Field Collision to bounce particles off the scene.",
+    "inputs": {
+      "position": {
+        "label": "Position"
+      },
+      "thickness": {
+        "label": "Thickness"
+      }
+    },
+    "label": "Depth Sample",
+    "outputs": {
+      "distance": {
+        "label": "Distance"
+      },
+      "normal": {
+        "label": "Normal"
+      }
+    },
+    "searchTags": ["depth", "scene", "buffer", "collision", "surface", "screen", "distance"]
   },
   "builtin-attribute": {
     "description": {

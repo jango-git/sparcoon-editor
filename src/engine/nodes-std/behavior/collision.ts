@@ -2,7 +2,7 @@ import type { FXExpr } from "../../core/ir/FXExpr";
 import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import { VELOCITY_INPUT } from "./common";
+import { nonZero, unitOrZero, VELOCITY_INPUT } from "./common";
 
 /**
  * Standard-library collision behavior nodes (update phase). A collision node returns a corrected
@@ -65,11 +65,6 @@ const BOUNCE_COST = 33;
 /** The outputs every collider shares (see {@link bounce}). */
 const COLLIDER_OUTPUTS = { velocity: { type: "vec3" }, contact: { type: "float" } } as const;
 
-/** `value`, or 1 where it is exactly 0: a divisor that keeps a degenerate direction finite. */
-function nonZero(value: FXExpr, fn: FXExprBuilderApi): FXExpr {
-  return fn.select(fn.eq(value, fn.lit(0)), fn.lit(1), value);
-}
-
 /**
  * Plane collision: a half-space collider (point + normal); the particle is a sphere of `radius`.
  * Responds only while penetrating *and* moving into the surface, so a separating particle doesn't jitter.
@@ -98,11 +93,9 @@ export const fxPlaneCollision = defineNode({
   cost: 23 + BOUNCE_COST,
   reads: ["PARTICLE_POSITION"],
   build: ({ inputs, local, fn }) => {
-    // Normalize the plane normal, guarding a zero-length normal to unit length so the
-    // signed-distance and projection math below stays finite for a degenerate input.
-    const normalLength = local("pc_nlen", fn.call("length", inputs["normal"]));
-    const safeNormalLength = nonZero(normalLength, fn);
-    const unitNormal = local("pc_n", fn.div(inputs["normal"], safeNormalLength));
+    // A zero-length normal stays zero, so the signed-distance and projection math below stays
+    // finite for a degenerate input.
+    const unitNormal = unitOrZero(inputs["normal"], "pc_n", local, fn);
 
     // Signed distance of the center to the plane.
     const signedDistance = local(
@@ -110,6 +103,35 @@ export const fxPlaneCollision = defineNode({
       fn.call("dot", fn.sub(inputs["position"], inputs["point"]), unitNormal),
     );
     return bounce("pc", inputs, { unitNormal, signedDistance }, local, fn);
+  },
+});
+
+/**
+ * Field collision - the collider is any surface given as the particle center's signed distance to
+ * it and the outward normal there - an SDF Sample's, for one. The particle is a sphere of
+ * `radius`. Same penetrating+approaching gate as `plane-collision`, which it is with the plane's
+ * distance and normal wired in.
+ */
+export const fxFieldCollision = defineNode({
+  type: "field-collision",
+  domain: "behavior",
+  phase: "update",
+  category: "force",
+  inputs: {
+    velocity: VELOCITY_INPUT,
+    distance: { type: "float", required: true },
+    normal: { type: "vec3", required: true },
+    radius: { type: "float", value: 0.05, min: 0, step: 0.01 },
+    restitution: { type: "float", value: 0.5, min: 0, max: 1, step: 0.05 },
+    friction: { type: "float", value: 0, min: 0, max: 1, step: 0.05 },
+  },
+  outputs: COLLIDER_OUTPUTS,
+  params: {},
+  // Normal normalize (length(7)+guard(2)+divide(6)=15), plus the bounce.
+  cost: 15 + BOUNCE_COST,
+  build: ({ inputs, local, fn }) => {
+    const unitNormal = unitOrZero(inputs["normal"], "fc_n", local, fn);
+    return bounce("fc", inputs, { unitNormal, signedDistance: inputs["distance"] }, local, fn);
   },
 });
 
@@ -367,6 +389,7 @@ export const fxConeCollision = defineNode({
 /** All standard collision behavior node definitions. */
 export const FX_BEHAVIOR_COLLISION_NODES: readonly FXNodeDefinition[] = [
   fxPlaneCollision,
+  fxFieldCollision,
   fxSphereCollision,
   fxBoxCollision,
   fxConeCollision,

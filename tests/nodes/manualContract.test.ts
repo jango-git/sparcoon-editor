@@ -8,7 +8,6 @@ import { FXBehaviorNodeBuiltinAttribute } from "../../src/engine/behavior/nodes/
 import { FXBehaviorNodeCustomAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttribute";
 import { FXBehaviorNodeCustomAttributeSplit } from "../../src/engine/behavior/nodes/FXBehaviorNodeCustomAttributeSplit";
 import { FXBehaviorNodeInheritedAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeInheritedAttribute";
-import { FXBehaviorNodeRandomMeshPoint } from "../../src/engine/behavior/nodes/FXBehaviorNodeRandomMeshPoint";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
 import { FXBehaviorNodeTimelineValue } from "../../src/engine/behavior/nodes/FXBehaviorNodeTimelineValue";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
@@ -162,7 +161,6 @@ function manualCases(): ManualCase[] {
     behaviorCase(new FXBehaviorNodeTimelineValue("power", FLOAT, 1), [
       bind("positionX", "n", "out"),
     ]),
-    behaviorCase(new FXBehaviorNodeRandomMeshPoint("rock"), [bind("position", "n", "position")]),
     // inherited-attribute: reads its own (source/type/default-dependent) inherited input.
     behaviorCase(
       new FXBehaviorNodeInheritedAttribute({ kind: "attribute", name: "tint" }, VEC3, [1, 2, 3]),
@@ -195,7 +193,6 @@ const MANUAL_CLASSES: { describe(): FXNodeMeta }[] = [
   FXBehaviorNodeInheritedAttribute,
   FXRenderNodeTimelineValue,
   FXBehaviorNodeTimelineValue,
-  FXBehaviorNodeRandomMeshPoint,
   FXRenderNodeTexture,
 ];
 

@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { createInitialState, type SourceState } from "../../src/model/editorState";
+import { wrapProject } from "../../src/persistence/projectEnvelope";
 import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
 import { loadedProject } from "../helpers/loadedProject";
 
 /** A tiny opaque data URL - stands in for a base64 asset that must survive the round-trip. */
 const PIXEL_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+/** `source` as a format-1 project file, the format the renames were made in. */
+function formatOne(source: SourceState): string {
+  return JSON.stringify({ ...wrapProject(source), version: 1 });
+}
 
 function sourceWithAsset(): SourceState {
   const base = createInitialState().source;
@@ -112,21 +118,21 @@ describe("projectFile: format", () => {
       unknown
     >;
     expect(file["format"]).toBe("sparcoon-project");
-    expect(file["version"]).toBe(1);
+    expect(file["version"]).toBe(2);
     expect(file["editor"]).toBe(SPARCOON_EDITOR_VERSION);
   });
 
   it("refuses a project in a later format, naming the editor that saved it", () => {
     const file = JSON.parse(serializeProject(createInitialState().source)) as object;
-    expect(deserializeProject(JSON.stringify({ ...file, version: 2, editor: "9.0.0" }))).toEqual({
+    expect(deserializeProject(JSON.stringify({ ...file, version: 3, editor: "9.0.0" }))).toEqual({
       kind: "newer",
       editor: "9.0.0",
     });
   });
 
-  it("reads a project without a number, or with one that is not an integer, as format 1", () => {
+  it("reads a project without a number, or with one that is not a positive integer, as format 1", () => {
     const file = JSON.parse(serializeProject(createInitialState().source)) as object;
-    for (const version of [undefined, "2", 1.5]) {
+    for (const version of [undefined, "2", 1.5, 0, -3]) {
       expect(deserializeProject(JSON.stringify({ ...file, version })).kind).toBe("loaded");
     }
   });
@@ -176,7 +182,7 @@ describe("projectFile: renamed nodes and inputs", () => {
       },
     };
 
-    const loaded = loadedProject(serializeProject(saved))?.scene.emitters[0].behaviorGraph;
+    const loaded = loadedProject(formatOne(saved))?.scene.emitters[0].behaviorGraph;
 
     expect(loaded?.nodes["cyl"]?.type).toBe("random-cylinder-point");
     expect(loaded?.nodes["cyl"]?.parameters).toEqual({ radius: 2, height: 3 });
@@ -238,7 +244,7 @@ describe("projectFile: renamed node outputs", () => {
         ],
       },
     };
-    const loaded = loadedProject(serializeProject(saved))?.scene.emitters[0].renderGraph;
+    const loaded = loadedProject(formatOne(saved))?.scene.emitters[0].renderGraph;
 
     const fromOf = (id: string) => loaded?.connections.find((c) => c.id === id)?.from;
     expect(fromOf("wire")).toEqual({ nodeId: "flip", socketKey: "uvNext" });

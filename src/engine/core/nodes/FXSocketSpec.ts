@@ -121,7 +121,7 @@ export interface FXNodeMeta {
   readonly generic?: { readonly constraint: readonly FXGLSLTypeName[] };
   /**
    * Params that carry data {@link FXParamMeta} cannot express (a free-string attribute
-   * name, an opaque texture, a gradient) - present only on the hand-written manual nodes.
+   * name, an opaque texture, a gradient, an asset of the content library).
    */
   readonly customParams?: readonly FXCustomParamMeta[];
   /**
@@ -142,11 +142,17 @@ export interface FXCustomParamMeta {
    * `attribute-name` - a picker of declared attributes; `inherit-source` - a picker of what a
    * dying particle hands its newborns (its emitter's attributes, and core fields);
    * `texture`/`gradient` - a resource picker / gradient editor; `param-name` - a free-text field
-   * naming a param's stable uniform/binding slot; `mesh-asset` - a picker of the content
-   * library's mesh assets.
+   * naming a param's stable uniform/binding slot. `mesh-asset`/`volume-asset` - a picker of the
+   * content library's mesh / volume assets (see `FX_ASSET_PARAM_KINDS`).
    */
   readonly kind:
-    "attribute-name" | "inherit-source" | "texture" | "gradient" | "param-name" | "mesh-asset";
+    | "attribute-name"
+    | "inherit-source"
+    | "texture"
+    | "gradient"
+    | "param-name"
+    | "mesh-asset"
+    | "volume-asset";
   readonly required: boolean;
 }
 

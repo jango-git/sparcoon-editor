@@ -59,9 +59,9 @@ export interface FrameOptions extends ShotOptions {
   /** Draws the effect alone: no ground, grid, player figure or gizmos. */
   readonly clean?: boolean;
   /**
-   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on and its Depth
-   * Fade fades against, so an effect built around the ground (debris settling, a crack in it)
-   * reads on it. Without `clean` the frame shows what the viewport shows.
+   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on, its Depth
+   * Fade fades against and its Depth Sample collides with, so an effect built around the ground
+   * (debris settling, a crack in it) reads on it. Without `clean` the frame shows what the viewport shows.
    */
   readonly ground?: boolean;
   /**

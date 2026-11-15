@@ -26,6 +26,7 @@ import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
 import type { Reaction, SourceState } from "../model/editorState";
 import { STRIP_NAMES, type StripName } from "../model/graphSlots";
+import { libraryAssetNames } from "../model/selectors";
 import type { CompiledShadersByGLSLTier } from "./exportCompile";
 import {
   compileEmitter,
@@ -76,6 +77,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   };
   const externalTextureNames = new Set<string>();
   const externalGeometryNames = new Set<string>();
+  const externalVolumeNames = new Set<string>();
   const artifactBlocks: string[] = [];
   const emitterSpecs: string[] = [];
   const meshSpecs: string[] = [];
@@ -120,7 +122,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     ir: compileEmitter(
       emitter,
       effectiveSpawnConfig(emitter, source.scene),
-      source.meshAssets.map((asset) => asset.name),
+      libraryAssetNames(source),
     ),
   }));
   const reactionSources = new Map(
@@ -185,7 +187,8 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     ];
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
-    ir.meshSurfaces.forEach((name) => externalGeometryNames.add(name));
+    ir.sampledAssets.mesh.forEach((name) => externalGeometryNames.add(name));
+    ir.sampledAssets.volume.forEach((name) => externalVolumeNames.add(name));
     emitterSpecs.push(
       emitterSpecLiteral(
         emitter,
@@ -214,11 +217,11 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   assertUniqueLiveNames(source.scene.meshes, "VFX mesh");
 
   const specLiteral = projectSpecLiteral(source, emitterSpecs, meshSpecs);
-  const assetsBlock = assetsInterface(
-    className,
-    [...externalTextureNames],
-    [...externalGeometryNames],
-  );
+  const assetsBlock = assetsInterface(className, {
+    textures: [...externalTextureNames],
+    geometries: [...externalGeometryNames],
+    volumes: [...externalVolumeNames],
+  });
   const needsEmitterType = source.scene.emitters.some(needsLiveGetter);
   const needsMeshType = source.scene.meshes.some(needsLiveGetter);
 
@@ -241,6 +244,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   const threeTypeImports = [
     ...(needsMeshType ? ["type Mesh"] : []),
     ...(externalGeometryNames.size > 0 ? ["type BufferGeometry"] : []),
+    ...(externalVolumeNames.size > 0 ? ["type Data3DTexture"] : []),
   ];
   if (threeTypeImports.length > 0) {
     lines.push(`import { ${threeTypeImports.join(", ")} } from "three";`);

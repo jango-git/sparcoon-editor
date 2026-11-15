@@ -26,11 +26,10 @@ import type {
 import { FXEmitter } from "sparcoon/editor";
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
 
+import { missingAssetErrors } from "../domain/assetChecks";
 import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorAttribute } from "../domain/graphModel";
 import { unboundedLifetimeWarnings } from "../domain/lifetimeBound";
-import { missingMeshAssetErrors } from "../domain/meshSurfaceChecks";
 import {
   encodeGeometrySource,
   type RenderMode,
@@ -45,6 +44,7 @@ import {
   type RenderBudgetFindings,
   RenderBudgetMemo,
 } from "../domain/renderBudget";
+import { cpuSceneDepthWarnings, depthFadeModeErrors } from "../domain/sceneDepthChecks";
 import { undeclaredAttributeErrors } from "../domain/serialize";
 import { hiddenParticlesSortError } from "../domain/stripChecks";
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
@@ -102,6 +102,7 @@ import { type AssembledStrip, EmitterStrip } from "./emitterStrip.Internal";
 import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
 import { ParticleEventForward } from "./particleEventForward";
+import { NO_PREVIEW_ASSETS, previewAssetNames, type PreviewAssets } from "./previewAssets";
 
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
 export type TextureResolver = (paramName: string) => Texture;
@@ -220,9 +221,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // Only meaningful for `config.geometry.kind === "custom"`: catches a mesh asset that was
   // deleted/re-uploaded under the same authored name, which a built emitter can't pick up live.
   private builtCustomGeometryRef: BufferGeometry | undefined = undefined;
-  // The geometries the behavior samples, as built: a mesh asset re-uploaded under the same name
-  // is a new geometry, which only a rebuild reads.
-  private builtSurfaceGeometries: readonly (BufferGeometry | undefined)[] = [];
+  // The assets the behavior samples, as built - an asset replaced under the same name is a new
+  // object, which only a rebuild reads.
+  private builtSampledAssets: readonly unknown[] = [];
   private builtRenderMode: RenderMode | undefined = undefined;
   // The render sink's Draw Particles, as built - invisible to the IR hash like the shadow flags.
   private builtDrawParticles = true;
@@ -269,11 +270,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // Which GLSL tier this view's live render graph compiles with (settings/renderBackend.ts) -
     // fixed for the session; the preview's own switch reloads the page to change it.
     renderBackend: FXGLSLRenderTier,
-    // The content library's live mesh geometries, by name - a "custom" geometry source resolves
-    // through this the same way an external texture resolves through `resolveTexture`.
-    private readonly resolveMeshGeometries: () => Readonly<
-      Record<string, BufferGeometry>
-    > = () => ({}),
+    // The content library's live assets, by name - a "custom" geometry source and a sampled asset
+    // resolve through this the same way an external texture resolves through `resolveTexture`.
+    private readonly resolveAssets: () => PreviewAssets = () => NO_PREVIEW_ASSETS,
   ) {
     this.renderRegistry = renderRegistry;
     this.renderBackend = renderBackend;
@@ -349,11 +348,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     return this.lastVisible;
   }
 
-  /** Whether the running emitter draws a material that reads the scene depth (a Depth Fade). */
+  /** Whether the running emitter reads the scene depth: a material with a Depth Fade, or a GPU
+   *  kernel with a Depth Sample. */
   public get readsSceneDepth(): boolean {
     const artifacts = this.artifacts;
     return (
-      artifacts !== undefined && renderArtifactsOf(artifacts).some((render) => render.sceneDepth)
+      artifacts !== undefined &&
+      (this.gpuKernelOf(artifacts, this.builtTryGpuSimulation)?.sceneDepth === true ||
+        renderArtifactsOf(artifacts).some((render) => render.sceneDepth))
     );
   }
 
@@ -446,13 +448,13 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     if (renderErrors.length > 0) {
       return hold({ render: invalidFromErrors(renderErrors) });
     }
-    // The runtime requires every mesh the behavior samples: pin a missing one to its node.
-    const meshErrors = missingMeshAssetErrors(
+    // The runtime requires every asset the behavior samples - pin a missing one to its node.
+    const assetErrors = missingAssetErrors(
       this.behaviorLive.graphView,
-      Object.keys(this.resolveMeshGeometries()),
+      previewAssetNames(this.resolveAssets()),
     );
-    if (meshErrors.length > 0) {
-      return hold({ behavior: invalidFromErrors(meshErrors) });
+    if (assetErrors.length > 0) {
+      return hold({ behavior: invalidFromErrors(assetErrors) });
     }
     for (const strip of strips) {
       const check = strip.live.check(
@@ -575,7 +577,10 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       ...result,
       render: withWarnings(result.render, renderWarnings),
       // The preview runs without the bound (only an export settles by it), but warns as the export.
-      behavior: withWarnings(result.behavior, unboundedLifetimeWarnings(behaviorSnapshot)),
+      behavior: withWarnings(result.behavior, [
+        ...unboundedLifetimeWarnings(behaviorSnapshot),
+        ...cpuSceneDepthWarnings(this.behaviorLive.graphView, this.standardProgram !== undefined),
+      ]),
       ...stripStatuses,
     };
   }
@@ -678,6 +683,20 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   }
 
   /**
+   * The GPU kernel an emitter built from `artifacts` runs, `undefined` when it simulates on the
+   * CPU. A live WebGL2 renderer gates its use only, never whether it compiles (compiled regardless,
+   * so exportCompile.ts - which has no live renderer to gate on - stays consistent).
+   */
+  private gpuKernelOf(
+    artifacts: PreviewArtifacts,
+    tryGpuSimulation: boolean,
+  ): FXParticleKernelArtifact | undefined {
+    return tryGpuSimulation && this.renderer.capabilities.isWebGL2
+      ? artifacts.gpuBehavior
+      : undefined;
+  }
+
+  /**
    * Each strip's live part for this apply, paired with its input, in strip order: built the first
    * time the emitter has that strip, and dropped (with everything compiled from it) once it has
    * none, so turning a strip back on starts from a clean compile.
@@ -722,7 +741,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // structural chain below tracks them to force a rebuild (the depth material is attached on build).
     const { geometry, renderMode, sortInterval, castShadow, receiveShadow } = config;
     const currentCustomGeometryRef =
-      geometry.kind === "custom" ? this.resolveMeshGeometries()[geometry.meshAssetName] : undefined;
+      geometry.kind === "custom"
+        ? this.resolveAssets().geometries[geometry.meshAssetName]
+        : undefined;
     // Everything that reshapes the render half specifically (new GLSL, geometry primitive/mesh,
     // composite mode, shadow flags) - independent of whether the behavior half changed at all, so
     // a render-only edit below can hot-swap in place instead of a full rebuild.
@@ -746,7 +767,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // since only a fresh driver can resize particle buffers or swap backend.
     const behaviorStructural =
       recompiled.behavior ||
-      !sameGeometries(this.surfaceGeometries(artifacts), this.builtSurfaceGeometries) ||
+      !sameAssets(this.sampledAssets(artifacts), this.builtSampledAssets) ||
       spawnConfig.tryGpuSimulation !== this.builtTryGpuSimulation ||
       spawnConfig.expectedCapacity !== this.builtExpectedCapacity ||
       this.kernel !== this.builtKernel;
@@ -787,7 +808,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       try {
         this.emitter.applyRenderArtifact(particles, {
           textures: particles === undefined ? {} : this.resolveExternalTextures(particles),
-          geometries: this.resolveMeshGeometries(),
+          geometries: this.resolveAssets().geometries,
           castShadow,
           receiveShadow,
         });
@@ -889,12 +910,15 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     return { baseline: assemble(shaders.baseline), standard: assemble(shaders.standard) };
   }
 
-  /** The library geometry of each mesh `artifacts`' behavior samples, in a stable order. */
-  private surfaceGeometries(artifacts: PreviewArtifacts): (BufferGeometry | undefined)[] {
-    const geometries = this.resolveMeshGeometries();
-    return [...new Set(Object.values(artifacts.behavior.meshSurfaces ?? {}))]
-      .sort()
-      .map((name) => geometries[name]);
+  /** The library asset of each mesh and volume `artifacts`' behavior samples, in a stable order. */
+  private sampledAssets(artifacts: PreviewArtifacts): readonly unknown[] {
+    const { geometries, volumes } = this.resolveAssets();
+    const named = (names: Readonly<Record<string, string>> | undefined): string[] =>
+      [...new Set(Object.values(names ?? {}))].sort();
+    return [
+      ...named(artifacts.behavior.meshSurfaces).map((name) => geometries[name]),
+      ...named(artifacts.behavior.volumes).map((name) => volumes[name]),
+    ];
   }
 
   /** Full rebuild path: a fresh `FXEmitter.fromArtifacts` replacing the previous one - resets
@@ -925,7 +949,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     this.builtKernel = this.kernel;
     this.builtGeometryKey = encodeGeometrySource(geometry);
     this.builtCustomGeometryRef = currentCustomGeometryRef;
-    this.builtSurfaceGeometries = this.surfaceGeometries(artifacts);
+    this.builtSampledAssets = this.sampledAssets(artifacts);
     this.builtRenderMode = renderMode;
     this.builtCastShadow = castShadow;
     this.builtReceiveShadow = receiveShadow;
@@ -1064,12 +1088,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     ) as Record<string, Texture>;
     // Present only when actually compiled: `gpuKernel` is a bare optional under
     // exactOptionalPropertyTypes, so an explicit `undefined` value is rejected - omit the key.
-    // isWebGL2 gates USE here only, never whether to compile (already compiled/cached above
-    // regardless, so exportCompile.ts - which has no live renderer to gate on - stays consistent).
-    const gpuKernel =
-      spawnConfig.tryGpuSimulation && this.renderer.capabilities.isWebGL2
-        ? artifacts.gpuBehavior
-        : undefined;
+    const gpuKernel = this.gpuKernelOf(artifacts, spawnConfig.tryGpuSimulation);
     // Build the new emitter BEFORE dropping the old one: fromArtifacts can throw on a bad artifact
     // pair, and the caller holds the last good preview on a throw - so the old emitter must survive.
     const particles = particlesOf(artifacts);
@@ -1077,7 +1096,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     const next = FXEmitter.fromArtifacts(artifacts.behavior, {
       ...(particles === undefined ? {} : { particles }),
       textures,
-      geometries: this.resolveMeshGeometries(),
+      ...this.resolveAssets(),
       castShadow: config.castShadow,
       receiveShadow: config.receiveShadow,
       renderer: this.renderer,
@@ -1085,9 +1104,8 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       ...(gpuKernel !== undefined ? { gpuKernel } : {}),
       ...(trail === undefined ? {} : { trail: trail.options }),
       ...(ribbon === undefined ? {} : { ribbon: ribbon.options }),
-      ...(config.sortInterval > 0
-        ? { sort: { camera: this.camera, fraction: 1 / config.sortInterval } }
-        : {}),
+      camera: this.camera,
+      ...(config.sortInterval > 0 ? { sort: { fraction: 1 / config.sortInterval } } : {}),
     });
     this.emitter?.destroy();
     this.emitter = next;
@@ -1118,10 +1136,7 @@ export function applyTransform(object: Object3D, transform: Transform): void {
   object.scale.set(transform.scale[0], transform.scale[1], transform.scale[2]);
 }
 
-/** Whether `a` and `b` hold the same geometries in the same order. */
-function sameGeometries(
-  a: readonly (BufferGeometry | undefined)[],
-  b: readonly (BufferGeometry | undefined)[],
-): boolean {
-  return a.length === b.length && a.every((geometry, i) => geometry === b[i]);
+/** Whether `a` and `b` hold the same assets in the same order. */
+function sameAssets(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((asset, i) => asset === b[i]);
 }

@@ -1,6 +1,6 @@
 /**
- * Whole-project agent calls: the project file in and out, bundled presets, and the TypeScript
- * export. They use the same paths as the Content screen's Import/Export block.
+ * Whole-project agent calls: the project file in and out, bundled presets, the TypeScript export
+ * and the asset zip. They use the same paths as the Content screen's Import/Export block.
  */
 
 import { setProjectName } from "../model/commands";
@@ -8,6 +8,8 @@ import { emitProjectModule } from "../persistence/exportTypeScript";
 import { loadPresetSource, PROJECT_PRESETS } from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
 import { type DocumentReplaceTarget, replaceDocument } from "../persistence/replaceDocument";
+import { libraryZip } from "../ui/assetFiles";
+import { bytesToBase64 } from "../util/bytes";
 import { AgentError } from "./errors";
 import { type SceneView, sceneView } from "./views";
 
@@ -32,6 +34,8 @@ export interface ProjectApi {
   setName(name: string): void;
   /** The self-contained TypeScript effect module the editor exports. */
   exportTypeScript(): string;
+  /** The zip of the library's images, meshes and volumes the editor exports, as base64. */
+  exportZip(): Promise<string>;
 }
 
 export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
@@ -84,5 +88,8 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
         );
       }
     },
+
+    exportZip: async (): Promise<string> =>
+      bytesToBase64(await libraryZip(target.store.getSource())),
   };
 }

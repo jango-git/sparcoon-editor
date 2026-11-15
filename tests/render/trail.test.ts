@@ -43,7 +43,8 @@ import { Pipeline } from "../../src/model/pipeline";
 import { Store } from "../../src/model/store";
 import { compileEmitter } from "../../src/persistence/exportCompile";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
-import { normalizeSource } from "../../src/persistence/loadState";
+import { normalizeSource, readStoredSource } from "../../src/persistence/loadState";
+import { unwrapProject } from "../../src/persistence/projectEnvelope";
 import { EmitterStrip } from "../../src/render/emitterStrip.Internal";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
@@ -192,7 +193,8 @@ describe("emitter trail: document", () => {
         { slot: "vertexTransform", from },
       ],
     };
-    const loaded = normalizeSource(raw)?.scene.emitters[0].trailGraph;
+    // A bare source reads as format 1, the format strip sinks were saved with a geometry in.
+    const loaded = readStoredSource(unwrapProject(raw))?.scene.emitters[0].trailGraph;
     expect(loaded?.outputBindings.map((binding) => binding.slot)).toEqual(["albedo"]);
     expect(loaded?.nodes[RENDER_SINK_ID]?.parameters).not.toHaveProperty("geometry");
   });

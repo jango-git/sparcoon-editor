@@ -14,6 +14,7 @@ import {
   isStripHost,
   metaFor,
 } from "../domain/nodePalette";
+import { assetParamsOf } from "../engine/core/nodes/FXAssetKind";
 import {
   addAttribute,
   addCatalogNode,
@@ -23,9 +24,10 @@ import {
   removeAttribute,
   removeNode,
   replaceNodeParams,
-  updateNodeParam,
+  updateNodeParams,
 } from "../model/commands";
 import type { SourceState } from "../model/editorState";
+import { libraryAssetNames } from "../model/selectors";
 import { focusOwner, parseGraphName, resolveGraph, targetGraph } from "./address.Internal";
 import { copyPlainData, requireFiniteNumber, requireKnownKeys } from "./arguments.Internal";
 import { describeNodeType, type NodeTypeInfo } from "./catalog";
@@ -55,7 +57,9 @@ export interface GraphHandle {
   /**
    * Sets parameters on a node and returns its id. Choosing a `custom-attribute` node's attribute
    * replaces the node (edges kept), so the returned id can differ from `nodeId`; pass the
-   * attribute's `name` and `type` together, as the canvas's attribute picker does.
+   * attribute's `name` and `type` together, as the canvas's attribute picker does. Picking a
+   * volume for an `sdf-sample` also sets its box and distance encoding from the volume's bake,
+   * unless the patch sets them too.
    */
   setParams(nodeId: string, patch: Readonly<Record<string, unknown>>): string;
   moveNodes(
@@ -143,6 +147,7 @@ export function createGraphHandle(
             ? requirePosition(options.position)
             : autoPosition(targetGraph(store.getSource(), target));
         requireParameterKeys(metadata, params);
+        requireAssets(store.getSource(), metadata, params);
         focusOwner(store, target.owner);
         const id = addCatalogNode(store, target.slot, type, position);
         if (id === undefined) {
@@ -150,9 +155,7 @@ export function createGraphHandle(
         }
         // A node created in this same transaction never reached the engine under its id, so even
         // an attribute choice can be set in place here.
-        for (const [key, value] of Object.entries(params)) {
-          updateNodeParam(store, target.slot, id, key, value);
-        }
+        updateNodeParams(store, target.slot, id, params);
         return id;
       }),
 
@@ -176,7 +179,7 @@ export function createGraphHandle(
         const node = requireNode(authored, nodeId);
         const metadata = placedNodeMeta(source, target, authored, node);
         requireParameterKeys(metadata, patch);
-        requireMeshAssets(source, metadata, patch);
+        requireAssets(source, metadata, patch);
         focusOwner(store, target.owner);
         // Same policy as the canvas's attribute picker: the attribute choice can't change under a
         // stable id, so it replaces the node - for an inherited attribute, its source and type too.
@@ -198,9 +201,7 @@ export function createGraphHandle(
           }
           return newId;
         }
-        for (const [key, value] of Object.entries(patch)) {
-          updateNodeParam(store, target.slot, nodeId, key, value);
-        }
+        updateNodeParams(store, target.slot, nodeId, patch);
         return nodeId;
       }),
 
@@ -272,22 +273,24 @@ export function createGraphHandle(
   };
 }
 
-/** Every mesh-asset parameter in `patch` names a mesh of the content library, or none (""). */
-function requireMeshAssets(
+/** Every asset parameter in `patch` names an asset of its kind in the content library, or none
+ *  (""). */
+function requireAssets(
   source: SourceState,
   metadata: FXNodeMeta,
   patch: Readonly<Record<string, unknown>>,
 ): void {
-  for (const parameter of metadata.customParams ?? []) {
-    if (parameter.kind !== "mesh-asset" || !(parameter.key in patch)) {
+  const library = libraryAssetNames(source);
+  for (const { key, kind } of assetParamsOf(metadata)) {
+    if (!(key in patch)) {
       continue;
     }
-    const name = patch[parameter.key];
+    const name = patch[key];
     if (name === "") {
       continue;
     }
-    if (typeof name !== "string" || !source.meshAssets.some((asset) => asset.name === name)) {
-      throw new AgentError("not_found", `No mesh asset "${String(name)}".`);
+    if (typeof name !== "string" || !library[kind].includes(name)) {
+      throw new AgentError("not_found", `No ${kind} asset "${String(name)}".`);
     }
   }
 }

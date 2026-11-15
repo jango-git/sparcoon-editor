@@ -1,6 +1,6 @@
 /**
- * Content-library edits (textures/environments/meshes/palette), each its own array + command pair.
- * Texture/mesh edits are `"structural"` (they rebind preview slots); environment and palette edits
+ * Content-library edits (textures/environments/meshes/volumes/palette), each its own array + command
+ * pair. Texture/mesh/volume edits are `"structural"` (they rebind preview slots). Environment and palette edits
  * are `"view"` (ADR-0004: no compiled graph reads either).
  */
 
@@ -10,6 +10,7 @@ import type {
   PaletteSwatch,
   SourceState,
   TextureAsset,
+  VolumeAsset,
 } from "../editorState";
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
@@ -82,6 +83,25 @@ export function removeMeshAsset(store: Store, name: string): void {
     return;
   }
   store.commit({ ...source, meshAssets }, "structural");
+}
+
+/** Adds a volume asset. A duplicate name is a no-op (see {@link addTextureAsset}). */
+export function addVolumeAsset(store: Store, asset: VolumeAsset): void {
+  const source = store.getSource();
+  if (source.volumeAssets.some((existing) => existing.name === asset.name)) {
+    return;
+  }
+  store.commit({ ...source, volumeAssets: [...source.volumeAssets, asset] }, "structural");
+}
+
+/** Removes the named volume asset from the library. */
+export function removeVolumeAsset(store: Store, name: string): void {
+  const source = store.getSource();
+  const volumeAssets = source.volumeAssets.filter((asset) => asset.name !== name);
+  if (volumeAssets.length === source.volumeAssets.length) {
+    return;
+  }
+  store.commit({ ...source, volumeAssets }, "structural");
 }
 
 /** Saves a new palette swatch; unlike the other content-library kinds it has no source file to

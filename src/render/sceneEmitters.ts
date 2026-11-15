@@ -6,7 +6,6 @@
 import { connectReaction, fireSpawnAction } from "sparcoon/editor";
 import type { Vector2 } from "three";
 import {
-  type BufferGeometry,
   type Camera,
   Group,
   type Object3D,
@@ -61,6 +60,7 @@ import { blocked, invalidFromErrors, withWarnings } from "./applyStatus.Internal
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
+import { NO_PREVIEW_ASSETS, type PreviewAssets } from "./previewAssets";
 
 const IDLE: LiveApplyStatus = { status: "invalid", messages: [] };
 // The placeholder snapshot for a graph half that doesn't apply (no emitters yet, or a mesh's
@@ -104,8 +104,8 @@ export class SceneEmitters implements SceneApplier {
   // and what each leaves its births at defaults for, by reaction id.
   private reactionLinks: (() => void)[] = [];
   private inheritIssuesByReaction: ReadonlyMap<string, readonly InheritIssue[]> = new Map();
-  // See readsSceneDepth: what the views' materials and visibility last said, refreshed when either
-  // can change - a sync (new materials) or a visibility flip.
+  // See readsSceneDepth: what the views' materials, kernels and visibility last said, refreshed when
+  // any can change - a sync (new artifacts) or a visibility flip.
   private sceneDepthRead = false;
 
   constructor(
@@ -121,11 +121,9 @@ export class SceneEmitters implements SceneApplier {
     // The playhead time a rebuild re-poses at: the caret's frame when parked, the caret itself while
     // playing (see TimelineDispatcher.driveFrame).
     private readonly currentTime: () => number = () => 0,
-    // The content library's live mesh geometries, by name - threaded into every emitter/mesh view
-    // so a "custom" geometry source resolves the same way an external texture does.
-    private readonly resolveMeshGeometries: () => Readonly<
-      Record<string, BufferGeometry>
-    > = () => ({}),
+    // The content library's live assets, by name - threaded into every emitter/mesh view so a
+    // "custom" geometry source and a sampled asset resolve the same way an external texture does.
+    private readonly resolveAssets: () => PreviewAssets = () => NO_PREVIEW_ASSETS,
   ) {
     this.vfxGroup.name = "VFX";
     this.vfxGroup.add(this.vfxMarker.object);
@@ -517,7 +515,7 @@ export class SceneEmitters implements SceneApplier {
         this.renderRegistry,
         this.behaviorRegistry,
         this.renderBackend,
-        this.resolveMeshGeometries,
+        this.resolveAssets,
       );
       this.views.set(emitter.id, view);
     }
@@ -603,7 +601,7 @@ export class SceneEmitters implements SceneApplier {
         this.resolveTexture,
         this.renderRegistry,
         this.renderBackend,
-        this.resolveMeshGeometries,
+        () => this.resolveAssets().geometries,
       );
       this.meshViews.set(mesh.id, view);
     }

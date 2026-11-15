@@ -13,13 +13,12 @@ import { createElement } from "./dom";
 import type { EditorContext } from "./editorContext";
 import { actionIcons, graphModeIcons, icon, linkIcons, themeIcons } from "./icons";
 import { InputMode, type InputModeState } from "./inputMode";
+import { EDITOR_REPOSITORY_URL } from "./repositories";
 import { createTransportControls } from "./transportControls";
 
 export interface MiddlebarActions {
   readonly onOpenAssets: () => void;
 }
-
-const REPOSITORY_URL = "https://github.com/jango-git/sparcoon-editor";
 
 function iconButton(
   svg: string,
@@ -158,7 +157,7 @@ export function createMiddlebar(context: EditorContext, actions: MiddlebarAction
     linkIcons.github,
     t("middlebar.github"),
     t("middlebar.githubTip"),
-    REPOSITORY_URL,
+    EDITOR_REPOSITORY_URL,
   );
 
   const refreshHistoryButtons = (): void => {

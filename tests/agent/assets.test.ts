@@ -1,8 +1,11 @@
+import { BoxGeometry } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createAssetsApi } from "../../src/agent/assets";
+import { addMeshAsset } from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
+import { bakeGeometryArrays } from "../../src/render/meshGeometryBaking";
 
 /** The browser file plumbing ingestion reads through, over node's own File/Blob. */
 class DataTransferStub {
@@ -142,5 +145,59 @@ describe("agent assets: remove and environment", () => {
     expect(store.getSource().activeEnvironmentName).toBe("studio");
     api.setEnvironment(undefined);
     expect(api.list().activeEnvironment).toBeUndefined();
+  });
+});
+
+describe("agent assets: volumes", () => {
+  function withBox(): { store: Store; api: ReturnType<typeof createAssetsApi> } {
+    const made = assets();
+    addMeshAsset(made.store, {
+      name: "Box",
+      label: "Box",
+      geometry: bakeGeometryArrays(new BoxGeometry(1, 1, 1)),
+      byteSize: 0,
+    });
+    return made;
+  }
+
+  it("bakes a mesh into a volume asset it lists, and removes it", async () => {
+    const { store, api } = withBox();
+    expect(await api.bakeVolume("Box", { resolution: 8 })).toEqual({
+      kind: "volume",
+      name: "Box SDF",
+    });
+    expect(api.list().volumes).toEqual([
+      expect.objectContaining({
+        name: "Box SDF",
+        size: [8, 8, 8],
+        scale: expect.closeTo(0.2, 6) as number,
+        bias: expect.closeTo(-0.1, 6) as number,
+      }),
+    ]);
+    expect(store.getSource().volumeAssets[0]?.dataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(await api.bakeVolume("Box", { resolution: 4 })).toEqual({
+      kind: "volume",
+      name: "Box SDF 2",
+    });
+    api.remove("volume", "Box SDF");
+    expect(api.list().volumes.map((entry) => entry.name)).toEqual(["Box SDF 2"]);
+  });
+
+  it("refuses a mesh it does not have and settings out of range", async () => {
+    const { api } = withBox();
+    await expect(api.bakeVolume("Ball")).rejects.toThrow(/not_found/);
+    for (const settings of [
+      { resolution: 2 },
+      { resolution: 8.5 },
+      { band: 0 },
+      { thickness: -1 },
+      { mode: "hollow" },
+      { boxMin: [1, 0, 0], boxMax: [0, 1, 1] },
+    ]) {
+      await expect(
+        api.bakeVolume("Box", settings as Parameters<typeof api.bakeVolume>[1]),
+      ).rejects.toThrow(/invalid_argument/);
+    }
+    expect(api.list().volumes).toEqual([]);
   });
 });

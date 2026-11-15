@@ -1,4 +1,5 @@
 import type { FXCompilerContext } from "./compiler/FXCompilerContext";
+import type { FXAssetRead } from "./nodes/FXAssetKind";
 import type { FXAttributeRequest } from "./socket/FXAttribute";
 import type { FXSocketDescriptor } from "./socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "./socket/FXValueType";
@@ -42,12 +43,18 @@ export abstract class FXGraphNode<TContext extends FXCompilerContext = FXCompile
   }
 
   /**
-   * Whether this node calls the runtime's `fxDepthFade` - the `fx_` ABI function that fades
-   * against the drawing camera's scene depth; {@link collectRenderCapabilities} folds it into the
-   * artifact's depth capability.
+   * Whether this node reads the scene depth. A render node calls the runtime's `fxDepthFade`, the
+   * `fx_` ABI function that fades against the drawing camera's depth, and
+   * {@link collectRenderCapabilities} folds it into the render artifact's depth capability. A
+   * behavior node calls `sceneDepthContact`, and its phase declares the depth's contract uniforms.
    */
   public get readsSceneDepth(): boolean {
     return false;
+  }
+
+  /** The content-library assets this node samples, which the app must supply by their names. */
+  public get assetReads(): readonly FXAssetRead[] {
+    return [];
   }
 
   /**

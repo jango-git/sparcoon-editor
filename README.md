@@ -114,7 +114,9 @@ If the particle was not born from a reaction, the node returns its default value
 ## Nodes
 
 - **Behavior:** random points in shapes and on mesh surfaces, forces (gravity, drag, point force,
-  vortex, turbulence), collisions (plane, box, sphere, cone), particle attributes.
+  vortex, turbulence), collisions (plane, box, sphere, cone, a surface given by a distance field),
+  the distance and normal to a mesh from its SDF and to the rendered scene from its depth (Depth
+  Sample), particle attributes.
 - **Render:** textures and flipbooks, UV transforms, gradients, color correction, fresnel, dissolve,
   soft particles (Depth Fade), lighting (Lambert, Half-Lit, ambient), normal maps, particle
   orientation.
@@ -132,11 +134,23 @@ some nodes depends on the tier.
 An emitter simulates on the GPU if that is enabled (the default), the graph allows it and the device
 supports it, and on the CPU otherwise.
 
+Depth Fade and Depth Sample read the depth of the opaque scene. In the preview that is the studio
+ground as the viewport camera sees it. In a game it is the depth the game gives the camera, as the
+[runtime's README](https://github.com/jango-git/sparcoon#scene-depth) shows. Depth Sample collides
+only in the GPU simulation. On the CPU it finds no surface, and the node is marked with a warning.
+
 ## Assets and preview
 
 - Images become textures, `.glb` and `.gltf` become meshes, `.hdr` becomes a preview environment.
 - Only geometry is taken from a `.glb`, one asset per mesh. The material comes from the render
   graph.
+- A mesh bakes into a volume, a signed distance field (SDF), on the screen its row's **Bake SDF**
+  opens. A closed mesh bakes as a solid by default, an open one as a shell. The view beside the
+  settings shows the surface the bake holds, and **Add to library** keeps it.
+- A volume is in the space of its mesh, so a graph moves a particle's position into that space
+  before sampling it. Picking a volume in a node sets the node's box and distance encoding.
+- A volume downloads as a PNG of its slices. The game builds a 3D texture from it, as the
+  [runtime's README](https://github.com/jango-git/sparcoon#signed-distance-fields) shows.
 - The preview is lit manually (Sun, Hemisphere) or by an HDRI environment. Preview lighting is not
   exported, and in the game the effect is lit by the lights of its scene.
 
@@ -145,6 +159,8 @@ supports it, and on the CPU otherwise.
 - **Project JSON** - the project together with its assets, for handing to another artist.
 - **TypeScript** - an effect module ready for the build. Assets are not included - the game's code
   passes them in.
+- **Zip** - the library's images, meshes as `.glb` and volumes as PNGs of their slices, in one
+  archive. Files are named as in the library. HDRIs are not included.
 
 Using the effect in a game is described in the
 [runtime's README](https://github.com/jango-git/sparcoon#readme).

@@ -1,10 +1,10 @@
 /**
  * The Import/Export block of the Content sheet: full-height, borderless, grouped top-down - name,
- * JSON import/export, TypeScript export, then the bundled Examples list last (the one destructive
+ * JSON import/export, the TypeScript and asset zip exports, then the bundled Examples list last (the one destructive
  * action in the block, kept below the two that only ever add output).
  */
 
-import { t } from "../i18n";
+import { t, type TKey } from "../i18n";
 import { setProjectName } from "../model/commands";
 import type { Store } from "../model/store";
 import { emitProjectModule } from "../persistence/exportTypeScript";
@@ -18,11 +18,14 @@ import {
 } from "../persistence/presets";
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
 import { replaceDocument } from "../persistence/replaceDocument";
+import { libraryZip } from "./assetFiles";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
+import { downloadFile } from "./download";
 import type { EditorContext } from "./editorContext";
 import { assetIcons, icon, timelineIcons } from "./icons";
+import { outlineButton } from "./outlineButton";
 
 /** Presses to confirm applying a preset (destructive - replaces the whole project - so guarded
  *  harder than a per-asset delete). */
@@ -72,10 +75,10 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     fileInput.value = "";
   });
 
-  // Save the project to a JSON file, or load one back: save sends out (up-arrow), load pulls in (down).
-  const saveButton = exportButton(assetIcons.download, t("content.saveJson"));
+  // Save the project to a JSON file (down-arrow, a download), or load one back (up-arrow, an upload).
+  const saveButton = exportButton(assetIcons.download, "content.saveJson", "content.saveJsonTip");
   saveButton.addEventListener("click", () => saveProjectJson(store));
-  const loadButton = exportButton(assetIcons.upload, t("content.loadJson"));
+  const loadButton = exportButton(assetIcons.upload, "content.loadJson", "content.loadJsonTip");
   loadButton.addEventListener("click", () => fileInput.click());
 
   const jsonRow = createElement("div", { className: "content-export__row" }, [
@@ -96,13 +99,19 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     PROJECT_PRESETS.map((preset) => presetRow(context, preset)),
   );
 
-  const typeScriptButton = exportButton(assetIcons.upload, t("content.exportTypeScript"));
+  const typeScriptButton = exportButton(
+    assetIcons.upload,
+    "content.exportTypeScript",
+    "content.exportTypeScriptTip",
+  );
   typeScriptButton.addEventListener("click", () => exportTypeScript(store));
+  const zipButton = exportButton(assetIcons.upload, "content.exportZip", "content.exportZipTip");
+  zipButton.addEventListener("click", () => void exportZip(store));
 
   const form = createElement("div", { className: "content-export__form" }, [
     nameField,
     jsonRow,
-    typeScriptButton,
+    createElement("div", { className: "content-export__row" }, [typeScriptButton, zipButton]),
     presetsTitle,
     presetsList,
   ]);
@@ -116,16 +125,17 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
   return { element: createElement("div", { className: "content-export" }, [title, form]), sync };
 }
 
+/** A button of the block. */
+function exportButton(glyph: string, labelKey: TKey, tipKey: TKey): HTMLButtonElement {
+  return outlineButton(glyph, t(labelKey), t(tipKey), "content-export__button");
+}
+
 /** Serializes the current document to a JSON file and triggers a download named after the project.
  *  Exported so the Ctrl+S hotkey (installHotkeys in hotkeys.ts) can share this exact save path
  *  with the Import/Export panel's own Save button. */
 export function saveProjectJson(store: Store): void {
-  downloadText(
-    serializeProject(store.getSource()),
-    store.getSource().name,
-    "json",
-    "application/json",
-  );
+  const source = store.getSource();
+  downloadFile(projectFileName(source.name, "json"), serializeProject(source), "application/json");
 }
 
 /** Emits the project as a self-contained TypeScript effect module and downloads it as `<name>.ts`. */
@@ -135,27 +145,26 @@ function exportTypeScript(store: Store): void {
   try {
     module = emitProjectModule(source);
   } catch (error) {
-    // A graph that fails to compile (mid-edit invalid state) must not crash the editor; surface it
+    // A graph that fails to compile (mid-edit invalid state) must not crash the editor. Surface it
     // and leave the document untouched.
-    window.alert(
-      `${t("content.exportTypeScript")}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    reportExportError("content.exportTypeScript", error);
     return;
   }
-  downloadText(module, source.name, "ts", "text/plain");
+  downloadFile(projectFileName(source.name, "ts"), module, "text/plain");
 }
 
-/** Triggers a browser download of `text` as `<projectFileName>.<extension>`. */
-function downloadText(text: string, name: string, extension: string, mime: string): void {
-  const blob = new Blob([text], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${projectFileName(name)}.${extension}`;
-  link.click();
-  // Revoke on a later tick: some browsers cancel the in-flight download if the object URL is
-  // released synchronously, before the save has read the blob.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+/** Downloads the library's images, meshes and volumes as `<name>.zip`. */
+async function exportZip(store: Store): Promise<void> {
+  const source = store.getSource();
+  try {
+    downloadFile(projectFileName(source.name, "zip"), await libraryZip(source), "application/zip");
+  } catch (error) {
+    reportExportError("content.exportZip", error);
+  }
+}
+
+function reportExportError(labelKey: TKey, error: unknown): void {
+  window.alert(`${t(labelKey)}: ${error instanceof Error ? error.message : String(error)}`);
 }
 
 /** Reads a picked JSON file and replaces the document (viewport settings reset included - see
@@ -216,17 +225,10 @@ async function applyPreset(context: EditorContext, preset: ProjectPreset): Promi
 }
 
 /** A safe download stem from the project name: keep word characters, fall back when nothing remains. */
-function projectFileName(name: string): string {
+function projectFileName(name: string, extension: string): string {
   const stem = name
     .trim()
     .replace(/[^\w.-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return stem === "" ? "sparcoon-project" : stem;
-}
-
-/** One full-width outline button in the Import/Export block (icon + label). */
-function exportButton(glyph: string, label: string): HTMLButtonElement {
-  const button = createElement("button", { className: "content-export__button", type: "button" });
-  button.append(icon(glyph), createElement("span", { textContent: label }));
-  return button;
+  return `${stem === "" ? "sparcoon-project" : stem}.${extension}`;
 }

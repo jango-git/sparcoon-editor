@@ -58,6 +58,39 @@ function textureEmitterSource(): SourceState {
   };
 }
 
+/** A source whose one emitter moves its particles by an SDF Sample of volume `volume`, with
+ *  `library` the volumes the content library holds. */
+function sdfEmitterSource(volume: string, library: readonly string[]): SourceState {
+  const base = createTestState().source;
+  const emitter = base.scene.emitters[0];
+  const graph = emitter.behaviorGraph;
+  const behaviorGraph: EditorGraph = {
+    ...graph,
+    nodes: {
+      ...graph.nodes,
+      sdf: { id: "sdf", type: "sdf-sample", parameters: { volume }, position: { x: 0, y: 0 } },
+    },
+    outputBindings: [
+      ...graph.outputBindings,
+      { slot: "position", from: { nodeId: "sdf", socketKey: "normal" }, phase: "update" },
+    ],
+  };
+  return {
+    ...base,
+    volumeAssets: library.map((name) => ({
+      name,
+      label: name,
+      dataUrl: "",
+      size: [2, 2, 2],
+      boxMin: [-1, -1, -1],
+      boxMax: [1, 1, 1],
+      scale: 2,
+      bias: -1,
+    })),
+    scene: { ...base.scene, emitters: [{ ...emitter, behaviorGraph }] },
+  };
+}
+
 /** A source whose one emitter has a live position channel. */
 function fakePositionEmitterSource(): SourceState {
   const base = createTestState().source;
@@ -201,6 +234,21 @@ describe("emitProjectModule - structure", () => {
     expect(text).toContain("  type FXExternalTexture,");
     expect(text).not.toContain('from "three"');
     expect(text).toContain('externalSlots: ["sprite"]');
+  });
+
+  it("declares a 3D texture asset per volume a behavior samples", () => {
+    const text = emitProjectModule(sdfEmitterSource("Rock SDF", ["Rock SDF"]));
+    expect(text).toContain('"Rock SDF": Data3DTexture;');
+    expect(text).toContain('import { type Data3DTexture } from "three";');
+    // On the JS behavior and on the GPU kernel, each by its own binding or uniform.
+    expect(text.match(/volumes: \{"[\w$]+":"Rock SDF"\}/g)).toHaveLength(2);
+    expect(text).toContain("  fxVolumeFetch,");
+  });
+
+  it("refuses a volume the content library does not hold", () => {
+    expect(() => emitProjectModule(sdfEmitterSource("Rock SDF", []))).toThrow(
+      /No volume asset "Rock SDF"/,
+    );
   });
 
   it("renames a project whose class name would collide with a module identifier", () => {

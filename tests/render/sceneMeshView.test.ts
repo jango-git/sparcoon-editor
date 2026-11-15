@@ -28,7 +28,7 @@ function harnessWithMeshGeometries(): {
   geometries: Record<string, BufferGeometry>;
 } {
   const geometries: Record<string, BufferGeometry> = {};
-  const emitters = createPreview({ meshGeometries: () => geometries });
+  const emitters = createPreview({ assets: () => ({ geometries, volumes: {} }) });
   return { store: new Store(createTestState()), emitters, geometries };
 }
 

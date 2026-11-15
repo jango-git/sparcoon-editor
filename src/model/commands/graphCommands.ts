@@ -14,6 +14,7 @@ import {
   timelineValueNames,
 } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
+import { volumeDescriptionPatch } from "../assetDescription";
 import { emitterGraphs, resolveGraphOwner, type SourceState } from "../editorState";
 import type { Store } from "../store";
 import {
@@ -49,15 +50,7 @@ export function addCatalogNode(
   return node.id;
 }
 
-/**
- * Sets one parameter on a node (inline editing); committed `"structural"` so the pipeline
- * recomputes, then the emitter view decides rebind vs recompile from the compiled structural hash.
- *
- * `live: true` (an intermediate step of a scrub/drag control, never its final release) applies the
- * same edit through {@link Store.commitLive} instead - a preview the pipeline still recomputes
- * from, but that never touches undo history, so a whole drag gesture costs history exactly one
- * entry (the caller's later, non-live call at the gesture's end) rather than one per step.
- */
+/** Sets one parameter on a node. See {@link updateNodeParams}. */
 export function updateNodeParam(
   store: Store,
   slot: GraphSlot,
@@ -66,25 +59,50 @@ export function updateNodeParam(
   value: unknown,
   live = false,
 ): void {
+  updateNodeParams(store, slot, nodeId, { [key]: value }, live);
+}
+
+/**
+ * Sets parameters on a node in one edit (inline editing). Committed `"structural"` so the pipeline
+ * recomputes, then the emitter view decides rebind vs recompile from the compiled structural hash.
+ * Picking a volume asset also sets the inputs it describes (see {@link volumeDescriptionPatch}),
+ * unless the same patch sets them.
+ *
+ * `live: true` (an intermediate step of a scrub/drag control, never its final release) applies the
+ * same edit through {@link Store.commitLive} instead - a preview the pipeline still recomputes
+ * from, but that never touches undo history, so a whole drag gesture costs history exactly one
+ * entry (the caller's later, non-live call at the gesture's end) rather than one per step.
+ */
+export function updateNodeParams(
+  store: Store,
+  slot: GraphSlot,
+  nodeId: string,
+  patch: Readonly<Record<string, unknown>>,
+  live = false,
+): void {
   const source = store.getSource();
   const before = activeGraph(source, slot).nodes[nodeId];
+  const applied =
+    before === undefined
+      ? patch
+      : { ...volumeDescriptionPatch(source, kindForSlot(slot), before, patch), ...patch };
   const next = withGraph(source, slot, (graph) => {
     const node = graph.nodes[nodeId];
     if (node === undefined) {
       return graph;
     }
-    let parameters: Record<string, unknown> = { ...node.parameters, [key]: value };
+    let parameters: Record<string, unknown> = { ...node.parameters, ...applied };
     // A family facade (combine) reshapes its pins when its `type` changes; drop any component
     // value that no longer fits the new pin shape so the pin reverts to its default rather than
     // showing a coerced stale value the compiler would discard.
     const family = nodeFamily(node.type);
-    if (key === family?.typeParamKey) {
+    if (family?.typeParamKey !== undefined && family.typeParamKey in applied) {
       parameters = pruneStaleFamilyComponents(family, parameters);
     }
     const updated: GraphNode = { ...node, parameters };
     return { ...graph, nodes: { ...graph.nodes, [nodeId]: updated } };
   });
-  const migrated = migrateRenamedTrack(next, before, key, value);
+  const migrated = migrateRenamedTrack(next, before, "name", applied["name"]);
   if (live) {
     store.commitLive(migrated, "structural");
   } else {

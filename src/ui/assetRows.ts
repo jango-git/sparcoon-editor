@@ -1,24 +1,41 @@
-/** Renders one asset library's rows (image/HDRI/mesh), normalized to a single {@link AssetRow} shape. */
-
-import { Mesh } from "three";
-import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+/** Renders one asset library's rows (image/HDRI/mesh/volume), normalized to a single {@link AssetRow} shape. */
 
 import { t } from "../i18n";
-import { removeEnvironmentAsset, removeMeshAsset, removeTextureAsset } from "../model/commands";
-import type { EnvironmentAsset, MeshAsset, TextureAsset } from "../model/editorState";
-import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
+import {
+  removeEnvironmentAsset,
+  removeMeshAsset,
+  removeTextureAsset,
+  removeVolumeAsset,
+} from "../model/commands";
+import type { EnvironmentAsset, MeshAsset, TextureAsset, VolumeAsset } from "../model/editorState";
+import {
+  selectAssetUsage,
+  selectEnvironmentAssets,
+  selectMeshAssets,
+  selectTextureAssets,
+  selectVolumeAssets,
+} from "../model/selectors";
 import type { Store } from "../model/store";
 import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
-import { buildGeometryFromArrays } from "../render/meshGeometryBaking";
+import { type AssetFile, meshFile, uploadedFile, volumeFile } from "./assetFiles";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
+import { downloadFile } from "./download";
 import { actionIcons, assetIcons, icon } from "./icons";
 
 /** Presses to confirm a delete in the content sheet (see {@link attachCountdownConfirm}). */
 const DELETE_CLICKS = 4;
 
-/** The uniform shape a row renders from, normalized across the three asset kinds. */
+/** A row's own action beside its download, an icon button. */
+export interface AssetRowAction {
+  readonly glyph: string;
+  readonly title: string;
+  readonly description: string;
+  run(): void;
+}
+
+/** The uniform shape a row renders from, normalized across the asset kinds. */
 export interface AssetRow {
   readonly name: string;
   readonly label: string;
@@ -34,6 +51,8 @@ export interface AssetRow {
   readonly glyph: string;
   /** Extra info line under the file name in the title's tooltip (dimensions or byte size). */
   readonly detail: string;
+  /** Actions of its kind, before the download. */
+  readonly actions?: readonly AssetRowAction[];
   download(): void;
   remove(): void;
 }
@@ -57,7 +76,7 @@ export function textureRows(store: Store, usage: ReadonlyMap<string, number>): r
     thumbnailUrl: asset.dataUrl,
     glyph: assetIcons.image,
     detail: t("content.imageSize", { width: String(asset.width), height: String(asset.height) }),
-    download: () => downloadDataUrl(asset.label, asset.dataUrl),
+    download: () => save(uploadedFile(asset)),
     remove: () => removeTextureAsset(store, asset.name),
   }));
 }
@@ -85,26 +104,54 @@ export function environmentRows(store: Store, onThumbnailReady: () => void): rea
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
       glyph: assetIcons.hdri,
       detail: formatBytes(asset.byteSize),
-      download: () => downloadDataUrl(asset.label, asset.dataUrl),
+      download: () => save(uploadedFile(asset)),
       remove: (): void => removeEnvironmentAsset(store, asset.name),
     };
   });
 }
 
-export function meshRows(store: Store): readonly AssetRow[] {
+/** `onBake` opens the SDF baker on a mesh. */
+export function meshRows(store: Store, onBake: (mesh: MeshAsset) => void): readonly AssetRow[] {
   const assets = selectMeshAssets(store);
   const thumbnails = meshThumbnails(assets);
+  const usage = selectAssetUsage(store, "mesh");
   return assets.map((asset: MeshAsset) => {
     const thumbnailUrl = thumbnails.get(asset.name);
     return {
       name: asset.name,
       label: asset.label,
-      users: 0,
+      users: usage.get(asset.name) ?? 0,
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
       glyph: assetIcons.mesh,
       detail: formatBytes(asset.byteSize),
-      download: () => void downloadMeshAsset(asset),
+      actions: [
+        {
+          glyph: assetIcons.bakeVolume,
+          title: t("content.bakeVolume"),
+          description: t("content.bakeVolumeTip"),
+          run: () => onBake(asset),
+        },
+      ],
+      download: () => save(meshFile(asset)),
       remove: () => removeMeshAsset(store, asset.name),
+    };
+  });
+}
+
+/** The volume rows - the slice atlas as the preview, downloaded as is. */
+export function volumeRows(store: Store): readonly AssetRow[] {
+  const usage = selectAssetUsage(store, "volume");
+  return selectVolumeAssets(store).map((asset: VolumeAsset) => {
+    const size = asset.size.join("x");
+    return {
+      name: asset.name,
+      label: asset.label,
+      users: usage.get(asset.name) ?? 0,
+      ...(asset.dataUrl === "" ? {} : { thumbnailUrl: asset.dataUrl }),
+      glyph: assetIcons.volume,
+      detail: t("content.volumeSize", { size }),
+      download: () => save(volumeFile(asset)),
+      remove: () => removeVolumeAsset(store, asset.name),
     };
   });
 }
@@ -136,10 +183,21 @@ function assetRowElement(row: AssetRow): HTMLElement {
     row.usersTooltip ?? t("content.usersTip", { count: String(row.users) }),
   );
 
-  const download = createElement("button", { className: "asset-row__action", type: "button" });
-  download.append(icon(assetIcons.download));
-  attachTooltip(download, t("content.download"), t("content.downloadTip"));
-  download.addEventListener("click", () => row.download());
+  const actions = [
+    ...(row.actions ?? []),
+    {
+      glyph: assetIcons.download,
+      title: t("content.download"),
+      description: t("content.downloadTip"),
+      run: (): void => row.download(),
+    },
+  ].map((action) => {
+    const button = createElement("button", { className: "asset-row__action", type: "button" });
+    button.append(icon(action.glyph));
+    attachTooltip(button, action.title, action.description);
+    button.addEventListener("click", () => action.run());
+    return button;
+  });
 
   // Delete is guarded by the shared countdown-confirm control (four clicks): a stray click never
   // drops an asset, and the button counts down and reverts to the trash glyph if left idle.
@@ -156,37 +214,14 @@ function assetRowElement(row: AssetRow): HTMLElement {
     name,
     createElement("div", { className: "asset-row__spacer" }),
     count,
-    download,
+    ...actions,
     remove,
   ]);
 }
 
-/** Triggers a browser download of the asset's original file from its data URL. */
-function downloadDataUrl(fileName: string, dataUrl: string): void {
-  const link = document.createElement("a");
-  link.href = dataUrl;
-  link.download = fileName;
-  link.click();
-}
-
-/**
- * Regenerates a single-mesh GLB from a mesh asset's baked geometry (ADR-0001 - the original upload
- * bytes are not retained) and triggers its download.
- */
-async function downloadMeshAsset(asset: MeshAsset): Promise<void> {
-  const geometry = buildGeometryFromArrays(asset.geometry);
-  try {
-    const glb = await new GLTFExporter().parseAsync(new Mesh(geometry), { binary: true });
-    const blob = new Blob([glb as ArrayBuffer], { type: "model/gltf-binary" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${asset.label}.glb`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  } finally {
-    geometry.dispose();
-  }
+/** Downloads an asset's file - a mesh's once its GLB is written. */
+function save(file: AssetFile | Promise<AssetFile>): void {
+  void Promise.resolve(file).then(({ fileName, bytes }) => downloadFile(fileName, bytes));
 }
 
 /** A compact byte-size label (e.g. "12.3 KB"); binary units, one decimal past kilobytes. */

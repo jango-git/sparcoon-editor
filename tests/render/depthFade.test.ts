@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { depthFadeModeErrors } from "../../src/domain/depthFadeChecks";
+import { depthFadeModeErrors } from "../../src/domain/sceneDepthChecks";
 import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import { renderArtifactBody } from "../../src/engine/emit/artifactLiterals";

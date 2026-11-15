@@ -155,6 +155,16 @@ export interface AssetsView {
     readonly label: string;
     readonly byteSize: number;
   }[];
+  /** Each texel's byte `b` holds the distance `b / 255 * scale + bias`, over the box. */
+  readonly volumes: readonly {
+    readonly name: string;
+    readonly label: string;
+    readonly size: readonly [number, number, number];
+    readonly boxMin: readonly [number, number, number];
+    readonly boxMax: readonly [number, number, number];
+    readonly scale: number;
+    readonly bias: number;
+  }[];
   readonly activeEnvironment: string | undefined;
 }
 
@@ -308,6 +318,15 @@ export function assetsView(source: SourceState): AssetsView {
       name: asset.name,
       label: asset.label,
       byteSize: asset.byteSize,
+    })),
+    volumes: source.volumeAssets.map(({ name, label, size, boxMin, boxMax, scale, bias }) => ({
+      name,
+      label,
+      size: [...size],
+      boxMin: [...boxMin],
+      boxMax: [...boxMax],
+      scale,
+      bias,
     })),
     activeEnvironment: source.activeEnvironmentName,
   };

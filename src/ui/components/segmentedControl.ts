@@ -19,7 +19,8 @@ export interface SegmentOption<TKey extends string> {
   readonly glyph?: string;
   /** Keeps the label text beside the glyph, for options whose glyph alone is no common symbol. */
   readonly labelled?: boolean;
-  /** Second (muted) tooltip line - what this option does. Shown on icon segments. */
+  /** Second (muted) tooltip line - what this option does. An icon segment always has a tooltip, a
+   *  text one only with this. */
   readonly description?: string;
 }
 
@@ -41,7 +42,11 @@ export function createSegmentedControl<TKey extends string>(
   const createFace = (option: SegmentOption<TKey>): HTMLButtonElement => {
     const glyph = option.glyph ?? "";
     if (glyph === "") {
-      return createElement("button", { className: "segment", textContent: option.label });
+      const button = createElement("button", { className: "segment", textContent: option.label });
+      if (option.description !== undefined) {
+        attachTooltip(button, option.label, option.description);
+      }
+      return button;
     }
     const labelled = option.labelled === true;
     const button = createElement("button", {

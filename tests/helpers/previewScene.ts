@@ -1,12 +1,13 @@
-import { type BufferGeometry, PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
+import { PerspectiveCamera, Scene, Texture, type WebGLRenderer } from "three";
 
+import { NO_PREVIEW_ASSETS, type PreviewAssets } from "../../src/render/previewAssets";
 import { SceneEmitters } from "../../src/render/sceneEmitters";
 
 export interface PreviewOptions {
   /** What the stub renderer claims; the headless suite never has a real WebGL context. */
   readonly webgl2?: boolean;
-  /** The custom mesh-geometry resolver, by mesh-asset name. */
-  readonly meshGeometries?: () => Readonly<Record<string, BufferGeometry>>;
+  /** The content library's assets, by name. */
+  readonly assets?: () => PreviewAssets;
 }
 
 const created: SceneEmitters[] = [];
@@ -27,7 +28,7 @@ export function createPreview(options: PreviewOptions = {}): SceneEmitters {
     renderer,
     "baseline",
     () => 0,
-    options.meshGeometries ?? ((): Readonly<Record<string, BufferGeometry>> => ({})),
+    options.assets ?? ((): PreviewAssets => NO_PREVIEW_ASSETS),
   );
   created.push(emitters);
   return emitters;

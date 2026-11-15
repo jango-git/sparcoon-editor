@@ -78,10 +78,10 @@
   flex: 1;
 }
 
-/* Icon + label outline buttons (the upload affordance and the Import/Export controls): not filled,
-   highlighting on hover/press - no transition, the highlight lands at once. */
-.content-sheet__upload,
-.content-export__button {
+/* Icon + label outline buttons (the upload affordance, the Project block's controls, the SDF
+   baker's actions): not filled, highlighting on hover/press - no transition, the highlight lands at
+   once. */
+.outline-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -93,20 +93,17 @@
   cursor: pointer;
 }
 
-.content-sheet__upload:hover,
-.content-export__button:hover {
+.outline-button:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.content-sheet__upload:active,
-.content-export__button:active {
+.outline-button:active {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-.content-sheet__upload svg,
-.content-export__button svg {
+.outline-button svg {
   width: 14px;
   height: 14px;
 }
@@ -344,6 +341,71 @@
 .asset-row__remove svg {
   width: 14px;
   height: 14px;
+}
+
+/* The SDF baker: in place of the sheet's blocks, its 3D view on the left and its settings on the
+   right (a .content-export block, styled as the Project one). */
+.volume-baker {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The settings share the viewport tabs' row grid and axis fields, which take the small type the
+   tabs give them. */
+.volume-baker__settings {
+  flex: 0 0 380px;
+  font-size: var(--font-size-small);
+}
+
+.volume-baker__note {
+  color: var(--muted);
+}
+
+/* The open-mesh warning: the timeline's amber, as graph warnings. */
+.volume-baker__note--warning {
+  color: var(--timeline-event);
+}
+
+/* Back to the library, where the blocks' close button is, as an outline button of its height. */
+.volume-baker__back {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 0 10px 0 8px;
+}
+
+/* The 3D view is the whole left side, its canvas filling it. */
+.volume-baker__view {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  background: var(--well);
+}
+
+/* A control of the view over it, a card like the main preview's - but one that takes the pointer. */
+.volume-baker__overlay {
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.volume-baker__overlay-label {
+  color: var(--muted);
+}
+
+.volume-baker__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* The Help block: a static quick-reference, raised like Project (the pair reads as the sheet's

@@ -18,18 +18,16 @@ import type { SceneEntity } from "../../model/entity";
 import { selectEntityDoc } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import { IDENTITY_TRANSFORM, sampleTransform, type Transform } from "../../model/transform";
-import { NumberControl } from "../components/numberControl";
+import type { NumberControl } from "../components/numberControl";
 import { createViewportTabs, type ViewportTabs } from "../components/viewportTabs";
 import { createElement } from "../dom";
 import type { EditorContext } from "../editorContext";
 import { icon, viewportIcons } from "../icons";
-import { field } from "../primitives/field";
+import { axisSection, axisTriplet, readTriplet, setTriplet } from "./axisFields";
 import { createPreviewSettingsGroups } from "./previewSettings";
 import { channelFromDisplay, channelToDisplay } from "./transformChannel";
 
 type Channel = "position" | "rotation" | "scale";
-
-const AXIS_KEYS = ["axis.x", "axis.y", "axis.z"] as const;
 
 /** The right-hand tabs: Item, then the view settings. The `N` hotkey toggles them. */
 export function createViewportTransform(context: EditorContext): ViewportTabs {
@@ -89,9 +87,9 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
   const tabs = createViewportTabs("right");
   tabs.addTab(t("viewport.item"), viewportIcons.item, t("viewport.itemTransformTip"), [
     nameRow,
-    section(t("field.position"), controls.position),
-    section(t("field.rotation"), controls.rotation),
-    section(t("field.scale"), controls.scale),
+    axisSection(t("field.position"), controls.position),
+    axisSection(t("field.rotation"), controls.rotation),
+    axisSection(t("field.scale"), controls.scale),
   ]);
   for (const settingsGroup of createPreviewSettingsGroups(settings, gizmo, store)) {
     tabs.addTab(settingsGroup.label, settingsGroup.glyph, t("viewport.settingsTip"), [
@@ -99,10 +97,7 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
     ]);
   }
 
-  const read = (channel: Channel): [number, number, number] => {
-    const [x, y, z] = controls[channel];
-    return [x.value, y.value, z.value];
-  };
+  const read = (channel: Channel): [number, number, number] => readTriplet(controls[channel]);
 
   function commit(channel: Channel, live = false): void {
     setEntityBaseChannel(
@@ -133,42 +128,6 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
   update();
 
   return tabs;
-}
-
-function axisTriplet(
-  options: { step?: number; precision?: number },
-  onChange: () => void,
-  live: () => void,
-): [NumberControl, NumberControl, NumberControl] {
-  const make = (): NumberControl => new NumberControl({ value: 0, ...options, onChange, live });
-  return [make(), make(), make()];
-}
-
-function setTriplet(
-  controls: [NumberControl, NumberControl, NumberControl],
-  values: readonly number[],
-): void {
-  controls[0].setValue(values[0] ?? 0);
-  controls[1].setValue(values[1] ?? 0);
-  controls[2].setValue(values[2] ?? 0);
-}
-
-/** A labelled channel block with its three axis components stacked one per row. */
-function section(
-  label: string,
-  controls: [NumberControl, NumberControl, NumberControl],
-): HTMLElement {
-  const componentField = (index: 0 | 1 | 2): HTMLElement =>
-    field(t(AXIS_KEYS[index]), controls[index].element, {
-      rowClassName: "viewport-transform__comp",
-      labelClassName: "viewport-transform__axis",
-    });
-  return createElement("div", { className: "viewport-transform__section" }, [
-    createElement("div", { className: "viewport-transform__section-title", textContent: label }),
-    componentField(0),
-    componentField(1),
-    componentField(2),
-  ]);
 }
 
 /** The badge glyph for the selected entity's kind. */

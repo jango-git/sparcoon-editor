@@ -8,6 +8,7 @@ import { createDefaultEmitter, createInitialState } from "../../src/model/editor
 import { Store } from "../../src/model/store";
 import { serializeProject } from "../../src/persistence/projectFile";
 import type { DocumentReplaceTarget } from "../../src/persistence/replaceDocument";
+import { readZip } from "../helpers/zip";
 
 describe("agent catalog", () => {
   const catalog = createCatalogApi();
@@ -98,6 +99,27 @@ describe("agent project", () => {
     expect(store.getSource().name).toBe("bolt sparks");
     expect(project.exportTypeScript()).toMatch(/class BoltSparks\b/);
     expect(() => project.setName(3 as never)).toThrow(/invalid_argument/);
+  });
+
+  it("exports the library zip as base64", async () => {
+    const state = createInitialState();
+    state.source = {
+      ...state.source,
+      assets: [
+        {
+          name: "dot",
+          label: "dot.png",
+          dataUrl: "data:image/png;base64,AQID",
+          width: 1,
+          height: 1,
+        },
+      ],
+    };
+    const project = createProjectApi(replaceTarget(new Store(state)));
+    const archive = Uint8Array.from(atob(await project.exportZip()), (c) => c.charCodeAt(0));
+    expect(readZip(archive).map(({ name, bytes }) => [name, [...bytes]])).toEqual([
+      ["dot.png", [1, 2, 3]],
+    ]);
   });
 });
 

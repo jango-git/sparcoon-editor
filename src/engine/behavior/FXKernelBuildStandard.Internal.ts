@@ -20,10 +20,11 @@ import type { FXValueType } from "../core/socket/FXValueType";
 import type {
   FXKernelBindingHandle,
   FXKernelBufferLayout,
+  FXKernelResourceFields,
   FXKernelWrite,
 } from "./FXCompiledKernel";
 import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
-import { kernelMeshSurfaces } from "./FXKernelShared.Internal";
+import { kernelResourceFields } from "./FXKernelShared.Internal";
 import {
   FIXED_UNIFORMS,
   type FXKernelUniform,
@@ -72,7 +73,8 @@ const BIRTH_PROLOGUE: readonly string[] = [
   `${BIRTH_MODEL_MATRIX_LOCAL}[3].xyz -= ${FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM} * ${BIRTH_AGE_LOCAL};`,
 ];
 
-export interface FXFusedProgramStandard {
+/** Its resources are sampler uniforms the runtime binds textures to (see {@link FXKernelResourceFields}). */
+export interface FXFusedProgramStandard extends FXKernelResourceFields {
   readonly vertexSource: string;
   readonly fragmentSource: string;
   /** Varying names for `gl.transformFeedbackVaryings` - one per buffer, matching `buffers`' order. */
@@ -81,10 +83,10 @@ export interface FXFusedProgramStandard {
    *  is its attribute location and its place in the slot. */
   readonly buffers: readonly FXKernelBufferLayout[];
   readonly bindings: Readonly<Record<string, FXKernelBindingHandle>>;
-  /** The mesh asset each `sampler2D` surface uniform samples, by uniform; absent when none. */
-  readonly surfaces?: Readonly<Record<string, string>>;
   /** Both phases' draw stages as one `compute`, and every draw uniform it fills, by type. */
   readonly draw?: FXCompiledKernelDrawStage;
+  /** Whether a phase reads the scene depth; absent when neither does. */
+  readonly sceneDepth?: true;
 }
 
 /** Deterministic `out` (transform-feedback) varying name for a state buffer. */
@@ -257,10 +259,12 @@ export function assembleTransformFeedbackProgram(
     (buffer) => `    ${glslOutVaryingName(buffer.name)} = ${glslBufferAttributeName(buffer.name)};`,
   );
 
-  // A sampler is lowp by default in GLSL ES 3.00: a surface table holds positions.
+  // A 2D sampler is lowp by default in GLSL ES 3.00, and a 3D one has no default - a surface table
+  // holds positions.
   const vertexSource = `#version 300 es
 precision highp float;
 precision highp sampler2D;
+precision highp sampler3D;
 
 ${inDeclarations.join("\n")}
 
@@ -286,15 +290,15 @@ ${[...update.body.map((line) => `    ${line}`), ...updateAssignments].join("\n")
 `;
 
   const draw = fuseDrawStages([spawn.draw, update.draw]);
-  const surfaces = kernelMeshSurfaces(compiled);
   return {
     vertexSource,
     fragmentSource: FX_TRANSFORM_FEEDBACK_FRAGMENT_SOURCE,
     transformFeedbackVaryings: buffers.map((buffer) => glslOutVaryingName(buffer.name)),
     buffers,
     bindings: mergeBindings(spawn.bindings, update.bindings),
-    ...(surfaces === undefined ? {} : { surfaces }),
+    ...kernelResourceFields(compiled),
     ...(draw === undefined ? {} : { draw }),
+    ...(spawn.sceneDepth === true || update.sceneDepth === true ? { sceneDepth: true } : {}),
   };
 }
 

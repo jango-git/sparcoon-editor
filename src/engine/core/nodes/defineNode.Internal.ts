@@ -8,6 +8,8 @@ import type { FXSocketDescriptor } from "../socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, literalGenericType, resolveValueType } from "../socket/FXValueType";
 import type { FXBehaviorPhaseName, FXNodeCost, FXRenderStageName } from "./defineNode";
+import { FXDescriptorAssets } from "./descriptorAssets.Internal";
+import type { FXAssetKind, FXAssetRead } from "./FXAssetKind";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
 import type { FXSocketSpec } from "./FXSocketSpec";
 import {
@@ -55,6 +57,8 @@ export interface FXDescriptorBuildArgs {
   /** Emits a deduplicated helper (escape hatch for JS-only helpers used by a single node). */
   readonly emitHelper: (key: string, source: string) => void;
   readonly fn: FXExprBuilderApi;
+  /** Each asset as the sampler value it is read through. `undefined` while none is picked. */
+  readonly assets: Readonly<Record<string, FXExpr | undefined>>;
 }
 export type FXDescriptorBuild = (args: FXDescriptorBuildArgs) => Record<string, FXExpr>;
 
@@ -71,12 +75,14 @@ export interface FXDescriptorCore {
   readonly inputSpecs: Readonly<Record<string, FXSocketSpec>>;
   readonly outputSpecs: Readonly<Record<string, FXSocketSpec>>;
   readonly params: Readonly<Record<string, FXParamSpec>>;
+  /** The assets the node samples, by the key of the param picking each. */
+  readonly assets?: Readonly<Record<string, FXAssetKind>>;
   /** Explicit target-input reads (input-default reads are derived separately). */
   readonly reads?:
     readonly string[] | ((params: Readonly<Record<string, unknown>>) => readonly string[]);
   /** Lighting intrinsic this node emits, surfaced through {@link FXGraphNode.lightingIntrinsic}. */
   readonly lightingIntrinsic?: string;
-  /** Whether this node calls `fxDepthFade`, surfaced through {@link FXGraphNode.readsSceneDepth}. */
+  /** Whether this node reads the scene depth, surfaced through {@link FXGraphNode.readsSceneDepth}. */
   readonly readsSceneDepth?: boolean;
   /** Complexity estimate, surfaced through {@link FXGraphNode.estimateCost}. */
   readonly cost: FXNodeCost;
@@ -111,6 +117,8 @@ export class FXDescriptorNode extends FXGraphNode {
   private readonly editableInputs: readonly (readonly [string, FXEditableSocketSpec])[];
   /** Target inputs read via an input socket's `targetInput` default (static). */
   private readonly inputDefaultReads: readonly string[];
+  /** The assets it samples. */
+  private readonly assets: FXDescriptorAssets;
   /** Live handles retained from the last build, keyed by value-param name. */
   private readonly liveHandles = new Map<string, FXValueParamHandle>();
 
@@ -128,6 +136,7 @@ export class FXDescriptorNode extends FXGraphNode {
     this.inputs = toSocketDescriptors(core.inputSpecs, core.constraint);
     this.outputs = toSocketDescriptors(core.outputSpecs, core.constraint);
     this.isGeneric = core.constraint !== undefined;
+    this.assets = new FXDescriptorAssets(core.assets ?? {});
     this.genericHintKey = Object.entries(core.params).find(
       ([, specification]) =>
         specification.kind === "structural" && specification.type === "valueType",
@@ -200,6 +209,10 @@ export class FXDescriptorNode extends FXGraphNode {
     return this.core.readsSceneDepth ?? false;
   }
 
+  public override get assetReads(): readonly FXAssetRead[] {
+    return this.assets.reads();
+  }
+
   /**
    * Static complexity estimate (see {@link FXGraphNode.estimateCost}): the descriptor's cost
    * function evaluated against current *param* values only (never a pin's editable-input
@@ -210,7 +223,7 @@ export class FXDescriptorNode extends FXGraphNode {
     if (typeof this.core.cost === "number") {
       return this.core.cost;
     }
-    const parameters: Record<string, unknown> = {};
+    const parameters: Record<string, unknown> = this.assets.names();
     for (const name of Object.keys(this.core.params)) {
       parameters[name] = this.values.get(name);
     }
@@ -282,6 +295,7 @@ export class FXDescriptorNode extends FXGraphNode {
         this.values.set(key, specification.value);
       }
     }
+    this.assets.apply(parameters);
     if (this.core.stage === "param") {
       const raw = parameters["stage"];
       if (raw !== undefined) {
@@ -305,11 +319,12 @@ export class FXDescriptorNode extends FXGraphNode {
   public override cacheKey(): string {
     // JSON-encode the [name, value] pairs: a plain `name=value` join on `:` would let an
     // enum option containing `:`/`=` collide with a different structural set. Editable
-    // input defaults are baked as inline literals so they must also be in the hash;
-    // tagged `s`/`i` so a structural param and an input socket sharing a name hash distinctly.
+    // input defaults are baked as inline literals so they must also be in the hash, and so is
+    // each picked asset (its resource is declared in the code). Tagged `s`/`i`/`a` apart.
     const parts: (readonly [string, string, unknown])[] = [
       ...this.structuralKeys.map((name) => ["s", name, this.values.get(name)] as const),
       ...this.editableInputs.map(([key]) => ["i", key, this.values.get(key)] as const),
+      ...this.assets.cacheKeyParts(),
     ];
     // A flexible node's stage/phase placement is inferred by the compiler and folded into
     // the structural hash there instead (render `stageTag`; behavior `nodeKey`).
@@ -363,6 +378,7 @@ export class FXDescriptorNode extends FXGraphNode {
     const outputs = build({
       inputs,
       params: parameters,
+      assets: this.assets.resolve(context, this.type),
       resolvedT,
       target: { read: (name) => context.readTargetInput(name) },
       local: (hint, expr) => context.defineLocal(hint, expr),

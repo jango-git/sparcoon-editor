@@ -14,6 +14,7 @@ import type { AttributeTypeName, GraphNode } from "../../domain/graphModel";
 import type { NodeMetrics } from "../../domain/layout/arrangeGraph";
 import type { FXNodeMeta, FXParamMeta, FXSocketMeta } from "../../domain/nodePalette";
 import { attributeNameFromSlot, humanizeKey } from "../../domain/nodePalette";
+import { assetParamsOf, type FXAssetKind } from "../../engine/core/nodes/FXAssetKind";
 import { t } from "../../i18n";
 import { nodeDescription, nodeLabel, nodeParamLabel, nodeSocketLabel } from "../../i18n/nodeText";
 import type { AssetPickerOption } from "../components/assetPicker";
@@ -22,6 +23,7 @@ import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 import { clamp } from "../primitives/math";
 import { GRID_SIZE } from "./grid";
+import { buildAssetRow } from "./nodeAssetRow";
 import {
   type AttributeNodeConfig,
   buildAttributeName,
@@ -45,7 +47,6 @@ import {
   type NodeRow,
 } from "./nodeGrid";
 import { buildHelpIcon } from "./nodeHelpIcon";
-import { buildMeshAssetRow } from "./nodeMeshRow";
 import { buildTextureAssetRows, type TextureAssetOption } from "./nodeTextureRow";
 import { NodeWidgets } from "./nodeWidgets";
 import { socketTypeColor } from "./socketColors";
@@ -136,8 +137,8 @@ export interface NodeViewOptions {
    * this card builds so a popup's rows visually match the zoomed trigger they hang from.
    */
   readonly scale?: (() => number) | undefined;
-  /** The library's mesh assets, for a node with a `mesh-asset` parameter (empty otherwise). */
-  readonly meshAssets?: readonly AssetPickerOption[] | undefined;
+  /** The library's assets of each kind a node's asset parameter picks from (none otherwise). */
+  readonly assetOptions?: Readonly<Partial<Record<FXAssetKind, readonly AssetPickerOption[]>>>;
 }
 
 export class NodeView {
@@ -169,7 +170,7 @@ export class NodeView {
       sinkCost,
       paletteAccess,
       scale,
-      meshAssets = [],
+      assetOptions = {},
     } = options;
     this.onParamChange = options.onParamChange;
     this.nodeType = node.type;
@@ -323,12 +324,9 @@ export class NodeView {
         bodyRows.push(this.paramNameRow(node, paramNameKey));
       }
     }
-    const meshKey = metadata?.customParams?.find(
-      (customParam) => customParam.kind === "mesh-asset",
-    )?.key;
-    if (meshKey !== undefined) {
+    for (const { key, kind } of assetParamsOf(metadata)) {
       bodyRows.push(
-        buildMeshAssetRow(node, meshKey, meshAssets, {
+        buildAssetRow(node, key, kind, assetOptions[kind] ?? [], {
           widgets: this.widgets,
           onParamChange: this.onParamChange,
           labelledRow: (label, control) => this.labelledRow(label, control),

@@ -9,11 +9,11 @@
 
 import type { FXBufferLayout, FXGeometrySource, FXRenderMode } from "sparcoon";
 
+import type { LibraryAssetNames } from "../domain/assetChecks";
+import { missingAssetErrors, NO_LIBRARY_ASSETS } from "../domain/assetChecks";
 import { kernelWrittenBuffers, unwrittenAttributeWarnings } from "../domain/attributeChecks";
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import type { EditorGraph } from "../domain/graphModel";
 import { lifetimeUpperBound, unboundedLifetimeWarnings } from "../domain/lifetimeBound";
-import { missingMeshAssetErrors } from "../domain/meshSurfaceChecks";
 import {
   GraphKind,
   readRenderSinkConfig,
@@ -33,6 +33,7 @@ import {
   type RenderBudgetFindings,
   stripRenderBudgetFindings,
 } from "../domain/renderBudget";
+import { cpuSceneDepthWarnings, depthFadeModeErrors } from "../domain/sceneDepthChecks";
 import { serializeGraph, undeclaredAttributeErrors } from "../domain/serialize";
 import {
   emitterDrawsNothingWarnings,
@@ -46,7 +47,7 @@ import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { kernelMeshSurfaces } from "../engine/behavior/FXKernelShared.Internal";
+import { kernelResources } from "../engine/behavior/FXKernelShared.Internal";
 import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
@@ -59,6 +60,7 @@ import {
   FX_MIX_HELPER,
   FX_MOD_HELPER,
   FX_SMOOTHSTEP_HELPER,
+  FX_VOLUME_FETCH_HELPER,
 } from "../engine/core/ir/FXFunctions.Internal";
 import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
 import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
@@ -69,6 +71,7 @@ import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
+import type { FXAssetKind } from "../engine/core/nodes/FXAssetKind";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import { assembleRenderArtifact } from "../engine/emit/assembleArtifacts";
 import {
@@ -100,6 +103,7 @@ const HELPER_IMPORT_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
   [FX_MIX_HELPER, ["fxMix"]],
   [FX_SMOOTHSTEP_HELPER, ["fxSmoothstep"]],
   [SAMPLE_LUT_HELPER_SOURCE, ["fxSampleLut"]],
+  [FX_VOLUME_FETCH_HELPER, ["fxVolumeFetch"]],
   // Noise dependencies the kernel body never calls directly: sparcoon keeps them module-private.
   [FX_JS_NOISE_HASH.source, []],
   [FX_JS_NOISED.source, []],
@@ -174,8 +178,8 @@ export interface EmitterIR {
    */
   readonly gpuProgram?: FXFusedProgramStandard | undefined;
   readonly geometry: FXGeometrySource;
-  /** The mesh assets the behavior samples: geometries the app supplies by these names. */
-  readonly meshSurfaces: readonly string[];
+  /** The assets the behavior samples, by kind - what the app supplies by these names. */
+  readonly sampledAssets: Readonly<Record<FXAssetKind, readonly string[]>>;
   readonly renderMode: "blending" | "alphaHash" | "alphaTest" | "opaque";
   readonly sortInterval: number;
   readonly castShadow: boolean;
@@ -277,13 +281,13 @@ function compileStrip<K extends StripName>(
 /**
  * Compiles one emitter for the export. `spawnConfig` is how it runs - the export passes
  * `effectiveSpawnConfig` (a reaction source is never offered the GPU); defaults to what its spawn
- * node asks for, for an emitter compiled on its own. `meshAssetNames` is the content library's
- * mesh assets: a mesh the behavior samples must be one of them.
+ * node asks for, for an emitter compiled on its own. `library` is the content library's assets - an
+ * asset the behavior samples must be one of them.
  */
 export function compileEmitter(
   emitter: EmitterDoc,
   spawnConfig: SpawnSinkConfig = readSpawnSinkConfig(emitter.behaviorGraph),
-  meshAssetNames: readonly string[] = [],
+  library: LibraryAssetNames = NO_LIBRARY_ASSETS,
 ): EmitterIR {
   // A Timeline Value declared at two types or with two defaults across the emitter's graphs.
   const [declarationConflict] = timelineValueConflicts(emitterGraphs(emitter));
@@ -319,9 +323,9 @@ export function compileEmitter(
   if (hiddenSortError !== undefined) {
     throw new Error(`exportTypeScript: ${emitter.name}: ${hiddenSortError.message}`);
   }
-  const [meshError] = missingMeshAssetErrors(behaviorGraph, meshAssetNames);
-  if (meshError !== undefined) {
-    throw new Error(`exportTypeScript: ${emitter.name}: ${meshError.message}`);
+  const [assetError] = missingAssetErrors(behaviorGraph, library);
+  if (assetError !== undefined) {
+    throw new Error(`exportTypeScript: ${emitter.name}: ${assetError.message}`);
   }
   const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
 
@@ -371,7 +375,10 @@ export function compileEmitter(
     behaviorAttributes,
     gpuProgram: bundle.standardProgram,
     geometry: toArtifactGeometrySource(config.geometry),
-    meshSurfaces: [...new Set(Object.values(kernelMeshSurfaces(bundle.kernel) ?? {}))],
+    sampledAssets: {
+      mesh: [...new Set(Object.values(kernelResources(bundle.kernel, "mesh") ?? {}))],
+      volume: [...new Set(Object.values(kernelResources(bundle.kernel, "volume") ?? {}))],
+    },
     renderMode: config.renderMode,
     sortInterval: config.sortInterval,
     castShadow: config.castShadow,
@@ -386,6 +393,7 @@ export function compileEmitter(
         emitter.behaviorGraph.attributes,
       ),
       ...unboundedLifetimeWarnings(behaviorSnapshot),
+      ...cpuSceneDepthWarnings(behaviorGraph, bundle.standardProgram !== undefined),
       ...emitterDrawsNothingWarnings(emitter),
     ],
     ...Object.fromEntries(

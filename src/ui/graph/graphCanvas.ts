@@ -52,6 +52,7 @@ import {
   inheritSourceOf,
 } from "../../engine/behavior/FXInherit";
 import type { FXInheritBuiltin } from "../../engine/behavior/FXInheritPlan";
+import { assetParamsOf, type FXAssetKind } from "../../engine/core/nodes/FXAssetKind";
 import { t } from "../../i18n";
 import { nodeDescription, nodeLabel, nodeSearchTags } from "../../i18n/nodeText";
 import {
@@ -81,6 +82,7 @@ import { resolveGraphOwner } from "../../model/editorState";
 import { emitterEntity, vfxMeshEntity } from "../../model/entity";
 import { GRAPH_SLOTS, renderHostFor, stripSlot } from "../../model/graphSlots";
 import {
+  libraryAssetNames,
   selectActiveGraphOwner,
   selectBehaviorGraph,
   selectGraphStatus,
@@ -89,7 +91,7 @@ import {
 } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import type { TransportStore } from "../../model/transport";
-import { meshThumbnails } from "../../render/assetThumbnails";
+import { libraryAssetOptions } from "../assetOptions";
 import type { AssetPickerOption } from "../components/assetPicker";
 import { createPaletteAccess } from "../components/paletteAccess";
 import { createElement } from "../dom";
@@ -553,7 +555,7 @@ export class GraphCanvas {
           sinkCost: sinkCosts.get(nodeId),
           paletteAccess,
           scale: (): number => this.viewport.scale,
-          meshAssets: this.meshAssetOptions(metadata),
+          assetOptions: this.assetOptions(metadata),
         });
         if (isSink(node)) {
           view.element.classList.add("node--output");
@@ -1423,10 +1425,12 @@ export class GraphCanvas {
     if (metadata?.customParams?.some((parameter) => parameter.kind === "inherit-source") === true) {
       return `${base}|inherits:${JSON.stringify(this.inheritCandidates())}`;
     }
-    // A mesh picker lists the library's mesh assets: an upload or delete refreshes it. JSON, as a
-    // mesh name is unsanitized text (see the render sink above).
-    if (hasMeshAssetPicker(metadata)) {
-      return `${base}|meshes:${JSON.stringify(this.meshAssetNames())}`;
+    // An asset picker lists the library's assets of its kind - an upload, bake or delete refreshes
+    // it. JSON, as a mesh name is unsanitized text (see the render sink above).
+    const pickedKinds = assetKindsPicked(metadata);
+    if (pickedKinds.length > 0) {
+      const names = libraryAssetNames(this.store.getSource());
+      return `${base}|assets:${JSON.stringify(pickedKinds.map((kind) => names[kind]))}`;
     }
     // A Texture's picker lists the library's assets and its body previews the chosen
     // one; rebuild when that set changes so a freshly-uploaded (or deleted) texture shows up in
@@ -1524,21 +1528,13 @@ export class GraphCanvas {
     }
   }
 
-  /** The library's mesh assets, offered to a node with a `mesh-asset` picker (empty otherwise). */
-  private meshAssetOptions(metadata: ReturnType<typeof metaForNode>): AssetPickerOption[] {
-    if (!hasMeshAssetPicker(metadata)) {
-      return [];
-    }
-    const assets = selectMeshAssets(this.store);
-    const thumbnails = meshThumbnails(assets);
-    return assets.map((asset) => {
-      const thumbnailUrl = thumbnails.get(asset.name);
-      return {
-        name: asset.name,
-        label: asset.label,
-        ...(thumbnailUrl === undefined ? {} : { thumbnailUrl }),
-      };
-    });
+  /** The library's assets of each kind a node's asset picker offers (none for another node). */
+  private assetOptions(
+    metadata: ReturnType<typeof metaForNode>,
+  ): Partial<Record<FXAssetKind, AssetPickerOption[]>> {
+    return Object.fromEntries(
+      assetKindsPicked(metadata).map((kind) => [kind, libraryAssetOptions(this.store, kind)]),
+    );
   }
 
   /** The library's texture assets, offered to a Texture node's picker (empty otherwise). */
@@ -1574,7 +1570,7 @@ export class GraphCanvas {
   }
 }
 
-/** Whether a node of `metadata` picks a mesh asset (Random Mesh Point). */
-function hasMeshAssetPicker(metadata: ReturnType<typeof metaForNode>): boolean {
-  return metadata?.customParams?.some((parameter) => parameter.kind === "mesh-asset") === true;
+/** The asset kinds a node of `metadata` picks (Random Mesh Point a mesh, SDF Sample a volume). */
+function assetKindsPicked(metadata: ReturnType<typeof metaForNode>): FXAssetKind[] {
+  return assetParamsOf(metadata).map((parameter) => parameter.kind);
 }

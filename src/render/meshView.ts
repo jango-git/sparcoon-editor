@@ -8,7 +8,6 @@ import type { FXRenderArtifact } from "sparcoon";
 import { FXMesh } from "sparcoon/editor";
 import type { BufferGeometry, Object3D, Texture } from "three";
 
-import { depthFadeModeErrors } from "../domain/depthFadeChecks";
 import { meshTransformWarnings } from "../domain/meshDiagnostics";
 import {
   encodeGeometrySource,
@@ -21,6 +20,7 @@ import {
   type RenderBudgetFindings,
   RenderBudgetMemo,
 } from "../domain/renderBudget";
+import { depthFadeModeErrors } from "../domain/sceneDepthChecks";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";

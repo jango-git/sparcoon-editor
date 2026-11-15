@@ -1,7 +1,7 @@
 /**
- * The render-mode rule for a graph that reads the scene depth (a Depth Fade node) - shared by the
- * live preview and the export, so the two never accept different graphs. The runtime enforces the
- * same rule; this pins it to the node, before anything is built.
+ * The rules for a graph reading the scene depth - shared by the live preview and the export, so
+ * the two never accept different graphs: a Depth Fade needs a render mode that writes no depth,
+ * which the runtime enforces too, and a Depth Sample reads the depth only on the GPU.
  */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
@@ -30,5 +30,28 @@ export function depthFadeModeErrors(
         "a depth-writing surface would fade against its own depth",
       nodeId: id,
       params: { mode: renderMode },
+    }));
+}
+
+/**
+ * A warning on every reachable node of `behavior` reading the scene depth when its emitter is not
+ * simulated on the GPU (`gpuSimulated`: a GPU kernel compiled for it) - the CPU simulation has no
+ * depth, so a Depth Sample there finds no surface.
+ */
+export function cpuSceneDepthWarnings(
+  behavior: FXGraph<FXGraphNode>,
+  gpuSimulated: boolean,
+): readonly FXCompilerError[] {
+  if (gpuSimulated) {
+    return [];
+  }
+  return [...collectReachableNodeIds(behavior)]
+    .filter((id) => behavior.getNode(id)?.readsSceneDepth === true)
+    .map((id) => ({
+      code: "scene-depth-on-cpu",
+      message:
+        "Depth Sample reads the scene depth only in the GPU simulation - turn Try GPU Simulation " +
+        "on, and keep the emitter from being the source of a reaction",
+      nodeId: id,
     }));
 }
