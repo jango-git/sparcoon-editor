@@ -4,7 +4,6 @@
  */
 
 import type { EditorGraph, GraphNode } from "../../domain/graphModel";
-import { timelineValueNames } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
 import {
   canRemoveObject,
@@ -17,6 +16,7 @@ import {
 } from "../editorState";
 import { type StripName, stripSlot } from "../graphSlots";
 import type { Store } from "../store";
+import { withDeclaredTimelineValues } from "../timelineValues";
 import { nextIdentifier } from "./identifier";
 
 /**
@@ -178,8 +178,7 @@ export function setEmitterStrip(
         const { [slot]: removed, ...rest } = candidate;
         void removed;
         // The strip's Timeline Values go with it, unless another graph declares the same name.
-        const referenced = timelineValueNames(emitterGraphs(rest));
-        return { ...rest, tracks: rest.tracks.filter((track) => referenced.has(track.name)) };
+        return withDeclaredTimelineValues(rest, emitterGraphs(rest));
       }),
     },
     "structural",

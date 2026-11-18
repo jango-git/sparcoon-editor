@@ -146,7 +146,10 @@ describe("live preview: a read of an attribute nothing writes", () => {
       scene: { ...state.source.scene, emitters: [emitter], activeEmitterId: emitter.id },
     };
     const store = new Store(state);
-    const renderer = { capabilities: { isWebGL2: false } } as unknown as WebGLRenderer;
+    const renderer = {
+      capabilities: { isWebGL2: false },
+      properties: { get: (): object => ({}) },
+    } as unknown as WebGLRenderer;
     const emitters = new SceneEmitters(
       new Scene(),
       () => new Texture(),

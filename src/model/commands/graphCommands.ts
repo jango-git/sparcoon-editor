@@ -1,22 +1,18 @@
 /**
- * Node and connection edits on the authored graphs, including the timeline-track migration tied
- * to a node's `name` param (renaming/removing a Timeline Value carries or prunes its track).
+ * Node and connection edits on the authored graphs, including what a Timeline Value's name carries
+ * (renaming/removing one carries or prunes its keyframes and live flag, see `timelineValues`).
  * Route/comment/attribute/fragment commands live in their own sibling modules; all share the
  * {@link activeGraph}/{@link withGraph} substrate from `graphAccess.Internal`.
  */
 
 import type { GraphConnection, GraphNode, GraphPosition } from "../../domain/graphModel";
 import { nodeFamily, pruneStaleFamilyComponents } from "../../domain/nodeFamilies";
-import {
-  defaultParametersFor,
-  metaFor,
-  TIMELINE_VALUE_TYPE,
-  timelineValueNames,
-} from "../../domain/nodePalette";
+import { defaultParametersFor, metaFor, TIMELINE_VALUE_TYPE } from "../../domain/nodePalette";
 import { isSink } from "../../domain/sinks";
 import { volumeDescriptionPatch } from "../assetDescription";
-import { emitterGraphs, resolveGraphOwner, type SourceState } from "../editorState";
+import { emitterGraphs, meshGraphs, resolveGraphOwner, type SourceState } from "../editorState";
 import type { Store } from "../store";
+import { withPrunedTimelineValues, withRenamedTimelineValue } from "../timelineValues";
 import {
   activeGraph,
   bindingMatches,
@@ -102,7 +98,7 @@ export function updateNodeParams(
     const updated: GraphNode = { ...node, parameters };
     return { ...graph, nodes: { ...graph.nodes, [nodeId]: updated } };
   });
-  const migrated = migrateRenamedTrack(next, before, "name", applied["name"]);
+  const migrated = migrateRenamedValue(next, before, "name", applied["name"]);
   if (live) {
     store.commitLive(migrated, "structural");
   } else {
@@ -135,93 +131,37 @@ export function removeNode(store: Store, slot: GraphSlot, nodeId: string): void 
       outputBindings: graph.outputBindings.filter((binding) => binding.from.nodeId !== nodeId),
     };
   });
-  // Removing the last Timeline Value that referenced a name leaves its timeline track orphaned;
-  // drop any track no node feeds any more so a deleted node takes its keyframes with it.
-  store.commit(withPrunedTracks(next), "structural");
+  store.commit(withPrunedTimelineValues(next), "structural");
 }
 
-/** Drops each emitter's animation tracks whose param name no `timeline-value` node references. */
-function withPrunedTracks(source: SourceState): SourceState {
-  return {
-    ...source,
-    scene: {
-      ...source.scene,
-      emitters: source.scene.emitters.map((emitter) => {
-        const referenced = timelineValueNames(emitterGraphs(emitter));
-        const tracks = emitter.tracks.filter((track) => referenced.has(track.name));
-        return tracks.length === emitter.tracks.length ? emitter : { ...emitter, tracks };
-      }),
-    },
-  };
-}
-
-/** Renames `oldName` -> `newName` in a live-params list, if present; otherwise returns it as-is. */
-function renameLiveParam(
-  names: readonly string[],
-  oldName: string,
-  newName: string,
-): readonly string[] {
-  return names.includes(oldName) ? [...names.filter((name) => name !== oldName), newName] : names;
-}
-
-/**
- * Renames the active owner's animation track `oldName` -> `newName`, carrying its keyframes and
- * live-param membership along (a live param with no keyframes yet still migrates). No-op if nothing matches.
- */
-function withRenamedTrack(source: SourceState, oldName: string, newName: string): SourceState {
-  if (oldName === newName) {
-    return source;
-  }
+/** {@link withRenamedTimelineValue} on the active graph owner, whose graphs `source` already renamed. */
+function withRenamedOwnerValue(source: SourceState, oldName: string, newName: string): SourceState {
   const owner = resolveGraphOwner(source.scene);
   if (owner === undefined) {
     return source;
   }
-  const rename = <T extends { readonly name: string }>(tracks: readonly T[]): T[] =>
-    tracks
-      .filter((track) => track.name !== newName)
-      .map((track) => (track.name === oldName ? { ...track, name: newName } : track));
+  const { scene } = source;
   if (owner.kind === "vfxMesh") {
-    return {
-      ...source,
-      scene: {
-        ...source.scene,
-        meshes: source.scene.meshes.map((mesh) =>
-          mesh.id === owner.id &&
-          (mesh.tracks.some((track) => track.name === oldName) || mesh.liveParams.includes(oldName))
-            ? {
-                ...mesh,
-                tracks: rename(mesh.tracks),
-                liveParams: renameLiveParam(mesh.liveParams, oldName, newName),
-              }
-            : mesh,
-        ),
-      },
-    };
+    const meshes = scene.meshes.map((mesh) =>
+      mesh.id === owner.id
+        ? withRenamedTimelineValue(mesh, meshGraphs(mesh), oldName, newName)
+        : mesh,
+    );
+    return { ...source, scene: { ...scene, meshes } };
   }
-  return {
-    ...source,
-    scene: {
-      ...source.scene,
-      emitters: source.scene.emitters.map((emitter) =>
-        emitter.id === owner.id &&
-        (emitter.tracks.some((track) => track.name === oldName) ||
-          emitter.liveParams.includes(oldName))
-          ? {
-              ...emitter,
-              tracks: rename(emitter.tracks),
-              liveParams: renameLiveParam(emitter.liveParams, oldName, newName),
-            }
-          : emitter,
-      ),
-    },
-  };
+  const emitters = scene.emitters.map((emitter) =>
+    emitter.id === owner.id
+      ? withRenamedTimelineValue(emitter, emitterGraphs(emitter), oldName, newName)
+      : emitter,
+  );
+  return { ...source, scene: { ...scene, emitters } };
 }
 
 /**
- * Carries a renamed `timeline-value` node's track to its new `name` (tracks are keyed by name, so
- * otherwise keyframes silently stop applying). No-op for any other node/key, e.g. `texture`'s `name`.
+ * Carries a renamed `timeline-value` node's keyframes and live flag to its new `name` (both are keyed
+ * by name) and drops what no node declares any more. No-op for any other node/key, e.g. `texture`'s `name`.
  */
-function migrateRenamedTrack(
+function migrateRenamedValue(
   source: SourceState,
   before: GraphNode | undefined,
   key: string,
@@ -235,7 +175,7 @@ function migrateRenamedTrack(
   ) {
     return source;
   }
-  return withRenamedTrack(source, before.parameters["name"], value);
+  return withPrunedTimelineValues(withRenamedOwnerValue(source, before.parameters["name"], value));
 }
 
 /**
@@ -279,7 +219,7 @@ export function replaceNodeParams(
       })),
     };
   });
-  store.commit(migrateRenamedTrack(next, existing, "name", patch["name"]), "structural");
+  store.commit(migrateRenamedValue(next, existing, "name", patch["name"]), "structural");
   return newId;
 }
 

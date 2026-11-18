@@ -2,7 +2,6 @@ import {
   FX_AGE,
   FX_CORE_LIFECYCLE,
   FX_ID,
-  FX_LIFETIME,
   FX_PARTICLE_ID_RANGE,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM,
   FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM,
@@ -23,7 +22,7 @@ import type {
   FXKernelResourceFields,
   FXKernelWrite,
 } from "./FXCompiledKernel";
-import { agedLifecycleAgeGLSL } from "./FXKernelLifecycle.Internal";
+import { agedLifecycleAgeGLSL, deadSlotGLSL } from "./FXKernelLifecycle.Internal";
 import { kernelResourceFields } from "./FXKernelShared.Internal";
 import {
   FIXED_UNIFORMS,
@@ -253,8 +252,7 @@ export function assembleTransformFeedbackProgram(
   // every dead and never-spawned slot. Freezing age keeps the slot dead, and a never-spawned slot's
   // zeroed lifecycle (0 >= 0) counts as dead too.
   const lifecycleIn = glslBufferAttributeName(FX_CORE_LIFECYCLE);
-  const component = (offset: number): string => ["x", "y", "z", "w"][offset] ?? "x";
-  const deadCondition = `${lifecycleIn}.${component(FX_AGE)} >= ${lifecycleIn}.${component(FX_LIFETIME)}`;
+  const deadCondition = deadSlotGLSL(lifecycleIn);
   const passThroughAssignments = buffers.map(
     (buffer) => `    ${glslOutVaryingName(buffer.name)} = ${glslBufferAttributeName(buffer.name)};`,
   );

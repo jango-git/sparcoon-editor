@@ -34,6 +34,16 @@ export function withWarnings(
     : { ...status, warnings: warnings.map((warning) => compilerErrorMessage(warning)) };
 }
 
+/**
+ * `status` failed when the renderer could not link the program the graph produced: `log` is the
+ * first line of the driver's log. A status that already failed stays as it is.
+ */
+export function withLinkFailure(status: LiveApplyStatus, log: string | undefined): LiveApplyStatus {
+  return log === undefined || status.status === "invalid"
+    ? status
+    : invalid([t("graph.programLinkFailed", { log })]);
+}
+
 /** A graph held back only because another graph of the same emitter is invalid. */
 export function blocked(): LiveApplyStatus {
   return { status: "invalid", messages: [t("graph.blockedByOtherGraph")] };

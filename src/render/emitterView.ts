@@ -23,7 +23,7 @@ import type {
   FXSlotLayout,
   FXSpawnTarget,
 } from "sparcoon/editor";
-import { FXEmitter } from "sparcoon/editor";
+import { FXEmitter, fxEmitterStripMesh } from "sparcoon/editor";
 import type { BufferGeometry, Camera, Object3D, Texture, WebGLRenderer } from "three";
 
 import { missingAssetErrors } from "../domain/assetChecks";
@@ -103,6 +103,7 @@ import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
 import { ParticleEventForward } from "./particleEventForward";
 import { NO_PREVIEW_ASSETS, previewAssetNames, type PreviewAssets } from "./previewAssets";
+import { type ProgramLinkFailures, programLinkFailures } from "./programLinkFailures";
 
 /** Resolves a Texture node's name to a live Three texture (or a fallback). */
 export type TextureResolver = (paramName: string) => Texture;
@@ -362,6 +363,29 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   /** The gizmo's invisible pick proxy, raycast to select this emitter in the viewport. */
   public get pickTarget(): Object3D {
     return this.marker.pickTarget;
+  }
+
+  /**
+   * The programs of the running emitter the renderer could not link, by graph: a strip's mesh is
+   * its strip's, every other mesh the render graph's.
+   */
+  public programLinkFailures(renderer: WebGLRenderer): ProgramLinkFailures {
+    const emitter = this.emitter;
+    if (emitter === undefined) {
+      return {};
+    }
+    const stripOf = new Map(
+      STRIP_NAMES.flatMap((name) => {
+        const mesh = fxEmitterStripMesh(emitter, name);
+        return mesh === undefined ? [] : [[mesh, name] as const];
+      }),
+    );
+    return programLinkFailures(
+      renderer,
+      emitter,
+      (mesh) => stripOf.get(mesh) ?? "render",
+      this.marker.object,
+    );
   }
 
   public apply(

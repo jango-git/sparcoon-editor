@@ -16,7 +16,7 @@ function positionAfterUpdate(
   nodes: Record<string, FXBehaviorNode>,
   connections: Parameters<typeof graphOf>[1],
   slot: "position" | "positionX",
-  lifecycle: readonly number[] = [0, 0],
+  lifecycle: readonly number[] = [0, 1],
 ): Float32Array {
   const graph = graphOf(nodes, connections, [bind(slot, "out", "out")]);
   return runKernel(graph, { state: { lifecycle } }).position;

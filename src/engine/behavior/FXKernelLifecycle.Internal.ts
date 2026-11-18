@@ -31,7 +31,20 @@ export function killStatementJS(kill: string): string {
   return `if (${kill} > ${FX_KILL_THRESHOLD.toString()}) { ${age} = Math.max(${age}, ${lifetime}); }`;
 }
 
+/**
+ * The JS test of a dead current particle: `age >= lifetime`, which a never-born slot's zeroed
+ * lifecycle passes too. The same test as {@link deadSlotGLSL}.
+ */
+export function deadSlotJS(): string {
+  return `${bufferAccess(FX_CORE_LIFECYCLE, FX_AGE)} >= ${bufferAccess(FX_CORE_LIFECYCLE, FX_LIFETIME)}`;
+}
+
 const COMPONENTS = ["x", "y", "z", "w"] as const;
+
+/** The GLSL test of a dead slot, read from the lifecycle input; see {@link deadSlotJS}. */
+export function deadSlotGLSL(lifecycleIn: string): string {
+  return `${lifecycleIn}.${COMPONENTS[FX_AGE]} >= ${lifecycleIn}.${COMPONENTS[FX_LIFETIME]}`;
+}
 
 /** The GLSL age after this update: killed when `kill` says so (if bound), then aged. */
 export function agedLifecycleAgeGLSL(

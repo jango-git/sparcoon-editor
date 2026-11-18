@@ -14,7 +14,7 @@ import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerB
 import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot, readAttr, storeAttr } from "../helpers/attr";
-import { bind, edge, fieldUpdateKernel, graphOf } from "../helpers/graphBuild";
+import { bind, edge, fieldUpdateKernel, graphOf, liveLifecycle } from "../helpers/graphBuild";
 
 // velocity is a user attribute now: the node reads it via custom-attribute, and its
 // result is persisted via store-attribute bound to `attr:velocity` (asserted on the
@@ -23,11 +23,11 @@ const OFF_VELOCITY_Y = 1;
 const VEC3 = FX_VALUE_TYPES.vec3;
 const velocityTargets = buildParticleBehaviorTargets([{ name: "velocity", type: VEC3 }]);
 
-/** Fresh per-particle state buffers (one particle) for the velocity-attribute targets. */
+/** Fresh per-particle state buffers (one live particle) for the velocity-attribute targets. */
 function freshBuffers(): Record<string, Float32Array> {
   return {
     position: new Float32Array(3),
-    lifecycle: new Float32Array(2),
+    lifecycle: liveLifecycle(),
     velocity: new Float32Array(3),
   };
 }

@@ -16,7 +16,7 @@ import { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { FXShaderStage } from "../../src/engine/render/FXShaderStage";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { GLSL_NAME } from "../helpers/glslNames";
-import { fieldSpawnKernel, fieldUpdateKernel } from "../helpers/graphBuild";
+import { fieldSpawnKernel, fieldUpdateKernel, liveLifecycle } from "../helpers/graphBuild";
 
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC2 = FX_VALUE_TYPES.vec2;
@@ -130,7 +130,7 @@ describe("render context IR path", () => {
 describe("behavior context IR path", () => {
   const core = (): { position: Float32Array; lifecycle: Float32Array } => ({
     position: new Float32Array(3),
-    lifecycle: new Float32Array(3),
+    lifecycle: liveLifecycle(),
   });
 
   it("scalar setOutput writes a core slot", () => {

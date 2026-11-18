@@ -193,6 +193,13 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       transport.restart();
     }
   });
+  // A program the GPU driver could not link is known only once a frame compiled it: the statuses
+  // follow at once, within the frames a status read waits for.
+  coordinator.setAfterRender(() => {
+    if (sceneEmitters.checkProgramLinks()) {
+      pipeline.recomputeNow();
+    }
+  });
   // The timeline drives spawning: crossing a burst/play event fires it on the owning emitter.
   new TimelineDispatcher(
     store,

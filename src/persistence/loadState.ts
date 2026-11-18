@@ -29,9 +29,11 @@ import {
   type EditorState,
   emissionBasisField,
   type EmitterDoc,
+  emitterGraphs,
   type EnvironmentAsset,
   type Keyframe,
   type MeshAsset,
+  meshGraphs,
   type PaletteSwatch,
   type Reaction,
   type SourceState,
@@ -43,6 +45,7 @@ import {
   type VfxMeshDoc,
   type VolumeAsset,
 } from "../model/editorState";
+import { withDeclaredTimelineValues } from "../model/timelineValues";
 import {
   IDENTITY_TRANSFORM,
   type Quat,
@@ -218,7 +221,7 @@ function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
     return undefined;
   }
   const name = value["name"];
-  return {
+  const mesh: VfxMeshDoc = {
     id: value["id"],
     name: typeof name === "string" && name.trim() !== "" ? name : "Mesh",
     renderGraph: pruneParticleOnlyBindings(normalizeGraph(value["renderGraph"], GraphKind.Render)),
@@ -231,6 +234,7 @@ function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
     // byte-for-byte and `exactOptionalPropertyTypes` never sees an explicit `undefined` assignment.
     ...(value["hidden"] === true ? { hidden: true } : {}),
   };
+  return withDeclaredTimelineValues(mesh, meshGraphs(mesh));
 }
 
 /** Keeps only well-formed persisted assets (a corrupt entry is dropped, not fatal). */
@@ -415,7 +419,7 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     return undefined;
   }
   const name = value["name"];
-  return {
+  const emitter: EmitterDoc = {
     id: value["id"],
     name: typeof name === "string" && name.trim() !== "" ? name : "Emitter",
     renderGraph: normalizeGraph(value["renderGraph"], GraphKind.Render),
@@ -438,6 +442,7 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
     // See normalizeVfxMesh: omitted (not `false`) when not hidden, for a byte-for-byte round-trip.
     ...(value["hidden"] === true ? { hidden: true } : {}),
   };
+  return withDeclaredTimelineValues(emitter, emitterGraphs(emitter));
 }
 
 /** Restores the VFX group, defaulting documents authored before the group existed. */

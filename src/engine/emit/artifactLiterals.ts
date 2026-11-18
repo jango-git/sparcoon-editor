@@ -19,11 +19,7 @@ import {
   SLOTS_PARAMETER,
   SPAWN_KERNEL_PARAMETERS,
 } from "../behavior/FXKernelShared.Internal";
-import {
-  assembleKernelBody,
-  SPAWN_LOOP_HEADER,
-  UPDATE_LOOP_HEADER,
-} from "../behavior/FXParticleBehaviorKernel.Internal";
+import { assembleKernelBody } from "../behavior/FXParticleBehaviorKernel.Internal";
 import type { FXCompiledDrawStage } from "../core/codegen/drawStage.Internal";
 import { DRAW_COMPUTE_PARAMETERS } from "../core/codegen/drawStageBuild.Internal";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
@@ -296,11 +292,11 @@ export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""):
   ];
   if (kernel.spawn !== undefined) {
     lines.push(`${inner}spawn(${SPAWN_KERNEL_PARAMETERS.join(", ")}) {`);
-    lines.push(indentBody(assembleKernelBody(kernel.spawn, SPAWN_LOOP_HEADER), methodBody));
+    lines.push(indentBody(assembleKernelBody(kernel.spawn, "spawn"), methodBody));
     lines.push(`${inner}},`);
   }
   lines.push(`${inner}update(${SLOTS_PARAMETER}, count, dt, bindings, emitter) {`);
-  lines.push(indentBody(assembleKernelBody(kernel.update, UPDATE_LOOP_HEADER), methodBody));
+  lines.push(indentBody(assembleKernelBody(kernel.update, "update"), methodBody));
   lines.push(`${inner}},`);
   lines.push(`${baseIndent}}`);
   return lines.join("\n");

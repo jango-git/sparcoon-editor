@@ -70,8 +70,6 @@ export {
   assembleKernelBody,
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
-  SPAWN_LOOP_HEADER,
-  UPDATE_LOOP_HEADER,
 } from "./FXKernelBuild.Internal";
 export type {
   FXEmitterTransform,

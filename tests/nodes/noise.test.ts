@@ -347,7 +347,7 @@ describe("hash node", () => {
             [edge("s", "out", "h", "seed")],
             [bind("position", "h", "out")],
           );
-    return [...runKernel(graph, { state: { lifecycle: [0, 0, id] } }).position];
+    return [...runKernel(graph, { state: { lifecycle: [0, 1, id] } }).position];
   }
 
   it("is stable per seed, in [0, 1), and decorrelates neighbouring seeds", () => {

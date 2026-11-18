@@ -210,7 +210,7 @@ export function timelineValueConflicts(
 
 /**
  * The parameter names some `timeline-value` node declares across `graphs`, independent of whether
- * keyframed - shared by the model (pruning an orphaned track) and the UI (which rows to show).
+ * keyframed - shared by the model (what a name keeps, `model/timelineValues`) and the UI (which rows to show).
  */
 export function timelineValueNames(graphs: readonly EditorGraph[]): ReadonlySet<string> {
   return new Set(timelineValueDeclarations(graphs).keys());

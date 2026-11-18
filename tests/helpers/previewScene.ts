@@ -14,12 +14,14 @@ const created: SceneEmitters[] = [];
 
 /**
  * A live preview on the baseline tier over a fresh scene, with the caret parked at 0. The renderer
- * is a shape stub covering the only property ever read (`capabilities.isWebGL2`) - this headless
+ * is a shape stub covering the only properties ever read (`capabilities.isWebGL2`, and
+ * `properties` for programs that did not link: none, since nothing compiles) - this headless
  * suite's no-real-WebGL policy (tests/setup.ts). Release it with {@link destroyPreviews}.
  */
 export function createPreview(options: PreviewOptions = {}): SceneEmitters {
   const renderer = {
     capabilities: { isWebGL2: options.webgl2 ?? false },
+    properties: { get: (): object => ({}) },
   } as unknown as WebGLRenderer;
   const emitters = new SceneEmitters(
     new Scene(),

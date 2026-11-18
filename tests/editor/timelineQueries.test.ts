@@ -29,18 +29,17 @@ const track = (name: string): AnimationTrack => ({
 });
 
 describe("timelineValueRows", () => {
-  it("lists declared names in graph order, then orphaned tracks", () => {
+  it("lists declared names in graph order", () => {
     const graphs = [
       graphOf(timelineValue("a", "size"), timelineValue("b", "alpha")),
       graphOf(timelineValue("c", "spin")),
     ];
-    const tracks = [track("orphan"), track("alpha")];
+    const tracks = [track("alpha")];
 
     expect(timelineValueRows(graphs, tracks)).toEqual([
       { name: "size", track: undefined }, // declared, not keyframed yet
-      { name: "alpha", track: tracks[1] },
+      { name: "alpha", track: tracks[0] },
       { name: "spin", track: undefined },
-      { name: "orphan", track: tracks[0] }, // keyframes left behind by a deleted node
     ]);
   });
 

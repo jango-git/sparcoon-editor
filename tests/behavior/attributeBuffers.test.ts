@@ -21,7 +21,14 @@ import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FX
 import type { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXAttributeRequest } from "../../src/engine/core/socket/FXAttribute";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
-import { bind, edge, fieldSpawnKernel, fieldUpdateKernel, graphOf } from "../helpers/graphBuild";
+import {
+  bind,
+  edge,
+  fieldSpawnKernel,
+  fieldUpdateKernel,
+  graphOf,
+  liveLifecycle,
+} from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 const FLOAT = FX_VALUE_TYPES.float;
@@ -29,12 +36,9 @@ const VEC3 = FX_VALUE_TYPES.vec3;
 
 const reg = behaviorRegistry();
 
-/** Fresh core buffers (position vec3 + lifecycle vec3) for `count` particles. */
+/** Fresh core buffers (position vec3 + lifecycle vec3) for `count` live particles. */
 function coreBuffers(count: number): { position: Float32Array; lifecycle: Float32Array } {
-  return {
-    position: new Float32Array(3 * count),
-    lifecycle: new Float32Array(FX_CORE_LIFECYCLE_STRIDE * count),
-  };
+  return { position: new Float32Array(3 * count), lifecycle: liveLifecycle(count) };
 }
 
 describe("behavior attribute buffers", () => {

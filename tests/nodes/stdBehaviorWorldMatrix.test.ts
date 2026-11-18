@@ -62,7 +62,7 @@ describe("behavior world-matrix nodes", () => {
       const position = runKernel(transformedPointGraph(type), {
         phase: "spawn",
         emitter: emitterTransform(translation([10, 0, 0]), [4, 0, 0]),
-        state: { lifecycle: [0.5, 0, 0] },
+        state: { lifecycle: [0.5, 1, 0] },
       }).position;
       expected.forEach((value, i) => expect(position[i]).toBeCloseTo(value, 5));
     },

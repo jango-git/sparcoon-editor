@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { GraphNode } from "../../src/domain/graphModel";
-import { addNode, replaceNodeParams, setKeyframe, updateNodeParam } from "../../src/model/commands";
+import {
+  addNode,
+  replaceNodeParams,
+  setKeyframe,
+  setLiveParam,
+  updateNodeParam,
+} from "../../src/model/commands";
 import { createInitialState } from "../../src/model/editorState";
 import { emitterEntity } from "../../src/model/entity";
 import { Store } from "../../src/model/store";
@@ -72,15 +78,37 @@ describe("renaming a timeline-value node migrates its animation track", () => {
     expect(trackNames(store)).toEqual(["size"]);
   });
 
-  it("replaces a pre-existing track at the destination name (one track per name)", () => {
+  it("joins a name another node declares, keeping that name's keyframes", () => {
     const store = freshStore();
     const id = emitterId(store);
     addNode(store, "renderGraph", timelineValue("tv1", "size"));
-    setKeyframe(store, emitterEntity(id), "size", 0, 1); // the renamed node's track
-    setKeyframe(store, emitterEntity(id), "glow", 0, 7); // an unrelated track already at the destination name
+    addNode(store, "behaviorGraph", timelineValue("tv2", "glow"));
+    setKeyframe(store, emitterEntity(id), "size", 0, 1);
+    setKeyframe(store, emitterEntity(id), "glow", 0, 7);
     updateNodeParam(store, "renderGraph", "tv1", "name", "glow");
     expect(trackNames(store)).toEqual(["glow"]);
-    expect(keyValues(store, "glow")).toEqual([1]); // the renamed node's keyframes win
+    expect(keyValues(store, "glow")).toEqual([7]);
+  });
+
+  it("leaves the keyframes and live flag with a name another node still reads", () => {
+    const store = freshStore();
+    const id = emitterId(store);
+    addNode(store, "renderGraph", timelineValue("tv1", "size"));
+    addNode(store, "behaviorGraph", timelineValue("tv2", "size"));
+    setKeyframe(store, emitterEntity(id), "size", 0, 5);
+    setLiveParam(store, emitterEntity(id), "size", true);
+    updateNodeParam(store, "renderGraph", "tv1", "name", "scale");
+    expect(trackNames(store)).toEqual(["size"]);
+    expect(store.getSource().scene.emitters[0].liveParams).toEqual(["size"]);
+  });
+
+  it("carries the live flag with the name", () => {
+    const store = freshStore();
+    const id = emitterId(store);
+    addNode(store, "renderGraph", timelineValue("tv1", "size"));
+    setLiveParam(store, emitterEntity(id), "size", true);
+    updateNodeParam(store, "renderGraph", "tv1", "name", "scale");
+    expect(store.getSource().scene.emitters[0].liveParams).toEqual(["scale"]);
   });
 
   it("leaves an existing destination track alone when the renamed node had no track", () => {

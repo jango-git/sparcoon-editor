@@ -10,6 +10,16 @@ const PIXEL_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 /** `source` as a format-1 project file, the format the renames were made in. */
+/** A Timeline Value node declaring `name`, so the tracks of that name survive the load. */
+function timelineValue(name: string) {
+  return {
+    id: "tv",
+    type: "timeline-value",
+    parameters: { name, value: 1 },
+    position: { x: 0, y: 0 },
+  };
+}
+
 function formatOne(source: SourceState): string {
   return JSON.stringify({ ...wrapProject(source), version: 1 });
 }
@@ -88,6 +98,7 @@ describe("projectFile: serialize/deserialize round-trip", () => {
         emitters: [
           {
             id: "emitter_1",
+            behaviorGraph: { nodes: { tv: timelineValue("myValue") }, connections: [] },
             tracks: [
               {
                 name: "myValue",
@@ -267,6 +278,10 @@ describe("projectFile: key curves", () => {
         emitters: [
           {
             ...emitter,
+            renderGraph: {
+              ...emitter.renderGraph,
+              nodes: { ...emitter.renderGraph.nodes, tv: timelineValue("glow") },
+            },
             tracks: [
               {
                 name: "glow",

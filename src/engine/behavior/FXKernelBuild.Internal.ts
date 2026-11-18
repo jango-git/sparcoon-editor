@@ -1,3 +1,4 @@
+import { FX_CORE_LIFECYCLE } from "sparcoon";
 import { slotLayout } from "sparcoon/editor";
 
 import type {
@@ -6,7 +7,7 @@ import type {
   FXKernelBufferLayout,
   FXKernelWrite,
 } from "./FXCompiledKernel";
-import { killStatementJS } from "./FXKernelLifecycle.Internal";
+import { deadSlotJS, killStatementJS } from "./FXKernelLifecycle.Internal";
 import type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
 import {
   bufferAccess,
@@ -57,10 +58,22 @@ function indented(lines: readonly string[]): string {
   return lines.map((line) => `  ${line}`).join("\n");
 }
 
+/**
+ * Skips a dead slot (`age >= lifetime`, a never-born slot's zeroed lifecycle included) in the
+ * update, as the GPU pass leaves it untouched: its state is never shown, and a birth zero-fills it.
+ */
+function deadSlotSkip(phase: FXCompiledKernelPhase): readonly string[] {
+  if (!phase.buffers.some((buffer) => buffer.name === FX_CORE_LIFECYCLE)) {
+    return [];
+  }
+  return [`  if (${deadSlotJS()}) continue;`];
+}
+
 /** Assembles the per-particle loop body shared by both phases' `new Function` source. */
-function phaseLoopBody(phase: FXCompiledKernelPhase): string {
+function phaseLoopBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): string {
   return [
     bufferBaseDecls(phase.buffers),
+    ...(kind === "update" ? deadSlotSkip(phase) : []),
     indented(phase.preamble),
     ...phase.body.map((line) => `  ${line}`),
     writeStatements(phase.writes),
@@ -70,31 +83,34 @@ function phaseLoopBody(phase: FXCompiledKernelPhase): string {
   ].join("\n");
 }
 
+/** Which phase a body runs: the update over every drawn slot, or the spawn over the born rows. */
+export type FXKernelPhaseKind = "spawn" | "update";
+
+/** The `for (...)` header of each phase. */
+const LOOP_HEADERS: Readonly<Record<FXKernelPhaseKind, string>> = {
+  update: "for (let i = 0; i < count; i++) {",
+  spawn: "for (let i = start; i < start + count; i++) {",
+};
+
 /**
  * The runnable body of a compiled phase, excluding helper definitions. Shared verbatim by
  * the `new Function` builders here and the editor's module emitter (which hoists helpers to
  * module scope instead), so both execute byte-identical logic.
  */
-export function assembleKernelBody(phase: FXCompiledKernelPhase, loopHeader: string): string {
+export function assembleKernelBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): string {
   return [
     bindingPreamble(phase),
     // Particle-invariant locals, computed once per invocation before the loop.
     ...phase.preLoop,
-    loopHeader,
-    phaseLoopBody(phase),
+    LOOP_HEADERS[kind],
+    phaseLoopBody(phase, kind),
     "}",
   ].join("\n");
 }
 
-/** The `for (...)` header for the update phase (every live particle). */
-export const UPDATE_LOOP_HEADER = "for (let i = 0; i < count; i++) {";
-
-/** The `for (...)` header for the spawn phase (the freshly born rows). */
-export const SPAWN_LOOP_HEADER = "for (let i = start; i < start + count; i++) {";
-
 export function buildParticleUpdateKernel(compiled: FXCompiledKernel): FXParticleUpdateKernel {
   const phase = compiled.update;
-  const source = [...phase.helpers, assembleKernelBody(phase, UPDATE_LOOP_HEADER)].join("\n");
+  const source = [...phase.helpers, assembleKernelBody(phase, "update")].join("\n");
   const built = new Function(
     SLOTS_PARAMETER,
     "count",
@@ -112,7 +128,7 @@ export function buildParticleSpawnKernel(compiled: FXCompiledKernel): FXParticle
   if (phase === undefined) {
     throw new Error("buildParticleSpawnKernel: compiled kernel has no spawn phase");
   }
-  const source = [...phase.helpers, assembleKernelBody(phase, SPAWN_LOOP_HEADER)].join("\n");
+  const source = [...phase.helpers, assembleKernelBody(phase, "spawn")].join("\n");
   const built = new Function(...SPAWN_KERNEL_PARAMETERS, source) as unknown;
   return built as FXParticleSpawnKernel;
 }

@@ -186,7 +186,7 @@ describe("turbulence", () => {
   it("every velocity channel depends on the full 3D position, not just its own axis", () => {
     const graph = turbulenceGraph({ amplitude: 2, frequency: 1, octaves: 4 });
     const sampleAt = (position: readonly number[]): Float32Array =>
-      runKernel(graph, { state: { position, lifecycle: [0.5, 0] } }).velocity;
+      runKernel(graph, { state: { position, lifecycle: [0.5, 1] } }).velocity;
     const base = sampleAt([0, 0, 0]);
     const movedAlongX = sampleAt([3.7, 0, 0]);
     expect(movedAlongX[1]).not.toBeCloseTo(base[1], 4);
@@ -214,7 +214,7 @@ describe("turbulence", () => {
     );
     // The in-range maximum compiles and runs finite.
     const graph = turbulenceGraph({ amplitude: 1, frequency: 1, octaves: 8 });
-    const velocity = runKernel(graph, { state: { lifecycle: [0.5, 0] } }).velocity;
+    const velocity = runKernel(graph, { state: { lifecycle: [0.5, 1] } }).velocity;
     expect([...velocity].every(Number.isFinite)).toBe(true);
   });
 });

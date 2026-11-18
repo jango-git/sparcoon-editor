@@ -95,29 +95,19 @@ export function channelValueAt(
   return sampled.rotation;
 }
 
-/**
- * One Timeline Value row: `name` comes from a declared `timeline-value` node, or an orphaned track
- * (a deleted/renamed node's leftover keyframes, kept visible). `track` is undefined until keyframed.
- */
+/** One Timeline Value row: a name a `timeline-value` node declares. `track` is undefined until keyframed. */
 export interface TimelineValueRow {
   readonly name: string;
   readonly track: AnimationTrack | undefined;
 }
 
-/** Every Timeline Value row an entity should show: declared node names (graph order) first, then any orphaned track names. */
+/** Every Timeline Value row an entity shows: the declared names, in graph order. */
 export function timelineValueRows(
   graphs: readonly EditorGraph[],
   tracks: readonly AnimationTrack[],
 ): readonly TimelineValueRow[] {
-  const declared = timelineValueNames(graphs);
-  const rows: TimelineValueRow[] = [...declared].map((name) => ({
+  return [...timelineValueNames(graphs)].map((name) => ({
     name,
     track: tracks.find((track) => track.name === name),
   }));
-  for (const track of tracks) {
-    if (!declared.has(track.name)) {
-      rows.push({ name: track.name, track });
-    }
-  }
-  return rows;
 }

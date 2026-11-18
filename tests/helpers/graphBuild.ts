@@ -1,3 +1,5 @@
+import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE, FX_LIFETIME } from "sparcoon";
+
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
 import type {
@@ -58,9 +60,28 @@ export function graphOf<N extends FXGraphNode>(
   return graph;
 }
 
-/** One zeroed `Float32Array` per state buffer the compiled kernel declares (core + attributes). */
+/**
+ * The core lifecycle of `count` live particles, at age 0 of a 1 second life: the update skips a
+ * particle whose age is not below its lifetime.
+ */
+export function liveLifecycle(count = 1): Float32Array {
+  const lifecycle = new Float32Array(FX_CORE_LIFECYCLE_STRIDE * count);
+  for (let i = 0; i < count; i++) {
+    lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME] = 1;
+  }
+  return lifecycle;
+}
+
+/**
+ * One `Float32Array` per state buffer the compiled kernel declares (core + attributes), zeroed
+ * except for a {@link liveLifecycle}.
+ */
 export function buffersFor(compiled: FXCompiledKernel, count = 1): FieldBuffers {
-  return fieldsFor(compiled.update.buffers, count);
+  const fields = fieldsFor(compiled.update.buffers, count);
+  if (FX_CORE_LIFECYCLE in fields) {
+    fields[FX_CORE_LIFECYCLE] = liveLifecycle(count);
+  }
+  return fields;
 }
 
 /** The pose of an emitter at the world origin, at rest. */
@@ -111,7 +132,11 @@ export interface RunKernelOptions {
   readonly count?: number;
   /** Update timestep (default 0.016; ignored by spawn). */
   readonly dt?: number;
-  /** Seeds state before the run, e.g. `{ lifecycle: [age, lifetime], position: [x, y, z] }`. */
+  /**
+   * Seeds state before the run, e.g. `{ lifecycle: [age, lifetime, id], position: [x, y, z] }`.
+   * Particles are alive unless seeded otherwise; the update skips one whose age is not below its
+   * lifetime.
+   */
   readonly state?: Readonly<Record<string, readonly number[]>>;
   /** Emitter transform handed to the kernel. */
   readonly emitter?: FXEmitterTransform;

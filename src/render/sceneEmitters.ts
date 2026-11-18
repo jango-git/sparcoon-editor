@@ -56,11 +56,12 @@ import {
 } from "../model/graphSlots";
 import type { SceneApplier, SceneApplyResult, StripApplyInputs } from "../model/pipeline";
 import { sampleTransform, type Transform, type TransformTrack } from "../model/transform";
-import { blocked, invalidFromErrors, withWarnings } from "./applyStatus.Internal";
+import { blocked, invalidFromErrors, withLinkFailure, withWarnings } from "./applyStatus.Internal";
 import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, EmitterView, type TextureResolver } from "./emitterView";
 import { MeshView } from "./meshView";
 import { NO_PREVIEW_ASSETS, type PreviewAssets } from "./previewAssets";
+import { type ProgramLinkFailures, sameProgramLinkFailures } from "./programLinkFailures";
 
 const IDLE: LiveApplyStatus = { status: "invalid", messages: [] };
 // The placeholder snapshot for a graph half that doesn't apply (no emitters yet, or a mesh's
@@ -107,6 +108,8 @@ export class SceneEmitters implements SceneApplier {
   // See readsSceneDepth: what the views' materials, kernels and visibility last said, refreshed when
   // any can change - a sync (new artifacts) or a visibility flip.
   private sceneDepthRead = false;
+  // The link failures of every view as last checked, by view id, to tell when they change.
+  private programLinkFailuresSeen = new Map<string, ProgramLinkFailures>();
 
   constructor(
     scene: Scene,
@@ -137,6 +140,30 @@ export class SceneEmitters implements SceneApplier {
   /** The effects' root: everything the scene depth pre-pass leaves out (see `SceneDepthSource`). */
   public get effects(): Object3D {
     return this.vfxGroup;
+  }
+
+  /**
+   * Whether the programs the renderer could not link changed since the last check. Called after a
+   * frame, once it compiled the materials of every view it drew; a change needs a sync to show in
+   * the statuses.
+   */
+  public checkProgramLinks(): boolean {
+    const seen = new Map<string, ProgramLinkFailures>();
+    for (const [id, view] of [...this.views, ...this.meshViews]) {
+      const failures = view.programLinkFailures(this.renderer);
+      if (Object.keys(failures).length > 0) {
+        seen.set(id, failures);
+      }
+    }
+    const previous = this.programLinkFailuresSeen;
+    this.programLinkFailuresSeen = seen;
+    return (
+      seen.size !== previous.size ||
+      [...seen].some(([id, failures]) => {
+        const before = previous.get(id);
+        return before === undefined || !sameProgramLinkFailures(before, failures);
+      })
+    );
   }
 
   public sync(scene: SceneModel): SceneApplyResult {
@@ -573,18 +600,27 @@ export class SceneEmitters implements SceneApplier {
       emitter.behaviorGraph.attributes,
       strips,
     );
+    // A program built from an earlier apply that the renderer could not link; a fresh one is
+    // checked after the frame that compiles it.
+    const linkFailures = view.programLinkFailures(this.renderer);
     return {
       renderSnapshot,
       behaviorSnapshot,
       // Drawing neither the particles nor a strip is no error, only nothing to see.
-      renderStatus: withWarnings(result.render, emitterDrawsNothingWarnings(emitter)),
+      renderStatus: withLinkFailure(
+        withWarnings(result.render, emitterDrawsNothingWarnings(emitter)),
+        linkFailures.render,
+      ),
       behaviorStatus: result.behavior,
       // What a strip joins can follow from the emitter's spawns, not from its graph.
       strips: stripOutcomes((name) => {
         const status = result[name];
         return status === undefined
           ? undefined
-          : withWarnings(status, stripSpawnWarnings(name, emitter));
+          : withLinkFailure(
+              withWarnings(status, stripSpawnWarnings(name, emitter)),
+              linkFailures[name],
+            );
       }),
       emitterRebuilt: result.emitterRebuilt,
     };
@@ -609,7 +645,7 @@ export class SceneEmitters implements SceneApplier {
     // Geometry + compositing both come from the surface sink (unified with emitters); a mesh has no
     // separate primitive field. Sort is emitter-only, so it is read but unused here.
     const config = readRenderSinkConfig(mesh.renderGraph);
-    const renderStatus = view.apply(
+    const applied = view.apply(
       renderSnapshot,
       config.geometry,
       config.renderMode,
@@ -618,8 +654,9 @@ export class SceneEmitters implements SceneApplier {
     );
     return {
       renderSnapshot,
-      renderStatus,
-      recompiled: created || renderStatus.status === "recompiled",
+      // As for an emitter: a link failure of a program an earlier apply built.
+      renderStatus: withLinkFailure(applied, view.programLinkFailures(this.renderer).render),
+      recompiled: created || applied.status === "recompiled",
     };
   }
 }

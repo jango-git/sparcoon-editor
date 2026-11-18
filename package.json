@@ -40,7 +40,7 @@
     "bench": "vitest bench --run"
   },
   "dependencies": {
-    "ferrsign": "0.0.5",
+    "ferrsign": "0.0.6",
     "sparcoon": "0.22.0",
     "three": "^0.157.0"
   },

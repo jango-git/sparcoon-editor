@@ -230,6 +230,11 @@ export class SceneCoordinator {
     return this.renderer;
   }
 
+  /** Wires what runs after each viewport frame is drawn, once its materials are compiled. */
+  public setAfterRender(callback: () => void): void {
+    this.afterRender = callback;
+  }
+
   /** Wires the live particle-count source (the scene emitters), reported alongside FPS. */
   public setParticleCountSource(source: () => number): void {
     this.getParticleCount = source;
@@ -387,6 +392,8 @@ export class SceneCoordinator {
   private getParticleCount: () => number = () => 0;
   // Births lost to full emitters, sampled alongside the particle count; `undefined` = unknown.
   private getParticleOverflow: () => ParticleOverflow | undefined = () => undefined;
+  // Runs after each viewport frame; see setAfterRender.
+  private afterRender: () => void = () => undefined;
 
   /** Shows or hides the gizmo and ground layers in the viewport, as the preview settings say. */
   private applyViewLayers(settings: PreviewSettings): void {
@@ -483,6 +490,7 @@ export class SceneCoordinator {
     this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
     this.renderViewport();
+    this.afterRender();
     this.frameHandle = requestAnimationFrame((next) => this.frame(next));
   }
 

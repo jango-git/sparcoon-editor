@@ -32,6 +32,7 @@ import {
   canRemoveObject,
   type EmitterDoc,
   emitterGraphs,
+  meshGraphs,
   projectDisplayName,
   type Reaction,
   type VfxDoc,
@@ -539,7 +540,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
         ),
       );
     }
-    const graphs = [mesh.renderGraph];
+    const graphs = meshGraphs(mesh);
     for (const row of timelineValueRows(graphs, mesh.tracks)) {
       output.push(buildTimelineValueRow(entity, row, mesh.liveParams, graphs, total));
     }

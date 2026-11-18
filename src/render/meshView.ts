@@ -6,7 +6,7 @@
 
 import type { FXRenderArtifact } from "sparcoon";
 import { FXMesh } from "sparcoon/editor";
-import type { BufferGeometry, Object3D, Texture } from "three";
+import type { BufferGeometry, Object3D, Texture, WebGLRenderer } from "three";
 
 import { meshTransformWarnings } from "../domain/meshDiagnostics";
 import {
@@ -45,6 +45,7 @@ import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { applyTransform, type TextureResolver } from "./emitterView";
 import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
+import { type ProgramLinkFailures, programLinkFailures } from "./programLinkFailures";
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -280,6 +281,13 @@ export class MeshView {
     if (this.mesh !== undefined) {
       this.mesh.visible = visible;
     }
+  }
+
+  /** The programs of the running mesh the renderer could not link; all of them the render graph's. */
+  public programLinkFailures(renderer: WebGLRenderer): ProgramLinkFailures {
+    return this.mesh === undefined
+      ? {}
+      : programLinkFailures(renderer, this.mesh, () => "render", this.marker.object);
   }
 
   public destroy(): void {

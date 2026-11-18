@@ -62,6 +62,7 @@
     "modeRender": "Render graph",
     "modeBehavior": "Behavior graph",
     "blockedByOtherGraph": "blocked by an error in another graph of this emitter",
+    "programLinkFailed": "the GPU driver could not build this graph's shader: {log}",
     "modeTrail": "Trail graph",
     "addTrail": "Add trail",
     "addTrailTip": "Gives this emitter a trail: a band drawn behind every particle along its recent path, authored in its own graph.",

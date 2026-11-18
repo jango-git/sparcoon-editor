@@ -170,6 +170,11 @@ export function emitterGraphs(emitter: EmitterDoc): readonly EditorGraph[] {
   return authoredGraphs(emitter).map(({ graph }) => graph);
 }
 
+/** Every graph a mesh authors: its render graph. */
+export function meshGraphs(mesh: VfxMeshDoc): readonly EditorGraph[] {
+  return [mesh.renderGraph];
+}
+
 /**
  * The **VFX** entity: the single group that owns every emitter in the scene. It carries
  * its own transform + transform tracks so the whole effect can be posed and animated as one unit,

@@ -5,6 +5,22 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## Unreleased
+
+### Changed
+
+- On the CPU simulation the update skips dead particles, as the GPU one does. The saving is
+  largest for graphs with noise on mostly empty emitters. An effect gets it once re-exported.
+
+### Fixed
+
+- A removed Timeline Value no longer stays live in the export as a parameter that sets nothing,
+  and a mesh's one no longer leaves its keys behind.
+- Renaming a Timeline Value that another node also reads leaves that node its keys and live mark.
+- A graph whose shader the GPU driver rejects shows as an error with the first line of the driver's
+  message, in the graph panel and in the agent's `status()`. Before, it showed as working and drew
+  nothing.
+
 ## 0.1.0 - 2026-11-15
 
 ### Added
