@@ -8,9 +8,9 @@ import {
   FX_SURFACE_VERTEX_B,
   FX_SURFACE_VERTEX_C,
 } from "sparcoon";
+import { FX_NO_SURFACE_DISTANCE } from "sparcoon/helpers";
 
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { FX_NO_SURFACE_DISTANCE } from "../../core/ir/FXFunctions.Internal";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";

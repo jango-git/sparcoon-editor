@@ -1,9 +1,14 @@
 import * as sparcoon from "sparcoon";
+import * as sparcoonHelpers from "sparcoon/helpers";
 import * as three from "three";
 import * as ts from "typescript";
 
 /** What an emitted project module may import: the real `three` and `sparcoon`. */
-const PROJECT_IMPORTS: Readonly<Record<string, unknown>> = { three, sparcoon };
+const PROJECT_IMPORTS: Readonly<Record<string, unknown>> = {
+  three,
+  sparcoon,
+  "sparcoon/helpers": sparcoonHelpers,
+};
 
 /**
  * Transpiles emitted TS module text to CJS and evaluates it, returning its exports - the runtime

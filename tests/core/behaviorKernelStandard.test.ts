@@ -52,8 +52,8 @@ describe("standard-tier behavior kernel", () => {
     const body = compiled.spawn!.body.join("\n");
     // No CSE on this backend - three real draws, three real calls, no dedup risk to guard.
     expect(occurrences(body, "fxNextRandom()")).toBe(3);
-    // The rand helper (keyed "rand") must be present exactly once regardless of call count.
-    expect(compiled.spawn!.helpers.filter((h) => h.includes("fxNextRandom")).length).toBe(1);
+    // The rand helper is linked exactly once regardless of call count.
+    expect(compiled.spawn!.helpers.filter((helper) => helper === "FX_GLSL_RAND")).toHaveLength(1);
     // Writes land on the position buffer at the vec3 offsets, one write per component.
     const positionWrites = compiled.spawn!.writes.filter((w) => w.buffer === "position");
     expect(positionWrites.map((w) => w.offset).sort()).toEqual([0, 1, 2]);

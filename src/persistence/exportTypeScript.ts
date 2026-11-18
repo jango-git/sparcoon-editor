@@ -3,8 +3,8 @@
  * `sparcoon`'s `FXEffect` that plays the effect given only the runtime and the assets its external
  * slots reference. Graphs are compiled headlessly by {@link "./exportCompile"}; the resulting IR is
  * rendered to source text by {@link "./exportLiterals"} - this file is just the orchestrating spine
- * between the two. The generic runtime (base class, sampling math, CPU math/noise helpers) is only
- * imported from `sparcoon`, never re-emitted. A lit effect still needs a light probe + directional
+ * between the two. The generic runtime is only imported, never re-emitted: the base class from
+ * `sparcoon`, the helpers the compiled code calls (CPU math and noise, GLSL) from `sparcoon/helpers`. A lit effect still needs a light probe + directional
  * light in the consuming scene, since lit graphs read the host scene's lights (studio lighting is
  * not part of the export).
  */
@@ -15,12 +15,14 @@ import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 import { linkReaction, reactionSourceOf } from "../domain/reactionLinking";
 import { effectiveSpawnConfig } from "../domain/reactions";
 import { STRIP_GEOMETRY } from "../domain/stripChecks";
+import type { FXJSHelperName } from "../engine/core/ir/FXHelpers.Internal";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
   collectDrawHelpers,
   collectKernelDrawHelpers,
+  helpersImportLines,
 } from "../engine/emit/artifactLiterals";
 import { FXKernelModuleWriter } from "../engine/emit/FXKernelModuleWriter";
 import { FXRenderModuleWriter } from "../engine/emit/FXRenderModuleWriter";
@@ -28,12 +30,7 @@ import type { Reaction, SourceState } from "../model/editorState";
 import { STRIP_NAMES, type StripName } from "../model/graphSlots";
 import { libraryAssetNames } from "../model/selectors";
 import type { CompiledShadersByGLSLTier } from "./exportCompile";
-import {
-  compileEmitter,
-  compileMesh,
-  externalParamNames,
-  helperImportNames,
-} from "./exportCompile";
+import { compileEmitter, compileMesh, externalParamNames } from "./exportCompile";
 import {
   assertUniqueLiveNames,
   assetsInterface,
@@ -66,13 +63,10 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   const importSpecifier = options.importSpecifier ?? "sparcoon";
   const className = classNameFor(source.name);
 
-  const helperNames = new Set<string>();
-  // The JS helpers a behavior or a draw stage calls are module-scope imports.
-  const importHelpers = (helpers: Iterable<string>): void => {
+  const jsHelpers = new Set<FXJSHelperName>();
+  const importHelpers = (helpers: Iterable<FXJSHelperName>): void => {
     for (const helper of helpers) {
-      for (const name of helperImportNames(helper)) {
-        helperNames.add(name);
-      }
+      jsHelpers.add(helper);
     }
   };
   const externalTextureNames = new Set<string>();
@@ -235,7 +229,6 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   lines.push(
     importLine(
       importSpecifier,
-      [...helperNames].sort(),
       needsEmitterType,
       needsGpuKernelType,
       externalTextureNames.size > 0,
@@ -249,9 +242,14 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   if (threeTypeImports.length > 0) {
     lines.push(`import { ${threeTypeImports.join(", ")} } from "three";`);
   }
+  lines.push(
+    ...helpersImportLines(importSpecifier, [
+      ...jsHelpers,
+      ...renderWriter.helperNames(),
+      ...kernelWriter.helperNames(),
+    ]),
+  );
   lines.push("");
-  // The helpers first: the artifacts below name them.
-  lines.push(...renderWriter.helperDeclarations().map((block) => `${block}\n`));
   lines.push(...artifactBlocks.map((block) => `${block}\n`));
   lines.push(specLiteral);
   lines.push("");

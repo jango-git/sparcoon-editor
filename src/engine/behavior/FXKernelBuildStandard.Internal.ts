@@ -15,6 +15,7 @@ import {
 } from "sparcoon";
 import { floatGLSLType } from "sparcoon/editor";
 
+import { type FXGLSLHelperName, glslHelperSource } from "../core/ir/FXHelpers.Internal";
 import type { FXValueType } from "../core/socket/FXValueType";
 import type {
   FXKernelBindingHandle,
@@ -74,7 +75,8 @@ const BIRTH_PROLOGUE: readonly string[] = [
 
 /** Its resources are sampler uniforms the runtime binds textures to (see {@link FXKernelResourceFields}). */
 export interface FXFusedProgramStandard extends FXKernelResourceFields {
-  readonly vertexSource: string;
+  /** The vertex shader's lines; a helper stands for its whole source (see {@link fusedVertexSource}). */
+  readonly vertexLines: readonly FXKernelSourceLine[];
   readonly fragmentSource: string;
   /** Varying names for `gl.transformFeedbackVaryings` - one per buffer, matching `buffers`' order. */
   readonly transformFeedbackVaryings: readonly string[];
@@ -86,6 +88,16 @@ export interface FXFusedProgramStandard extends FXKernelResourceFields {
   readonly draw?: FXCompiledKernelDrawStage;
   /** Whether a phase reads the scene depth; absent when neither does. */
   readonly sceneDepth?: true;
+}
+
+/** A line of a kernel's vertex shader, or one of the helpers it links. */
+export type FXKernelSourceLine = string | { readonly helper: FXGLSLHelperName };
+
+/** The vertex shader of `program`, each helper in its source. */
+export function fusedVertexSource(program: FXFusedProgramStandard): string {
+  return program.vertexLines
+    .map((line) => (typeof line === "string" ? line : glslHelperSource(line.helper)))
+    .join("\n");
 }
 
 /** Deterministic `out` (transform-feedback) varying name for a state buffer. */
@@ -259,7 +271,7 @@ export function assembleTransformFeedbackProgram(
 
   // A 2D sampler is lowp by default in GLSL ES 3.00, and a 3D one has no default - a surface table
   // holds positions.
-  const vertexSource = `#version 300 es
+  const declarations = `#version 300 es
 precision highp float;
 precision highp sampler2D;
 precision highp sampler3D;
@@ -269,9 +281,8 @@ ${inDeclarations.join("\n")}
 ${outDeclarations.join("\n")}
 
 ${uniformDeclarations.join("\n")}
-
-${helpers.join("\n\n")}
-
+`;
+  const main = `
 void main(){
   int fx_particleIndex = gl_VertexID;
   int fx_relativeIndex = (fx_particleIndex - ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM} + ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM}) % ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM};
@@ -286,10 +297,15 @@ ${[...update.body.map((line) => `    ${line}`), ...updateAssignments].join("\n")
   }
 }
 `;
+  const vertexLines: FXKernelSourceLine[] = [
+    ...declarations.split("\n"),
+    ...helpers.map((helper) => ({ helper })),
+    ...main.split("\n"),
+  ];
 
   const draw = fuseDrawStages([spawn.draw, update.draw]);
   return {
-    vertexSource,
+    vertexLines,
     fragmentSource: FX_TRANSFORM_FEEDBACK_FRAGMENT_SOURCE,
     transformFeedbackVaryings: buffers.map((buffer) => glslOutVaryingName(buffer.name)),
     buffers,

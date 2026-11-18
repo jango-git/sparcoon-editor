@@ -552,7 +552,7 @@ describe("emitProjectModule - executes", () => {
 
   it("imports the seed hash a behavior Hash node calls, and runs it", () => {
     const text = emitProjectModule(seedHashEmitterSource());
-    expect(text).toMatch(/import \{[^}]*\bfxSeedHash4\b[^}]*\} from "sparcoon"/);
+    expect(text).toMatch(/import \{[^}]*\bfxSeedHash4\b[^}]*\} from "sparcoon\/helpers"/);
     const module = loadModule(text);
     const Effect = module["Effect"] as new (assets: Record<string, never>) => three.Group & {
       play(): void;
@@ -639,6 +639,11 @@ describe("emitProjectModule - shadow flags", () => {
     const explicitFalse = emitProjectModule(emitterWithShadows(false, false));
     expect(explicitFalse).not.toContain("castShadow");
     expect(explicitFalse).not.toContain("receiveShadow");
+  });
+
+  it("writes a shadow program only for an emitter that casts a shadow", () => {
+    expect(emitProjectModule(emitterWithShadows(true))).toContain("  shadow: {");
+    expect(emitProjectModule(emitterWithShadows(false))).not.toContain("  shadow: {");
   });
 
   it("emits a mesh's shadow flags into its spec literal", () => {

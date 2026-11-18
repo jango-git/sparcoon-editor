@@ -1,7 +1,9 @@
+import type { FXGLSLRenderTier } from "sparcoon/editor";
+
 import { FXCompilerErrorException } from "../compiler/FXCompilerError";
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
-import { collectHelper } from "../ir/FXHelperModule.Internal";
+import { collectGLSLHelper, type FXGLSLHelperName } from "../ir/FXHelpers.Internal";
 import { isIntType } from "../socket/FXValueType";
 import { shortestFloat32 } from "./float32.Internal";
 
@@ -19,11 +21,11 @@ export const REF_BY_NAME: FXRefResolver = (ref) => ref.name;
  */
 export interface FXGLSLPrintResult {
   readonly code: string;
-  /** Helpers to emit once each, dependencies first (see `collectHelper`). */
-  readonly helpers: ReadonlyMap<string, string>;
+  /** The helpers the code calls, each behind the ones it calls (see `collectGLSLHelper`). */
+  readonly helpers: ReadonlySet<FXGLSLHelperName>;
 }
 
-/** How a tier spells a function: its GLSL name or printer, and the helper it needs, if any. */
+/** How a tier spells a function: its GLSL name or printer, and the helper it calls, if any. */
 export interface FXGLSLSpelling {
   readonly spelling: FXFunctionDef["glslBaseline"];
   readonly helper: FXFunctionDef["glslBaselineHelper"];
@@ -38,9 +40,10 @@ export function printGLSL(
   expression: FXExpr,
   functions: ReadonlyMap<string, FXFunctionDef>,
   resolveRef: FXRefResolver,
+  tier: FXGLSLRenderTier,
   spellingOf: (definition: FXFunctionDef) => FXGLSLSpelling,
 ): FXGLSLPrintResult {
-  const helpers = new Map<string, string>();
+  const helpers = new Set<FXGLSLHelperName>();
 
   const print = (node: FXExpr): string => {
     switch (node.kind) {
@@ -79,7 +82,7 @@ export function printGLSL(
         const argumentStrings = node.args.map(print);
         const { spelling, helper } = spellingOf(definition);
         if (helper !== undefined) {
-          collectHelper(helpers, definition.name, helper);
+          collectGLSLHelper(helpers, tier, helper);
         }
         if (typeof spelling === "function") {
           return spelling(argumentStrings);

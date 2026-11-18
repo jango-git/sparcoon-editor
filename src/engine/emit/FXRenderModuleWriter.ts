@@ -1,9 +1,10 @@
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
 
+import type { FXGLSLHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXAttributeRequest } from "../core/socket/FXAttribute";
 import type { FXCompiledShader, FXCompiledStage } from "../render/compiler/FXCompiledShader";
 import type { FXRenderStagePath, FXStagePrinter } from "./artifactLiterals";
-import { renderArtifactBody } from "./artifactLiterals";
+import { collectShaderHelpers, renderArtifactBody } from "./artifactLiterals";
 import { lineDeltaLiteral } from "./lineDelta";
 
 /** One tier's artifact of an entity: the constant it is declared as, and what it compiled to. */
@@ -14,20 +15,18 @@ export interface FXTierArtifact {
 
 /**
  * Writes the render artifacts of one emitted module, so it carries each piece of GLSL as few times
- * as it can: every distinct helper the module's artifacts use is declared once (see
- * {@link helperDeclarations}) and each artifact names it; of one entity's artifacts per tier, a
- * later tier word for word the first names it, and one that differs takes the first's lines where
- * they agree - the tiers' compilers emit mostly the same code.
+ * as it can: a helper is named, imported from `sparcoon/helpers` (see {@link helperNames}); of one
+ * entity's artifacts per tier, a later tier word for word the first names it, and one that differs
+ * takes the first's lines where they agree - the tiers' compilers emit mostly the same code.
  */
 export class FXRenderModuleWriter {
-  /** Helper source -> the constant declaring it. */
-  private readonly helpers = new Map<string, string>();
+  private readonly helpers = new Set<FXGLSLHelperName>();
 
   constructor(private readonly keyword: "const" | "export const" = "const") {}
 
-  /** The helper constants every artifact written so far names: to place before the first. */
-  public helperDeclarations(): string[] {
-    return [...this.helpers].map(([source, name]) => `const ${name} = ${JSON.stringify(source)};`);
+  /** The helpers every artifact written so far names, for the module to import. */
+  public helperNames(): readonly FXGLSLHelperName[] {
+    return [...this.helpers];
   }
 
   /** One declaration per tier, in tier order (see the class doc). */
@@ -41,11 +40,15 @@ export class FXRenderModuleWriter {
     if (first === undefined) {
       return [];
     }
-    const pooled = this.pooledStages();
-    const firstBody = renderArtifactBody(first.shader, geometry, attributes, renderMode, pooled);
+    for (const tier of tiers) {
+      for (const helper of collectShaderHelpers(tier.shader)) {
+        this.helpers.add(helper);
+      }
+    }
+    const firstBody = renderArtifactBody(first.shader, geometry, attributes, renderMode);
     const declarations = [this.declaration(first.name, firstBody)];
     for (const tier of rest) {
-      const body = renderArtifactBody(tier.shader, geometry, attributes, renderMode, pooled);
+      const body = renderArtifactBody(tier.shader, geometry, attributes, renderMode);
       if (body === firstBody) {
         declarations.push(this.declaration(tier.name, first.name));
         continue;
@@ -66,39 +69,21 @@ export class FXRenderModuleWriter {
     return `${this.keyword} ${name}: FXRenderArtifact = ${value};`;
   }
 
-  /** Helpers by their pooled constants, every line written out. */
-  private pooledStages(): FXStagePrinter {
-    return {
-      helpers: (_stage, helperFunctions) => this.helperList(helperFunctions),
-      body: (_stage, body) => JSON.stringify(body),
-    };
-  }
-
-  /** {@link pooledStages}, each stage's lines taken from `base`'s same stage where they agree. */
+  /** Each stage's lines taken from `base`'s same stage where they agree. */
   private sharedStages(base: FXTierArtifact): FXStagePrinter {
     const baseStage = (path: FXRenderStagePath): FXCompiledStage | undefined =>
       base.shader[path.program]?.[path.stage];
     return {
-      helpers: (_stage, helperFunctions) => this.helperList(helperFunctions),
       body: (path, body): string => {
         const stage = baseStage(path);
         return stage === undefined
           ? JSON.stringify(body)
-          : lineDeltaLiteral(body, stage.body, `${base.name}.${path.program}.${path.stage}.body`);
+          : lineDeltaLiteral(
+              body.map((line) => JSON.stringify(line)),
+              stage.body.map((line) => JSON.stringify(line)),
+              `${base.name}.${path.program}.${path.stage}.body`,
+            );
       },
     };
-  }
-
-  private helperList(helperFunctions: readonly string[]): string {
-    return `[${helperFunctions.map((source) => this.helperName(source)).join(", ")}]`;
-  }
-
-  private helperName(source: string): string {
-    let name = this.helpers.get(source);
-    if (name === undefined) {
-      name = `glslHelper${String(this.helpers.size)}`;
-      this.helpers.set(source, name);
-    }
-    return name;
   }
 }

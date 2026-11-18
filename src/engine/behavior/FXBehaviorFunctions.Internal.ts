@@ -1,8 +1,4 @@
 import type { FXFunctionDef } from "../core/ir/FXFunctions.Internal";
-import {
-  SAMPLE_LUT_FN_NAME,
-  SAMPLE_LUT_HELPER_SOURCE,
-} from "./nodes/FXBehaviorNodeShared.Internal";
 
 /**
  * JS-only helper functions (LUT sampling) with no GLSL form, merged over the core
@@ -21,8 +17,8 @@ export const FX_BEHAVIOR_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = new Map
     {
       name: "sampleLut",
       signatures: [{ args: ["float", "float"], result: "float" }],
-      js: (args) => `${SAMPLE_LUT_FN_NAME}(${args[0]}, ${args[1]})`,
-      jsHelper: SAMPLE_LUT_HELPER_SOURCE,
+      js: (args) => `fxSampleLut(${args[0]}, ${args[1]})`,
+      jsHelper: ["fxSampleLut"],
     },
   ],
 ]);

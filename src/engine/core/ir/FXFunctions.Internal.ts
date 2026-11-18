@@ -1,18 +1,11 @@
-import {
-  FX_SURFACE_TEXEL_FLOATS,
-  FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM,
-  FX_TRANSFORM_FEEDBACK_VIEW_PROJECTION_UNIFORM,
-  FX_VOLUME_HEADER_FLOATS,
-} from "sparcoon";
+import { FX_SURFACE_TEXEL_FLOATS } from "sparcoon";
+import { FX_NO_SURFACE_DISTANCE } from "sparcoon/helpers";
 
 import type { FXGLSLTypeName } from "../socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../socket/FXValueType";
 import type { FXCallSignature } from "./FXExprBuilder";
-import type { FXHelper, FXHelperModule } from "./FXHelperModule.Internal";
+import type { FXGLSLHelperName, FXJSHelperName } from "./FXHelpers.Internal";
 import { noiseFunctionDefinitions } from "./noise/FXNoiseFunctions.Internal";
-import { FX_GLSL_STANDARD_NOISE_HASH } from "./noise/FXNoiseHash.Internal";
 
 /**
  * The backend-neutral function registry: each entry names a function, its signatures, and how
@@ -30,10 +23,10 @@ export interface FXFunctionDef {
   readonly glslBaseline?: string | ((args: readonly string[]) => string);
   /** JS printing of the scalar overload, over already-printed argument strings. */
   readonly js: (args: readonly string[]) => string;
-  /** Helper the baseline-tier GLSL printer must emit once (a string is keyed by {@link name}). */
-  readonly glslBaselineHelper?: FXHelper;
-  /** Helper the JS printer must emit once (a string is keyed by {@link name}). */
-  readonly jsHelper?: FXHelper;
+  /** The helper the baseline-tier GLSL calls. */
+  readonly glslBaselineHelper?: FXGLSLHelperName;
+  /** The helpers the JS may call. */
+  readonly jsHelper?: readonly FXJSHelperName[];
   /**
    * Sibling GLSL form {@link printGLSLStandard} prefers over `glslBaseline` - only for a function
    * whose codegen genuinely differs between tiers (e.g. a future native op under GLSL3 vs a
@@ -42,8 +35,8 @@ export interface FXFunctionDef {
    * `glslBaseline`/`glslBaselineHelper`.
    */
   readonly glslStandard?: string | ((args: readonly string[]) => string);
-  /** Helper {@link printGLSLStandard} must emit once, in place of `glslBaselineHelper`. */
-  readonly glslStandardHelper?: FXHelper;
+  /** The helper {@link printGLSLStandard} links in place of `glslBaselineHelper`. */
+  readonly glslStandardHelper?: FXGLSLHelperName;
   /**
    * Scalarizes as one opaque call rather than element-wise: vector arguments are flattened into
    * scalar ones, and a vecN result becomes N calls with the component index appended.
@@ -117,103 +110,6 @@ const UNARY_MATH: readonly string[] = [
   "sign",
 ];
 
-// exportTypeScript.ts matches a compiled kernel's helper source against these constants to
-// emit a `sparcoon` import instead of inlining text - must stay in lockstep with fxMath.ts.
-export const FX_FRACT_HELPER = "function fxFract(x) { return x - Math.floor(x); }";
-export const FX_MOD_HELPER = "function fxMod(a, b) { return a - b * Math.floor(a / b); }";
-export const FX_MIX_HELPER = "function fxMix(a, b, t) { return a + (b - a) * t; }";
-export const FX_SMOOTHSTEP_HELPER =
-  "function fxSmoothstep(e0, e1, x) { var t = Math.min(Math.max((x - e0) / (e1 - e0), 0.0), 1.0); return t * t * (3.0 - 2.0 * t); }";
-
-/**
- * Standard-tier `rand()`: hashes (vertex id, per-tick seed, call counter). `fxRandCounter` is a
- * per-invocation global, so it only decorrelates the several `rand()` calls within one
- * invocation; `gl_VertexID` and `u_fxRandSeed` (an `int` uniform the behavior assembler declares
- * and the runtime changes every tick) decorrelate particles and ticks.
- */
-const FX_RAND_GLSL_STANDARD_HELPER: FXHelperModule = {
-  key: "rand",
-  requires: [FX_GLSL_STANDARD_NOISE_HASH.module],
-  source: `
-int fxRandCounter = 0;
-float fxNextRandom(){
-  fxRandCounter+=1;
-  return fxUnit(fxPcg(fxLattice(uvec3(uint(gl_VertexID),uint(u_fxRandSeed),uint(fxRandCounter)))));
-}`,
-};
-
-/**
- * `fx`-prefixed GLSL helpers for transpose/determinant/inverse (GLSL ES 1.00 has no matrix
- * builtins). `js` here is unreachable - `scalarize` expands these to scalar arithmetic first.
- */
-const FX_MAT_TRANSPOSE_HELPER = `
-mat2 fxTranspose(mat2 m){return mat2(m[0][0],m[1][0],m[0][1],m[1][1]);}
-mat3 fxTranspose(mat3 m){return mat3(m[0][0],m[1][0],m[2][0],m[0][1],m[1][1],m[2][1],m[0][2],m[1][2],m[2][2]);}
-mat4 fxTranspose(mat4 m){return mat4(
-  m[0][0],m[1][0],m[2][0],m[3][0],
-  m[0][1],m[1][1],m[2][1],m[3][1],
-  m[0][2],m[1][2],m[2][2],m[3][2],
-  m[0][3],m[1][3],m[2][3],m[3][3]);}`;
-
-const FX_MAT_DETERMINANT_HELPER = `
-float fxDeterminant(mat2 m){return m[0][0]*m[1][1]-m[0][1]*m[1][0];}
-float fxDeterminant(mat3 m){
-  return m[0][0]*(m[1][1]*m[2][2]-m[2][1]*m[1][2])
-        -m[1][0]*(m[0][1]*m[2][2]-m[2][1]*m[0][2])
-        +m[2][0]*(m[0][1]*m[1][2]-m[1][1]*m[0][2]);}
-float fxDeterminant(mat4 m){
-  float b00=m[0][0]*m[1][1]-m[0][1]*m[1][0];
-  float b01=m[0][0]*m[1][2]-m[0][2]*m[1][0];
-  float b02=m[0][0]*m[1][3]-m[0][3]*m[1][0];
-  float b03=m[0][1]*m[1][2]-m[0][2]*m[1][1];
-  float b04=m[0][1]*m[1][3]-m[0][3]*m[1][1];
-  float b05=m[0][2]*m[1][3]-m[0][3]*m[1][2];
-  float b06=m[2][0]*m[3][1]-m[2][1]*m[3][0];
-  float b07=m[2][0]*m[3][2]-m[2][2]*m[3][0];
-  float b08=m[2][0]*m[3][3]-m[2][3]*m[3][0];
-  float b09=m[2][1]*m[3][2]-m[2][2]*m[3][1];
-  float b10=m[2][1]*m[3][3]-m[2][3]*m[3][1];
-  float b11=m[2][2]*m[3][3]-m[2][3]*m[3][2];
-  return b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;}`;
-
-const FX_MAT_INVERSE_HELPER = `
-mat2 fxInverse(mat2 m){
-  return mat2(m[1][1],-m[0][1],-m[1][0],m[0][0])/(m[0][0]*m[1][1]-m[0][1]*m[1][0]);}
-mat3 fxInverse(mat3 m){
-  float a00=m[0][0],a01=m[0][1],a02=m[0][2];
-  float a10=m[1][0],a11=m[1][1],a12=m[1][2];
-  float a20=m[2][0],a21=m[2][1],a22=m[2][2];
-  float b01=a22*a11-a12*a21;
-  float b11=-a22*a10+a12*a20;
-  float b21=a21*a10-a11*a20;
-  float det=a00*b01+a01*b11+a02*b21;
-  return mat3(b01,(-a22*a01+a02*a21),(a12*a01-a02*a11),
-              b11,(a22*a00-a02*a20),(-a12*a00+a02*a10),
-              b21,(-a21*a00+a01*a20),(a11*a00-a01*a10))/det;}
-mat4 fxInverse(mat4 m){
-  float a00=m[0][0],a01=m[0][1],a02=m[0][2],a03=m[0][3];
-  float a10=m[1][0],a11=m[1][1],a12=m[1][2],a13=m[1][3];
-  float a20=m[2][0],a21=m[2][1],a22=m[2][2],a23=m[2][3];
-  float a30=m[3][0],a31=m[3][1],a32=m[3][2],a33=m[3][3];
-  float b00=a00*a11-a01*a10;
-  float b01=a00*a12-a02*a10;
-  float b02=a00*a13-a03*a10;
-  float b03=a01*a12-a02*a11;
-  float b04=a01*a13-a03*a11;
-  float b05=a02*a13-a03*a12;
-  float b06=a20*a31-a21*a30;
-  float b07=a20*a32-a22*a30;
-  float b08=a20*a33-a23*a30;
-  float b09=a21*a32-a22*a31;
-  float b10=a21*a33-a23*a31;
-  float b11=a22*a33-a23*a32;
-  float det=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;
-  return mat4(
-    a11*b11-a12*b10+a13*b09, a02*b10-a01*b11-a03*b09, a31*b05-a32*b04+a33*b03, a22*b04-a21*b05-a23*b03,
-    a12*b08-a10*b11-a13*b07, a00*b11-a02*b08+a03*b07, a32*b02-a30*b05-a33*b01, a20*b05-a22*b02+a23*b01,
-    a10*b10-a11*b08+a13*b06, a01*b08-a00*b10-a03*b06, a30*b04-a31*b02+a33*b00, a21*b02-a20*b04-a23*b00,
-    a11*b07-a10*b09-a12*b06, a00*b09-a01*b07+a02*b06, a31*b01-a30*b03-a32*b00, a20*b03-a21*b01+a22*b00)/det;}`;
-
 /** mat2 / mat3 / mat4 - the square matrix types the matrix functions overload over. */
 const MATRICES: readonly FXGLSLTypeName[] = ["mat2", "mat3", "mat4"];
 
@@ -232,7 +128,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "fract",
     signatures: elementwiseUnary(),
     js: (args) => `fxFract(${args[0]})`,
-    jsHelper: FX_FRACT_HELPER,
+    jsHelper: ["fxFract"],
   });
 
   // GLSL ES 1.00 has no round(), and ES 3.00's round-half-to-even differs from Math.round;
@@ -264,7 +160,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "mod",
     signatures: [...elementwiseBinary(), ...rightScalar()],
     js: (args) => `fxMod(${args[0]}, ${args[1]})`,
-    jsHelper: FX_MOD_HELPER,
+    jsHelper: ["fxMod"],
   });
   definitions.push({
     name: "step",
@@ -298,7 +194,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
       ...VECTORS.map((type) => ({ args: [type, type, "float"] as const, result: type })),
     ],
     js: (args) => `fxMix(${args[0]}, ${args[1]}, ${args[2]})`,
-    jsHelper: FX_MIX_HELPER,
+    jsHelper: ["fxMix"],
   });
   definitions.push({
     name: "smoothstep",
@@ -307,7 +203,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
       ...VECTORS.map((type) => ({ args: ["float", "float", type] as const, result: type })),
     ],
     js: (args) => `fxSmoothstep(${args[0]}, ${args[1]}, ${args[2]})`,
-    jsHelper: FX_SMOOTHSTEP_HELPER,
+    jsHelper: ["fxSmoothstep"],
   });
 
   definitions.push({
@@ -336,7 +232,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     signatures: [{ args: [], result: "float" }],
     standardOnly: true,
     impure: true,
-    glslStandardHelper: FX_RAND_GLSL_STANDARD_HELPER,
+    glslStandardHelper: "FX_GLSL_RAND",
     glslStandard: () => "fxNextRandom()",
     js: () => "Math.random()",
   });
@@ -384,7 +280,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "transpose",
     signatures: MATRICES.map((type) => ({ args: [type], result: type })),
     glslBaseline: "fxTranspose",
-    glslBaselineHelper: FX_MAT_TRANSPOSE_HELPER,
+    glslBaselineHelper: "FX_GLSL_TRANSPOSE",
     js: noScalarJS("transpose"),
     crossComponent: true,
   });
@@ -392,7 +288,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "determinant",
     signatures: MATRICES.map((type) => ({ args: [type], result: "float" as const })),
     glslBaseline: "fxDeterminant",
-    glslBaselineHelper: FX_MAT_DETERMINANT_HELPER,
+    glslBaselineHelper: "FX_GLSL_DETERMINANT",
     js: noScalarJS("determinant"),
     crossComponent: true,
   });
@@ -400,7 +296,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     name: "inverse",
     signatures: MATRICES.map((type) => ({ args: [type], result: type })),
     glslBaseline: "fxInverse",
-    glslBaselineHelper: FX_MAT_INVERSE_HELPER,
+    glslBaselineHelper: "FX_GLSL_INVERSE",
     js: noScalarJS("inverse"),
     crossComponent: true,
   });
@@ -442,7 +338,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     standardOnly: true,
     packed: true,
     glslStandard: (args) => `fxMeshFetch(${args[0]}, ${args[1]})`,
-    glslStandardHelper: FX_MESH_FETCH_GLSL_STANDARD_HELPER,
+    glslStandardHelper: "FX_GLSL_MESH_FETCH",
     js: (args) => `${args[0]}[${args[1]} * ${String(FX_SURFACE_TEXEL_FLOATS)} + ${args[2]}]`,
   });
 
@@ -456,7 +352,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     packed: true,
     glslStandard: (args) => `texture(${args[0]}, ${args[1]}).r`,
     js: (args) => `fxVolumeFetch(${args.join(", ")})`,
-    jsHelper: FX_VOLUME_FETCH_HELPER,
+    jsHelper: ["fxVolumeFetch"],
   });
   // A volume's size in texels.
   definitions.push({
@@ -470,7 +366,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
   });
 
   // The surface of the scene depth at a world-space point, as `vec4(normal, distance)` - see
-  // FX_SCENE_DEPTH_CONTACT_HELPER. The depth reaches only the GPU simulation: on the CPU, as where
+  // FX_GLSL_SCENE_DEPTH_CONTACT. The depth reaches only the GPU simulation: on the CPU, as where
   // the GPU has no depth to read, there is no surface.
   definitions.push({
     name: "sceneDepthContact",
@@ -478,7 +374,7 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     standardOnly: true,
     packed: true,
     glslStandard: (args) => `fxSceneDepthContact(${args[0]}, ${args[1]})`,
-    glslStandardHelper: FX_SCENE_DEPTH_CONTACT_HELPER,
+    glslStandardHelper: "FX_GLSL_SCENE_DEPTH_CONTACT",
     // The component index comes last, after the point's three components and the thickness.
     js: (args) => `[${NO_SURFACE_CONTACT.join(", ")}][${args[4]}]`,
   });
@@ -486,79 +382,8 @@ function buildFunctions(): Map<string, FXFunctionDef> {
   return new Map(definitions.map((definition) => [definition.name, definition]));
 }
 
-/** How far a point with no surface near it is from one - what a surface sample reads where there
- *  is none. */
-export const FX_NO_SURFACE_DISTANCE = 1e6;
-
-/** `sceneDepthContact` where there is no surface: an up normal and {@link FX_NO_SURFACE_DISTANCE}. */
+/** `sceneDepthContact` where there is no surface: an up normal and the no-surface distance. */
 const NO_SURFACE_CONTACT = [0, 1, 0, FX_NO_SURFACE_DISTANCE] as const;
-
-/** `volumeFetch` on the CPU - the trilinear blend of the 8 texels around `(u, v, w)` - sparcoon's
- *  `fxVolumeFetch`, which an exported kernel imports in its place. */
-export const FX_VOLUME_FETCH_HELPER = `function fxVolumeFetch(t, u, v, w) {
-  var nx = t[0], ny = t[1], nz = t[2];
-  var x = Math.min(Math.max(u * nx - 0.5, 0), nx - 1);
-  var y = Math.min(Math.max(v * ny - 0.5, 0), ny - 1);
-  var z = Math.min(Math.max(w * nz - 0.5, 0), nz - 1);
-  var x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z);
-  var fx = x - x0, fy = y - y0, fz = z - z0;
-  var dx = x0 + 1 < nx ? 1 : 0, dy = y0 + 1 < ny ? nx : 0, dz = z0 + 1 < nz ? nx * ny : 0;
-  var i = ${String(FX_VOLUME_HEADER_FLOATS)} + x0 + nx * (y0 + ny * z0);
-  var a = t[i] + (t[i + dx] - t[i]) * fx;
-  var b = t[i + dy] + (t[i + dy + dx] - t[i + dy]) * fx;
-  var c = t[i + dz] + (t[i + dz + dx] - t[i + dz]) * fx;
-  var d = t[i + dz + dy] + (t[i + dz + dy + dx] - t[i + dz + dy]) * fx;
-  var e = a + (b - a) * fy;
-  return e + (c + (d - c) * fy - e) * fz;
-}`;
-
-const FX_MESH_FETCH_GLSL_STANDARD_HELPER = `vec4 fxMeshFetch(sampler2D table, float texel) {
-  int index = int(texel);
-  int width = textureSize(table, 0).x;
-  return texelFetch(table, ivec2(index % width, index / width), 0);
-}`;
-
-/**
- * `sceneDepthContact` on the GPU. The point is projected onto the depth texture with the
- * view-projection the depth was drawn with, and the depth around it is unprojected back to world
- * points with the inverse. The normal crosses the shorter of the two one-sided differences on each
- * axis, so it does not bend across the edge of a silhouette, and faces the camera. There is no
- * surface without depth, off screen, behind the camera, on the far plane (nothing drawn), or
- * deeper than `thickness` behind the surface (the point is behind an occluder, not in it).
- */
-const FX_SCENE_DEPTH_CONTACT_HELPER = `vec3 fxSceneDepthPoint(vec2 uv) {
-  vec4 point = ${FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM} * vec4(vec3(uv, texture(${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM}, uv).r) * 2.0 - 1.0, 1.0);
-  return point.xyz / point.w;
-}
-vec4 fxSceneDepthContact(vec3 position, float thickness) {
-  vec4 none = vec4(${NO_SURFACE_CONTACT.map((value) => value.toFixed(1)).join(", ")});
-  if (${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM}.z == 0.0) {
-    return none;
-  }
-  vec4 clip = ${FX_TRANSFORM_FEEDBACK_VIEW_PROJECTION_UNIFORM} * vec4(position, 1.0);
-  if (clip.w <= 0.0 || any(greaterThan(abs(clip.xy), vec2(clip.w)))) {
-    return none;
-  }
-  vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
-  if (texture(${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM}, uv).r >= 1.0) {
-    return none;
-  }
-  vec2 texel = ${FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_FRAME_UNIFORM}.xy;
-  vec3 center = fxSceneDepthPoint(uv);
-  vec3 right = fxSceneDepthPoint(uv + vec2(texel.x, 0.0)) - center;
-  vec3 left = center - fxSceneDepthPoint(uv - vec2(texel.x, 0.0));
-  vec3 up = fxSceneDepthPoint(uv + vec2(0.0, texel.y)) - center;
-  vec3 down = center - fxSceneDepthPoint(uv - vec2(0.0, texel.y));
-  vec3 normal = cross(dot(right, right) < dot(left, left) ? right : left, dot(up, up) < dot(down, down) ? up : down);
-  float area = length(normal);
-  if (area == 0.0) {
-    return none;
-  }
-  vec4 near = ${FX_TRANSFORM_FEEDBACK_INVERSE_VIEW_PROJECTION_UNIFORM} * vec4(uv * 2.0 - 1.0, -1.0, 1.0);
-  normal /= dot(normal, near.xyz / near.w - center) < 0.0 ? -area : area;
-  float distance = dot(position - center, normal);
-  return distance < -thickness ? none : vec4(normal, distance);
-}`;
 
 /** The canonical, backend-neutral function registry. */
 export const FX_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = buildFunctions();

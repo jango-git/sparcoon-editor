@@ -2,11 +2,14 @@ import { FXMeshMaterial } from "sparcoon/editor";
 import type { ShaderMaterial } from "three";
 import { describe, expect, it } from "vitest";
 
+import { glslHelperSource } from "../../src/engine/core/ir/FXHelpers.Internal";
 import { assembleRenderArtifact } from "../../src/engine/emit/assembleArtifacts";
 import type { FXCompiledProgram } from "../../src/engine/render/compiler/FXCompiledShader";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FXCompilerStandard } from "../../src/engine/render/compiler/FXCompilerStandard";
 import {
+  buildMeshTarget,
+  buildParticleTarget,
   FX_MESH_TARGET,
   FX_PARTICLE_TARGET,
   FX_TRAIL_TARGET,
@@ -26,9 +29,9 @@ function code(program: FXCompiledProgram | undefined): string {
     throw new Error("no program");
   }
   return [
-    ...program.vertex.helperFunctions,
+    ...program.vertex.helpers.map(glslHelperSource),
     ...program.vertex.body,
-    ...program.fragment.helperFunctions,
+    ...program.fragment.helpers.map(glslHelperSource),
     ...program.fragment.body,
     ...Object.values(program.outputs),
   ].join("\n");
@@ -66,7 +69,7 @@ function litMeshGraph() {
 
 describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
   it("computes the albedo's alpha and none of the lighting feeding only the color", () => {
-    const shader = compiler.compile(litGraph(), FX_PARTICLE_TARGET);
+    const shader = compiler.compile(litGraph(), CASTING_PARTICLE_TARGET);
     expect(code(shader.color)).toContain("fxLambertShade");
     const shadow = code(shader.shadow);
     expect(shadow).not.toContain("fxLambertShade");
@@ -86,7 +89,7 @@ describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
       [],
       [bind("albedo", "col", "out"), bind("shadowThreshold", "life", "out")],
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    const shader = compiler.compile(graph, CASTING_PARTICLE_TARGET);
     expect(shader.color.outputs["shadowThreshold"]).toBeUndefined();
     expect(shader.shadow?.outputs["shadowThreshold"]).toBeDefined();
     expect(code(shader.color)).not.toContain("PARTICLE_AGE");
@@ -107,7 +110,7 @@ describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
         bind("shadowThreshold", "half", "out"),
       ],
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    const shader = compiler.compile(graph, CASTING_PARTICLE_TARGET);
     expect(Object.keys(shader.shadow?.outputs ?? {}).sort()).toEqual(["alpha", "shadowThreshold"]);
     // The life ratio fed only the cutoff the runtime would not read.
     expect(code(shader.shadow)).not.toContain("PARTICLE_AGE");
@@ -129,7 +132,7 @@ describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
         bind("particleTransform", "to4", "out"),
       ],
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    const shader = compiler.compile(graph, CASTING_PARTICLE_TARGET);
     expect(Object.keys(shader.shadow?.outputs ?? {}).sort()).toEqual([
       "alpha",
       "alphaThreshold",
@@ -147,17 +150,22 @@ describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
       [edge("col", "out", "pulse", "a"), edge("time", "out", "pulse", "b")],
       [bind("albedo", "pulse", "out")],
     );
-    const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
+    const shader = compiler.compile(graph, CASTING_PARTICLE_TARGET);
     const albedo = shader.color.outputs["albedo"] ?? "";
     expect(Object.keys(shader.uniforms)).toEqual([albedo]);
     expect(code(shader.shadow)).toContain(`(${albedo}).w`);
   });
 
   it("has no particle transform on a VFX mesh", () => {
-    const shader = compiler.compile(litMeshGraph(), FX_MESH_TARGET);
+    const shader = compiler.compile(litMeshGraph(), CASTING_MESH_TARGET);
     expect(code(shader.color)).toContain("fxLambertShade");
     expect(code(shader.shadow)).not.toContain("fxLambertShade");
     expect(Object.keys(shader.shadow?.outputs ?? {})).toEqual(["alpha"]);
+  });
+
+  it("is absent for an emitter and a mesh that cast no shadow", () => {
+    expect(compiler.compile(litGraph(), FX_PARTICLE_TARGET).shadow).toBeUndefined();
+    expect(compiler.compile(litMeshGraph(), FX_MESH_TARGET).shadow).toBeUndefined();
   });
 
   it("is absent for a trail, which casts no shadow", () => {
@@ -170,9 +178,12 @@ describe.each(COMPILERS)("the shadow program (%s)", (_tier, compiler) => {
   });
 });
 
+const CASTING_PARTICLE_TARGET = buildParticleTarget([], true);
+const CASTING_MESH_TARGET = buildMeshTarget(true);
+
 describe("the shadow program, drawn by the runtime", () => {
   it("casts from the alpha alone: the depth material's main calls no lighting", () => {
-    const shader = new FXCompilerStandard().compile(litMeshGraph(), FX_MESH_TARGET);
+    const shader = new FXCompilerStandard().compile(litMeshGraph(), CASTING_MESH_TARGET);
     const render = assembleRenderArtifact(
       shader,
       { type: "primitive", primitive: "plane" },

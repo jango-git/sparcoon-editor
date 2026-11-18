@@ -13,6 +13,7 @@ import {
   behaviorArtifactBody,
   collectBehaviorHelpers,
   collectDrawHelpers,
+  helpersImportLines,
 } from "./artifactLiterals";
 import { FXRenderModuleWriter } from "./FXRenderModuleWriter";
 
@@ -35,7 +36,7 @@ const RENDER_EXPORT_NAMES = { baseline: "renderBaseline", standard: "renderStand
  * only executes the result (`FXEmitter.fromArtifacts`) - no graph, compiler, or `eval` at runtime.
  *
  * The emitted `spawn`/`update` are real authored functions carrying the exact per-particle source
- * the kernel builder would have `new Function`-d, with math helpers hoisted to module scope.
+ * the preview's kernel builder runs, calling the helpers the module imports.
  */
 export function emitEffectModule(
   renderGraph: FXGraph<FXRenderNode>,
@@ -62,21 +63,6 @@ export function emitEffectModule(
     particleBehaviorTargetsFor(behaviorGraph, false, behaviorAttributes),
   );
 
-  const lines: string[] = [];
-  lines.push(
-    `import { type FXRenderArtifact, type FXBehaviorArtifact } from ${JSON.stringify(importSpecifier)};`,
-  );
-  lines.push("");
-  // The behavior's helpers and the draw stage's, each once.
-  const helpers = new Set([
-    ...collectBehaviorHelpers(kernel),
-    ...collectDrawHelpers(shaders.baseline),
-    ...collectDrawHelpers(shaders.standard),
-  ]);
-  for (const helper of helpers) {
-    lines.push(helper);
-    lines.push("");
-  }
   const renderWriter = new FXRenderModuleWriter("export const");
   const renderDeclarations = renderWriter.tierDeclarations(
     (["baseline", "standard"] as const).map((tier) => ({
@@ -87,8 +73,17 @@ export function emitEffectModule(
     renderAttributes,
     renderMode,
   );
-  // The helpers first: the artifacts below name them.
-  for (const declaration of [...renderWriter.helperDeclarations(), ...renderDeclarations]) {
+  const lines = [
+    `import { type FXRenderArtifact, type FXBehaviorArtifact } from ${JSON.stringify(importSpecifier)};`,
+    ...helpersImportLines(importSpecifier, [
+      ...collectBehaviorHelpers(kernel),
+      ...collectDrawHelpers(shaders.baseline),
+      ...collectDrawHelpers(shaders.standard),
+      ...renderWriter.helperNames(),
+    ]),
+    "",
+  ];
+  for (const declaration of renderDeclarations) {
     lines.push(declaration);
     lines.push("");
   }

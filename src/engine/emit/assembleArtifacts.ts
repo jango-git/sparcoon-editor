@@ -12,7 +12,10 @@ import type {
 import type { Texture } from "three";
 
 import type { FXCompiledKernel, FXCompiledKernelPhase } from "../behavior/FXCompiledKernel";
-import type { FXFusedProgramStandard } from "../behavior/FXKernelBuildStandard.Internal";
+import {
+  fusedVertexSource,
+  type FXFusedProgramStandard,
+} from "../behavior/FXKernelBuildStandard.Internal";
 import { kernelResourceFields, resourceFieldsOf } from "../behavior/FXKernelShared.Internal";
 import {
   buildParticleSpawnKernel,
@@ -162,7 +165,7 @@ export function assembleGpuKernelArtifact(
     bindings[name] = { value: zeroValue(type) };
   }
   return {
-    vertexSource: program.vertexSource,
+    vertexSource: fusedVertexSource(program),
     fragmentSource: program.fragmentSource,
     buffers: program.buffers.map((buffer) => ({ name: buffer.name, stride: buffer.stride })),
     transformFeedbackVaryings: [...program.transformFeedbackVaryings],

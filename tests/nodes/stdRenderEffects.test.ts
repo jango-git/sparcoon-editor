@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { collectRenderCapabilities } from "../../src/engine/core/compiler/collectRenderCapabilities";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
+import { glslHelperSource } from "../../src/engine/core/ir/FXHelpers.Internal";
 import {
   fxAmbientShading,
   fxHalfLitShading,
@@ -48,7 +49,7 @@ describe("standard render effects", () => {
       [edge("c", "out", "d", "color")],
       [bind("albedo", "d", "color")],
     );
-    const helpers = shader.color.fragment.helperFunctions.join("\n");
+    const helpers = shader.color.fragment.helpers.map(glslHelperSource).join("\n");
     const body = shader.color.fragment.body.join("\n");
     // dissolve builds on the shared `noise` primitive through ordinary IR calls, so only that
     // helper shows up, with its own smoothstep call site inline in the body.
@@ -82,7 +83,7 @@ describe("standard render effects", () => {
       [edge("c", "out", "m", "color")],
       [bind("albedo", "m", "color")],
     );
-    const helpers = shader.color.fragment.helperFunctions.join("\n");
+    const helpers = shader.color.fragment.helpers.map(glslHelperSource).join("\n");
     // The mask is a smoothstep over brightness whose upper edge is kept above the lower one, so
     // equal edges are a hard threshold rather than an undefined smoothstep.
     expect(helpers).toContain("smoothstep(edge0, max(edge1, edge0");

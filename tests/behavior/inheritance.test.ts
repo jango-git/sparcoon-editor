@@ -9,7 +9,10 @@ import {
   planInherits,
 } from "../../src/engine/behavior/FXInherit";
 import type { FXInheritRequest } from "../../src/engine/behavior/FXInheritPlan";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import {
+  assembleTransformFeedbackProgram,
+  fusedVertexSource,
+} from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { validateKernelTarget } from "../../src/engine/behavior/FXKernelTargetValidation.Internal";
 import { validateBehavior } from "../../src/engine/behavior/FXKernelValidation.Internal";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
@@ -134,9 +137,9 @@ describe("inheriting kernels", () => {
     const program = assembleTransformFeedbackProgram(
       compileBehaviorStandard(graph, particleBehaviorTargetsFor(graph, true)),
     );
-    expect(program.vertexSource).toContain("uniform vec4 u_fxInherited[1];");
-    expect(program.vertexSource).toContain("u_fxInherited[0].xyz");
-    expect(program.vertexSource).toContain("u_fxInherited[0].w");
+    expect(fusedVertexSource(program)).toContain("uniform vec4 u_fxInherited[1];");
+    expect(fusedVertexSource(program)).toContain("u_fxInherited[0].xyz");
+    expect(fusedVertexSource(program)).toContain("u_fxInherited[0].w");
   });
 
   it("declare no inherited uniform when nothing is inherited", () => {
@@ -144,7 +147,7 @@ describe("inheriting kernels", () => {
     const program = assembleTransformFeedbackProgram(
       compileBehaviorStandard(graph, particleBehaviorTargetsFor(graph, true)),
     );
-    expect(program.vertexSource).not.toContain("u_fxInherited");
+    expect(fusedVertexSource(program)).not.toContain("u_fxInherited");
   });
 });
 

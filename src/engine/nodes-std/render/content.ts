@@ -146,30 +146,6 @@ const FLIPBOOK_LOOP_PARAM = {
   default: false,
 } as const satisfies FXParamSpec;
 
-// frame = the cell the playhead sits on; next = the cell after it; factor = how far between.
-const FLIPBOOK_FRAME_ONCE = `vec3 fxAnimatedFrameOnce(float ratio, float totalFrames) {
-  float framePos = clamp(ratio, 0.0, 1.0) * totalFrames;
-  float last = totalFrames - 1.0;
-  float frame = min(floor(framePos), last);
-  return vec3(frame, min(frame + 1.0, last), framePos - frame);
-}`;
-const FLIPBOOK_FRAME_LOOP = `vec3 fxAnimatedFrameLoop(float ratio, float totalFrames) {
-  float framePos = fract(ratio) * totalFrames;
-  float frame = floor(framePos);
-  return vec3(frame, mod(frame + 1.0, totalFrames), framePos - frame);
-}`;
-
-/**
- * The UV of cell `frame` (a whole number) of a `columns` x `rows` sheet, cells left to right, top
- * to bottom. The column is taken off the row rather than by `mod`: `mod(8.0, 8.0)` may come out
- * 7.99..., which would read the cell's right neighbour - a whole frame off.
- */
-const FLIPBOOK_FRAME_UV = `vec2 fxFlipbookFrameUV(vec2 uv, float frame, float columns, float rows) {
-  float row = floor((frame + 0.5) / columns);
-  float column = frame - row * columns;
-  return vec2((column + uv.x) / columns, 1.0 - (row + 1.0 - uv.y) / rows);
-}`;
-
 /** The sheet's frame count: `frames` when set (above 0), else every cell of the grid. */
 function sheetFrames(fn: FXExprBuilderApi, frames: FXExpr, columns: FXExpr, rows: FXExpr): FXExpr {
   return fn.pureRaw(FLOAT, "glsl", "($0 > 0.5 ? floor($0 + 0.5) : $1 * $2)", frames, columns, rows);
@@ -209,11 +185,8 @@ export const fxAnimatedTexture = defineNode({
   cost: ({ params }) => (params.loop === true ? 10 : 8) + 3 + 28,
   build: ({ inputs, params, emitHelper, local, fn }) => {
     const frameFunction = params.loop ? "fxAnimatedFrameLoop" : "fxAnimatedFrameOnce";
-    emitHelper(
-      `animated-texture-${frameFunction}`,
-      params.loop ? FLIPBOOK_FRAME_LOOP : FLIPBOOK_FRAME_ONCE,
-    );
-    emitHelper("animated-texture-uv", FLIPBOOK_FRAME_UV);
+    emitHelper(params.loop ? "FX_GLSL_FLIPBOOK_FRAME_LOOP" : "FX_GLSL_FLIPBOOK_FRAME_ONCE");
+    emitHelper("FX_GLSL_FLIPBOOK_FRAME_UV");
     const frameInfo = local(
       "at_frame",
       fn.pureRaw(
@@ -267,12 +240,12 @@ export const fxFlipbookFrame = defineNode({
   // fxFlipbookFrameUV call (14).
   cost: 3 + 8 + 14,
   build: ({ inputs, emitHelper, local, fn }) => {
-    emitHelper("animated-texture-uv", FLIPBOOK_FRAME_UV);
+    emitHelper("FX_GLSL_FLIPBOOK_FRAME_UV");
     const total = local(
       "fb_frames",
       sheetFrames(fn, inputs["frames"], inputs["columns"], inputs["rows"]),
     );
-    // Wrapped as the column is (see FLIPBOOK_FRAME_UV), not by `mod`, which may land on `total`
+    // Wrapped as the column is (see FX_GLSL_FLIPBOOK_FRAME_UV), not by `mod`, which may land on `total`
     const cell = fn.pureRaw(
       FLOAT,
       "glsl",

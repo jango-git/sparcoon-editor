@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { sinkMeta, UPDATE_SINK_TYPE } from "../../src/domain/sinkMeta";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import {
+  assembleTransformFeedbackProgram,
+  fusedVertexSource,
+} from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { FX_KILL_SLOT } from "../../src/engine/behavior/FXKernelLifecycle.Internal";
 import { validateKernelTarget } from "../../src/engine/behavior/FXKernelTargetValidation.Internal";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
@@ -81,7 +84,7 @@ describe("kill", () => {
     const compiled = compileBehaviorStandard(killedOnContact(), targets);
     const program = assembleTransformFeedbackProgram(compiled);
     expect(compiled.update.kill).toBeDefined();
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       `(${compiled.update.kill ?? ""} > 0.5 ? max(in_lifecycle.x, in_lifecycle.y) : in_lifecycle.x) + u_fxDt`,
     );
   });

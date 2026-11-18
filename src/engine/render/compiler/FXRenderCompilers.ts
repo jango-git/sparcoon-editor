@@ -1,3 +1,5 @@
+import type { FXGLSLRenderTier } from "sparcoon/editor";
+
 import type { FXValidationResult } from "../../core/compiler/FXCompilerError";
 import type { FXGraph } from "../../core/FXGraph";
 import type { FXRenderNode } from "../FXRenderNode";
@@ -25,14 +27,7 @@ export interface FXRenderCompiler<TArtifact = FXCompiledShader> {
   compile(graph: FXGraph<FXRenderNode>, target: FXTarget): TArtifact;
 }
 
-/**
- * A GLSL render tier id - matches the `sparcoon` runtime's `FXGLSLRenderTier`. Deliberately NOT
- * named "render compiler id" in general: this id space is scoped to the GLSL family (baseline =
- * WebGL1/GLSL-ES-1.00, standard = WebGL2/GLSL-ES-3.00). A future advanced tier (WebGPU/WGSL) is a
- * structurally different family and gets its own, differently-named id type, never a third member
- * of this union.
- */
-export type FXGLSLRenderTier = "baseline" | "standard";
+export type { FXGLSLRenderTier };
 
 /**
  * Every registered GLSL-family render compiler, by tier. A caller (the export pipeline) iterates

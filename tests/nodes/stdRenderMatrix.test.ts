@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { glslHelperSource } from "../../src/engine/core/ir/FXHelpers.Internal";
 import { FX_RENDER_MATRIX_NODES, resolveAlignAxes } from "../../src/engine/nodes-std/render/matrix";
 import { FXCompilerBaseline } from "../../src/engine/render/compiler/FXCompilerBaseline";
 import { FX_PARTICLE_TARGET } from "../../src/engine/render/target/FXParticleRenderTarget";
@@ -213,7 +214,7 @@ describe("standard render matrix nodes", () => {
       [bind("albedo", "lit", "color")],
     );
     const shader = compiler.compile(graph, FX_PARTICLE_TARGET);
-    const helpers = shader.color.fragment.helperFunctions.join("\n");
+    const helpers = shader.color.fragment.helpers.map(glslHelperSource).join("\n");
     expect(helpers).toContain("fxInverse");
     expect(helpers).toContain("fxTranspose");
   });
@@ -347,7 +348,8 @@ describe("standard render matrix nodes", () => {
     // inverse(modelMatrix) is the pose's alone: inverted once per tick on the CPU, never in-shader.
     expect(shader.draw?.statements.join("\n")).toContain("inputs.modelMatrix[");
     const vsrc =
-      shader.color.vertex.body.join("\n") + shader.color.vertex.helperFunctions.join("\n");
+      shader.color.vertex.body.join("\n") +
+      shader.color.vertex.helpers.map(glslHelperSource).join("\n");
     expect(vsrc).not.toContain("fxInverse");
     expect(drawUniformNames(shader)).toContain(shader.color.outputs["particleTransform"]);
   });

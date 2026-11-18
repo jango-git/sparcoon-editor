@@ -21,6 +21,7 @@ import type { FXExpr } from "../../core/ir/FXExpr";
 import type { FXExprBuilderApi } from "../../core/ir/FXExprBuilder";
 import { coerceNumeric, createBuilders, ref } from "../../core/ir/FXExprBuilder";
 import { baselineSignaturesFrom, FX_FUNCTIONS } from "../../core/ir/FXFunctions.Internal";
+import { collectGLSLHelper, type FXGLSLHelperName } from "../../core/ir/FXHelpers.Internal";
 import type { FXSocketRef } from "../../core/socket/FXSocket";
 import { socketRefKey } from "../../core/socket/FXSocket";
 import type { FXValueType } from "../../core/socket/FXValueType";
@@ -199,12 +200,6 @@ interface FXStageLocal extends FXRatedLocal {
   readonly owner: string | undefined;
 }
 
-function addHelper(helpers: Map<string, string>, key: string, source: string): void {
-  if (!helpers.has(key)) {
-    helpers.set(key, source);
-  }
-}
-
 /** Mutable accumulator for one compilation (identifiers, uniforms, varyings, helpers, per-stage
  *  locals). Nodes never see this directly - only through {@link FXNodeCompilerContext}. */
 class FXCompileState {
@@ -217,8 +212,8 @@ class FXCompileState {
     [FXShaderStage.VERTEX]: [],
     [FXShaderStage.FRAGMENT]: [],
   };
-  /** The helpers each node emitted, by key: they go wherever its locals end up. */
-  private readonly ownerHelpers = new Map<string, Map<string, string>>();
+  /** The helpers each node links: they go wherever its locals end up. */
+  private readonly ownerHelpers = new Map<string, FXGLSLHelperName[]>();
 
   /** Allocates a collision-free, compact GLSL identifier (see {@link FXGLSLNames}). */
   public uniqueName(): string {
@@ -230,12 +225,9 @@ class FXCompileState {
     this.locals[stage].push(local);
   }
 
-  /** Adds a helper function a node uses, deduplicated by `key`: it is emitted into every stage
-   *  that ends up holding one of the node's locals. */
-  public emitHelper(owner: string, key: string, source: string): void {
-    const helpers = this.ownerHelpers.get(owner) ?? new Map<string, string>();
-    addHelper(helpers, key, source);
-    this.ownerHelpers.set(owner, helpers);
+  /** Links a helper a node calls into every stage that ends up holding one of the node's locals. */
+  public emitHelper(owner: string, helper: FXGLSLHelperName): void {
+    this.ownerHelpers.set(owner, [...(this.ownerHelpers.get(owner) ?? []), helper]);
   }
 
   public allocateUniform(descriptor: FXUniformDescriptor): FXUniformHandle {
@@ -282,13 +274,13 @@ class FXCompileState {
     locals: readonly FXStageLocal[],
     carried: ReadonlyMap<string, string>,
   ): FXPrintedStage {
-    const helpers = new Map<string, string>();
+    const helpers = new Set<FXGLSLHelperName>();
     const targetReads = new Set<string>();
     const body: string[] = [];
     for (const local of locals) {
       const owned = local.owner === undefined ? undefined : this.ownerHelpers.get(local.owner);
-      for (const [key, source] of owned ?? []) {
-        addHelper(helpers, key, source);
+      for (const helper of owned ?? []) {
+        collectGLSLHelper(helpers, "baseline", helper);
       }
       const printed = printGLSLBaseline(local.expr, FX_FUNCTIONS, (reference) => {
         if (reference.ref === "targetInput") {
@@ -298,13 +290,13 @@ class FXCompileState {
           ? (carried.get(reference.name) ?? reference.name)
           : reference.name;
       });
-      for (const [key, source] of printed.helpers) {
-        addHelper(helpers, key, source);
+      for (const helper of printed.helpers) {
+        helpers.add(helper);
       }
       body.push(`${local.type.glslTypeName} ${local.name} = ${printed.code};`);
     }
     return {
-      helperFunctions: [...helpers.values()],
+      helpers: [...helpers],
       body,
       targetReads: [...targetReads].sort(),
     };
@@ -453,8 +445,8 @@ class FXNodeCompilerContext
     return this.state.allocateVarying(type);
   }
 
-  public emitHelper(key: string, source: string): void {
-    this.state.emitHelper(this.nodeId, key, source);
+  public emitHelper(helper: FXGLSLHelperName): void {
+    this.state.emitHelper(this.nodeId, helper);
   }
 
   /** Reads a producer local - a vertex one read here in the fragment stage crosses through a

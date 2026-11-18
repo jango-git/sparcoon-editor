@@ -1,42 +1,36 @@
 /**
- * The array literal of `lines`, taking each long enough run it shares with `base` as a slice of
- * `baseExpression` (an expression naming `base` in the emitted module) and writing out the rest -
- * shorter than the lines in full wherever the two mostly agree. Evaluated once, when the module
- * loads. A run is a slice only past `MIN_SLICE_LENGTH` characters: below it the slice costs more
- * than the lines.
+ * The array literal of `elements` (each an expression: a line written out, a helper's name),
+ * taking each long enough run it shares with `base` (the elements of the array `baseExpression`
+ * names in the emitted module) as a slice of it and writing out the rest - shorter than the
+ * elements in full wherever the two mostly agree. Evaluated once, when the module loads. A run is
+ * a slice only past `MIN_SLICE_LENGTH` characters: below it the slice costs more than the elements.
  */
 export function lineDeltaLiteral(
-  lines: readonly string[],
+  elements: readonly string[],
   base: readonly string[],
   baseExpression: string,
 ): string {
   const parts: string[] = [];
   let index = 0;
-  for (const run of sharedRuns(lines, base)) {
-    pushLines(parts, lines, index, run.at);
-    const shared = lines.slice(run.at, run.at + run.length);
-    if (JSON.stringify(shared).length > MIN_SLICE_LENGTH) {
+  for (const run of sharedRuns(elements, base)) {
+    parts.push(...elements.slice(index, run.at));
+    const shared = elements.slice(run.at, run.at + run.length);
+    if (shared.join(", ").length > MIN_SLICE_LENGTH) {
       parts.push(
         `...${baseExpression}.slice(${String(run.from)}, ${String(run.from + run.length)})`,
       );
     } else {
-      pushLines(parts, lines, run.at, run.at + run.length);
+      parts.push(...shared);
     }
     index = run.at + run.length;
   }
-  pushLines(parts, lines, index, lines.length);
+  parts.push(...elements.slice(index));
   return `[${parts.join(", ")}]`;
 }
 
 const MIN_SLICE_LENGTH = 48;
 
-function pushLines(parts: string[], lines: readonly string[], from: number, to: number): void {
-  for (let i = from; i < to; i++) {
-    parts.push(JSON.stringify(lines[i]));
-  }
-}
-
-/** A stretch of `lines` from `at` equal to `base` from `from`. */
+/** A stretch of the elements from `at` equal to `base` from `from`. */
 interface FXSharedRun {
   readonly at: number;
   readonly from: number;

@@ -1,6 +1,7 @@
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import type { FXExpr } from "../../core/ir/FXExpr";
 import { litVec } from "../../core/ir/FXExprBuilder";
+import type { FXGLSLHelperName } from "../../core/ir/FXHelpers.Internal";
 import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
 import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
@@ -57,14 +58,7 @@ export const fxBlend = defineNode({
     const mode = parameters.mode as FXBlendMode;
     switch (mode) {
       case "normal":
-        emitHelper(
-          "blend-normal",
-          `vec4 fxBlendNormal(vec4 base, vec4 blend) {
-            float a = blend.a + base.a * (1.0 - blend.a);
-            vec3 rgb = (blend.rgb * blend.a + base.rgb * base.a * (1.0 - blend.a)) / max(a, 1e-4);
-            return vec4(rgb, a);
-          }`,
-        );
+        emitHelper("FX_GLSL_BLEND_NORMAL");
         return { color: fn.pureRaw(VEC4, "glsl", "fxBlendNormal($0, $1)", base, blend) };
       case "add":
         return { color: fn.add(base, blend) };
@@ -106,13 +100,7 @@ export const fxSphericalClip = defineNode({
   cost: 22,
   reads: ["p_uv"],
   build: ({ inputs, target, emitHelper, fn }) => {
-    emitHelper(
-      "spherical-clip",
-      `vec4 fxApplySphericalClip(vec2 uv, float innerRadius) {
-        float distanceToCenter = distance(uv, vec2(0.5, 0.5));
-        return vec4(1.0, 1.0, 1.0, 1.0 - smoothstep(innerRadius, 0.5, distanceToCenter));
-      }`,
-    );
+    emitHelper("FX_GLSL_SPHERICAL_CLIP");
     const clip = fn.pureRaw(
       VEC4,
       "glsl",
@@ -206,15 +194,7 @@ export const fxLightnessBlendingMask = defineNode({
   // per component, scalar = 11) + a vec4 multiply(4) = 22.
   cost: 22,
   build: ({ inputs, emitHelper, fn }) => {
-    emitHelper(
-      "lightness-blending-mask",
-      // max(edge1, edge0 + 1e-4) keeps the span non-zero when edge0 == edge1, so an
-      // equal-edge config is a hard threshold rather than undefined GLSL / a NaN mask.
-      `float fxLightnessBlendingMask(vec4 color, float edge0, float edge1) {
-        float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-        return smoothstep(edge0, max(edge1, edge0 + 1e-4), brightness);
-      }`,
-    );
+    emitHelper("FX_GLSL_LIGHTNESS_BLENDING_MASK");
     const mask = fn.pureRaw(
       FLOAT,
       "glsl",
@@ -227,24 +207,14 @@ export const fxLightnessBlendingMask = defineNode({
   },
 });
 
-// The single tangent->world transform in the system. Gram-Schmidt re-orthogonalizes T
-// against N; roll is already baked into n/t by the runtime.
-const TANGENT_TO_WORLD_KEY = "tangent-to-world-normal";
-const TANGENT_TO_WORLD_SOURCE = `vec3 fxTangentToWorldNormal(vec3 tangentNormal, vec3 n, vec3 t) {
-  vec3 N = normalize(n);
-  vec3 T = normalize(t - N * dot(N, t));
-  vec3 B = cross(N, T);
-  return normalize(mat3(T, B, N) * tangentNormal);
-}`;
-
 /** Emits the shared surface-frame helper and rotates a tangent-space normal into world. */
 function tangentToWorldNormal(
   tangentNormal: FXExpr,
   target: { read: (name: string) => FXExpr },
-  emitHelper: (key: string, source: string) => void,
+  emitHelper: (helper: FXGLSLHelperName) => void,
   fn: FXExprBuilderApi,
 ): FXExpr {
-  emitHelper(TANGENT_TO_WORLD_KEY, TANGENT_TO_WORLD_SOURCE);
+  emitHelper("FX_GLSL_TANGENT_TO_WORLD_NORMAL");
   return fn.pureRaw(
     VEC3,
     "glsl",
@@ -288,13 +258,7 @@ export const fxSphericalNormal = defineNode({
   cost: 106,
   reads: ["p_uv", "geometryNormal", "geometryTangent"],
   build: ({ target, emitHelper, fn }) => {
-    emitHelper(
-      "spherical-normal",
-      `vec3 fxComputeSphericalNormal(vec2 uv) {
-        vec2 centeredUV = uv * 2.0 - 1.0;
-        return normalize(vec3(centeredUV, sqrt(max(0.0, 1.0 - dot(centeredUV, centeredUV)))));
-      }`,
-    );
+    emitHelper("FX_GLSL_SPHERICAL_NORMAL");
     const tangentNormal = fn.pureRaw(
       VEC3,
       "glsl",
@@ -326,15 +290,7 @@ export const fxNormalMap = defineNode({
   cost: 88,
   reads: ["geometryNormal", "geometryTangent"],
   build: ({ inputs, target, emitHelper, fn }) => {
-    emitHelper(
-      "normal-map-unpack",
-      // Unpack [0,1] rgb to a [-1,1] tangent normal; `strength` scales only the xy tilt so 0 is flat.
-      `vec3 fxUnpackNormal(vec4 c, float strength) {
-        vec3 n = c.rgb * 2.0 - 1.0;
-        n.xy *= strength;
-        return n;
-      }`,
-    );
+    emitHelper("FX_GLSL_UNPACK_NORMAL");
     const tangentNormal = fn.pureRaw(
       VEC3,
       "glsl",

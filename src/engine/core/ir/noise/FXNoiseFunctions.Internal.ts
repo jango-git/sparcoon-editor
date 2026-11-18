@@ -1,50 +1,35 @@
 import type { FXCallSignature } from "../FXExprBuilder";
 import type { FXFunctionDef } from "../FXFunctions.Internal";
-import {
-  fixedCurlGLSLName,
-  fixedCurlName,
-  FX_JS_CURL,
-  glslFixedCurlModule,
-} from "./FXCurlNoise.Internal";
+import type { FXJSHelperName } from "../FXHelpers.Internal";
+import { fixedCurlGLSLName, fixedCurlHelper, fixedCurlName } from "./FXCurlNoise.Internal";
 import {
   fixedFbmGLSLName,
+  fixedFbmHelper,
   fixedFbmName,
   FX_FIXED_OCTAVE_COUNTS,
-  FX_GLSL_BASELINE_FBM,
-  FX_GLSL_STANDARD_FBM,
-  FX_JS_FBM,
   type FXFixedOctaves,
-  glslFixedFbmModule,
 } from "./FXFractalNoise.Internal";
-import type { FXSeedHashComponents } from "./FXNoiseHash.Internal";
-import { FX_GLSL_BASELINE_NOISE_HASH, FX_GLSL_STANDARD_NOISE_HASH } from "./FXNoiseHash.Internal";
 import {
-  FX_JS_SEED_HASH,
   FX_SEED_HASH_COMPONENTS,
   FX_SEED_HASH_TYPES,
-  glslSeedHashModule,
+  type FXSeedHashComponents,
   seedHashFunctionName,
   seedHashGLSLName,
 } from "./FXSeedHash.Internal";
 import {
-  FX_GLSL_BASELINE_NOISE,
-  FX_GLSL_BASELINE_NOISED,
-  FX_GLSL_STANDARD_NOISE,
-  FX_GLSL_STANDARD_NOISED,
-  FX_JS_NOISE,
-} from "./FXValueNoise.Internal";
-import {
-  FX_JS_VORONOI,
   FX_VORONOI_METRICS,
   FX_VORONOI_QUALITIES,
   type FXVoronoiVariant,
-  glslVoronoiModule,
   voronoiFunctionName,
   voronoiGLSLName,
+  voronoiHelper,
   voronoiJSCodes,
 } from "./FXVoronoiNoise.Internal";
 
-/** Registry entries of the noise family: signatures and spellings; sources live in sibling files. */
+/** Registry entries of the noise family: signatures, spellings and the helpers they call. */
+
+const JS_NOISE: readonly FXJSHelperName[] = ["fxNoise1", "fxNoise2", "fxNoise3"];
+const JS_FRACTAL: readonly FXJSHelperName[] = ["fxFractal1", "fxFractal2", "fxFractal3"];
 
 const FRACTAL_PARAMS = ["float", "float", "float"] as const; // octaves, lacunarity, gain
 const FIXED_FRACTAL_PARAMS = ["float", "float"] as const; // lacunarity, gain
@@ -84,9 +69,8 @@ function fixedFbmDefinition(octaves: FXFixedOctaves): FXFunctionDef {
     signatures: signaturesOver(["float", "vec2", "vec3"], FIXED_FRACTAL_PARAMS, () => "float"),
     packed: true,
     glslBaseline: fixedFbmGLSLName(octaves),
-    glslBaselineHelper: glslFixedFbmModule(FX_GLSL_BASELINE_NOISE, octaves),
-    glslStandardHelper: glslFixedFbmModule(FX_GLSL_STANDARD_NOISE, octaves),
-    jsHelper: FX_JS_FBM,
+    glslBaselineHelper: fixedFbmHelper(octaves),
+    jsHelper: JS_FRACTAL,
     js: jsFixedOctaves("fxFractal", octaves, FIXED_FRACTAL_PARAMS.length),
   };
 }
@@ -97,9 +81,8 @@ function fixedCurlDefinition(octaves: FXFixedOctaves): FXFunctionDef {
     signatures: signaturesOver(["vec2", "vec3"], FIXED_FRACTAL_PARAMS, (position) => position),
     packed: true,
     glslBaseline: fixedCurlGLSLName(octaves),
-    glslBaselineHelper: glslFixedCurlModule(FX_GLSL_BASELINE_NOISED, octaves),
-    glslStandardHelper: glslFixedCurlModule(FX_GLSL_STANDARD_NOISED, octaves),
-    jsHelper: FX_JS_CURL,
+    glslBaselineHelper: fixedCurlHelper(octaves),
+    jsHelper: ["fxCurl2", "fxCurl3"],
     // + the component index.
     js: jsFixedOctaves("fxCurl", octaves, FIXED_FRACTAL_PARAMS.length + 1),
   };
@@ -115,9 +98,9 @@ function voronoiDefinition(variant: FXVoronoiVariant): FXFunctionDef {
     ],
     packed: true,
     glslBaseline: voronoiGLSLName(variant),
-    glslBaselineHelper: glslVoronoiModule(FX_GLSL_BASELINE_NOISE_HASH, variant),
-    glslStandardHelper: glslVoronoiModule(FX_GLSL_STANDARD_NOISE_HASH, variant),
-    jsHelper: FX_JS_VORONOI,
+    glslBaselineHelper: voronoiHelper(variant, "BASELINE"),
+    glslStandardHelper: voronoiHelper(variant, "STANDARD"),
+    jsHelper: ["fxVoronoi2", "fxVoronoi3"],
     // Flattened args: position components, jitter, component index.
     js: (args): string => {
       const position = args.slice(0, -2);
@@ -133,9 +116,9 @@ function seedHashDefinition(components: FXSeedHashComponents): FXFunctionDef {
     signatures: [{ args: ["vec3", "float"], result: FX_SEED_HASH_TYPES[components] }],
     packed: true,
     glslBaseline: seedHashGLSLName(components),
-    glslBaselineHelper: glslSeedHashModule(FX_GLSL_BASELINE_NOISE_HASH),
-    glslStandardHelper: glslSeedHashModule(FX_GLSL_STANDARD_NOISE_HASH),
-    jsHelper: FX_JS_SEED_HASH,
+    glslBaselineHelper: "FX_GLSL_BASELINE_SEED_HASH",
+    glslStandardHelper: "FX_GLSL_STANDARD_SEED_HASH",
+    jsHelper: [seedHashGLSLName(components)],
     js: (args) => `${seedHashGLSLName(components)}(${args.join(", ")})`,
   };
 }
@@ -150,9 +133,9 @@ export function noiseFunctionDefinitions(): FXFunctionDef[] {
         { args: ["vec3"], result: "float" },
       ],
       packed: true,
-      glslBaselineHelper: FX_GLSL_BASELINE_NOISE,
-      glslStandardHelper: FX_GLSL_STANDARD_NOISE,
-      jsHelper: FX_JS_NOISE,
+      glslBaselineHelper: "FX_GLSL_BASELINE_NOISE",
+      glslStandardHelper: "FX_GLSL_STANDARD_NOISE",
+      jsHelper: JS_NOISE,
       js: jsByArity("fxNoise", 0),
     },
     {
@@ -160,9 +143,8 @@ export function noiseFunctionDefinitions(): FXFunctionDef[] {
       signatures: signaturesOver(["float", "vec2", "vec3"], FRACTAL_PARAMS, () => "float"),
       packed: true,
       glslBaseline: "fxFbm",
-      glslBaselineHelper: FX_GLSL_BASELINE_FBM,
-      glslStandardHelper: FX_GLSL_STANDARD_FBM,
-      jsHelper: FX_JS_FBM,
+      glslBaselineHelper: "FX_GLSL_FBM",
+      jsHelper: JS_FRACTAL,
       js: jsByArity("fxFractal", FRACTAL_PARAMS.length),
     },
   ];

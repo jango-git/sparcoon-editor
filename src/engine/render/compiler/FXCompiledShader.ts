@@ -1,5 +1,6 @@
 import type { FXCompiledDrawStage } from "../../core/codegen/drawStage.Internal";
 import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
+import type { FXGLSLHelperName } from "../../core/ir/FXHelpers.Internal";
 import type { FXValueType } from "../../core/socket/FXValueType";
 
 /** Describes a uniform a node wants to declare. The `value` is kept `unknown` so the IR stays
@@ -45,8 +46,8 @@ export interface FXCompiledStage {
   /** `uniform <type> <name>;` of each uniform this stage's code reads (see
    *  `stageUniformDeclarations`). */
   readonly uniformDeclarations: readonly string[];
-  /** Deduplicated helper function definitions, in emission order. */
-  readonly helperFunctions: readonly string[];
+  /** The helpers this stage's code calls, each behind the ones it calls. */
+  readonly helpers: readonly FXGLSLHelperName[];
   /** Ordered statements to splice into this stage's main body. */
   readonly body: readonly string[];
   /** The target inputs this stage's code reads (sorted, each once), recorded as it is printed. */

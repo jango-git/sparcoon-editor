@@ -1,13 +1,9 @@
+import { buildFunction } from "./buildFunction.Internal";
 import type { FXCompiledDrawStage } from "./drawStage.Internal";
 
 /** The parameters of an artifact's `compute`, in order - the printed and the built one alike, a
  *  render's and a GPU kernel's alike. */
 export const DRAW_COMPUTE_PARAMETERS = ["inputs", "uniforms"] as const;
-
-/** `compute`'s source: its helpers, then its statements. */
-export function drawComputeSource(stage: FXCompiledDrawStage): string {
-  return [...stage.helpers, ...stage.statements].join("\n");
-}
 
 /**
  * The editor's live `compute` for a compiled draw stage, typed as the artifact declares it (`F`) -
@@ -18,7 +14,7 @@ export function drawComputeSource(stage: FXCompiledDrawStage): string {
 export function buildDrawCompute<F>(stage: FXCompiledDrawStage): F {
   let built = BUILT.get(stage);
   if (built === undefined) {
-    built = new Function(...DRAW_COMPUTE_PARAMETERS, drawComputeSource(stage));
+    built = buildFunction(stage.helpers, DRAW_COMPUTE_PARAMETERS, stage.statements.join("\n"));
     BUILT.set(stage, built);
   }
   return built as F;

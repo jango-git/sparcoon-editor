@@ -1,6 +1,6 @@
 import type { FXBinOp, FXExpr } from "../ir/FXExpr";
 import type { FXFunctionDef } from "../ir/FXFunctions.Internal";
-import { collectHelper } from "../ir/FXHelperModule.Internal";
+import type { FXJSHelperName } from "../ir/FXHelpers.Internal";
 import { shortestFloat32 } from "./float32.Internal";
 import type { FXRefResolver } from "./printGLSL.Internal";
 
@@ -10,8 +10,8 @@ import type { FXRefResolver } from "./printGLSL.Internal";
  */
 export interface FXJSPrintResult {
   readonly code: string;
-  /** Helpers to emit once each, dependencies first (see `collectHelper`). */
-  readonly helpers: ReadonlyMap<string, string>;
+  /** The helpers the code may call. */
+  readonly helpers: ReadonlySet<FXJSHelperName>;
 }
 
 const REF_BY_NAME: FXRefResolver = (ref) => ref.name;
@@ -21,15 +21,18 @@ export function printJS(
   functions: ReadonlyMap<string, FXFunctionDef>,
   resolveRef: FXRefResolver = REF_BY_NAME,
 ): FXJSPrintResult {
-  const helpers = new Map<string, string>();
+  const helpers = new Set<FXJSHelperName>();
+  const useHelpers = (definition: FXFunctionDef): void => {
+    for (const helper of definition.jsHelper ?? []) {
+      helpers.add(helper);
+    }
+  };
 
   const printMod = (a: string, b: string): string => {
     // JS `%` differs from GLSL mod on negatives; reuse the registry's helper.
     const definition = functions.get("mod");
     if (definition !== undefined) {
-      if (definition.jsHelper !== undefined) {
-        collectHelper(helpers, "mod", definition.jsHelper);
-      }
+      useHelpers(definition);
       return definition.js([a, b]);
     }
     return `(${a} - ${b} * Math.floor(${a} / ${b}))`;
@@ -92,9 +95,7 @@ export function printJS(
           throw new Error(`sparcoon IR: unknown function "${node.fn}" in JS printer`);
         }
         const argumentStrings = node.args.map(print);
-        if (definition.jsHelper !== undefined) {
-          collectHelper(helpers, definition.name, definition.jsHelper);
-        }
+        useHelpers(definition);
         return definition.js(argumentStrings);
       }
       case "select":
@@ -144,20 +145,18 @@ function jsNumber(value: number | undefined): string {
 
 /**
  * `const <name> = (<code>);` for each of `locals` (scalarized), in order - the JS backends' one way
- * to print a local - with every helper they pull in added to `helpers` (dependencies first).
+ * to print a local - with every helper they call added to `helpers`.
  */
 export function printJSLocals(
   locals: readonly { readonly name: string; readonly expr: FXExpr }[],
   functions: ReadonlyMap<string, FXFunctionDef>,
   resolveRef: FXRefResolver,
-  helpers: Map<string, string>,
+  helpers: Set<FXJSHelperName>,
 ): string[] {
   return locals.map(({ name, expr }) => {
     const printed = printJS(expr, functions, resolveRef);
-    for (const [key, source] of printed.helpers) {
-      if (!helpers.has(key)) {
-        helpers.set(key, source);
-      }
+    for (const helper of printed.helpers) {
+      helpers.add(helper);
     }
     return `const ${name} = (${printed.code});`;
   });

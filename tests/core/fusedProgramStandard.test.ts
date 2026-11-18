@@ -12,7 +12,10 @@ import { describe, expect, it } from "vitest";
 
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import {
+  assembleTransformFeedbackProgram,
+  fusedVertexSource,
+} from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import type { FXCompiledPhaseStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
@@ -77,10 +80,10 @@ function compileMotionGraph(attributes: readonly FXAttributeRequest[] = []) {
 describe("fused transform-feedback program assembly", () => {
   it("declares one in/out attribute pair per state buffer, and the matching varying list", () => {
     const program = compileMotionGraph();
-    expect(program.vertexSource).toContain("in vec3 in_position;");
-    expect(program.vertexSource).toContain("in vec3 in_lifecycle;");
-    expect(program.vertexSource).toContain("out vec3 out_position;");
-    expect(program.vertexSource).toContain("out vec3 out_lifecycle;");
+    expect(fusedVertexSource(program)).toContain("in vec3 in_position;");
+    expect(fusedVertexSource(program)).toContain("in vec3 in_lifecycle;");
+    expect(fusedVertexSource(program)).toContain("out vec3 out_position;");
+    expect(fusedVertexSource(program)).toContain("out vec3 out_lifecycle;");
     // Two vec3s of a packing bin each, by name (see the slot-order test below).
     expect(program.transformFeedbackVaryings).toEqual(["out_lifecycle", "out_position"]);
     expect(program.buffers.map((b) => b.name)).toEqual(["lifecycle", "position"]);
@@ -121,7 +124,7 @@ describe("fused transform-feedback program assembly", () => {
     expect(compileMotionGraph([...attributes].reverse()).buffers).toEqual(program.buffers);
     // Input locations, varyings and the artifact all follow the one list.
     expected.forEach((name, index) => {
-      expect(program.vertexSource).toMatch(
+      expect(fusedVertexSource(program)).toMatch(
         new RegExp(`layout\\(location = ${String(index)}\\) in \\w+ in_${name};`),
       );
     });
@@ -136,7 +139,7 @@ describe("fused transform-feedback program assembly", () => {
 
   it("zero-defaults every buffer in the spawn branch before the graph's own writes", () => {
     const program = compileMotionGraph();
-    const [birthBranch] = program.vertexSource.split("} else {");
+    const [birthBranch] = fusedVertexSource(program).split("} else {");
     expect(birthBranch).toContain("out_position = vec3(0.0);");
     expect(birthBranch).toContain("out_lifecycle = vec3(0.0);");
     // The graph writes land after the default, so they win (textual order = assignment order).
@@ -147,22 +150,22 @@ describe("fused transform-feedback program assembly", () => {
 
   it("assigns id from the running spawn-count uniform in the spawn branch - host-owned, no graph write slot exists for it", () => {
     const program = compileMotionGraph();
-    const [birthBranch] = program.vertexSource.split("} else {");
+    const [birthBranch] = fusedVertexSource(program).split("} else {");
     expect(birthBranch).toContain(
       `out_lifecycle.z = float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)});`,
     );
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM};`,
     );
   });
 
   it("seeds a newborn's age from the birth-age uniforms: the tail of the range was born earlier", () => {
     const program = compileMotionGraph();
-    const [birthBranch] = program.vertexSource.split("} else {");
-    expect(program.vertexSource).toContain(
+    const [birthBranch] = fusedVertexSource(program).split("} else {");
+    expect(fusedVertexSource(program)).toContain(
       `uniform int ${FX_TRANSFORM_FEEDBACK_BIRTH_AGE_COUNT_UNIFORM};`,
     );
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       `uniform vec2 ${FX_TRANSFORM_FEEDBACK_BIRTH_AGES_UNIFORM};`,
     );
     expect(birthBranch).toContain(
@@ -193,7 +196,9 @@ describe("fused transform-feedback program assembly", () => {
     const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets([]));
     // Per particle: nothing of it is the pass's, so nothing goes to the draw stage.
     expect(compiled.spawn?.draw).toBeUndefined();
-    const [birthBranch] = assembleTransformFeedbackProgram(compiled).vertexSource.split("} else {");
+    const [birthBranch] = fusedVertexSource(assembleTransformFeedbackProgram(compiled)).split(
+      "} else {",
+    );
     expect(birthBranch).toContain(
       "fx_birthModelMatrix[3].xyz -= u_fxObjectVelocity * fx_birthAge;",
     );
@@ -203,7 +208,7 @@ describe("fused transform-feedback program assembly", () => {
 
   it("passes every buffer through unchanged in the update branch, except age", () => {
     const program = compileMotionGraph();
-    const [, updateBranch] = program.vertexSource.split("} else {");
+    const [, updateBranch] = fusedVertexSource(program).split("} else {");
     expect(updateBranch).toContain("out_position = in_position;");
     expect(updateBranch).toContain("out_lifecycle = in_lifecycle;");
     // Age always advances by dt, unconditionally - the GLSL analog of FXEmitter.tick()'s host-
@@ -215,7 +220,7 @@ describe("fused transform-feedback program assembly", () => {
 
   it("passes a dead slot through untouched, ahead of the update branch, so the update never runs on it", () => {
     const program = compileMotionGraph();
-    const [beforeUpdate] = program.vertexSource.split("} else {");
+    const [beforeUpdate] = fusedVertexSource(program).split("} else {");
     const [, deadBranch] = beforeUpdate.split("} else if (in_lifecycle.x >= in_lifecycle.y) {");
     expect(deadBranch).toBeDefined();
     expect(deadBranch).toContain("out_position = in_position;");
@@ -226,17 +231,17 @@ describe("fused transform-feedback program assembly", () => {
 
   it("computes birth range from the wraparound-safe spawn-range uniforms", () => {
     const program = compileMotionGraph();
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       `(fx_particleIndex - ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM} + ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM}) % ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM}`,
     );
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       `fx_relativeIndex < ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM}`,
     );
   });
 
   it("emits the rand helper exactly once even though only the spawn branch calls it", () => {
     const program = compileMotionGraph();
-    const occurrences = program.vertexSource.split("float fxNextRandom(){").length - 1;
+    const occurrences = fusedVertexSource(program).split("float fxNextRandom(){").length - 1;
     expect(occurrences).toBe(1);
   });
 

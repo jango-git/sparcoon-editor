@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { buildFunction } from "../../src/engine/core/codegen/buildFunction.Internal";
 import { lit, litVec } from "../../src/engine/core/ir/FXExprBuilder";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
@@ -80,8 +81,11 @@ describe("call resolves against the registered signatures", () => {
 function evalJS(name: string, ...args: number[]): number {
   const def = FX_FUNCTIONS.get(name)!;
   const params = args.map((_, index) => `a${index}`);
-  const body = `${def.jsHelper ?? ""}\nreturn ${def.js(params)};`;
-  return (new Function(...params, body) as (...values: number[]) => number)(...args);
+  return (
+    buildFunction(def.jsHelper ?? [], params, `return ${def.js(params)};`) as (
+      ...values: number[]
+    ) => number
+  )(...args);
 }
 
 describe("scalar JS forms", () => {

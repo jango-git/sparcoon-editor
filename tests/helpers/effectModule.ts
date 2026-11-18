@@ -1,5 +1,6 @@
 import type { FXBehaviorArtifact, FXRenderArtifact } from "sparcoon";
 import * as sparcoon from "sparcoon";
+import * as sparcoonHelpers from "sparcoon/helpers";
 
 import { loadModule } from "./loadModule";
 
@@ -10,7 +11,10 @@ export interface EffectModuleExports {
   readonly behavior: FXBehaviorArtifact;
 }
 
-/** Evaluates an emitted effect module's text, with `sparcoon` as its only resolvable import. */
+/** Evaluates an emitted effect module's text, with `sparcoon` and its helpers its only imports. */
 export function evaluateEffectModule(text: string): EffectModuleExports {
-  return loadModule(text, { sparcoon }) as unknown as EffectModuleExports;
+  return loadModule(text, {
+    sparcoon,
+    "sparcoon/helpers": sparcoonHelpers,
+  }) as unknown as EffectModuleExports;
 }

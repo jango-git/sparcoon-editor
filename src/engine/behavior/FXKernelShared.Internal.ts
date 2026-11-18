@@ -58,6 +58,15 @@ export type FXParticleSpawnKernel = (
 /** The spawn kernel's inherited values (see `FXKernelTargetInput.inheritOffset`). */
 export const INHERITED_PARAMETER = "inherited";
 
+/** The update kernel's parameters, in order - one list for every builder printing one. */
+export const UPDATE_KERNEL_PARAMETERS: readonly string[] = [
+  SLOTS_PARAMETER,
+  "count",
+  "dt",
+  "bindings",
+  "emitter",
+];
+
 /** The spawn kernel's parameters, in order - one list for every builder printing one. */
 export const SPAWN_KERNEL_PARAMETERS: readonly string[] = [
   SLOTS_PARAMETER,

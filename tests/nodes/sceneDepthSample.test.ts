@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { cpuSceneDepthWarnings } from "../../src/domain/sceneDepthChecks";
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
+import { fusedVertexSource } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { particleBehaviorTargetsFor } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
@@ -77,9 +78,9 @@ describe("scene-depth-sample", () => {
       return;
     }
     for (const declaration of DEPTH_UNIFORMS) {
-      expect(program.vertexSource.split(declaration)).toHaveLength(2);
+      expect(fusedVertexSource(program).split(declaration)).toHaveLength(2);
     }
-    expect(program.vertexSource).toContain(
+    expect(fusedVertexSource(program)).toContain(
       "vec4 fxSceneDepthContact(vec3 position, float thickness)",
     );
     expect(program.sceneDepth).toBe(true);
@@ -98,7 +99,7 @@ describe("scene-depth-sample", () => {
     if (program === undefined) {
       return;
     }
-    expect(program.vertexSource).not.toContain(FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM);
+    expect(fusedVertexSource(program)).not.toContain(FX_TRANSFORM_FEEDBACK_SCENE_DEPTH_UNIFORM);
     expect(program.sceneDepth).toBeUndefined();
     expect(assembleGpuKernelArtifact(program).sceneDepth).toBeUndefined();
     expect(gpuKernelArtifactBody(program)).not.toContain("sceneDepth");

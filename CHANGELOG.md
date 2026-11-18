@@ -5,12 +5,17 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
-## Unreleased
+## 0.2.0 - 2026-11-18
 
 ### Changed
 
 - On the CPU simulation the update skips dead particles, as the GPU one does. The saving is
   largest for graphs with noise on mostly empty emitters. An effect gets it once re-exported.
+- An exported effect imports its GLSL helpers from `sparcoon/helpers`, as it does its CPU math and
+  noise, instead of carrying its own copy of each.
+- An emitter or a mesh gets a shadow program only with Cast Shadow on: an export without it holds
+  none. In a project of 15 effects the two changes take the effects from 1063 KB to 702 KB
+  minified. An effect gets them once re-exported.
 
 ### Fixed
 

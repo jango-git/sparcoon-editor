@@ -99,7 +99,7 @@ describe("elementwise ops with splat", () => {
       "fxMix(a_y, b_y, 0.5)",
       "fxMix(a_z, b_z, 0.5)",
     ]);
-    expect(results[0].helpers.get("mix")).toContain("function fxMix");
+    expect([...results[0].helpers]).toEqual(["fxMix"]);
   });
 });
 
@@ -148,7 +148,7 @@ describe("select, mod, raw", () => {
   it("mod bin uses the fxMod helper", () => {
     const [result] = scalarize(mod(f("a"), f("b"))).map((c) => printJS(c, FX_FUNCTIONS));
     expect(result.code).toBe("fxMod(a, b)");
-    expect(result.helpers.get("mod")).toContain("function fxMod");
+    expect([...result.helpers]).toEqual(["fxMod"]);
   });
 
   it("scalar raw(js) substitutes deps", () => {

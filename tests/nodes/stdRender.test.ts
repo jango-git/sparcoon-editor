@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { glslHelperSource } from "../../src/engine/core/ir/FXHelpers.Internal";
 import { literalGenericType } from "../../src/engine/core/socket/FXValueType";
 import { FX_RENDER_CONTENT_NODES } from "../../src/engine/nodes-std/render/content";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
@@ -49,7 +50,7 @@ function fragmentOf(
     [bind("albedo", "c", "out"), bind("alphaThreshold", "n", socketKey)],
   );
   const stage = compiler.compile(graph, target).color.fragment;
-  return [...stage.helperFunctions, ...stage.body].join("\n");
+  return [...stage.helpers.map(glslHelperSource), ...stage.body].join("\n");
 }
 
 describe("standard render nodes - sources and content", () => {
@@ -112,7 +113,7 @@ describe("standard render nodes - sources and content", () => {
       [bind("albedo", "c", "out"), bind("alphaThreshold", "l", "out")],
     );
     const stage = compiler.compile(graph, FX_PARTICLE_TARGET).color.fragment;
-    const code = [...stage.helperFunctions, ...stage.body].join("\n");
+    const code = [...stage.helpers.map(glslHelperSource), ...stage.body].join("\n");
     expect(code).toContain("fxFlipbookFrameUV(");
     expect(code).not.toContain("fxAnimatedFrame");
     expect(code).not.toContain("mod(");

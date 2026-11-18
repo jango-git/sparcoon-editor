@@ -22,6 +22,7 @@ import type { FXGraph } from "../core/FXGraph";
 import type { FXExpr } from "../core/ir/FXExpr";
 import { construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import type { FXGLSLHelperName, FXJSHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
@@ -87,7 +88,7 @@ class FXKernelState {
   private readonly preLoopLines: string[] = [];
   private readonly bodyLines: string[] = [];
   private readonly localsIR: FXKernelLocal[] = [];
-  private readonly helperMap = new Map<string, string>();
+  private readonly helpers = new Set<FXJSHelperName>();
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
   private readonly resources = new FXKernelResources();
 
@@ -127,17 +128,11 @@ class FXKernelState {
     const resolveRef = (candidate: Extract<FXExpr, { kind: "ref" }>): string =>
       resolveKernelRef(target, candidate);
     this.preLoopLines.push(
-      ...printJSLocals(preLoop, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helperMap),
+      ...printJSLocals(preLoop, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helpers),
     );
     this.bodyLines.push(
-      ...printJSLocals(body, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helperMap),
+      ...printJSLocals(body, FX_BEHAVIOR_ALL_FUNCTIONS, resolveRef, this.helpers),
     );
-  }
-
-  public emitHelper(key: string, source: string): void {
-    if (!this.helperMap.has(key)) {
-      this.helperMap.set(key, source);
-    }
   }
 
   public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {
@@ -187,7 +182,7 @@ class FXKernelState {
       written.add(FX_CORE_LIFECYCLE);
     }
     return {
-      helpers: [...this.helperMap.values()],
+      helpers: [...this.helpers],
       preLoop: this.preLoopLines,
       preamble,
       body: this.bodyLines,
@@ -288,8 +283,10 @@ class FXParticleKernelContext
     return this.state.uniqueName(hint);
   }
 
-  public emitHelper(key: string, source: string): void {
-    this.state.emitHelper(key, source);
+  public emitHelper(helper: FXGLSLHelperName): void {
+    throw new Error(
+      `FXKernelContext.emitHelper: the CPU simulation links no GLSL helper (${helper})`,
+    );
   }
 
   public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {

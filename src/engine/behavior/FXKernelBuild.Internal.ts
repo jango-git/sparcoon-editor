@@ -1,6 +1,7 @@
 import { FX_CORE_LIFECYCLE } from "sparcoon";
 import { slotLayout } from "sparcoon/editor";
 
+import { buildFunction } from "../core/codegen/buildFunction.Internal";
 import type {
   FXCompiledKernel,
   FXCompiledKernelPhase,
@@ -13,14 +14,13 @@ import {
   bufferAccess,
   bufferBaseName,
   resourceNames,
-  SLOTS_PARAMETER,
   SPAWN_KERNEL_PARAMETERS,
+  UPDATE_KERNEL_PARAMETERS,
 } from "./FXKernelShared.Internal";
 
 /**
- * The `new Function` assembly layer: turns a compiled {@link FXCompiledKernel} into executable
- * spawn/update JS. Split out of `FXParticleBehaviorKernel.Internal`; depends only on the
- * compiled data and the shared buffer helpers.
+ * The preview's assembly layer: turns a compiled {@link FXCompiledKernel} into executable
+ * spawn/update JS (see `buildFunction`).
  */
 
 /** Reads each captured binding and resource once into a local, ahead of the per-particle
@@ -93,9 +93,8 @@ const LOOP_HEADERS: Readonly<Record<FXKernelPhaseKind, string>> = {
 };
 
 /**
- * The runnable body of a compiled phase, excluding helper definitions. Shared verbatim by
- * the `new Function` builders here and the editor's module emitter (which hoists helpers to
- * module scope instead), so both execute byte-identical logic.
+ * The runnable body of a compiled phase. Shared verbatim by the preview's builders here and the
+ * module emitter, so both run the same code, calling the same helpers.
  */
 export function assembleKernelBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): string {
   return [
@@ -110,16 +109,11 @@ export function assembleKernelBody(phase: FXCompiledKernelPhase, kind: FXKernelP
 
 export function buildParticleUpdateKernel(compiled: FXCompiledKernel): FXParticleUpdateKernel {
   const phase = compiled.update;
-  const source = [...phase.helpers, assembleKernelBody(phase, "update")].join("\n");
-  const built = new Function(
-    SLOTS_PARAMETER,
-    "count",
-    "dt",
-    "bindings",
-    "emitter",
-    source,
-  ) as unknown;
-  return built as FXParticleUpdateKernel;
+  return buildFunction(
+    phase.helpers,
+    UPDATE_KERNEL_PARAMETERS,
+    assembleKernelBody(phase, "update"),
+  ) as FXParticleUpdateKernel;
 }
 
 /** Runs over the freshly born rows `[start, start + count)` at birth. */
@@ -128,7 +122,9 @@ export function buildParticleSpawnKernel(compiled: FXCompiledKernel): FXParticle
   if (phase === undefined) {
     throw new Error("buildParticleSpawnKernel: compiled kernel has no spawn phase");
   }
-  const source = [...phase.helpers, assembleKernelBody(phase, "spawn")].join("\n");
-  const built = new Function(...SPAWN_KERNEL_PARAMETERS, source) as unknown;
-  return built as FXParticleSpawnKernel;
+  return buildFunction(
+    phase.helpers,
+    SPAWN_KERNEL_PARAMETERS,
+    assembleKernelBody(phase, "spawn"),
+  ) as FXParticleSpawnKernel;
 }

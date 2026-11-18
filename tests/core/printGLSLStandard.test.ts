@@ -94,16 +94,16 @@ describe("calls", () => {
           name: "f",
           signatures: [{ args: ["float"], result: "float" }],
           glslBaseline: "fBaseline",
-          glslBaselineHelper: "float fBaseline(float v) { return v; }",
+          glslBaselineHelper: "FX_GLSL_TRANSPOSE",
           glslStandard: (args) => `fStandard(${args.join(", ")})`,
-          glslStandardHelper: "float fStandard(float v) { return v; }",
+          glslStandardHelper: "FX_GLSL_MESH_FETCH",
           js: () => "0",
         },
       ],
     ]);
     const result = printGLSLStandard(callOf("f", x), functions);
     expect(result.code).toBe("fStandard(x)");
-    expect([...result.helpers]).toEqual([["f", "float fStandard(float v) { return v; }"]]);
+    expect([...result.helpers]).toEqual(["FX_GLSL_MESH_FETCH"]);
   });
 
   it("falls back to the baseline spelling and helper when no standard form exists", () => {
@@ -115,26 +115,24 @@ describe("calls", () => {
         {
           name: "g",
           signatures: [{ args: ["float"], result: "float" }],
-          glslBaselineHelper: "float g(float v) { return v; }",
+          glslBaselineHelper: "FX_GLSL_INVERSE",
           js: () => "0",
         },
       ],
     ]);
     const result = printGLSLStandard(callOf("g", x), functions);
     expect(result.code).toBe("g(x)");
-    expect(result.helpers.get("g")).toBe("float g(float v) { return v; }");
+    expect([...result.helpers]).toEqual(["FX_GLSL_INVERSE"]);
   });
 
   it("prints standard-only functions with their standard helpers", () => {
     const rand = printGLSLStandard(callOf("rand"), FX_FUNCTIONS);
     expect(rand.code).toBe("fxNextRandom()");
-    expect(rand.helpers.get("rand")).toContain("float fxNextRandom()");
+    expect([...rand.helpers]).toEqual(["FX_GLSL_STANDARD_HASH", "FX_GLSL_RAND"]);
 
-    // Noise pulls the standard (integer) hash, emitted ahead of the sampler that calls it.
+    // Noise pulls the standard (integer) hash, linked ahead of the sampler that calls it.
     const noise = printGLSLStandard(call("noise", x), FX_FUNCTIONS);
-    expect([...noise.helpers.keys()]).toEqual(["fxHash", "noise"]);
-    expect(noise.helpers.get("fxHash")).toContain("uint fxPcg(uint v)");
-    expect(noise.helpers.get("noise")).toContain("fxPcg(");
+    expect([...noise.helpers]).toEqual(["FX_GLSL_STANDARD_HASH", "FX_GLSL_STANDARD_NOISE"]);
   });
 
   it("collects each function's helper once however often it is called", () => {
@@ -143,7 +141,7 @@ describe("calls", () => {
       FX_FUNCTIONS,
     );
     expect(result.code).toBe("vec2(fxNextRandom(), fxNextRandom())");
-    expect([...result.helpers.keys()]).toEqual(["fxHash", "rand"]);
+    expect([...result.helpers]).toEqual(["FX_GLSL_STANDARD_HASH", "FX_GLSL_RAND"]);
   });
 
   it("throws on an unknown function", () => {

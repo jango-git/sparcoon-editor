@@ -5,6 +5,7 @@ import { componentIndices } from "../../core/codegen/projectComponents.Internal"
 import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapabilities";
 import { FXCompilerErrorException } from "../../core/compiler/FXCompilerError";
 import { isImpureFunction } from "../../core/ir/FXFunctions.Internal";
+import { glslHelperSource } from "../../core/ir/FXHelpers.Internal";
 import type { FXValueType } from "../../core/socket/FXValueType";
 import { FXShaderStage } from "../FXShaderStage";
 import type { FXTarget } from "../target/FXTarget";
@@ -283,7 +284,7 @@ export function finishRenderStages(
   const finish = (printed: FXPrintedStage, stage: FXShaderStage): FXCompiledStage => ({
     ...printed,
     uniformDeclarations: stageUniformDeclarations(uniforms, [
-      ...printed.helperFunctions,
+      ...printed.helpers.map(glslHelperSource),
       ...printed.body,
       ...outputsOf(stage),
     ]),

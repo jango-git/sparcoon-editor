@@ -4,6 +4,7 @@ import { BufferAttribute, BufferGeometry } from "three";
 import { describe, expect, it } from "vitest";
 
 import { compileBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
+import { fusedVertexSource } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { particleBehaviorTargetsFor } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import {
   behaviorArtifactBody,
@@ -125,9 +126,9 @@ describe("random-mesh-point", () => {
     }
     const [uniform] = Object.keys(program.meshSurfaces ?? {});
     expect(program.meshSurfaces).toEqual({ [uniform]: "rock" });
-    expect(program.vertexSource).toContain("precision highp sampler2D;");
-    expect(program.vertexSource).toContain(`uniform sampler2D ${uniform};`);
-    expect(program.vertexSource).toContain("texelFetch(");
+    expect(fusedVertexSource(program)).toContain("precision highp sampler2D;");
+    expect(fusedVertexSource(program)).toContain(`uniform sampler2D ${uniform};`);
+    expect(fusedVertexSource(program)).toContain("texelFetch(");
     expect(Object.keys(program.bindings)).not.toContain(uniform);
     expect(assembleGpuKernelArtifact(program).meshSurfaces).toEqual({ [uniform]: "rock" });
     expect(gpuKernelArtifactBody(program)).toContain(

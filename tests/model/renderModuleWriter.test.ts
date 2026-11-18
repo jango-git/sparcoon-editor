@@ -1,4 +1,5 @@
 import type { FXRenderArtifact } from "sparcoon";
+import * as helpers from "sparcoon/helpers";
 import { describe, expect, it } from "vitest";
 
 import { FXRenderModuleWriter } from "../../src/engine/emit/FXRenderModuleWriter";
@@ -6,13 +7,13 @@ import { lineDeltaLiteral } from "../../src/engine/emit/lineDelta";
 import type { FXCompiledShader } from "../../src/engine/render/compiler/FXCompiledShader";
 
 const PLANE = { type: "primitive", primitive: "plane" } as const;
-const HELPER = "float fxSquare(float x){return x*x;}";
+const HELPER = "FX_GLSL_TRANSPOSE";
 
 /** A compiled shader whose vertex stage runs `vertex` (with the one helper) and fragment `fragment`. */
 function shader(vertex: readonly string[], fragment: readonly string[]): FXCompiledShader {
   const stage = (body: readonly string[]) => ({
     uniformDeclarations: [],
-    helperFunctions: [HELPER],
+    helpers: [HELPER] as const,
     body,
     targetReads: [],
   });
@@ -35,16 +36,14 @@ function shader(vertex: readonly string[], fragment: readonly string[]): FXCompi
   };
 }
 
-/** Evaluates `declarations` (with the writer's helpers before them) as the module would. */
+/** Evaluates `declarations` (with the helpers the writer names in scope) as the module would. */
 function evaluate(writer: FXRenderModuleWriter, declarations: readonly string[]) {
-  const source = [...writer.helperDeclarations(), ...declarations]
-    .join("\n")
-    .replaceAll(": FXRenderArtifact", "");
+  const source = declarations.join("\n").replaceAll(": FXRenderArtifact", "");
   const names = declarations.map((line) => /^const (\w+)/.exec(line)![1]);
-  return new Function(`${source}\nreturn { ${names.join(", ")} };`)() as Record<
-    string,
-    FXRenderArtifact
-  >;
+  const helperNames = writer.helperNames();
+  return new Function(...helperNames, `${source}\nreturn { ${names.join(", ")} };`)(
+    ...helperNames.map((name) => helpers[name]),
+  ) as Record<string, FXRenderArtifact>;
 }
 
 const LONG = (index: number) =>
@@ -92,7 +91,7 @@ describe("FXRenderModuleWriter", () => {
     expect(artifacts["rBaseline"].color.vertex.body).toEqual(baseline.color.vertex.body);
   });
 
-  it("declares each distinct helper once for the whole module", () => {
+  it("names each helper the module imports once for the whole module", () => {
     const writer = new FXRenderModuleWriter();
     const first = writer.tierDeclarations(
       [{ name: "aBaseline", shader: shader(["a;"], ["b;"]) }],
@@ -106,14 +105,15 @@ describe("FXRenderModuleWriter", () => {
       [],
       "blending",
     );
-    expect(writer.helperDeclarations()).toEqual([`const glslHelper0 = ${JSON.stringify(HELPER)};`]);
+    expect(writer.helperNames()).toEqual([HELPER]);
     const artifacts = evaluate(writer, [...first, ...second]);
-    expect(artifacts["bBaseline"].color.fragment.helperFunctions).toEqual([HELPER]);
+    expect(artifacts["bBaseline"].color.fragment.helperFunctions).toEqual([helpers[HELPER]]);
   });
 });
 
 describe("lineDeltaLiteral", () => {
   it("writes short shared runs out: a slice would cost more", () => {
-    expect(lineDeltaLiteral(["a;", "b;"], ["a;", "b;"], "base")).toBe('["a;", "b;"]');
+    const elements = ["a;", "b;"].map((line) => JSON.stringify(line));
+    expect(lineDeltaLiteral(elements, elements, "base")).toBe('["a;", "b;"]');
   });
 });

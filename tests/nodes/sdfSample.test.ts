@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../../src/engine/behavior/FXCompiledBehaviorBundle";
+import { fusedVertexSource } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { compileParticleBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { particleBehaviorTargetsFor } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXGraph } from "../../src/engine/core/FXGraph";
@@ -103,9 +104,9 @@ describe("sdf-sample", () => {
     }
     const [uniform] = Object.keys(program.volumes ?? {});
     expect(program.volumes).toEqual({ [uniform]: "field" });
-    expect(program.vertexSource).toContain("precision highp sampler3D;");
-    expect(program.vertexSource).toContain(`uniform sampler3D ${uniform};`);
-    expect(program.vertexSource).toContain("textureSize(");
+    expect(fusedVertexSource(program)).toContain("precision highp sampler3D;");
+    expect(fusedVertexSource(program)).toContain(`uniform sampler3D ${uniform};`);
+    expect(fusedVertexSource(program)).toContain("textureSize(");
     expect(Object.keys(program.bindings)).not.toContain(uniform);
     expect(assembleGpuKernelArtifact(program).volumes).toEqual({ [uniform]: "field" });
     expect(gpuKernelArtifactBody(program)).toContain(

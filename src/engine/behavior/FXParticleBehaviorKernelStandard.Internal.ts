@@ -27,6 +27,7 @@ import type { FXExpr } from "../core/ir/FXExpr";
 import type { FXExprBuilderApi } from "../core/ir/FXExprBuilder";
 import { coerceNumeric, construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { FX_FUNCTIONS, signaturesFrom } from "../core/ir/FXFunctions.Internal";
+import { collectGLSLHelper, type FXGLSLHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
@@ -130,7 +131,8 @@ const SYNTHESIZED_UNIFORM_NAMES: Readonly<
  *  GLSL needs each binding's declared type to print a `uniform` statement, so uniform
  *  declarations are tracked as real text here, not derived later from a value's runtime shape). */
 export interface FXCompiledPhaseStandard extends FXKernelResourceFields {
-  readonly helpers: readonly string[];
+  /** The helpers the phase calls, each behind the ones it calls. */
+  readonly helpers: readonly FXGLSLHelperName[];
   /** The uniforms this phase declares: its bindings, then its draw uniforms. */
   readonly uniforms: readonly FXKernelUniform[];
   readonly body: readonly string[];
@@ -173,7 +175,7 @@ export interface FXCompiledKernelStandard {
 class FXKernelStateStandard {
   /** Each local as its node emitted it: kept as IR until {@link assemblePhase} prints it. */
   private readonly locals: FXTypedLocal[] = [];
-  private readonly helperMap = new Map<string, string>();
+  private readonly helpers = new Set<FXGLSLHelperName>();
   private readonly uniforms: FXKernelUniform[] = [];
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
   private readonly resources = new FXKernelResources();
@@ -198,10 +200,8 @@ class FXKernelStateStandard {
     this.locals.push({ name, expr, type: expr.type });
   }
 
-  public emitHelper(key: string, source: string): void {
-    if (!this.helperMap.has(key)) {
-      this.helperMap.set(key, source);
-    }
+  public emitHelper(helper: FXGLSLHelperName): void {
+    collectGLSLHelper(this.helpers, "standard", helper);
   }
 
   /** Declares a live-tunable `uniform float`, deduped by a forced name (a param slot) the same way
@@ -281,8 +281,8 @@ class FXKernelStateStandard {
       const { code, helpers } = printGLSLStandard(local.expr, FX_FUNCTIONS, (candidate) =>
         resolveKernelRefStandard(target, candidate),
       );
-      for (const [key, source] of helpers) {
-        this.emitHelper(key, source);
+      for (const helper of helpers) {
+        this.helpers.add(helper);
       }
       return `${local.type.glslTypeName} ${local.name} = ${code};`;
     });
@@ -295,7 +295,7 @@ class FXKernelStateStandard {
       written.add(FX_CORE_LIFECYCLE);
     }
     return {
-      helpers: [...this.helperMap.values()],
+      helpers: [...this.helpers],
       uniforms: this.uniforms,
       body,
       writes,
@@ -393,8 +393,8 @@ class FXParticleKernelContextStandard
     return this.state.uniqueName();
   }
 
-  public emitHelper(key: string, source: string): void {
-    this.state.emitHelper(key, source);
+  public emitHelper(helper: FXGLSLHelperName): void {
+    this.state.emitHelper(helper);
   }
 
   // A vector value param is one binding per component (each a plain number), exactly like the

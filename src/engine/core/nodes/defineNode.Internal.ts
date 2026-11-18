@@ -4,6 +4,7 @@ import { FXGraphNode } from "../FXGraphNode";
 import type { FXExpr } from "../ir/FXExpr";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
 import * as fxExprBuilders from "../ir/FXExprBuilder";
+import type { FXGLSLHelperName } from "../ir/FXHelpers.Internal";
 import type { FXSocketDescriptor } from "../socket/FXSocket";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { FX_VALUE_TYPES, literalGenericType, resolveValueType } from "../socket/FXValueType";
@@ -54,8 +55,8 @@ export interface FXDescriptorBuildArgs {
   readonly target: { read: (name: string) => FXExpr };
   /** Materializes a shared sub-expression into an SSA local (see {@link FXCompilerContext.defineLocal}). */
   readonly local: (hint: string, expr: FXExpr) => FXExpr;
-  /** Emits a deduplicated helper (escape hatch for JS-only helpers used by a single node). */
-  readonly emitHelper: (key: string, source: string) => void;
+  /** Links a GLSL helper the node's `raw` GLSL calls (see {@link FXCompilerContext.emitHelper}). */
+  readonly emitHelper: (helper: FXGLSLHelperName) => void;
   readonly fn: FXExprBuilderApi;
   /** Each asset as the sampler value it is read through. `undefined` while none is picked. */
   readonly assets: Readonly<Record<string, FXExpr | undefined>>;
@@ -382,7 +383,7 @@ export class FXDescriptorNode extends FXGraphNode {
       resolvedT,
       target: { read: (name) => context.readTargetInput(name) },
       local: (hint, expr) => context.defineLocal(hint, expr),
-      emitHelper: (key, source) => context.emitHelper(key, source),
+      emitHelper: (helper) => context.emitHelper(helper),
       fn: context.builders,
     });
 

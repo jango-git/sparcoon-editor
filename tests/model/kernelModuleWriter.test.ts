@@ -1,6 +1,8 @@
+import { FX_GLSL_STANDARD_HASH } from "sparcoon/helpers";
 import { describe, expect, it } from "vitest";
 
 import type { FXFusedProgramStandard } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import { fusedVertexSource } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import { FXKernelModuleWriter } from "../../src/engine/emit/FXKernelModuleWriter";
 
 const HEAD = Array.from(
@@ -10,7 +12,14 @@ const HEAD = Array.from(
 
 function program(body: readonly string[]): FXFusedProgramStandard {
   return {
-    vertexSource: ["#version 300 es", ...HEAD, "void main(){", ...body, "}"].join("\n"),
+    vertexLines: [
+      "#version 300 es",
+      ...HEAD,
+      { helper: "FX_GLSL_STANDARD_HASH" },
+      "void main(){",
+      ...body,
+      "}",
+    ],
     fragmentSource: "#version 300 es\nvoid main(){}\n",
     transformFeedbackVaryings: ["out_position"],
     buffers: [{ name: "position", stride: 3 }],
@@ -29,13 +38,17 @@ describe("FXKernelModuleWriter", () => {
     ];
     expect(declarations.join("\n")).toContain("...gpuKernel0Lines.slice(");
     expect(declarations.join("\n")).toContain("fragmentSource: gpuKernel0.fragmentSource");
+    expect(writer.helperNames()).toEqual(["FX_GLSL_STANDARD_HASH"]);
     const source = declarations.join("\n").replaceAll(": FXParticleKernelArtifact", "");
-    const kernels = new Function(`${source}\nreturn [gpuKernel0, gpuKernel1];`)() as {
+    const kernels = new Function(
+      "FX_GLSL_STANDARD_HASH",
+      `${source}\nreturn [gpuKernel0, gpuKernel1];`,
+    )(FX_GLSL_STANDARD_HASH) as {
       vertexSource: string;
       fragmentSource: string;
     }[];
-    expect(kernels[0].vertexSource).toBe(first.vertexSource);
-    expect(kernels[1].vertexSource).toBe(second.vertexSource);
+    expect(kernels[0].vertexSource).toBe(fusedVertexSource(first));
+    expect(kernels[1].vertexSource).toBe(fusedVertexSource(second));
     expect(kernels[1].fragmentSource).toBe(second.fragmentSource);
   });
 });

@@ -263,8 +263,9 @@ export function coerceSortInterval(value: unknown): number {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
 }
 
-/** The render sink's cast-shadow flag: builds a customDepthMaterial from this render graph so the
- *  shadow silhouette honors the authored shape/alpha. A runtime setting, not a compile input. */
+/** The render sink's cast-shadow flag: compiles the graph's shadow program, which the runtime
+ *  builds a customDepthMaterial from, so the shadow silhouette honors the authored shape/alpha.
+ *  Without it the graph has no shadow program. */
 const CAST_SHADOW_PARAM: FXParamMeta = {
   kind: "structural",
   type: "flag",

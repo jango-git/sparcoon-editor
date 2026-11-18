@@ -16,7 +16,6 @@ import {
   select,
   swizzle,
 } from "../../src/engine/core/ir/FXExprBuilder";
-import type { FXFunctionDef } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_FUNCTIONS } from "../../src/engine/core/ir/FXFunctions.Internal";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { call } from "../helpers/exprCall";
@@ -97,22 +96,11 @@ describe("calls", () => {
     expect(() => printGLSLBaseline(bogus, FX_FUNCTIONS)).toThrow(/unknown function/);
   });
 
-  it("collects glsl helpers once", () => {
-    const fns = new Map<string, FXFunctionDef>([
-      [
-        "noise",
-        {
-          name: "noise",
-          signatures: [{ args: ["vec3"], result: "float" }],
-          glslBaselineHelper: "float noise(vec3 p) { return 0.0; }",
-          js: () => "0",
-        },
-      ],
-    ]);
+  it("links a function's helper behind the ones it calls", () => {
     const noiseCall = { kind: "call", type: FX_VALUE_TYPES.float, fn: "noise", args: [v] } as const;
-    const result = printGLSLBaseline(noiseCall, fns);
+    const result = printGLSLBaseline(noiseCall, FX_FUNCTIONS);
     expect(result.code).toBe("noise(v)");
-    expect(result.helpers.get("noise")).toContain("float noise");
+    expect([...result.helpers]).toEqual(["FX_GLSL_BASELINE_HASH", "FX_GLSL_BASELINE_NOISE"]);
   });
 });
 

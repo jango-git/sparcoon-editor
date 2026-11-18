@@ -290,14 +290,18 @@ const SURFACE_OUTPUTS: readonly FXTargetOutput[] = [
   PARTICLE_TRANSFORM_OUTPUT,
 ];
 
-/** The particle render target, extended with a `p_fx_<name>` input per requested attribute. The
- *  attribute set is folded into the target name, salting the structural hash. */
-export function buildParticleTarget(attributes: readonly FXAttributeRequest[] = []): FXTarget {
+/** The particle render target, extended with a `p_fx_<name>` input per requested attribute, with
+ *  a shadow program only for an emitter that casts a shadow. The attribute set is folded into the
+ *  target name, salting the structural hash; the shadow program is in its signature. */
+export function buildParticleTarget(
+  attributes: readonly FXAttributeRequest[] = [],
+  castShadow = false,
+): FXTarget {
   return {
     name: `particle${canonicalAttributeSuffix(attributes)}`,
     inputs: [...PARTICLE_BUILTINS, ...attributeRenderInputs(attributes, "primitive")],
     outputs: SURFACE_OUTPUTS,
-    shadow: SHADOW_OUTPUTS,
+    ...(castShadow ? { shadow: SHADOW_OUTPUTS } : {}),
   };
 }
 
@@ -326,15 +330,21 @@ const MESH_BUILTINS: readonly FXTargetInput[] = [
   { name: FX_RANDOM_SEED_INPUT, type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
 ];
 
-/** The VFX-mesh render target. No particle builtins and no per-particle attributes, so a render
- *  node reading one (`custom-attribute`, `life-ratio`, `dissolve`) fails validation against
- *  it - that missing-input rejection IS the intended palette restriction. */
-export const FX_MESH_TARGET: FXTarget = {
-  name: "mesh",
-  inputs: MESH_BUILTINS,
-  outputs: SHARED_SURFACE_OUTPUTS,
-  shadow: SHARED_SHADOW_OUTPUTS,
-};
+/** The VFX-mesh render target, with a shadow program only for a mesh that casts a shadow. No
+ *  particle builtins and no per-particle attributes, so a render node reading one
+ *  (`custom-attribute`, `life-ratio`, `dissolve`) fails validation against it - that
+ *  missing-input rejection IS the intended palette restriction. */
+export function buildMeshTarget(castShadow = false): FXTarget {
+  return {
+    name: "mesh",
+    inputs: MESH_BUILTINS,
+    outputs: SHARED_SURFACE_OUTPUTS,
+    ...(castShadow ? { shadow: SHARED_SHADOW_OUTPUTS } : {}),
+  };
+}
+
+/** The VFX-mesh render target of a mesh that casts no shadow. */
+export const FX_MESH_TARGET: FXTarget = buildMeshTarget();
 
 /** Particle builtins a trail does not expose: a ribbon segment has no authored surface frame, so
  *  every node reading `geometryNormal` or `geometryTangent` is kept out of a trail graph - the

@@ -49,25 +49,11 @@ import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
 import { kernelResources } from "../engine/behavior/FXKernelShared.Internal";
 import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
-import { SAMPLE_LUT_HELPER_SOURCE } from "../engine/behavior/nodes/FXBehaviorNodeShared.Internal";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
 import { collectRenderCapabilities } from "../engine/core/compiler/collectRenderCapabilities";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import { FXGraph } from "../engine/core/FXGraph";
-import {
-  FX_FRACT_HELPER,
-  FX_MIX_HELPER,
-  FX_MOD_HELPER,
-  FX_SMOOTHSTEP_HELPER,
-  FX_VOLUME_FETCH_HELPER,
-} from "../engine/core/ir/FXFunctions.Internal";
-import { FX_JS_CURL } from "../engine/core/ir/noise/FXCurlNoise.Internal";
-import { FX_JS_FBM } from "../engine/core/ir/noise/FXFractalNoise.Internal";
-import { FX_JS_NOISE_HASH } from "../engine/core/ir/noise/FXNoiseHash.Internal";
-import { FX_JS_SEED_HASH } from "../engine/core/ir/noise/FXSeedHash.Internal";
-import { FX_JS_NOISE, FX_JS_NOISED } from "../engine/core/ir/noise/FXValueNoise.Internal";
-import { FX_JS_VORONOI } from "../engine/core/ir/noise/FXVoronoiNoise.Internal";
 import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
@@ -84,48 +70,13 @@ import { FX_GLSL_RENDER_COMPILERS } from "../engine/render/compiler/FXRenderComp
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { registerManualRenderNodes } from "../engine/render/nodes/FXManualRenderNodes";
 import {
+  buildMeshTarget,
   buildParticleTarget,
   buildStripTarget,
-  FX_MESH_TARGET,
 } from "../engine/render/target/FXParticleRenderTarget";
 import type { FXTarget } from "../engine/render/target/FXTarget";
 import { type EmitterDoc, emitterGraphs, type VfxMeshDoc } from "../model/editorState";
 import { stripGraphs, type StripName } from "../model/graphSlots";
-
-/**
- * Compiled helper source (matched by identity) -> the `sparcoon` export name(s) it corresponds to.
- * A helper missing here fails loudly (see {@link helperImportNames}) instead of silently omitting
- * an import.
- */
-const HELPER_IMPORT_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
-  [FX_FRACT_HELPER, ["fxFract"]],
-  [FX_MOD_HELPER, ["fxMod"]],
-  [FX_MIX_HELPER, ["fxMix"]],
-  [FX_SMOOTHSTEP_HELPER, ["fxSmoothstep"]],
-  [SAMPLE_LUT_HELPER_SOURCE, ["fxSampleLut"]],
-  [FX_VOLUME_FETCH_HELPER, ["fxVolumeFetch"]],
-  // Noise dependencies the kernel body never calls directly: sparcoon keeps them module-private.
-  [FX_JS_NOISE_HASH.source, []],
-  [FX_JS_NOISED.source, []],
-  [FX_JS_NOISE.source, ["fxNoise1", "fxNoise2", "fxNoise3"]],
-  [FX_JS_FBM.source, ["fxFractal1", "fxFractal2", "fxFractal3"]],
-  [FX_JS_CURL.source, ["fxCurl2", "fxCurl3"]],
-  [FX_JS_VORONOI.source, ["fxVoronoi2", "fxVoronoi3"]],
-  [FX_JS_SEED_HASH.source, ["fxSeedHash1", "fxSeedHash2", "fxSeedHash3", "fxSeedHash4"]],
-]);
-
-export function helperImportNames(source: string): readonly string[] {
-  const names = HELPER_IMPORT_NAMES.get(source);
-  if (names === undefined) {
-    throw new Error(
-      "exportTypeScript: a compiled kernel emitted a behavior helper with no matching sparcoon " +
-        "export. Add the function to sparcoon (math in miscellaneous/fxMath.ts, noise in " +
-        "miscellaneous/noise/), export it from its index and register it in " +
-        `HELPER_IMPORT_NAMES:\n${source}`,
-    );
-  }
-  return names;
-}
 
 const PARAM_SLOT_PREFIX = paramUniformName("");
 
@@ -327,7 +278,10 @@ export function compileEmitter(
   if (assetError !== undefined) {
     throw new Error(`exportTypeScript: ${emitter.name}: ${assetError.message}`);
   }
-  const shaders = compileForEveryGLSLTier(renderGraph, buildParticleTarget(renderAttributes));
+  const shaders = compileForEveryGLSLTier(
+    renderGraph,
+    buildParticleTarget(renderAttributes, config.castShadow),
+  );
 
   // Compiled before the budget is counted: the GPU kernel's slot layout, when there is one,
   // decides what the Standard tier's particle mesh takes.
@@ -417,7 +371,7 @@ export function compileMesh(mesh: VfxMeshDoc): MeshIR {
   if (depthFadeError !== undefined) {
     throw new Error(`exportTypeScript: ${mesh.name}: ${depthFadeError.message}`);
   }
-  const shaders = compileForEveryGLSLTier(renderGraph, FX_MESH_TARGET);
+  const shaders = compileForEveryGLSLTier(renderGraph, buildMeshTarget(config.castShadow));
   requireWithinRenderBudget(
     mesh.name,
     meshRenderBudgetFindings(

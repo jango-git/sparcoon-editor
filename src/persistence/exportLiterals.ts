@@ -304,15 +304,13 @@ export function projectSpecLiteral(
 
 export function importLine(
   specifier: string,
-  helperNames: readonly string[],
   needsEmitterType: boolean,
   needsGpuKernelType = false,
   needsExternalTextureType = false,
 ): string {
-  const values = ["FXEffect", ...helperNames];
   const lines = [
     "import {",
-    ...values.map((name) => `  ${name},`),
+    "  FXEffect,",
     "  type FXEffectOptions,",
     "  type FXEffectSpec,",
     "  type FXRenderArtifact,",

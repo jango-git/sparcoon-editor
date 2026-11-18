@@ -13,7 +13,7 @@ export function printGLSLStandard(
   functions: ReadonlyMap<string, FXFunctionDef>,
   resolveRef: FXRefResolver = REF_BY_NAME,
 ): FXGLSLPrintResult {
-  return printGLSL(expression, functions, resolveRef, spelling);
+  return printGLSL(expression, functions, resolveRef, "standard", spelling);
 }
 
 function spelling(definition: FXFunctionDef): FXGLSLSpelling {

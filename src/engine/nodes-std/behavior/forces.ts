@@ -1,5 +1,6 @@
+import { FX_FBM_MAX_OCTAVES } from "sparcoon/helpers";
+
 import type { FXExpr } from "../../core/ir/FXExpr";
-import { FX_FBM_MAX_OCTAVES } from "../../core/ir/noise/FXFractalNoise.Internal";
 import { FX_NOISE_CALL_COST } from "../../core/ir/noise/FXValueNoise.Internal";
 import type { FXExprBuilderApi, FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";

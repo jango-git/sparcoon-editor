@@ -241,6 +241,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   // constructor below - FXBehaviorTargets is derived per snapshot, so this must be current
   // before behaviorLive.apply runs each call.
   private currentTryGpuSimulation = false;
+  // The current apply()'s cast-shadow flag, read by the render target-builder closure: the shadow
+  // program is compiled only for an emitter that casts a shadow.
+  private currentCastShadow = false;
 
   // param names driven by the timeline last frame - so one that drops out reverts to baseline.
   private readonly drivenParams = new Set<string>();
@@ -282,7 +285,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       new FXRenderLiveBackend(
         renderBackend,
         // The target is derived per snapshot from the graph's attributes (lighting-model-independent).
-        (attributes) => buildParticleTarget(attributes),
+        (attributes) => buildParticleTarget(attributes, this.currentCastShadow),
         (compiled) => {
           this.shader = compiled;
           this.renderAttributes = collectAttributeRequests(this.renderLive.graphView).requests;
@@ -406,6 +409,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     // Read by the behaviorLive target-builder closure (constructor) - must be set before
     // behaviorLive.apply runs below, since validate/previewHash/compile all read it synchronously.
     this.currentTryGpuSimulation = spawnConfig.tryGpuSimulation;
+    this.currentCastShadow = castShadow;
     const hold = (statuses: HeldStatuses): GraphApplyResult => heldResult(stripNames, statuses);
 
     // Each live graph reconciles + gates internally and never throws: a bad edit (unknown node,
@@ -925,7 +929,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       shader,
       snapshot,
       registry: this.renderRegistry,
-      buildTarget: buildParticleTarget,
+      buildTarget: (attributes) => buildParticleTarget(attributes, this.currentCastShadow),
     });
     const assemble = (compiled: FXCompiledShader): FXRenderArtifact =>
       compiled === shader

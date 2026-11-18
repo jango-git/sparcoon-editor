@@ -1,6 +1,7 @@
 import type { FXGraphNode } from "../FXGraphNode";
 import type { FXExpr } from "../ir/FXExpr";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
+import type { FXGLSLHelperName } from "../ir/FXHelpers.Internal";
 import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { deepFreeze } from "./deepFreeze.Internal";
 import type { FXDescriptorBuild } from "./defineNode.Internal";
@@ -181,8 +182,8 @@ export interface FXNodeDescriptor<
     target: { read: (name: string) => FXExpr };
     /** Materializes a shared sub-expression into an SSA local (reused across outputs/components). */
     local: (hint: string, expr: FXExpr) => FXExpr;
-    /** Emits a deduplicated JS/GLSL helper - escape hatch for a helper used by a single node. */
-    emitHelper: (key: string, source: string) => void;
+    /** Links a GLSL helper of `sparcoon/helpers` that the node's `raw` GLSL calls. */
+    emitHelper: (helper: FXGLSLHelperName) => void;
     fn: FXExprBuilderApi;
     /** Each of {@link assets} as the sampler value it is read through. `undefined` while none is
      *  picked. */

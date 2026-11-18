@@ -1,6 +1,7 @@
 import type { FXExpr, FXRefKind } from "../ir/FXExpr";
 import { ref } from "../ir/FXExprBuilder";
 import { FX_FUNCTIONS } from "../ir/FXFunctions.Internal";
+import type { FXJSHelperName } from "../ir/FXHelpers.Internal";
 import { childrenOf, refNames, replaceRefs } from "../ir/visit.Internal";
 import type { FXValueType } from "../socket/FXValueType";
 import { isIntType } from "../socket/FXValueType";
@@ -29,8 +30,7 @@ export interface FXTypedLocal extends FXRatedLocal {
 /** The body of an artifact's `compute(inputs, uniforms)`, and the JS helpers it calls. */
 export interface FXCompiledDrawStage {
   readonly statements: readonly string[];
-  /** Helper sources, each once, dependencies first. */
-  readonly helpers: readonly string[];
+  readonly helpers: readonly FXJSHelperName[];
 }
 
 /** What lifting needs of the compiler: its per-pass inputs, its uniforms, its budget. */
@@ -376,7 +376,7 @@ function printDrawStage(
     }
     return policy.printInput(input.kind, input.name, index);
   };
-  const helpers = new Map<string, string>();
+  const helpers = new Set<FXJSHelperName>();
   const statements = printJSLocals(optimized, FX_FUNCTIONS, resolve, helpers);
   for (const [local, uniform] of uniformOf) {
     const names = components.get(local) ?? [];
@@ -386,7 +386,7 @@ function printDrawStage(
         : names.map((name, index) => `${uniformValueJS(uniform, index)} = ${name};`)),
     );
   }
-  return { statements, helpers: [...helpers.values()] };
+  return { statements, helpers: [...helpers] };
 }
 
 /**

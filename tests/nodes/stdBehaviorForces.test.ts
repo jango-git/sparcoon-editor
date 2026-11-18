@@ -203,7 +203,7 @@ describe("turbulence", () => {
     const body = compiled.update.body.join("\n");
     expect(body).toContain("in_position");
     expect(body).toContain("fxFbm(");
-    expect(compiled.update.helpers.filter((h) => h.includes("float fxFbm(vec3 p"))).toHaveLength(1);
+    expect(compiled.update.helpers.filter((helper) => helper === "FX_GLSL_FBM")).toHaveLength(1);
   });
 
   it("bounds octaves so a runaway value cannot freeze the loop", () => {

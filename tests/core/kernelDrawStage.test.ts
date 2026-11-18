@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import { FXBehaviorPhase } from "../../src/engine/behavior/FXBehaviorPhase";
-import { assembleTransformFeedbackProgram } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import {
+  assembleTransformFeedbackProgram,
+  fusedVertexSource,
+} from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
 import type { FXKernelContext } from "../../src/engine/behavior/FXKernelContext";
 import { transformFeedbackUniformBudget } from "../../src/engine/behavior/FXKernelUniformsStandard.Internal";
 import { compileBehaviorStandard } from "../../src/engine/behavior/FXParticleBehaviorKernelStandard.Internal";
@@ -97,10 +100,10 @@ describe("a GPU kernel's draw stage", () => {
     const compute = program.draw?.stage.statements.join("\n") ?? "";
     expect(compute).toContain("inputs.deltaTime");
     expect(compute).toContain("Math.exp(");
-    expect(program.vertexSource).not.toMatch(/exp\(\(- \(1\.5 \* /);
+    expect(fusedVertexSource(program)).not.toMatch(/exp\(\(- \(1\.5 \* /);
     const [name = "", type] = Object.entries(program.draw?.uniforms ?? {})[0] ?? [];
     expect(type).toBe(FX_VALUE_TYPES.vec3);
-    expect(program.vertexSource).toContain(`uniform vec3 ${name};`);
+    expect(fusedVertexSource(program)).toContain(`uniform vec3 ${name};`);
   });
 
   it("fills its draw uniform with the velocity of the pass's timestep", () => {
@@ -184,7 +187,7 @@ describe("a GPU kernel's draw stage", () => {
   it("names spawn's and update's values apart: one program holds both", () => {
     const program = compileDragGraph();
     const declared = [
-      ...program.vertexSource.matchAll(
+      ...fusedVertexSource(program).matchAll(
         new RegExp(String.raw`\b(?:uniform \w+|float|vec[234]|mat[234]) (${GLSL_NAME})\b`, "g"),
       ),
     ].map((match) => match[1]);

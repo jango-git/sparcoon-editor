@@ -1,4 +1,5 @@
 import type { FXExpr } from "../core/ir/FXExpr";
+import type { FXJSHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXInheritPlan } from "./FXInheritPlan";
 
 /**
@@ -77,8 +78,8 @@ export interface FXKernelResourceFields {
  * nothing but persisted particle state, so each carries its own helpers/body/writes/bindings.
  */
 export interface FXCompiledKernelPhase extends FXKernelResourceFields {
-  /** Deduplicated helper function sources, hoisted outside the per-particle loop. */
-  readonly helpers: readonly string[];
+  /** The helpers the phase calls. */
+  readonly helpers: readonly FXJSHelperName[];
   /** Particle-invariant locals (bindings/`dt`/emitter transform/constants), hoisted before
    * the loop so they compute once per invocation rather than per particle. */
   readonly preLoop: readonly string[];

@@ -44,14 +44,13 @@ describe("noise node - IR shape", () => {
     expect(printJS(components[0], FX_FUNCTIONS).code).toBe("fxNoise3(v_x, v_y, v_z)");
   });
 
-  it("prints an overloaded noise() in GLSL and pulls the shared (baseline) helper", () => {
+  it("prints an overloaded noise() in GLSL and links the tier's helper", () => {
     const printed = printGLSLBaseline(
       call("noise", ref("local", "v", FX_VALUE_TYPES.vec3)),
       FX_FUNCTIONS,
     );
     expect(printed.code).toBe("noise(v)");
-    expect(printed.helpers.get("noise")).toContain("float noise(vec2 p)");
-    expect(printed.helpers.get("noise")).toContain("float noise(vec3 p)");
+    expect([...printed.helpers]).toEqual(["FX_GLSL_BASELINE_HASH", "FX_GLSL_BASELINE_NOISE"]);
   });
 
   it("scalarizes fbm(vec3, octaves, lacunarity, gain) into one flat fxFractal3 call", () => {
@@ -73,36 +72,38 @@ describe("noise node - IR shape", () => {
     ]);
   });
 
-  it("unrolls fixed-octave fBm and curl in GLSL: no loop, one sample block per octave", () => {
+  it("links one fixed-octave fBm and curl helper on both tiers, over each tier's noise", () => {
     const v = ref("local", "v", FX_VALUE_TYPES.vec3);
     const o = ref("local", "o", FX_VALUE_TYPES.float);
-    for (const printer of [printGLSLBaseline, printGLSLStandard]) {
-      const fbm = printer(call("fbmOctaves3", v, o, o), FX_FUNCTIONS);
-      expect(fbm.code).toBe("fxFbmOctaves3(v, o, o)");
-      const fbmSource = fbm.helpers.get("fbmOctaves3") ?? "";
-      expect(fbmSource).not.toContain("for(");
-      expect(
-        fbmSource
-          .split("\n")
-          .find((line) => line.includes("vec3 p"))
-          ?.match(/noise\(p\)/g),
-      ).toHaveLength(3);
-      const curlSource =
-        printer(call("curlOctaves2", v, o, o), FX_FUNCTIONS).helpers.get("curlOctaves2") ?? "";
-      expect(curlSource).not.toContain("for(");
-    }
+    const fbm = printGLSLBaseline(call("fbmOctaves3", v, o, o), FX_FUNCTIONS);
+    expect(fbm.code).toBe("fxFbmOctaves3(v, o, o)");
+    expect([...fbm.helpers]).toEqual([
+      "FX_GLSL_BASELINE_HASH",
+      "FX_GLSL_BASELINE_NOISE",
+      "FX_GLSL_FBM_OCTAVES_3",
+    ]);
+    const curl = printGLSLStandard(call("curlOctaves2", v, o, o), FX_FUNCTIONS);
+    expect([...curl.helpers]).toEqual([
+      "FX_GLSL_STANDARD_HASH",
+      "FX_GLSL_STANDARD_NOISED",
+      "FX_GLSL_CURL_OCTAVES_2",
+    ]);
   });
 
-  it("emits shared noise helpers once, dependencies first", () => {
+  it("links shared noise helpers once, dependencies first", () => {
     const v = ref("local", "v", FX_VALUE_TYPES.vec3);
     const o = ref("local", "o", FX_VALUE_TYPES.float);
     const printed = printGLSLStandard(
       construct(FX_VALUE_TYPES.vec2, call("noise", v), call("fbm", v, o, o, o)),
       FX_FUNCTIONS,
     );
-    expect([...printed.helpers.keys()]).toEqual(["fxHash", "noise", "fbm"]);
+    expect([...printed.helpers]).toEqual([
+      "FX_GLSL_STANDARD_HASH",
+      "FX_GLSL_STANDARD_NOISE",
+      "FX_GLSL_FBM",
+    ]);
     const js = printJS(scalarize(call("curlOctaves1", v, o, o))[0], FX_FUNCTIONS);
-    expect([...js.helpers.keys()]).toEqual(["fxHash", "fxNoised", "curl"]);
+    expect([...js.helpers]).toEqual(["fxCurl2", "fxCurl3"]);
   });
 
   it("prints voronoi variants per tier: float hashes on baseline, PCG on standard", () => {
@@ -111,10 +112,15 @@ describe("noise node - IR shape", () => {
     const expr = call("voronoiFastEuclidean", v, j);
     const baseline = printGLSLBaseline(expr, FX_FUNCTIONS);
     expect(baseline.code).toBe("fxVoronoiFastEuclidean(v, j)");
-    expect(baseline.helpers.get("fxHash")).toContain("vec2 fxHash22(vec2 p)");
-    expect(baseline.helpers.get("voronoiFastEuclidean")).toContain("fxHash22(t)");
+    expect([...baseline.helpers]).toEqual([
+      "FX_GLSL_BASELINE_HASH",
+      "FX_GLSL_BASELINE_VORONOI_FAST_EUCLIDEAN",
+    ]);
     const standard = printGLSLStandard(expr, FX_FUNCTIONS);
-    expect(standard.helpers.get("voronoiFastEuclidean")).toContain("fxUnit2(t)");
+    expect([...standard.helpers]).toEqual([
+      "FX_GLSL_STANDARD_HASH",
+      "FX_GLSL_STANDARD_VORONOI_FAST_EUCLIDEAN",
+    ]);
     expect(printJS(scalarize(expr)[2], FX_FUNCTIONS).code).toBe("fxVoronoi2(v_x, v_y, j, 0, 0, 2)");
   });
 });
@@ -387,15 +393,15 @@ describe("hash node", () => {
     expect([x, y, z]).toEqual([4, 4, 4]);
   });
 
-  it("prints per tier: Hoskins' float hash on baseline, PCG of the float bits on standard", () => {
+  it("links each tier's seed hash: Hoskins' float hash on baseline, PCG on standard", () => {
     const s = ref("local", "s", FX_VALUE_TYPES.vec3);
     const salt = ref("local", "salt", FX_VALUE_TYPES.float);
     const expr = call("seedHash2", s, salt);
     const baseline = printGLSLBaseline(expr, FX_FUNCTIONS);
     expect(baseline.code).toBe("fxSeedHash2(s, salt)");
-    expect(baseline.helpers.get("seedHash")).toContain("fxHash44(vec4(s,salt)).xy");
+    expect([...baseline.helpers]).toEqual(["FX_GLSL_BASELINE_HASH", "FX_GLSL_BASELINE_SEED_HASH"]);
     const standard = printGLSLStandard(expr, FX_FUNCTIONS);
-    expect(standard.helpers.get("seedHash")).toContain("floatBitsToUint(s)");
+    expect([...standard.helpers]).toEqual(["FX_GLSL_STANDARD_HASH", "FX_GLSL_STANDARD_SEED_HASH"]);
     expect(printJS(scalarize(expr)[1], FX_FUNCTIONS).code).toBe(
       "fxSeedHash2(s_x, s_y, s_z, salt, 1)",
     );

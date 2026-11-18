@@ -1,5 +1,6 @@
 import type { FXExpr } from "../ir/FXExpr";
 import type { FXExprBuilderApi } from "../ir/FXExprBuilder";
+import type { FXGLSLHelperName } from "../ir/FXHelpers.Internal";
 import type { FXAssetKind } from "../nodes/FXAssetKind";
 import type { FXValueType } from "../socket/FXValueType";
 
@@ -70,6 +71,6 @@ export interface FXCompilerContext {
    *  {@link defineLocal}. */
   uniqueName(hint: string): string;
 
-  /** Appends a helper (function/snippet), deduplicated by `key`. */
-  emitHelper(key: string, source: string): void;
+  /** Links a GLSL helper the node's `raw` GLSL calls, once. */
+  emitHelper(helper: FXGLSLHelperName): void;
 }

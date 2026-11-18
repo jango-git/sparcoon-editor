@@ -31,7 +31,7 @@ import type { FXCompiledShader } from "../engine/render/compiler/FXCompiledShade
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
 import type { FXRenderNode } from "../engine/render/FXRenderNode";
 import { FXRenderLiveBackend } from "../engine/render/live/FXRenderLiveBackend";
-import { FX_MESH_TARGET } from "../engine/render/target/FXParticleRenderTarget";
+import { buildMeshTarget } from "../engine/render/target/FXParticleRenderTarget";
 import type { LiveApplyStatus } from "../model/editorState";
 import type { Transform } from "../model/transform";
 import {
@@ -73,6 +73,9 @@ export class MeshView {
   // Surface-sink shadow flags (readRenderSinkConfig), invisible to the live gate's IR hash - track the
   // built values so a flip forces installMesh (which attaches/detaches the customDepthMaterial).
   private builtCastShadow = false;
+  // The current apply()'s cast-shadow flag, read by the render target-builder closure: the shadow
+  // program is compiled only for a mesh that casts a shadow.
+  private currentCastShadow = false;
   private builtReceiveShadow = false;
 
   private readonly drivenParams = new Set<string>();
@@ -100,7 +103,7 @@ export class MeshView {
       // compiler itself.
       new FXRenderLiveBackend(
         renderBackend,
-        () => FX_MESH_TARGET,
+        () => buildMeshTarget(this.currentCastShadow),
         (compiled) => {
           this.shader = compiled;
         },
@@ -139,6 +142,7 @@ export class MeshView {
     castShadow: boolean,
     receiveShadow: boolean,
   ): LiveApplyStatus {
+    this.currentCastShadow = castShadow;
     const result = this.renderLive.apply(renderSnapshot);
     if (result.status === "invalid") {
       return invalidFromErrors(result.errors);
@@ -174,7 +178,7 @@ export class MeshView {
           shader,
           snapshot: renderSnapshot,
           registry: this.renderRegistry,
-          buildTarget: () => FX_MESH_TARGET,
+          buildTarget: () => buildMeshTarget(castShadow),
         });
         const assemble = (compiled: FXCompiledShader): FXRenderArtifact =>
           compiled === shader
