@@ -1,4 +1,5 @@
 import nodeResolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { transform as transformCss } from "lightningcss";
@@ -10,21 +11,6 @@ import serve from "rollup-plugin-serve";
 const isDevelopment = Boolean(process.env.ROLLUP_WATCH);
 
 const editorVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
-
-/** Puts the editor's version in place of `SPARCOON_EDITOR_VERSION` (src/editorVersion.d.ts). */
-function editorVersionConstant() {
-  return {
-    name: "editor-version",
-    transform(code) {
-      return code.includes("SPARCOON_EDITOR_VERSION")
-        ? {
-            code: code.replaceAll("SPARCOON_EDITOR_VERSION", JSON.stringify(editorVersion)),
-            map: null,
-          }
-        : null;
-    },
-  };
-}
 
 /**
  * Copies every `.json` file from `sourceDir` next to the bundle (`dist/<outputName>/`) so runtime
@@ -118,7 +104,14 @@ export default {
     bundleStyles(),
     nodeResolve({ browser: true }),
     typescript({ tsconfig: "./tsconfig.build.json" }),
-    editorVersionConstant(),
+    /** The editor's version (src/editorVersion.d.ts), and the build mode its dependencies check. */
+    replace({
+      preventAssignment: true,
+      values: {
+        SPARCOON_EDITOR_VERSION: JSON.stringify(editorVersion),
+        "process.env.NODE_ENV": JSON.stringify(isDevelopment ? "development" : "production"),
+      },
+    }),
     !isDevelopment && terser({ module: true }),
     isDevelopment &&
       serve({

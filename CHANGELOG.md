@@ -5,6 +5,12 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## 0.2.1 - 2026-11-19
+
+### Fixed
+
+- The editor loads again. 0.2.0 stopped at start with `process is not defined`.
+
 ## 0.2.0 - 2026-11-18
 
 ### Changed

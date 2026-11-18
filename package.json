@@ -1,6 +1,6 @@
 {
   "name": "sparcoon-editor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Node-based visual effects editor for three.js in the browser - exports a self-contained TypeScript module, no runtime compiler.",
   "keywords": [
@@ -47,6 +47,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^1.0.2",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/three": "0.157.0",
