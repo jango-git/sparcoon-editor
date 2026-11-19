@@ -143,27 +143,16 @@ export class SceneEmitters implements SceneApplier {
   }
 
   /**
-   * Whether the programs the renderer could not link changed since the last check. Called after a
-   * frame, once it compiled the materials of every view it drew; a change needs a sync to show in
-   * the statuses.
+   * Whether a sync is due for the programs of the views: the ones the renderer or the driver could
+   * not link changed, or the GPU kernel a rebuild waits for has built. Called after a frame, once
+   * it compiled the materials of every view it drew and ran their simulations.
    */
-  public checkProgramLinks(): boolean {
-    const seen = new Map<string, ProgramLinkFailures>();
-    for (const [id, view] of [...this.views, ...this.meshViews]) {
-      const failures = view.programLinkFailures(this.renderer);
-      if (Object.keys(failures).length > 0) {
-        seen.set(id, failures);
-      }
+  public checkPrograms(): boolean {
+    let kernelBuilt = false;
+    for (const view of this.views.values()) {
+      kernelBuilt = view.takeEndedKernelBuild() || kernelBuilt;
     }
-    const previous = this.programLinkFailuresSeen;
-    this.programLinkFailuresSeen = seen;
-    return (
-      seen.size !== previous.size ||
-      [...seen].some(([id, failures]) => {
-        const before = previous.get(id);
-        return before === undefined || !sameProgramLinkFailures(before, failures);
-      })
-    );
+    return this.linkFailuresChanged() || kernelBuilt;
   }
 
   public sync(scene: SceneModel): SceneApplyResult {
@@ -462,6 +451,26 @@ export class SceneEmitters implements SceneApplier {
 
   /** `result` (the active emitter's) with what its reactions cannot hand over among its behavior
    *  warnings. */
+  /** Whether the programs the renderer or the driver could not link changed since the last check. */
+  private linkFailuresChanged(): boolean {
+    const seen = new Map<string, ProgramLinkFailures>();
+    for (const [id, view] of [...this.views, ...this.meshViews]) {
+      const failures = view.programLinkFailures(this.renderer);
+      if (Object.keys(failures).length > 0) {
+        seen.set(id, failures);
+      }
+    }
+    const previous = this.programLinkFailuresSeen;
+    this.programLinkFailuresSeen = seen;
+    return (
+      seen.size !== previous.size ||
+      [...seen].some(([id, failures]) => {
+        const before = previous.get(id);
+        return before === undefined || !sameProgramLinkFailures(before, failures);
+      })
+    );
+  }
+
   private withInheritWarnings(result: SceneApplyResult, scene: SceneModel): SceneApplyResult {
     const target = scene.emitters.find((emitter) => emitter.id === scene.activeEmitterId);
     const status = result.behaviorStatus;
@@ -611,7 +620,7 @@ export class SceneEmitters implements SceneApplier {
         withWarnings(result.render, emitterDrawsNothingWarnings(emitter)),
         linkFailures.render,
       ),
-      behaviorStatus: result.behavior,
+      behaviorStatus: withLinkFailure(result.behavior, linkFailures.behavior),
       // What a strip joins can follow from the emitter's spawns, not from its graph.
       strips: stripOutcomes((name) => {
         const status = result[name];

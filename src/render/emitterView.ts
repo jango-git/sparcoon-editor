@@ -101,6 +101,7 @@ import { createGizmoMarker, type GizmoMarker } from "./emitterMarker";
 import { type AssembledStrip, EmitterStrip } from "./emitterStrip.Internal";
 import { everyTierShaders } from "./everyTierShaders";
 import { externalSlots } from "./externalSlots";
+import { KernelBuildWait } from "./kernelBuildWait";
 import { ParticleEventForward } from "./particleEventForward";
 import { NO_PREVIEW_ASSETS, previewAssetNames, type PreviewAssets } from "./previewAssets";
 import { type ProgramLinkFailures, programLinkFailures } from "./programLinkFailures";
@@ -207,6 +208,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
 
   private readonly budget = new RenderBudgetMemo();
 
+  /** The GPU kernel program the next rebuild runs, building while the running emitter goes on. */
+  private readonly kernelBuild: KernelBuildWait;
+
   // The artifacts the running emitter last accepted - kept so the timeline value-drive can find
   // each param's slot names and baked baseline (to revert a param that stops being driven).
   // Reassembled every apply (no re-compile), but replaced only once the emitter takes them.
@@ -280,6 +284,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   ) {
     this.renderRegistry = renderRegistry;
     this.renderBackend = renderBackend;
+    this.kernelBuild = new KernelBuildWait(renderer);
     this.renderLive = new FXLiveGraph(
       new FXGraphReconciler(renderRegistry),
       new FXRenderLiveBackend(
@@ -383,12 +388,24 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         return mesh === undefined ? [] : [[mesh, name] as const];
       }),
     );
-    return programLinkFailures(
+    const failures = programLinkFailures(
       renderer,
       emitter,
       (mesh) => stripOf.get(mesh) ?? "render",
       this.marker.object,
     );
+    const simulationFailure = emitter.simulationFailure;
+    return simulationFailure === undefined
+      ? failures
+      : { ...failures, behavior: simulationFailure };
+  }
+
+  /**
+   * Whether the build of the GPU kernel a rebuild waits for has ended since the last call: the
+   * rebuild can then run without waiting for it. Reported once per build.
+   */
+  public takeEndedKernelBuild(): boolean {
+    return this.kernelBuild.takeEnded();
   }
 
   public apply(
@@ -621,6 +638,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     }
     this.emitter?.destroy();
     this.emitter = undefined;
+    this.kernelBuild.release();
     this.artifacts = undefined;
     this.drivenParams.clear();
     this.renderLive.destroy();
@@ -952,7 +970,9 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   /** Full rebuild path: a fresh `FXEmitter.fromArtifacts` replacing the previous one - resets
    *  particle buffers and playback. Used for the first build, any behavior-structural change, or
    *  as the fallback when a render-only swap ({@link applyRenderArtifact}) refuses a genuine
-   *  attribute-layout change it cannot apply in place. */
+   *  attribute-layout change it cannot apply in place. While the GPU kernel's program is still
+   *  building, the running emitter goes on and the rebuild waits for the apply that follows
+   *  {@link takeEndedKernelBuild}. */
   private rebuildEmitter(
     artifacts: PreviewArtifacts,
     config: RenderSinkConfig,
@@ -960,9 +980,14 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
     currentCustomGeometryRef: BufferGeometry | undefined,
   ): GraphApplyResult {
     const { geometry, renderMode, castShadow, receiveShadow } = config;
+    const gpuKernel = this.gpuKernelOf(artifacts, spawnConfig.tryGpuSimulation);
+    if (gpuKernel !== undefined && this.kernelBuild.waitsFor(gpuKernel)) {
+      return this.recompiledResult(artifacts, false);
+    }
     try {
       this.installEmitter(artifacts, config, spawnConfig);
     } catch (error) {
+      this.kernelBuild.release();
       // The runtime rejected the artifact pair; installEmitter builds the new emitter before
       // dropping the old, so the last good preview still runs - hold rather than crash.
       const held = invalid([describeError(error)]);
@@ -973,6 +998,7 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
         emitterRebuilt: false,
       };
     }
+    this.kernelBuild.release();
     this.builtShader = this.shader;
     this.builtKernel = this.kernel;
     this.builtGeometryKey = encodeGeometrySource(geometry);
@@ -989,11 +1015,16 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
       strip?.live.markBuilt(strip);
     }
     this.artifacts = artifacts;
+    return this.recompiledResult(artifacts, true);
+  }
+
+  /** Every graph of `artifacts` recompiled, the emitter rebuilt from them or still waiting. */
+  private recompiledResult(artifacts: PreviewArtifacts, emitterRebuilt: boolean): GraphApplyResult {
     return {
       render: RECOMPILED,
       behavior: RECOMPILED,
       ...this.stripStatuses(artifacts, RECOMPILED),
-      emitterRebuilt: true,
+      emitterRebuilt,
     };
   }
 

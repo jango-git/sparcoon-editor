@@ -193,10 +193,10 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       transport.restart();
     }
   });
-  // A program the GPU driver could not link is known only once a frame compiled it: the statuses
-  // follow at once, within the frames a status read waits for.
+  // A program the GPU driver could not link is known only once a frame compiled it, and a rebuild
+  // waiting for its GPU kernel runs once the kernel has built: both follow at once.
   coordinator.setAfterRender(() => {
-    if (sceneEmitters.checkProgramLinks()) {
+    if (sceneEmitters.checkPrograms()) {
       pipeline.recomputeNow();
     }
   });

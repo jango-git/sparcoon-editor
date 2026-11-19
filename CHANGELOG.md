@@ -5,6 +5,16 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## 0.3.0 - 2026-11-19
+
+### Changed
+
+- An edit that rebuilds an emitter simulated on the GPU no longer pauses the preview while the new
+  simulation program builds. The previous emitter runs until it has built, then the new one takes
+  over.
+- A GPU simulation program the driver rejects shows as an error of the behavior graph. Before, the
+  preview switched to the CPU simulation without saying so.
+
 ## 0.2.1 - 2026-11-19
 
 ### Fixed
