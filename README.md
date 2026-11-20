@@ -4,6 +4,7 @@ A browser-based node editor for three.js particle effects. The result is a TypeS
 by the [`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
 
 **[Open the editor](https://jango-git.github.io/sparcoon-editor/)** -
+**[Examples](https://jango-git.github.io/sparcoon/)** -
 [Runtime](https://github.com/jango-git/sparcoon) -
 [npm](https://www.npmjs.com/package/sparcoon)
 
