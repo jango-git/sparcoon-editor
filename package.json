@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "ferrsign": "0.0.6",
-    "sparcoon": "0.24.0",
+    "sparcoon": "0.25.0",
     "three": "^0.157.0"
   },
   "devDependencies": {
