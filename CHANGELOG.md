@@ -5,6 +5,22 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## Unreleased
+
+### Changed
+
+- The presets draw fewer layers where they used to slow a close camera down. The smoke and dust of
+  Lightning Crack, Destruction, Fireworks and Portal are fewer, denser puffs that die once they
+  have faded, and soft smoke sorts every 10 frames instead of every 2. Up close the Lightning
+  Crack draws about half the layers it did, the Destruction cloud about two thirds.
+- In Lightning Crack the flash and the light on the ground are one particle each for the lap
+  instead of a stream of short ones stacked over each other, and the flash has no size between
+  strikes. The Destruction shockwave is not drawn outside the blast.
+- The Shield dome is drawn on a half sphere, the `Dome` mesh in its library, instead of a whole
+  sphere with the lower half cut away. Its shards have no size until they break off.
+- The Campfire smoke holds each frame of its sheet instead of blending two, the Portal horizon's
+  swirl takes 6 noise octaves instead of 8, and the Sparks preset casts no shadow.
+
 ## 0.4.0 - 2026-11-20
 
 ### Changed
