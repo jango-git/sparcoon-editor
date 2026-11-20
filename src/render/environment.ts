@@ -1,7 +1,7 @@
 /**
- * The neutral studio surroundings the emitters live in (ground, sun, ambient fill, background,
- * reference gizmos). Ambient fill is a live `HemisphereLight` in manual mode, or (ADR-0004) an
- * SH bake from the active HDRI - mutually exclusive, never both; Sun stays live either way.
+ * Studio around the emitters: ground, sun, ambient fill, background, gizmos. Ambient fill is either
+ * a live `HemisphereLight` or an SH probe baked from the active HDRI, never both. The sun stays
+ * live in both cases.
  */
 
 import {
@@ -38,14 +38,16 @@ import { AXIS_COLORS } from "./axisColors";
 import { markEditorGizmo, markEditorGround, markEditorOverlay } from "./editorOverlay";
 import type { DecodedEnvironment } from "./environmentTexture";
 
-/** Y of the ground plane - shares the emitters' origin so particles rest on it, not above it. */
+/** Ground plane Y, level with the emitter origin. */
 const GROUND_Y = 0;
 
 /** Distance the sun sits from the origin; its azimuth/elevation place it on this sphere. */
 const SUN_DISTANCE = 14;
 
-/** Distance from the origin the sun's gizmo sits at, along the sun's direction - near enough to
- *  stay in view, unlike the light itself. */
+/**
+ * Sun gizmo distance from the origin, along the sun direction. Closer than the light so it stays in
+ * view.
+ */
 const SUN_GIZMO_DISTANCE = 3;
 
 /** Sun gizmo: disc radius, ray length beyond the disc, and the line toward the lit scene. */
@@ -53,7 +55,6 @@ const SUN_GIZMO_RADIUS = 0.12;
 const SUN_GIZMO_RAY = 0.08;
 const SUN_GIZMO_BEAM = 0.9;
 
-/** Sun gizmo color: a warm yellow, apart from the grey object outlines. */
 const SUN_GIZMO_COLOR = 0xffd24a;
 
 /** Half-extent of the sun's orthographic shadow frustum (the shadow box). */
@@ -65,7 +66,7 @@ const GROUND_SIZE = 60;
 /** Player-figure box dimensions (width x height x depth) - a standing scale reference. */
 const PLAYER_SIZE: readonly [number, number, number] = [0.5, 2, 0.75];
 
-/** Cube face resolution for the SH bake - tiny; the probe only needs low-frequency (band-2) detail. */
+/** Cube face size for the SH bake. Band-2 SH needs only low frequencies. */
 const BAKE_FACE_SIZE = 16;
 
 /** Grid color for every line that is not an axis - lighter than the ground, so the cells read. */
@@ -77,7 +78,6 @@ export class SceneEnvironment {
   private readonly groundGeometry: PlaneGeometry;
   private readonly groundMaterial: MeshStandardMaterial;
   private readonly sun: DirectionalLight;
-  // The manual sky/ground fill (no active environment): a live light, not baked (see the class doc).
   private readonly hemisphereLight: HemisphereLight;
   // The active-environment fill: an SH light probe baked from a texture-mapped dome.
   private readonly probe = new LightProbe();
@@ -106,14 +106,13 @@ export class SceneEnvironment {
   ) {
     scene.background = this.background;
 
-    // Bake rig: the dome (map swapped to the active HDRI) rendered to a cube target and projected
-    // to SH, only while an environment is active. Linear so the probe irradiance stays linear.
+    // Bake rig. The dome, textured with the active HDRI, renders into a cube target that is
+    // projected to SH. Linear, so probe irradiance stays linear.
     this.bakeTarget.texture.colorSpace = LinearSRGBColorSpace;
     this.bakeScene.add(new Mesh(this.domeGeometry, this.domeMaterial));
     scene.add(this.probe);
 
-    // Ground plane - lit, matte, and the surface that catches shadows. Kept a dark
-    // neutral grey so the (unlit) grid lines drawn over it read as clearly lighter.
+    // Dark neutral grey, so the lighter grid lines read over it.
     this.groundGeometry = new PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
     this.groundMaterial = new MeshStandardMaterial({
       color: 0x2c2f36,
@@ -127,8 +126,7 @@ export class SceneEnvironment {
     markEditorGround(this.ground);
     scene.add(this.ground);
 
-    // Sun - the key light. Its orthographic shadow camera is the shadow box; its
-    // position is derived from the azimuth/elevation settings in `apply`.
+    // Position comes from azimuth and elevation in `apply`.
     this.sun = new DirectionalLight(0xffffff, 2.2);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
@@ -146,8 +144,8 @@ export class SceneEnvironment {
     this.hemisphereLight = new HemisphereLight(0xffffff, 0x000000, 0);
     scene.add(this.hemisphereLight);
 
-    // Grid overlaid just above the ground plane (a hair up to avoid z-fighting). Tone mapping is
-    // off so the axis lines keep the literal color the gizmos use, whatever the exposure.
+    // Raised slightly to avoid z-fighting. Tone mapping off keeps axis colors exact at any
+    // exposure.
     this.gridGeometry = createGridGeometry(GROUND_SIZE, GROUND_SIZE);
     this.gridMaterial = new LineBasicMaterial({ vertexColors: true, toneMapped: false });
     this.grid = new LineSegments(this.gridGeometry, this.gridMaterial);
@@ -155,17 +153,15 @@ export class SceneEnvironment {
     markEditorOverlay(this.grid);
     scene.add(this.grid);
 
-    // Player figure - a wireframe box resting on the ground as a scale reference.
     this.playerGeometry = new EdgesGeometry(new BoxGeometry(...PLAYER_SIZE));
     this.playerMaterial = new LineBasicMaterial({ color: 0x00e0a0 });
     this.player = new LineSegments(this.playerGeometry, this.playerMaterial);
-    // Offset +1 on x so the figure stands clear of the emitter origin.
+    // Offset 1 unit on x, clear of the emitter origin.
     this.player.position.set(1, GROUND_Y + PLAYER_SIZE[1] / 2, 0);
     markEditorOverlay(this.player);
     scene.add(this.player);
 
-    // Sun gizmo - a rayed disc on the sun's side of the scene, its beam pointing the way the light
-    // shines. Shown with the sun; the gizmo layer hides it with the object outlines.
+    // Hidden together with the object outlines by the gizmo layer.
     this.sunGizmoGeometry = createSunGizmoGeometry();
     this.sunGizmoMaterial = new LineBasicMaterial({ color: SUN_GIZMO_COLOR, toneMapped: false });
     this.sunGizmo = new LineSegments(this.sunGizmoGeometry, this.sunGizmoMaterial);
@@ -176,8 +172,10 @@ export class SceneEnvironment {
     this.apply(settings, activeEnvironment);
   }
 
-  /** Reflects settings (and the active environment, if any) onto the lights, gizmos and
-   * background. An active environment fully replaces the manual Hemisphere fill (ADR-0004). */
+  /**
+   * Applies settings to lights, gizmos and background. An active environment replaces the
+   * Hemisphere fill.
+   */
   public apply(settings: PreviewSettings, activeEnvironment: DecodedEnvironment | undefined): void {
     this.sun.visible = settings.sun;
     this.sunGizmo.visible = settings.sun;
@@ -198,7 +196,7 @@ export class SceneEnvironment {
       setLinear(this.hemisphereLight.groundColor, settings.hemisphereGround);
       this.hemisphereLight.intensity = settings.hemisphereIntensity;
       this.probe.intensity = 0;
-      // Forces the next environment activation to rebake, even onto a texture already seen once.
+      // Forces a rebake on the next environment activation, even for a known texture.
       this.bakedTexture = undefined;
     }
     this.grid.visible = settings.grid;
@@ -230,16 +228,18 @@ export class SceneEnvironment {
     this.sunGizmoMaterial.dispose();
   }
 
-  /** Re-bakes the SH probe from `texture` when it has changed, so unrelated settings drags don't
-   * pay the cube render + pixel readback again. */
+  /**
+   * Rebakes the SH probe only when `texture` changed, since the bake renders a cube and reads
+   * pixels back.
+   */
   private bakeFromTexture(texture: DataTexture): void {
     if (this.bakedTexture === texture) {
       return;
     }
     this.domeMaterial.map = texture;
     this.domeMaterial.needsUpdate = true;
-    // The cube render + pixel readback can throw on a lost/absent GL context; keep the last good
-    // probe on failure. Commit only on success, so a transient failure retries next apply.
+    // Render or readback can throw on a lost GL context. Keep the last probe and commit only on
+    // success, so the next apply retries.
     try {
       this.bakeCamera.update(this.renderer, this.bakeScene);
       this.probe.sh.copy(
@@ -247,11 +247,10 @@ export class SceneEnvironment {
       );
       this.bakedTexture = texture;
     } catch {
-      /* keep the previously baked probe */
+      // Keep the previous probe.
     }
   }
 
-  /** Places the sun on the shadow sphere from a compass azimuth and horizon elevation. */
   private placeSun(azimuthDegrees: number, elevationDegrees: number): void {
     const azimuth = (azimuthDegrees * Math.PI) / 180;
     const elevation = (elevationDegrees * Math.PI) / 180;
@@ -267,8 +266,8 @@ export class SceneEnvironment {
 }
 
 /**
- * The ground grid as one line-segment geometry, `divisions` cells per side. Colors are per-vertex
- * so the two lines through the origin can wear their axis colors without a second draw call.
+ * Ground grid as one line-segment geometry. Per-vertex colors let the two axis lines differ without
+ * a second draw call.
  */
 function createGridGeometry(size: number, divisions: number): BufferGeometry {
   const half = size / 2;
@@ -327,7 +326,6 @@ function createSunGizmoGeometry(): BufferGeometry {
   return geometry;
 }
 
-/** Writes a linear RGBA (the editor's color model) onto a Three color, ignoring alpha. */
 function setLinear(color: Color, rgba: Rgba): void {
   // Three's working color space is linear-sRGB, so `setRGB` takes our linear channels as-is.
   color.setRGB(rgba[0], rgba[1], rgba[2]);

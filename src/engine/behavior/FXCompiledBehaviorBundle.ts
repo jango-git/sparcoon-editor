@@ -8,12 +8,8 @@ import { compileBehaviorStandard } from "./FXParticleBehaviorKernelStandard.Inte
 import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
 
 /**
- * The mandatory JS kernel plus whichever optional simulation families this compile attempted and
- * succeeded at. One named, optional field per family - never a `Record<id, artifact>`: the
- * families' artifact shapes genuinely differ (JS closures vs. GLSL text vs., eventually, a WGSL
- * compute-dispatch program), so a homogeneous map across them is the wrong abstraction boundary -
- * the render side's own artifact-by-tier shape makes the same choice. A future compute family
- * adds one more sibling optional field here, nothing else in this type changes shape.
+ * The mandatory JS kernel plus each optional simulation family that compiled. One optional field
+ * per family, since the artifact shapes differ.
  */
 export interface FXCompiledBehaviorBundle {
   readonly kernel: FXCompiledKernel;
@@ -21,10 +17,8 @@ export interface FXCompiledBehaviorBundle {
 }
 
 /**
- * Attempts one optional family's compile; never throws - a family that cannot compile this graph
- * is silently absent from the bundle, the same tolerance every optional family gets from this one
- * place, not re-implemented per family. Purely a control-flow helper - it does not know what
- * "standard" or "compute" mean, only that a family id names a compile attempt for the warning text.
+ * Runs one optional family's compile. Never throws. A family that fails to compile is left out of
+ * the bundle (`familyId` names it in the warning).
  */
 function tryCompileFamily<TArtifact>(
   familyId: string,
@@ -42,12 +36,7 @@ function tryCompileFamily<TArtifact>(
   }
 }
 
-/**
- * Compiles the mandatory JS kernel, then makes one independent attempt per optional simulation
- * family the target opted into - flat, one line per family, not a loop over a shared registry
- * (families are not interchangeable) and not a branch inside any family's own compiler (families
- * do not know about each other). This is the one place in the codebase that does.
- */
+/** Compiles the JS kernel, then tries each opted-in family independently. */
 export function compileBehaviorBundle(
   graph: FXGraph<FXBehaviorNode>,
   targets: FXBehaviorTargets,

@@ -98,6 +98,6 @@ function freshBuffer(): Float32Array {
 describe("update kernel - 10k particles", () => {
   const fnBuf = freshBuffer();
   bench("compiled (new Function)", () => {
-    runFn(fnBuf, COUNT, 1 / 60, compiled.update.bindings);
+    runFn(fnBuf, COUNT, 1 / 60, 0, compiled.update.bindings);
   });
 });

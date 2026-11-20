@@ -68,7 +68,7 @@ export function structuralHash<N extends FXGraphNode = FXGraphNode>(
   // `outputBindings` array order; source hash disambiguates same-slot bindings across phases.
   const bindingEntries = graph.outputBindings.map((binding): string => {
     const sourceHash = merkle.get(binding.from.nodeId) ?? "?";
-    // Phase folds in only when present, so a legacy (untagged) binding hashes unchanged.
+    // Phase is folded in only when present.
     return JSON.stringify(
       binding.phase === undefined
         ? ["out", binding.slot, sourceHash, binding.from.socketKey]
@@ -81,8 +81,8 @@ export function structuralHash<N extends FXGraphNode = FXGraphNode>(
 }
 
 /**
- * Id-sensitive fingerprint of the reachable wiring - the companion {@link structuralHash}
- * deliberately is not, since content-addressing lets a role-swap between nodes hash unchanged.
+ * Id-sensitive fingerprint of the reachable wiring. Unlike {@link structuralHash}, it changes
+ * when two nodes swap roles.
  */
 export function wiringFingerprint<N extends FXGraphNode = FXGraphNode>(
   graph: FXGraph<N>,

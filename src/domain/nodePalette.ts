@@ -1,9 +1,6 @@
 /**
- * The editor's node palette, derived from the engine's node metadata (single source of truth) so
- * labels/sockets/params never drift. `type` is not globally unique (`life-ratio` exists in more
- * than one domain), so the editor buckets by graph kind (render/behavior; `shared` in both). The
- * reserved sink nodes' own identity and metadata construction live in `./sinkMeta` - re-exported
- * here so existing importers keep their one import path.
+ * The node palette, derived from the engine's node metadata. A node type is not unique across
+ * domains (`life-ratio`), so nodes are bucketed by graph kind (render, behavior, shared).
  */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
@@ -91,8 +88,10 @@ export enum GraphKind {
 /** The timeline-value node - a named, runtime-tunable uniform input, drawn with a distinct accent. */
 export const TIMELINE_VALUE_TYPE = "timeline-value";
 
-/** Whether a node type gets the timeline-value accent styling (the `texture` node is also a
- *  runtime input but carries its own inline preview, so it is deliberately not tinted). */
+/**
+ * Whether a node type gets the timeline-value accent. The `texture` node is also a runtime input
+ * but has its own preview and is not tinted.
+ */
 export function isTimelineValueType(type: string): boolean {
   return type === TIMELINE_VALUE_TYPE;
 }
@@ -154,14 +153,10 @@ function timelineValueShape(node: GraphNode): TimelineValueShape {
 }
 
 /**
- * Every `timeline-value` node declared unlike the first declaration of the same name across
- * `graphs` (in graph order, then node order) - attributed to the disagreeing node, never to that
- * first one. One name is one value for all of an entity's graphs (one track, one
- * `setEmitterParam`), so every declaration must agree on its type and on its default: each graph
- * bakes its own default into its artifact (and within one graph the compiler keeps whichever
- * declaration it meets first), so two defaults would leave the name's value up to which material
- * or which node happened to win - keyframed or not. Defaults compare as the engine reads them
- * (see {@link timelineValueShape}), so a fresh node's scalar `0` matches a vec3's `[0, 0, 0]`.
+ * Every `timeline-value` node whose type or default differs from the first declaration of its name,
+ * in graph then node order, reported on the disagreeing node. A name is one track and one
+ * `setEmitterParam`, so all declarations must agree. Defaults compare as the engine reads them (see
+ * {@link timelineValueShape}), so scalar `0` equals `[0, 0, 0]`.
  */
 export function timelineValueConflicts(
   graphs: readonly EditorGraph[],
@@ -208,10 +203,7 @@ export function timelineValueConflicts(
   return conflicts;
 }
 
-/**
- * The parameter names some `timeline-value` node declares across `graphs`, independent of whether
- * keyframed - shared by the model (what a name keeps, `model/timelineValues`) and the UI (which rows to show).
- */
+/** The names some `timeline-value` node declares across graphs, keyframed or not. */
 export function timelineValueNames(graphs: readonly EditorGraph[]): ReadonlySet<string> {
   return new Set(timelineValueDeclarations(graphs).keys());
 }
@@ -227,8 +219,7 @@ export function isReservedAttributeName(name: string): boolean {
   return Object.prototype.hasOwnProperty.call(FX_READABLE_CORE_BUILTINS, name.toLowerCase());
 }
 
-// Re-exported (not re-derived) so serialize/node-view code shares the engine's own inverse of
-// `attributeSlot`, rather than a second hand-written "attr:" prefix that could drift from it.
+// Re-exported from the engine so the "attr:" prefix has one definition.
 export { attributeNameFromSlot } from "../engine/behavior/FXParticleBehaviorTarget";
 
 /**
@@ -313,8 +304,7 @@ function domainMatchesKind(domain: FXNodeMeta["domain"], kind: GraphKind): boole
   return domain === (kind === GraphKind.Render ? "render" : "behavior");
 }
 
-// NODE_PALETTE is fixed for the module lifetime, so each kind's filtered+sorted view is too;
-// cache it - metaFor/metaForNode call this per node lookup (including recursive type resolution).
+// Cached: the palette is fixed and this is called per node lookup.
 const paletteByKind = new Map<GraphKind, readonly FXNodeMeta[]>();
 
 /** The palette for one graph kind, ordered by category then `type` - a stable, locale-free base
@@ -339,10 +329,10 @@ export function paletteForKind(kind: GraphKind): readonly FXNodeMeta[] {
   return palette;
 }
 
-/** The structural invisible search vocabulary for a palette node: every enum/valueType option
- *  value plus the coarse `category`. Never rendered, matched only by search. Curated per-language
- *  synonyms ("swirl" surfaces Vortex) live in the node-text dictionary instead (`i18n/nodeText.ts`'s
- *  `nodeSearchTags`) - a UI-layer concern, folded in by the caller alongside these. */
+/**
+ * Search words for a palette node: its enum and valueType option values and its category. Never
+ * shown.
+ */
 export function searchTagsFor(metadata: FXNodeMeta): readonly string[] {
   const tags = new Set<string>();
   for (const parameter of Object.values(metadata.params)) {
@@ -390,7 +380,6 @@ export function metaForNode(
   return metaFor(kind, node.type);
 }
 
-// Re-exported so canvas/serialize code can classify fake nodes through the palette.
 export { isFakeNodeType, ROUTE_TYPE } from "./fakeNodes";
 
 /** A freshly created node's parameter bag: each schema parameter at its declared default. Custom

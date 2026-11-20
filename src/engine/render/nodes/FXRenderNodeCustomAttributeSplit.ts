@@ -18,21 +18,17 @@ import { attributeVaryingName } from "../target/FXParticleRenderTarget";
 const COMPONENTS = ["x", "y", "z", "w"] as const;
 
 /**
- * Render node: reads a named per-particle attribute like {@link FXRenderNodeCustomAttribute}, but
- * fans it straight out to its float components (`x`/`y`/`z`/`w` up to its width) instead of a
- * single combined `value` - the fused equivalent of `custom-attribute` piped into `split`,
- * without an extra node or wire for the common case of only needing one or two components. A
- * user attribute is read through the `p_fx_<name>` varying. Stage-flexible: both
- * varyings are exposed in both stages, so the compiler places this by its consumers.
+ * Like custom-attribute, but outputs the float components (`x` to `w`) directly. Stage-flexible.
  */
 export class FXRenderNodeCustomAttributeSplit extends FXRenderNode {
   public readonly type = "custom-attribute-split";
   public override readonly stageFlexible = true;
   public override readonly attributeRequest: FXAttributeRequest;
   public readonly inputs: readonly FXSocketDescriptor[] = [];
-  /** Always all four `x`/`y`/`z`/`w` float sockets, regardless of the source's width - mirrors
-   *  `split`'s own static descriptor; the editor facade trims the unused tail for display (see
-   *  `domain/nodeFamilies.ts`'s `custom-attribute-split` family). */
+  /**
+   * Always four float sockets, like `split`. The editor trims the unused tail for display
+   * (domain/nodeFamilies.ts).
+   */
   public readonly outputs: readonly FXSocketDescriptor[];
   private readonly sourceName: string;
   private readonly targetInput: string;
@@ -71,7 +67,6 @@ export class FXRenderNodeCustomAttributeSplit extends FXRenderNode {
     return CUSTOM_ATTRIBUTE_SPLIT_META;
   }
 
-  /** A varying/buffer read plus a re-index, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

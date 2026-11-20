@@ -58,17 +58,12 @@ const VEC2 = FX_VALUE_TYPES.vec2;
 const VEC4 = FX_VALUE_TYPES.vec4;
 const SAMPLER2D = FX_VALUE_TYPES.sampler2D;
 
-/** Render node (fragment): samples an external sampler at `uv` (defaulting to `p_uv`) into an
- *  rgba color, through the runtime-defined `fxSample_<uniform>` (see `fxExternalSampleFunction`).
- *  Owns no `three` resource: declares an external uniform under a stable slot that the host binds
- *  by name via `FXEmitter.fromArtifacts({ textures })` / `applyValues`.
- *
- *  `wrap` is applied to `uv` in the shader, not on the sampler: the host owns the `Texture` (and
- *  its `wrapS`/`wrapT`) in an exported effect, so a sampler setting could never reach it. `clamp`
- *  leaves `uv` as is (the host texture's own clamp, or for an atlas region the runtime's clamp to
- *  the region); `repeat` tiles it with `fract`; `mirror` tiles it flipping every other tile;
- *  `border` samples as `clamp` but is transparent outside [0, 1]. Each mode thus tiles or masks a
- *  bound region, never the whole atlas. */
+/**
+ * Samples an external sampler at `uv` through the runtime's `fxSample_<uniform>`. The host binds
+ * the texture by slot name. `wrap` runs on `uv` in the shader because the host owns the Texture's
+ * own wrap. `clamp` leaves `uv`, `repeat` tiles with `fract`, `mirror` flips alternate tiles,
+ * `border` clamps and is transparent outside [0, 1].
+ */
 export class FXRenderNodeTexture extends FXRenderNode {
   public readonly type = "texture";
   public readonly stage = FXShaderStage.FRAGMENT;
@@ -93,8 +88,6 @@ export class FXRenderNodeTexture extends FXRenderNode {
     return TEXTURE_META;
   }
 
-  /** A hardware texture fetch (pricier than a plain ALU op) plus the wrap mode's UV math; 0 while
-   *  no texture is picked yet (a bare literal, see {@link build}). */
   public override estimateCost(): number {
     return this.parameterName === "" ? 0 : 8 + WRAP_COST[this.wrap];
   }

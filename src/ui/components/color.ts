@@ -1,14 +1,6 @@
 /**
- * Color-space helpers shared by the color-picker and color-ramp controls.
- *
- * The engine stores colors as linear RGBA (each channel `0..1`) - that is what a node's `color`
- * value and a gradient stop carry, and what a linear material expects. Authoring, though, happens
- * in sRGB: a hex string, a hue wheel and a swatch all read in gamma space. So these controls hold
- * their working state in sRGB and convert at the boundary: `linearToSrgb` / `srgbToLinear` per RGB
- * channel (alpha is not gamma-encoded and passes through untouched), plus the usual HSV/HSL <-> RGB
- * and hex <-> RGB conversions.
- *
- * All tuples are `[r, g, b]` / `[r, g, b, a]` with channels in `0..1` unless noted.
+ * Color conversions. The engine stores linear RGBA, authoring is in sRGB, so controls hold sRGB and
+ * convert at the boundary. Alpha is not gamma-encoded. Tuples have channels in 0..1.
  */
 
 import { clamp01 } from "../primitives/math";

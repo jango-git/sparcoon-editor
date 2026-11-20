@@ -89,7 +89,6 @@ export class GraphKnife {
     if (hit === undefined) {
       return;
     }
-    // Centre the two-cell route knot on the click point, snapped to the grid.
     const position: GraphPosition = {
       x: snapToGrid(point.x - GRID_SIZE),
       y: snapToGrid(point.y - GRID_SIZE / 2),

@@ -43,7 +43,6 @@ export function buildAttributeRemove(name: string, onRemove: (name: string) => v
   const remove = createElement("button", { className: "attr__remove confirm-danger" });
   remove.innerHTML = actionIcons.trash;
   attachTooltip(remove, t("graph.removeAttributeTitle"), t("graph.removeAttributeTip", { name }));
-  // Swallow pointerdown so clicking the button never starts a node drag or selection.
   remove.addEventListener("pointerdown", (event) => event.stopPropagation());
   attachCountdownConfirm(remove, actionIcons.trash, REMOVE_CLICKS, () => onRemove(name));
   return remove;
@@ -63,7 +62,6 @@ export function buildAttributeName(
   input.type = "text";
   input.className = "param__input attr__name";
   input.value = name;
-  // Swallow pointerdown so editing the name never starts a node drag or selection.
   input.addEventListener("pointerdown", (event) => event.stopPropagation());
   input.addEventListener("input", () => input.classList.remove("attr__name--invalid"));
   input.addEventListener("change", () => {
@@ -98,7 +96,6 @@ export function buildAttributeType(
     scale,
   });
   dropdown.element.classList.add("attr__type");
-  // Swallow pointerdown so opening the picker never starts a node drag or selection.
   dropdown.element.addEventListener("pointerdown", (event) => event.stopPropagation());
   return dropdown.element;
 }

@@ -7,7 +7,6 @@
 
 import type { LayeredGraph, LayoutEntity, LayoutLink } from "./layeredGraph";
 
-/** Right-to-left + left-to-right sweep pairs after the seeding pass. */
 const SWEEP_PAIRS = 8;
 /** Gap between the sinks as first stacked: room for their feeders to settle between them. */
 const SINK_SEED_GAP_CELLS = 4;

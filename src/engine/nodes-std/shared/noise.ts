@@ -26,9 +26,8 @@ import type { FXGLSLTypeName, FXValueType } from "../../core/socket/FXValueType"
 import { FX_VALUE_TYPES, NUMERIC_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
- * Noise nodes, shared by the render and behavior backends; the aggregate `FX_SHARED_MATH_NODES`
- * lives in `shared/math.ts`. Each node only shapes its inputs and calls one registry function
- * (`core/ir/noise/FXNoiseFunctions.Internal.ts`), which owns the per-tier implementations.
+ * Noise nodes. Each shapes its inputs and calls one registry function (core/ir/noise), which holds
+ * the per-tier implementations.
  */
 
 /** float / vec2 / vec3 - `noise`'s widths (1D: a coherent random walk over e.g. time). */
@@ -211,9 +210,8 @@ export const RANDOM_RANGE = {
 } as const;
 
 /**
- * Hash: a stable random in `[min, max)` per `seed` (default: the particle's id, a VFX mesh's own
- * seed), each component
- * independent. Equal seeds give equal values; a different `salt` gives another, unrelated draw.
+ * Stable random in `[min, max)` per `seed` (default: the particle id, or the mesh's own seed).
+ * Components are independent, and a different `salt` gives another draw.
  */
 export const fxHash = defineNode({
   type: "hash",

@@ -52,7 +52,6 @@ export function createViewportTabs(side: ViewportTabsSide): ViewportTabs {
 
   const groups: { tab: HTMLElement; panel: HTMLElement }[] = [];
   let activeIndex = 0;
-  // Collapsed at start: only the strip shows until a tab is opened.
   let collapsed = true;
 
   const paint = (): void => {
@@ -133,7 +132,6 @@ export function createViewportTabs(side: ViewportTabsSide): ViewportTabs {
     collapse,
     collapseOnInteraction(host): void {
       const onInteraction = (event: Event): void => {
-        // A tab's own press opens or collapses it already.
         if (!(event.target instanceof Node && strip.contains(event.target))) {
           collapse();
         }

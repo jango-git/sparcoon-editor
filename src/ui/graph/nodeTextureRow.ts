@@ -90,7 +90,7 @@ export function buildTextureAssetRows(
     paintPreview(name);
   });
 
-  // Swallow pointerdown on the preview so it never starts a node drag.
+  // Do not start a node drag.
   preview.addEventListener("pointerdown", (event) => event.stopPropagation());
   return [
     dependencies.labelledRow(label, picker.element),

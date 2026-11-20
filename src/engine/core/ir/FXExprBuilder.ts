@@ -33,22 +33,17 @@ function isFloat(type: FXValueType): boolean {
 }
 
 /**
- * float/vec2/vec3/vec4 - matrices are excluded even though `mat2` shares `vec4`'s component
- * count (4): a matrix is never swizzled or splatted, it uses the dedicated matrix rules below.
- * `ivecN` is excluded the same way (`ivec2` also has 2 components) so it never qualifies for
- * swizzle/construct/float-splat here - int values are cast explicitly (`toInt`/`toFloat`), never
- * implicitly reshaped alongside float/vecN.
+ * `float` or `vecN`. Matrices and `int`/`ivecN` are excluded although they share component counts
+ * (`mat2` and `vec4`, `ivec2` and `vec2`): they are never swizzled, splatted or implicitly
+ * reshaped.
  */
 function isVector(type: FXValueType): boolean {
   return !isMatrixType(type) && !isIntType(type) && type.components >= 2 && type.components <= 4;
 }
 
 /**
- * float/vecN, OR int/ivecN. `arithmeticResultType`'s only path an int/ivecN type can reach is
- * the `a.id === b.id` branch below (same-family arithmetic, valid GLSL in both the baseline and
- * standard tiers for `+`/`-`/`*`) - `isFloat`/`isVector` still only ever recognize the float
- * family, so the
- * float<->int splat branches can never fire for a mismatched pair; int<->float stays rejected.
+ * `float`/`vecN` or `int`/`ivecN`. Only the same-type branch of `arithmeticResultType` accepts
+ * the `int` family, so int and float never mix; the splat branches stay float-only.
  */
 function isScalarOrVector(type: FXValueType): boolean {
   return isFloat(type) || isVector(type) || isIntType(type);
@@ -188,7 +183,6 @@ function bin(op: FXBinOp, a: FXExpr, b: FXExpr): FXExpr {
   return { kind: "bin", type: binResultType(op, a.type, b.type), op, a, b };
 }
 
-/** A float literal. */
 export function lit(value: number): FXExpr {
   return { kind: "lit", type: FX_VALUE_TYPES.float, values: [value] };
 }
@@ -250,22 +244,18 @@ export function lt(a: FXExpr, b: FXExpr): FXExpr {
   return bin("lt", a, b);
 }
 
-/** `a <= b` -> float. */
 export function le(a: FXExpr, b: FXExpr): FXExpr {
   return bin("le", a, b);
 }
 
-/** `a > b` -> float. */
 export function gt(a: FXExpr, b: FXExpr): FXExpr {
   return bin("gt", a, b);
 }
 
-/** `a >= b` -> float. */
 export function ge(a: FXExpr, b: FXExpr): FXExpr {
   return bin("ge", a, b);
 }
 
-/** `a == b` -> float. */
 export function eq(a: FXExpr, b: FXExpr): FXExpr {
   return bin("eq", a, b);
 }
@@ -285,8 +275,8 @@ export function neg(a: FXExpr): FXExpr {
 export type FXCallResolver = (fn: string, ...args: FXExpr[]) => FXExpr;
 
 /**
- * Builds a `call` resolver bound to one function-signature registry - each backend passes its
- * own map instead of relying on a shared mutable global, so there's no import-order coupling.
+ * Builds a `call` resolver bound to one function-signature registry. Each backend passes its own
+ * map.
  */
 export function createCall(
   signatures: ReadonlyMap<string, readonly FXCallSignature[]>,
@@ -483,9 +473,8 @@ export function coerceNumeric(expr: FXExpr, target: FXValueType): FXExpr {
 }
 
 /**
- * Explicit `float -> int` cast (GLSL `int(x)`, truncates toward zero) - the only sanctioned way
- * an int value enters a graph from a float one; no implicit int<->float coercion, ever. Scalar-only
- * for now; no `vecN -> ivecN` form yet.
+ * Explicit scalar `float -> int` cast (GLSL `int(x)`, truncates toward zero). The only way an int
+ * enters a graph from a float.
  */
 export function toInt(expr: FXExpr): FXExpr {
   if (!isFloat(expr.type)) {
@@ -595,7 +584,6 @@ const pureExprBuilders = {
  */
 export type FXExprBuilderApi = typeof pureExprBuilders & { readonly call: FXCallResolver };
 
-/** Assembles a builder facade whose `call` resolves against `signatures`. */
 export function createBuilders(
   signatures: ReadonlyMap<string, readonly FXCallSignature[]>,
 ): FXExprBuilderApi {

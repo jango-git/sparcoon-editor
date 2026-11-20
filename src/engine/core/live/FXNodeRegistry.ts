@@ -22,17 +22,11 @@ export class FXNodeRegistry<N extends FXGraphNode = FXGraphNode> {
     this.factories.set(type, factory);
   }
 
-  /** Whether a factory is registered for `type`. */
   public has(type: string): boolean {
     return this.factories.has(type);
   }
 
-  /**
-   * Creates a fresh node of `type`. Throws on a type mismatch. The "no factory registered" case
-   * (an unknown type) is an invariant-only backstop: every production caller checks {@link has}
-   * first and skips the call otherwise, so it never actually fires - kept as a plain `Error`, not
-   * worth a dedicated code.
-   */
+  /** Creates a fresh node of `type`. Throws on a type mismatch or when no factory is registered. */
   public create(type: string, parameters?: Readonly<Record<string, unknown>>): N {
     const factory = this.factories.get(type);
     if (factory === undefined) {

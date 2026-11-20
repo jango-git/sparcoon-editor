@@ -101,17 +101,17 @@
   "duplicate-target-input": {
     "message": "таргет \"{targetName}\" оголошує вхід \"{inputName}\" більше одного разу"
   },
-  "spawn-input-has-dt": {
-    "message": "таргет \"{targetName}\" оголошує вхід \"dt\", але spawn-кернел не має dt"
+  "input-parameter-not-in-phase": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" читає \"{parameter}\", але {phase}-кернел не має такого параметра"
   },
-  "dt-input-has-offsets": {
-    "message": "таргет \"{targetName}\" оголошує вхід \"dt\" зі зміщеннями; \"dt\" - синтезований крок часу і має бути без зміщень"
+  "input-has-several-sources": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" береться одразу з кількох місць: зміщень, зміщення успадкування та значення від хоста"
   },
   "target-input-offset-count-mismatch": {
     "message": "таргет \"{targetName}\" вхід \"{inputName}\" має {offsetCount} зміщення(нь), але його тип {typeId} потребує {typeComponents}"
   },
-  "offsetless-input-not-reserved": {
-    "message": "таргет \"{targetName}\" вхід \"{inputName}\" не оголошує зміщень; входи без зміщень зарезервовані для \"dt\", \"PARTICLE_INDEX\" та матриці моделі"
+  "input-has-no-source": {
+    "message": "таргет \"{targetName}\" вхід \"{inputName}\" нізвідки не береться: у нього немає зміщень, зміщення успадкування та значення від хоста"
   },
   "at-birth-input-not-model-matrix": {
     "message": "таргет \"{targetName}\" читає вхід \"{inputName}\" на момент народження, але з народженням зміщується лише матриця моделі"
@@ -139,9 +139,6 @@
   },
   "integration-ref-not-scalar": {
     "message": "таргет \"{targetName}\" інтеграція читає вхід \"{refName}\" як {typeId}; ref'и інтеграції мають бути скалярами"
-  },
-  "integration-reads-dt-in-spawn": {
-    "message": "таргет \"{targetName}\" інтеграція читає \"dt\", але spawn-кернел не має dt"
   },
   "kill-slot-in-spawn": {
     "message": "таргет \"{targetName}\" оголошує слот kill, але вбивати може лише ядро update"

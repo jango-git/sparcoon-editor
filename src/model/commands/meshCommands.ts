@@ -1,7 +1,4 @@
-/**
- * VFX-mesh edits: mirrors {@link addEmitter} & co. but touches only the render graph (a mesh has
- * no behavior graph/spawn events). Unlike emitters, the scene may hold zero meshes.
- */
+/** VFX mesh edits. A mesh has only a render graph, and a scene may hold zero meshes. */
 
 import {
   canRemoveObject,
@@ -13,7 +10,6 @@ import type { Store } from "../store";
 import { withFreshIds } from "./emitterCommands";
 import { nextIdentifier } from "./identifier";
 
-/** Commits `scene` as the source's new scene, leaving the rest of the document untouched. */
 function commitScene(store: Store, scene: SceneModel, kind: "structural" | "view"): void {
   store.commit({ ...store.getSource(), scene }, kind);
 }
@@ -60,10 +56,7 @@ export function removeVfxMesh(store: Store, id: string): void {
   commitScene(store, { ...scene, meshes, activeMeshId, activeGraphKind }, "structural");
 }
 
-/**
- * Toggles VFX mesh `id`'s outline/preview visibility (the outline's eye button). Editor-only state,
- * like {@link toggleEmitterHidden} - commits as a view edit (no recompile). No-op for an unknown id.
- */
+/** Toggles mesh `id`'s preview visibility. Editor-only, so a view edit. */
 export function toggleVfxMeshHidden(store: Store, id: string): void {
   const scene = store.getSource().scene;
   if (!scene.meshes.some((mesh) => mesh.id === id)) {
@@ -94,7 +87,7 @@ export function selectVfxMesh(store: Store, id: string): void {
   commitScene(store, { ...scene, activeMeshId: id, activeGraphKind: "vfxMesh" }, "structural");
 }
 
-/** Renames mesh `id`. A blank name is rejected (no-op); commits as a view edit (no recompile). */
+/** Renames mesh `id`. A blank name is a no-op. */
 export function renameVfxMesh(store: Store, id: string, name: string): void {
   const trimmed = name.trim();
   const scene = store.getSource().scene;
@@ -111,7 +104,6 @@ export function renameVfxMesh(store: Store, id: string, name: string): void {
   );
 }
 
-/** A default name that doesn't clash with an existing mesh (`Mesh`, `Mesh 2`, ...). */
 function uniqueName(meshes: readonly VfxMeshDoc[]): string {
   const taken = new Set(meshes.map((mesh) => mesh.name));
   if (!taken.has("Mesh")) {

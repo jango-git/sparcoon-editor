@@ -1,8 +1,3 @@
-/**
- * Warnings about a VFX mesh's render graph that do not stop it from running but would surprise its
- * author.
- */
-
 import { collectSlotReads } from "../engine/core/compiler/collectSlotReads";
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import type { FXGraph } from "../engine/core/FXGraph";
@@ -19,10 +14,9 @@ const IGNORES_TRANSFORM: FXCompilerError = {
 };
 
 /**
- * A mesh material projects from the render graph's own transform outputs, never from the object's
- * matrix - so a mesh whose transform outputs never read `modelMatrix` stays where its vertices
- * are, unmoved by its transform, its keyframes and the effect's placement in the host scene alike.
- * Reading it elsewhere (to tint by world position, say) moves nothing, so only those outputs count.
+ * A mesh is placed by the render graph's transform outputs, not by the object's matrix. If they
+ * never read `modelMatrix`, the mesh ignores its transform, its keyframes and the effect's
+ * placement in the host scene. Reads elsewhere move nothing, so only those outputs count.
  */
 export function meshTransformWarnings(graph: FXGraph<FXGraphNode>): readonly FXCompilerError[] {
   return collectSlotReads(graph, TRANSFORM_SLOTS).has("modelMatrix") ? [] : [IGNORES_TRANSFORM];

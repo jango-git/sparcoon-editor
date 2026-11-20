@@ -1,8 +1,6 @@
 /**
- * The checks an emitter's strips (its trail and ribbon graphs) and their particles are held to
- * beyond their own compile - shared by the live preview and the export, so the two never accept
- * different strips - and the geometry a strip artifact names (the runtime builds a strip's own
- * segment quad and ignores it).
+ * Checks of an emitter's trail and ribbon graphs beyond their own compile, and of the geometry a
+ * strip artifact names (the runtime builds a strip's own segment quad and ignores it).
  */
 
 import type { FXGeometrySource } from "sparcoon";

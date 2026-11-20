@@ -114,7 +114,6 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   // just the object rows, playhead, and inspector.
   const rows = createElement("div", { className: "timeline__rows" });
   const scroll = createElement("div", { className: "timeline__scroll" }, [rows]);
-  // The end caps double as grab handles: pressing anywhere on the caret scrubs (see beginPlayheadScrub).
   const playhead = createElement("div", { className: "timeline__playhead" }, [
     createElement("div", { className: "timeline__playhead-cap timeline__playhead-cap--top" }),
     createElement("div", { className: "timeline__playhead-cap timeline__playhead-cap--bottom" }),
@@ -122,7 +121,6 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   const scrubPlayhead = (down: PointerEvent): void =>
     beginPlayheadScrub(down, { rows, transport, duration, fps });
   playhead.addEventListener("pointerdown", scrubPlayhead);
-  // The label column's divider, over the column's own right border (see attachLabelResizer).
   const labelResizer = createElement("div", {
     className: "resizer resizer--v timeline__label-resizer",
   });
@@ -186,7 +184,6 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     markers: () => markers,
     selection,
     refresh,
-    // A plain left-click on empty lane also seeks the caret to that frame (drag still marquees).
     onEmptyClick: (clientX) => seekAtClientX(clientX),
   };
   const onItemPointerDown: ItemPointerHandler = (down, ref) =>
@@ -236,11 +233,8 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
   router.registerPanel(EditorPanel.Timeline, [
     { code: "Delete", run: deleteSelection },
     { code: "Backspace", run: deleteSelection },
-    // Blender-style delete alias, same as the graph panel's KeyX.
     { code: "KeyX", run: deleteSelection },
-    // F frames the whole timeline into view (Blender-style "view all").
     { code: "KeyF", run: (): void => viewport.fitTimeline() },
-    // Same modifier pattern as the graph panel's own copy/paste (preventDefault: false on copy).
     { code: "KeyC", modifier: true, run: copySelection, preventDefault: false },
     { code: "KeyV", modifier: true, run: pasteClipboard },
   ]);
@@ -254,7 +248,7 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
     clearChildren(rows);
     markers = [];
     reactionLabels = [];
-    // Recolor the caret while the timeline is infinite (an infinite play exists, task 2).
+    // Recolor the caret while an infinite play exists.
     playhead.classList.toggle("timeline__playhead--infinite", transport.isInfinite());
     const total = duration();
     // Exactly one object is "active" at a time (the selected entity - VFX group, emitter, or mesh);
@@ -329,7 +323,6 @@ export function createTimelinePanel(context: EditorContext): HTMLElement {
       }
     }
     refresh();
-    // Re-apply zoom + reposition the caret against the freshly rebuilt lanes.
     viewport.refresh();
   }
 

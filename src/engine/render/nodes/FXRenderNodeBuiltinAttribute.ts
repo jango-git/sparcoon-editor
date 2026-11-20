@@ -7,14 +7,8 @@ import { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 
 /**
- * Render node: reads all four host builtins (position/age/lifetime/id) at once, one output
- * socket each - the fixed-shape counterpart of `custom-attribute`'s by-name picker. Reads
- * the `PARTICLE_*` target inputs directly (no varying, no buffer), so it carries no
- * `attributeRequest` and takes no params - unlike a custom attribute, its shape never varies
- * per instance.
- *
- * Stage-flexible: every builtin is exposed in both stages, so placement is inferred from
- * consumers rather than fixed.
+ * Reads position, age, lifetime and id from the `PARTICLE_*` inputs, one socket each. No
+ * `attributeRequest`, no params. Stage-flexible.
  */
 export class FXRenderNodeBuiltinAttribute extends FXRenderNode {
   public readonly type = "builtin-attribute";
@@ -29,12 +23,10 @@ export class FXRenderNodeBuiltinAttribute extends FXRenderNode {
     return Object.values(FX_READABLE_CORE_BUILTINS).map((builtin) => builtin.targetInput);
   }
 
-  /** Palette metadata (category `attribute`; reads all four builtins, writes nothing). */
   public static describe(): FXNodeMeta {
     return BUILTIN_ATTRIBUTE_META;
   }
 
-  /** Four target-input reads, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

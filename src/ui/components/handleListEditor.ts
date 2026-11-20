@@ -1,9 +1,6 @@
 /**
- * The shared spine of the ramp and curve editors: a selectable list of draggable handles that emits
- * its value live and re-syncs from external state without echoing its own edit. The two are
- * otherwise different widgets - a 1D color bar (CSS gradient) versus a 2D scalar curve (SVG) - so
- * this base owns ONLY the selection + emit + teardown state machine. Every subclass supplies its own
- * item model, preview, handle DOM, drag motion and inline editor through the abstract hooks below.
+ * Base of the ramp and curve editors. Owns selection, live emit and teardown. Subclasses supply the
+ * item model, preview, handle DOM, drag and inline editor.
  */
 
 import type { ValueComponent } from "../primitives/component";

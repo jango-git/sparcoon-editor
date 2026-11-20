@@ -1,8 +1,6 @@
 /**
- * The behavior graph's structural hash - a whole-graph cache key over node types, resolved generic
- * `T`, and (since a node's `phase` can be instance-variable) its resolved placement phase. Used both
- * standalone (the live orchestrator's recompile-vs-rebind gate) and inside a real compile, so the
- * two stay byte-for-byte in sync.
+ * Whole-graph cache key over node types, resolved generics and inferred phases. Shared by the
+ * recompile-or-rebind gate and the compile, so they agree.
  */
 
 import { prepareCompile } from "../core/compiler/compileDriver.Internal";
@@ -17,11 +15,8 @@ import { phaseTag, resolvePlacementPhases } from "./FXKernelValidation.Internal"
 import type { FXBehaviorTargets } from "./FXParticleBehaviorTarget";
 
 /**
- * A behavior node's `phase` is instance-variable (a `const` node may be SPAWN or
- * UPDATE) and routes it to a different phase kernel, so it is structural - folded
- * into the hash here rather than left to each node's `cacheKey`. A node's resolved
- * generic type `T` is folded in the same way (it decides the shape of the emitted
- * code); `types` is the whole-graph resolution keyed by node id.
+ * Phase and resolved type `T` are folded into the hash here: both change the emitted code and are
+ * not in a node's `cacheKey`.
  */
 export function behaviorNodeKey(
   types: ReadonlyMap<string, FXValueType>,
@@ -30,11 +25,6 @@ export function behaviorNodeKey(
   return (id, node) => `${phaseTag(phases, id, node)}${genericTypeTag(types, id)}`;
 }
 
-/**
- * Structural hash of a whole behavior graph, without emitting a kernel - matches
- * the hash `compileBehavior` produces, for the live orchestrator's
- * recompile-vs-rebind gate.
- */
 export function previewBehaviorHash(
   graph: FXGraph<FXBehaviorNode>,
   targets: FXBehaviorTargets,

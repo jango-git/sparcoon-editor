@@ -14,13 +14,11 @@ export const actionIcons = {
     <path d="M9.5 4l3 3-3 3"/>
   </svg>`,
 
-  // A monitor: the content screen (textures/HDRIs/meshes + export), opened from the middlebar.
   content: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="2" y="3" width="12" height="8" rx="1.5"/>
     <path d="M6 13.5h4M8 11v2.5"/>
   </svg>`,
 
-  // A waste bin: the generic destructive-delete glyph, behind the countdown-confirm remove control.
   trash: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3 4.5h10"/>
     <path d="M6.2 4.5V3.2a1 1 0 0 1 1-1h1.6a1 1 0 0 1 1 1V4.5"/>
@@ -28,7 +26,6 @@ export const actionIcons = {
     <path d="M6.7 6.8v3.9M9.3 6.8v3.9"/>
   </svg>`,
 
-  // Three cards joined by right-angled wires: the graph's auto-layout.
   arrange: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="1.5" y="2.5" width="4" height="3"/>
     <rect x="10.5" y="2.5" width="4" height="3"/>

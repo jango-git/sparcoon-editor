@@ -5,30 +5,22 @@ import type { FXNodeDefinition } from "../core/nodes/defineNode";
 import type { FXNodeMeta } from "../core/nodes/FXSocketSpec";
 import { FX_STANDARD_NODES } from "../nodes-std/index";
 
-/** A reference to one output socket of a builder node. */
 export interface FXOutHandle {
   readonly nodeId: string;
   readonly socketKey: string;
 }
 
-/** Plain-data parameter bag for a node, matching what a snapshot serializes. */
 export type FXBuilderParams = Readonly<Record<string, unknown>>;
 
-/** Map of a node's input socket keys to the output handles feeding them. */
 export type FXBuilderInputs = Readonly<Record<string, FXOutHandle>>;
 
-/** What {@link FXGraphBuilder.add} accepts as a node type: a registered `type` string or a definition carrying it. */
 export type FXNodeTypeRef = string | FXNodeDefinition;
 
-/** Explicit socket overrides for {@link FXNodeHandle.pipe} when auto-resolution is ambiguous. */
 export interface FXPipeOptions {
-  /** Output socket key on the source node (defaults to its first output). */
   readonly from?: string;
-  /** Input socket key on the piped node (defaults to its sole/only-required input). */
   readonly into?: string;
 }
 
-/** A handle to a node just added to an {@link FXGraphBuilder}. */
 export class FXNodeHandle {
   constructor(
     public readonly id: string,
@@ -36,14 +28,13 @@ export class FXNodeHandle {
     private readonly metadata: FXNodeMeta | undefined,
   ) {}
 
-  /** A reference to the output socket `key` of this node. */
   public out(key: string): FXOutHandle {
     return { nodeId: this.id, socketKey: key };
   }
 
   /**
-   * Sugar: adds `type` fed by this node's output and returns the new handle. Source/target
-   * sockets default to each node's unambiguous socket; pass {@link FXPipeOptions} to disambiguate.
+   * Adds `type` fed by this node's output. Sockets default to the unambiguous one. Pass
+   * FXPipeOptions otherwise.
    */
   public pipe(
     type: FXNodeTypeRef,
@@ -76,11 +67,8 @@ export class FXNodeHandle {
         `FXGraphBuilder.pipe: cannot infer the target input of "${this.id}" without node metadata - pass { into }`,
       );
     }
-    // A single required input is the unambiguous pipe target. Otherwise fall back to the
-    // node's first input: by convention a node declares its primary flow input first and
-    // its editable "value on the pin" config inputs (which carry their own defaults and
-    // are rarely piped into) after, so the first input is the natural target. `{ into }`
-    // overrides this for the exceptions.
+    // One required input is the target. Otherwise the first input, which nodes declare as their
+    // primary flow input. `{ into }` overrides.
     const required = this.metadata.inputs.filter((socket) => socket.required === true);
     const pick = required.length === 1 ? required[0] : this.metadata.inputs[0];
     if (pick === undefined) {
@@ -93,16 +81,9 @@ export class FXNodeHandle {
 }
 
 /**
- * Code-first assembler for an {@link FXGraphSnapshotData}. It builds *exactly* the wire format
- * an editor would serialize - there is no second path around snapshots, so a builder-authored
- * graph and an editor-authored one compile identically.
- *
- * Node ids are generated deterministically as `${type}#${index}` (a per-type counter in
- * insertion order), so re-running the same builder produces stable ids - the precondition for a
- * live rebind when only values changed.
- *
- * Prefer {@link buildRenderGraph} / {@link buildBehaviorGraph}, which wire in the standard-library
- * metadata so {@link FXNodeHandle.pipe} can resolve default sockets.
+ * Code-first assembler of an FXGraphSnapshotData. Node ids are `${type}#${index}` (per-type
+ * counter), so rerunning gives the same ids, which a live rebind needs. Prefer buildRenderGraph /
+ * buildBehaviorGraph, which supply node metadata for `pipe`.
  */
 export class FXGraphBuilder {
   private readonly counters = new Map<string, number>();
@@ -110,16 +91,8 @@ export class FXGraphBuilder {
   private readonly connectionsList: FXConnection[] = [];
   private readonly bindingsList: FXOutputBinding[] = [];
 
-  /**
-   * @param resolveMeta - Optional node-metadata lookup by type, used to resolve
-   * default sockets in {@link FXNodeHandle.pipe}. Omitted for a bare builder.
-   */
   constructor(private readonly resolveMeta?: (type: string) => FXNodeMeta | undefined) {}
 
-  /**
-   * Adds a node of `type` with optional `parameters` and pre-wired `inputs`
-   * (socketKey -> source handle). Returns a {@link FXNodeHandle} for further wiring.
-   */
   public add(
     type: FXNodeTypeRef,
     parameters?: FXBuilderParams,
@@ -142,19 +115,16 @@ export class FXGraphBuilder {
     return new FXNodeHandle(id, this, this.metaFor(type));
   }
 
-  /** Connects an output handle to a specific input socket on a node. */
   public connect(from: FXOutHandle, to: FXOutHandle): this {
     this.connectionsList.push({ from, to });
     return this;
   }
 
-  /** Binds a node output to one of the target's output slots (e.g. `"albedo"`, `"velocity"`). */
   public bind(slot: string, from: FXOutHandle): this {
     this.bindingsList.push({ slot, from });
     return this;
   }
 
-  /** Produces the finished snapshot - the same wire format an editor emits. */
   public build(): FXGraphSnapshotData {
     return {
       version: FX_SNAPSHOT_VERSION,
@@ -172,7 +142,6 @@ export class FXGraphBuilder {
   }
 }
 
-/** Builds a by-type metadata lookup over the standard nodes applicable to `domain`. */
 function standardMetaResolver(
   domain: "render" | "behavior",
 ): (type: string) => FXNodeMeta | undefined {
@@ -186,9 +155,7 @@ function standardMetaResolver(
 }
 
 /**
- * Assembles a render-graph snapshot code-first. The builder handed to `buildCallback` knows
- * the standard render/shared node metadata, so {@link FXNodeHandle.pipe} resolves
- * default sockets.
+ * Assembles a render-graph snapshot code-first.
  *
  * @example
  * ```ts
@@ -207,11 +174,7 @@ export function buildRenderGraph(
   return builder.build();
 }
 
-/**
- * Assembles a behavior-graph snapshot code-first. The builder handed to `buildCallback` knows
- * the standard behavior/shared node metadata, so {@link FXNodeHandle.pipe} resolves
- * default sockets.
- */
+/** Assembles a behavior-graph snapshot code-first. */
 export function buildBehaviorGraph(
   buildCallback: (builder: FXGraphBuilder) => void,
 ): FXGraphSnapshotData {

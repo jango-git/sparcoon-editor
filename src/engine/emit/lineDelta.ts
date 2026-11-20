@@ -1,9 +1,6 @@
 /**
- * The array literal of `elements` (each an expression: a line written out, a helper's name),
- * taking each long enough run it shares with `base` (the elements of the array `baseExpression`
- * names in the emitted module) as a slice of it and writing out the rest - shorter than the
- * elements in full wherever the two mostly agree. Evaluated once, when the module loads. A run is
- * a slice only past `MIN_SLICE_LENGTH` characters: below it the slice costs more than the elements.
+ * Array literal of `elements` that slices runs shared with `base` (a run shorter than
+ * MIN_SLICE_LENGTH is written out). Evaluated once at module load.
  */
 export function lineDeltaLiteral(
   elements: readonly string[],
@@ -30,14 +27,12 @@ export function lineDeltaLiteral(
 
 const MIN_SLICE_LENGTH = 48;
 
-/** A stretch of the elements from `at` equal to `base` from `from`. */
 interface FXSharedRun {
   readonly at: number;
   readonly from: number;
   readonly length: number;
 }
 
-/** The runs of a longest common subsequence of `lines` and `base`, in order. */
 function sharedRuns(lines: readonly string[], base: readonly string[]): FXSharedRun[] {
   const rows = lines.length;
   const columns = base.length;

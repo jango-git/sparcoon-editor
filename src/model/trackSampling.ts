@@ -1,13 +1,12 @@
 /**
- * Samples an {@link AnimationTrack} at a point in time (held before/after, lerped between,
- * componentwise for vectors); delegates to sparcoon's `FXEffectSampling.Internal.ts` so the editor and exported runtime always agree.
+ * Samples a track at a time: held outside the keys, interpolated between them, componentwise for
+ * vectors. Delegates to the runtime's sampling code so the editor and the export agree.
  */
 
 import { sampleTrack as sharedSampleTrack } from "sparcoon/editor";
 
 import type { AnimationTrack } from "./editorState";
 
-/** The interpolated value of `track` at time `time`, or `undefined` if the track has no keys. */
 export function sampleTrack(
   track: AnimationTrack,
   time: number,

@@ -7,6 +7,8 @@
  *   wire feeding it - and an output in the `from.socketKey` of every wire or sink binding reading
  *   it. Each old name is mapped to its new one: the type first, then the inputs and outputs of the
  *   type it now has.
+ * - `read-attribute` split into `builtin-attribute` and `custom-attribute`, and
+ *   `read-attribute-components` became `custom-attribute-split`.
  * - The `geometry` parameter a trail's or ribbon's surface sink was once created with: a strip
  *   builds its own segment quad, and its sink offers no geometry choice.
  *
@@ -173,6 +175,70 @@ function renamedGraph(raw: unknown): unknown {
   };
 }
 
+/** The core builtins a `read-attribute` node read by name, each an output of `builtin-attribute`. */
+const BUILTIN_ATTRIBUTE_NAMES: ReadonlySet<string> = new Set(["position", "age", "lifetime", "id"]);
+
+/**
+ * A stored graph with every `read-attribute` and `read-attribute-components` node under the node
+ * that replaced it. A read of a core builtin became `builtin-attribute`, which has no parameters
+ * and one output per builtin, so the wires and sink bindings reading its `value` read the output
+ * named after the builtin. A read of a user attribute became `custom-attribute`, which has no
+ * `phase`, and a split read became `custom-attribute-split`.
+ */
+function withSplitAttributeReads(raw: unknown): unknown {
+  if (!isRecord(raw) || !isRecord(raw["nodes"])) {
+    return raw;
+  }
+  const builtinReads = new Map<string, string>();
+  let changed = false;
+  const nodes: Record<string, unknown> = {};
+  for (const [id, node] of Object.entries(raw["nodes"])) {
+    const type = storedTypeOf(node);
+    if (!isRecord(node) || (type !== "read-attribute" && type !== "read-attribute-components")) {
+      nodes[id] = node;
+      continue;
+    }
+    changed = true;
+    if (type === "read-attribute-components") {
+      nodes[id] = { ...node, type: "custom-attribute-split" };
+      continue;
+    }
+    const parameters = isRecord(node["parameters"]) ? { ...node["parameters"] } : {};
+    const name = parameters["name"];
+    if (typeof name === "string" && BUILTIN_ATTRIBUTE_NAMES.has(name)) {
+      builtinReads.set(id, name);
+      nodes[id] = { ...node, type: "builtin-attribute", parameters: {} };
+      continue;
+    }
+    delete parameters["phase"];
+    nodes[id] = { ...node, type: "custom-attribute", parameters };
+  }
+  if (!changed) {
+    return raw;
+  }
+  const readingBuiltin = (entry: unknown): unknown => {
+    if (!isRecord(entry) || !isRecord(entry["from"])) {
+      return entry;
+    }
+    const from = entry["from"];
+    const nodeId = from["nodeId"];
+    const name = typeof nodeId === "string" ? builtinReads.get(nodeId) : undefined;
+    return name === undefined || from["socketKey"] !== "value"
+      ? entry
+      : { ...entry, from: { ...from, socketKey: name } };
+  };
+  const connections = raw["connections"];
+  const outputBindings = raw["outputBindings"];
+  return {
+    ...raw,
+    nodes,
+    ...(Array.isArray(connections) ? { connections: connections.map(readingBuiltin) } : {}),
+    ...(Array.isArray(outputBindings)
+      ? { outputBindings: outputBindings.map(readingBuiltin) }
+      : {}),
+  };
+}
+
 /** A stored strip graph without the `geometry` parameter on its surface sink. */
 function withoutSinkGeometry(raw: unknown): unknown {
   if (!isRecord(raw) || !isRecord(raw["nodes"])) {
@@ -211,13 +277,15 @@ function withGraphs(
 
 function upgradeEmitter(emitter: unknown): unknown {
   const strips = withGraphs(emitter, ["trailGraph", "ribbonGraph"], (graph) =>
-    withoutSinkGeometry(renamedGraph(graph)),
+    withoutSinkGeometry(renamedGraph(withSplitAttributeReads(graph))),
   );
-  return withGraphs(strips, ["renderGraph", "behaviorGraph"], renamedGraph);
+  return withGraphs(strips, ["renderGraph", "behaviorGraph"], (graph) =>
+    renamedGraph(withSplitAttributeReads(graph)),
+  );
 }
 
 function upgradeMesh(mesh: unknown): unknown {
-  return withGraphs(mesh, ["renderGraph"], renamedGraph);
+  return withGraphs(mesh, ["renderGraph"], (graph) => renamedGraph(withSplitAttributeReads(graph)));
 }
 
 export const upgradeFromFormat1: ProjectUpgrade = (body) => {

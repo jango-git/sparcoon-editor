@@ -1,8 +1,6 @@
 /**
- * The checks a render or trail graph's attribute reads are held to against what the behavior
- * graph actually writes - shared by the live preview and the export, so the two never disagree on
- * what an effect does. (Width and declaration checks are errors elsewhere: `trailChecks.ts`,
- * `undeclaredAttributeErrors`.)
+ * Checks of a render or trail graph's attribute reads against what the behavior graph writes. Width
+ * and declaration checks are errors elsewhere (`trailChecks.ts`, `undeclaredAttributeErrors`).
  */
 
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
@@ -22,12 +20,9 @@ export function kernelWrittenBuffers(kernel: FXCompiledKernel): ReadonlySet<stri
 }
 
 /**
- * A read of a declared attribute the behavior never writes. Attributes have no defaults and a
- * freshly born particle's slot is zeroed, so such a read is always 0 - the runtime even drops the
- * attribute for a zero constant. Valid, so only a warning, but almost always a missing Store
- * Attribute. One per attribute, attributed to its first reading node (by id, so stable); only
- * reachable reads count, as for the attribute requests themselves. An undeclared read is left to
- * `undeclaredAttributeErrors`, which already refuses it.
+ * A declared attribute is read but never written, so it always reads 0 (a new particle's slot is
+ * zeroed). Warning only, because it is valid. One per attribute, on its first reading node by id.
+ * Only reachable reads count. An undeclared read is left to `undeclaredAttributeErrors`.
  */
 export function unwrittenAttributeWarnings(
   reader: FXGraph<FXGraphNode>,

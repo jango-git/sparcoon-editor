@@ -29,7 +29,6 @@ export function createSwitchControl(options: {
     { className: "switch", type: "button", attributes: { role: "switch" } },
     [createElement("span", { className: "switch__thumb" })],
   );
-  // Shares the editor's hover tooltip (not a native `title`), like every other control.
   attachTooltip(element, options.title, options.description);
 
   const paint = (): void => {

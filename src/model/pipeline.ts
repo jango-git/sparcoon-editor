@@ -1,7 +1,4 @@
-/**
- * The source -> derived recompute, coalesced to at most once per frame. Hands the scene to a
- * {@link SceneApplier} (the render layer), which drives one runtime emitter/mesh per doc and reports back snapshots + live-apply status.
- */
+/** Recomputes derived state from source, at most once per frame, through a {@link SceneApplier}. */
 
 import type { EditorAttribute } from "../domain/graphModel";
 import type { RenderSinkConfig, SpawnSinkConfig, StripSinkConfigs } from "../domain/nodePalette";
@@ -65,10 +62,7 @@ export interface SceneApplyResult {
   readonly behaviorStatus: LiveApplyStatus;
   /** The active emitter's strip graphs and their statuses; a strip it has not is absent. */
   readonly strips?: { readonly [K in StripName]?: StripApplyOutcome };
-  /**
-   * An emitter's own `GraphApplyResult.emitterRebuilt` (absent for a mesh, which has no
-   * render-only-swap path). Folded into `recompiled` below, not a signal consumers need on its own.
-   */
+  /** The emitter's `emitterRebuilt` (absent for a mesh). Folded into `recompiled`. */
   readonly emitterRebuilt?: boolean;
   /**
    * Whether this sync genuinely rebuilt an emitter/mesh (vs a value-only rebind); consumers use

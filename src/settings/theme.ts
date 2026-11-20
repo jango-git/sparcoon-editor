@@ -34,7 +34,6 @@ export function setThemeMode(mode: ThemeMode): void {
   emit();
 }
 
-/** Subscribe to theme-mode changes (a user toggle or, in auto mode, an OS flip). */
 export function onThemeChanged(listener: () => void): () => void {
   return changed.on(listener);
 }

@@ -203,7 +203,6 @@ function safeNormalize(
   return local(hint, fn.div(v, safeLength));
 }
 
-/** Cyclic x/y/z order used to resolve an axis collision and the sign of a cross-product column. */
 const AXES: readonly string[] = ["x", "y", "z"];
 
 /**
@@ -255,8 +254,7 @@ export function resolveAlignAxes(
   derivedFromVelocityFirst: boolean;
 } {
   const velocityIndex = AXES.indexOf(axis);
-  // (velocityIndex + 1) % 3 is 0/1/2 for every possible AXES.indexOf result (-1 included), so this
-  // always lands inside AXES's three entries; the guard documents that instead of asserting past it.
+  // Always inside AXES: (velocityIndex + 1) % 3 is 0..2 even for indexOf -1.
   const nextAxis = AXES[(velocityIndex + 1) % 3];
   if (nextAxis === undefined) {
     throw new Error("axis cycle index landed outside the AXES table");
@@ -299,12 +297,8 @@ export const fxAlignToVelocity = defineNode({
   category: "matrix",
   inputs: {
     velocity: { type: "vec3", value: [0, 0, 0] },
-    // The "point" camera model only: where this particle actually renders. Unconnected -> the raw
-    // simulated PARTICLE_POSITION; override when the graph renders it somewhere else (e.g.
-    // attached to the emitter via fxTransformPoint(fxWorldMatrix, ...)), or the camera direction
-    // is wrong. Deliberately `required: false` with no `targetInput` default (see
-    // cameraDirectionForModel) so this node stays legal on a target without PARTICLE_POSITION as
-    // long as cameraModel never resolves to "point".
+    // "point" model only: where the particle renders. Unwired reads PARTICLE_POSITION (see
+    // pointCameraDirection).
     position: { type: "vec3", required: false },
   },
   outputs: { out: { type: "mat3" } },
@@ -314,12 +308,8 @@ export const fxAlignToVelocity = defineNode({
     cameraAxis: ALIGN_CAMERA_AXIS_PARAM,
     cameraModel: CAMERA_MODEL_PARAM,
   },
-  // normalize velocity (length(7) + guard(2) + divide(6) = 15) + optional flip negate (3) +
-  // camera direction (parallel: transpose(0) + mat3*vec3(15) = 15; point: sub(3) + normalize(15)
-  // = 18) + orthogonalTowardTarget (cross(9) + length(7) + smoothstep(8) + fallback cross
-  // (helper-pick guard(3) + cross(9) = 12) + mix(9) + final cross+normalize (9 +
-  // unguarded-normalize(length(7)+divide(6))=13 = 22) = 67) + one cross product for the derived
-  // axis (9).
+  // Op count: velocity normalize 15, flip 3, camera direction 15 or 18, orthogonalTowardTarget 67,
+  // derived cross 9.
   cost: ({ params }) =>
     15 + (params.flip === true ? 3 : 0) + (params.cameraModel === "point" ? 18 : 15) + 67 + 9,
   reads: (params) => cameraModelReads(params["cameraModel"]),
@@ -372,7 +362,6 @@ export const fxScaleMatrix = defineNode({
   inputs: { scale: { type: "vec3", value: [1, 1, 1] } },
   outputs: { out: { type: "mat3" } },
   params: {},
-  // Swizzle + construct - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => {
     const scaleX = fn.swizzle(inputs["scale"], "x");
@@ -407,7 +396,6 @@ export const fxCombineMat2 = defineNode({
   },
   outputs: { out: { type: "mat2" } },
   params: {},
-  // `construct` assembles a matrix from columns - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => ({ out: fn.construct(MAT2, inputs["x"], inputs["y"]) }),
 });
@@ -426,7 +414,6 @@ export const fxCombineMat3 = defineNode({
   },
   outputs: { out: { type: "mat3" } },
   params: {},
-  // `construct` assembles a matrix from columns - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => ({
     out: fn.construct(MAT3, inputs["x"], inputs["y"], inputs["z"]),
@@ -448,7 +435,6 @@ export const fxCombineMat4 = defineNode({
   },
   outputs: { out: { type: "mat4" } },
   params: {},
-  // `construct` assembles a matrix from columns - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => ({
     out: fn.construct(MAT4, inputs["x"], inputs["y"], inputs["z"], inputs["w"]),
@@ -537,7 +523,6 @@ export const fxTranslationMatrix = defineNode({
   inputs: { offset: { type: "vec3", value: [0, 0, 0] } },
   outputs: { out: { type: "mat4" } },
   params: {},
-  // `construct` assembles a matrix from columns - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => ({
     // Column-major: the translation lives in the fourth column (with w = 1).
@@ -711,7 +696,6 @@ export const fxWorldMatrix = defineNode({
   inputs: {},
   outputs: { out: { type: "mat4" } },
   params: {},
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: ["modelMatrix"],
   build: ({ target }) => ({ out: target.read("modelMatrix") }),
@@ -750,7 +734,6 @@ export const fxObjectVelocity = defineNode({
   inputs: {},
   outputs: { out: { type: "vec3" } },
   params: {},
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: ["objectVelocity"],
   build: ({ target }) => ({ out: target.read("objectVelocity") }),
@@ -813,7 +796,6 @@ export const fxViewMatrix = defineNode({
   inputs: {},
   outputs: { out: { type: "mat4" } },
   params: {},
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: ["viewMatrix"],
   build: ({ target }) => ({ out: target.read("viewMatrix") }),

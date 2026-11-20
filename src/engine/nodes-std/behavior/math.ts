@@ -36,7 +36,6 @@ export const fxReadState = defineNode({
       default: "PARTICLE_AGE",
     },
   },
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: (params) => [params["builtin"] as string],
   build: ({ params, target }) => ({ out: target.read(params.builtin) }),
@@ -54,7 +53,6 @@ export const fxDeltaTime = defineNode({
   inputs: {},
   outputs: { out: { type: "float" } },
   params: {},
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: ["dt"],
   build: ({ target }) => ({ out: target.read("dt") }),

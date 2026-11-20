@@ -28,10 +28,10 @@ export type FXCompilerErrorCode =
   | "target-offset-out-of-bounds"
   | "bad-target-input-identifier"
   | "duplicate-target-input"
-  | "spawn-input-has-dt"
-  | "dt-input-has-offsets"
+  | "input-has-no-source"
+  | "input-has-several-sources"
+  | "input-parameter-not-in-phase"
   | "target-input-offset-count-mismatch"
-  | "offsetless-input-not-reserved"
   | "at-birth-input-not-model-matrix"
   | "at-birth-input-not-in-spawn"
   | "at-birth-input-needs-lifecycle"
@@ -41,7 +41,6 @@ export type FXCompilerErrorCode =
   | "duplicate-integration-offset-write"
   | "integration-ref-not-target-input"
   | "integration-ref-not-scalar"
-  | "integration-reads-dt-in-spawn"
   | "integration-input-not-declared"
   | "kill-slot-in-spawn"
   | "kill-slot-needs-lifecycle"
@@ -132,8 +131,8 @@ export type FXCompilerErrorCode =
   | "hash-failed"
   | "rebind-failed"
   | "disposed"
-  // Raised by the editor around a compile, not by the compiler: what the materials built from a
-  // valid graph take of a GPU (domain/renderBudget.ts), and a VFX mesh blind to its own transform.
+  // Raised by the editor around a compile, not by the compiler: GPU limits of the built
+  // materials, and a VFX mesh blind to its own transform.
   | "render-attribute-budget"
   | "render-varying-budget"
   | "render-attribute-budget-baseline"
@@ -147,29 +146,27 @@ export type FXCompilerErrorCode =
   | "render-fragment-sampler-budget"
   | "render-fragment-sampler-budget-baseline"
   | "mesh-ignores-transform"
-  // An emitter's trail or ribbon graph on a depth-sorted emitter, a depth-sorted emitter that
-  // does not draw its particles, and an emitter that draws nothing (domain/stripChecks.ts).
+  // Strip checks: trail or ribbon graph on a depth-sorted emitter, a depth-sorted emitter that
+  // does not draw its particles, an emitter that draws nothing.
   | "trail-with-sort"
   | "ribbon-with-sort"
   | "sort-without-particles"
   | "emitter-draws-nothing"
-  // Warnings on an emitter's ribbon from its spawns: births that do not follow one another
-  // (bursts of several particles, reactions), and a Head with no play to show it
-  // (domain/stripChecks.ts).
+  // Ribbon warnings: births that do not follow one another (bursts, reactions), and a Head with
+  // no play to show it.
   | "ribbon-interleaved-births"
   | "ribbon-head-without-play"
-  // A Depth Fade node in a graph whose render mode writes depth, and a warning on a Depth Sample
-  // on an emitter simulated on the CPU (domain/sceneDepthChecks.ts).
+  // Depth Fade in a graph whose render mode writes depth; warning for Depth Sample on a CPU
+  // emitter.
   | "depth-fade-needs-blending"
   | "scene-depth-on-cpu"
-  // One Timeline Value name with two defaults across an entity's graphs (domain/nodePalette.ts).
+  // One Timeline Value name with two defaults across an entity's graphs.
   | "param-value-conflict"
-  // A warning: a render/trail read of an attribute the behavior never writes (domain/attributeChecks.ts).
+  // Warning: a render or trail read of an attribute the behavior never writes.
   | "attribute-never-written"
-  // A warning: an emitter whose longest particle lifetime cannot be read off its graph
-  // (domain/lifetimeBound.ts).
+  // Warning: an emitter whose longest particle lifetime cannot be read off its graph.
   | "lifetime-unbounded"
-  // A node sampling a mesh / volume asset the content library does not hold (domain/assetChecks.ts).
+  // A node samples a mesh or volume asset the content library does not hold.
   | "missing-mesh-asset"
   | "missing-volume-asset"
   | "inherit-missing"
@@ -181,11 +178,8 @@ export type FXCompilerErrorCode =
 export interface FXCompilerError {
   readonly code: FXCompilerErrorCode;
   readonly message: string;
-  /** Node the error is attributed to, when applicable. */
   readonly nodeId?: string;
-  /** Socket the error is attributed to, when applicable. */
   readonly socketKey?: string;
-  /** Target output slot the error is attributed to, when applicable. */
   readonly slot?: string;
   /** Named values `message` interpolated into English text - the localized-message resolver
    *  re-interpolates these into a translated template instead; absent until migrated. */
@@ -197,7 +191,6 @@ export interface FXCompilerError {
  * target reads) use this so a non-throwing boundary can fold it into a structured `invalid` result.
  */
 export class FXCompilerErrorException extends Error {
-  /** The structured error payload, ready to surface to the editor. */
   public readonly error: FXCompilerError;
 
   constructor(error: FXCompilerError) {
@@ -207,7 +200,6 @@ export class FXCompilerErrorException extends Error {
   }
 }
 
-/** Whether `value` is an {@link FXCompilerErrorException}. */
 export function isFXCompilerErrorException(value: unknown): value is FXCompilerErrorException {
   return value instanceof FXCompilerErrorException;
 }

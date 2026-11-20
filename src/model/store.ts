@@ -1,7 +1,6 @@
 /**
- * The single point of access to editor state. Commands mutate source only by producing a new
- * `SourceState` and calling `commit`, which distinguishes structural edits (recompute derived)
- * from view-only ones and announces each through {@link events}.
+ * Access to editor state. Commands produce a new `SourceState` and call `commit`, which announces a
+ * structural or view change through {@link events}.
  */
 
 import type { DerivedState, EditorState, SourceState } from "./editorState";
@@ -43,7 +42,6 @@ export class Store {
     return this.state.source;
   }
 
-  /** Applies a new source and records it, then announces the appropriate event. */
   public commit(next: SourceState, kind: ChangeKind): void {
     this.state.source = next;
     this.history.record(next, kind);
@@ -52,16 +50,14 @@ export class Store {
   }
 
   /**
-   * Applies a new source WITHOUT recording it in history - a live in-progress preview during a
-   * drag gesture. `history.present` stays unchanged, so the gesture's eventual `commit()` on
-   * release still records exactly one undo step for the whole gesture.
+   * Applies a source without recording it in history, as a preview during a drag. The commit on
+   * release records one undo step.
    */
   public commitLive(next: SourceState, kind: ChangeKind): void {
     this.state.source = next;
     this.emitForKind(kind);
   }
 
-  /** Replaces derived data (called by the pipeline) and announces it. */
   public setDerived(patch: Partial<DerivedState>): void {
     Object.assign(this.state.derived, patch);
     this.signals.derivedChanged.emit();

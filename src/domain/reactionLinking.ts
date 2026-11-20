@@ -1,10 +1,8 @@
 /**
- * What a reaction hands its births of the source's particle: the step linking two compiled
- * emitters, after each compiled on its own. The reacting emitter's spawn graph asks for values by
- * name (`inherited-attribute`, see `FXInherit.ts`); the source's compiled slot says where each lies
- * in a particle that is born or dies. Matched by name and exact type; a value the source cannot
- * hand over keeps the reacting emitter's default, and is reported. Shared by the live preview and the export, so
- * the two copy the same floats and warn about the same values.
+ * Links a reaction to its source's compiled slot. The reacting emitter's spawn graph asks for
+ * values by name (`inherited-attribute`, see `FXInherit.ts`), and the source's slot says where each
+ * lies in a particle that is born or dies. Values are matched by name and exact type. A value the
+ * source cannot supply keeps the reacting emitter's default and is reported.
  */
 
 import { FX_CORE_LIFECYCLE, type FXParticleEventKind } from "sparcoon";
@@ -46,7 +44,6 @@ export function reactionSourceOf(kernel: FXCompiledKernel): ReactionSource {
  *  type, never writes it, or writes it only in its update while the reaction fires at birth. */
 export interface InheritIssue {
   readonly kind: "missing" | "mistyped" | "unwritten" | "late";
-  /** The attribute's name. */
   readonly name: string;
   /** The type the reacting emitter reads it as. */
   readonly expected: string;

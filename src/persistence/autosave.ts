@@ -1,8 +1,7 @@
 /**
- * Coalesces document autosave. A burst of edits (dragging a node, holding a slider, an
- * undo/redo run) schedules one write after a short idle gap instead of a synchronous
- * `localStorage.setItem` per event - a full re-serialize of the source on every mouse-move would jank the UI thread. `flush` writes any pending edit immediately;
- * wire it to page-hide so closing the tab mid-gap does not lose the last edit.
+ * Coalesces autosave: a burst of edits schedules one write after a short idle gap, because
+ * re-serializing the source on every mouse move would stall the UI. `flush` writes a pending edit
+ * at once. Call it on page hide so closing the tab does not lose the last edit.
  */
 
 export interface Autosave {

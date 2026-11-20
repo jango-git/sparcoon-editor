@@ -1,6 +1,5 @@
 /**
- * Reads dropped/picked files and routes each to its library (image/HDRI/mesh), baking uploaded
- * bytes into the shapes the content library stores (ADR-0001/ADR-0003).
+ * Reads dropped or picked files and routes each to its library (image, HDRI or mesh).
  */
 
 import { Mesh } from "three";
@@ -79,11 +78,8 @@ function bakedByteSize(geometry: MeshAsset["geometry"]): number {
 }
 
 /**
- * Parses an uploaded GLB/GLTF via `GLTFLoader`, bakes every mesh it contains into its own
- * independent {@link MeshAsset} (ADR-0001), decomposing a multi-mesh file into N assets
- * (ADR-0003). Named from the GLTF mesh/node name when present and not already taken, otherwise
- * `<file name> #<N>` (1-based, in file order); a name that collides even after the fallback drops
- * just that one mesh, not the whole batch.
+ * Parses a GLB/GLTF and adds each mesh as its own {@link MeshAsset}. Named from the mesh or node
+ * name, else `<file name> #<N>`. A name collision drops only that mesh.
  */
 async function ingestMesh(file: File, store: Store): Promise<void> {
   const gltf = await new GLTFLoader().parseAsync(await file.arrayBuffer(), "");

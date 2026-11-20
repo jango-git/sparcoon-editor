@@ -1,11 +1,7 @@
 /**
- * What the editor makes of a render artifact's {@link FXRenderBudget} - the attributes, varying
- * vectors, uniform vectors and texture units its materials take, counted by the runtime off the
- * very shaders it builds. Each tier's artifact is measured against the least that tier
- * guarantees: past Standard's (WebGL2's) minimum the effect is an error - some WebGL2 GPU would
- * refuse to link it, and the editor promises any WebGL2 browser. Past Baseline's (WebGL1's, far
- * lower) it is only a warning: real WebGL1 GPUs mostly offer more than the minimum. The tiers'
- * artifacts differ - each lifts what it can afford to the draw stage - so each is counted on its
+ * Measures each tier's artifact against the least that tier guarantees. Past Standard (WebGL2) is
+ * an error, since some WebGL2 GPU would refuse to link it. Past Baseline (WebGL1) is a warning,
+ * since real WebGL1 GPUs mostly offer more. The tiers' artifacts differ, so each is counted on its
  * own.
  */
 
@@ -167,15 +163,13 @@ export interface EmitterGPUMesh {
 }
 
 /**
- * The findings for an emitter's particle material, each tier's artifact of `renders` measured on
- * its own. Both backends read a particle slot through its packed views - several adjacent fields
- * per attribute, laid out by the editor in the runtime's packing order
- * (`buildParticleBehaviorTargets`); a read nothing writes is a constant zero, free. Each is
- * measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and `gpu` (the
- * emitter's GPU kernel's, when it has one - a sorted one reads its views from textures, not
- * attributes). A Standard (WebGL2) error is measured on the GPU mesh when there is one, which is
- * what WebGL2 runs; a Baseline (WebGL1) warning is always measured on the JS mesh - the only one
- * WebGL1 ever runs.
+ * Findings for an emitter's particle material, each tier's artifact measured on its own. Both
+ * backends read a particle slot through packed views laid out in the runtime's packing order
+ * (`buildParticleBehaviorTargets`). A read nothing writes is a constant zero and costs nothing.
+ * Each is measured over its own slot: `behaviorBuffers` (the JS behavior's `buffers`) and `gpu`
+ * (the GPU kernel's, when there is one, where a sorted one reads its views from textures, not
+ * attributes). A Standard error is measured on the GPU mesh when there is one, a Baseline warning
+ * always on the JS mesh, the only one WebGL1 runs.
  */
 export function emitterRenderBudgetFindings(
   renders: FXRenderArtifactsByTier,

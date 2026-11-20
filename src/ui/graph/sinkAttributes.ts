@@ -1,16 +1,7 @@
 /**
- * The "add attribute" row mounted at the foot of Spawn's card only: a name field, a type picker,
- * and a confirm button. Declaring an attribute here surfaces an `attr:<name>` write slot on
- * **both** phase sinks (an attribute can be written from spawn or update), but declaring and
- * removing one is a Spawn-only action - Update just gets the resulting input row, with no remove
- * button or type picker of its own (see `graphCanvas.ts`'s `mountSinkAttributes`/`NodeView`
- * wiring). The declared attributes themselves are rendered as ordinary input rows on the sink
- * (Spawn's carrying its own remove button), so this row is only the creation control - never a
- * duplicate list of the attributes above it.
- *
- * The row is stateless: it dispatches through the handler; the canvas rebuilds the card when
- * the list changes. Pointer events are stopped from bubbling so editing never starts a node
- * drag or selection.
+ * Add-attribute row at the foot of Spawn's card: name field, type picker, confirm button. The
+ * declared attribute appears as an `attr:<name>` input on both sinks. Only Spawn can add or remove
+ * one.
  */
 
 import type { AttributeTypeName } from "../../domain/graphModel";
@@ -78,7 +69,7 @@ export function buildSinkAttributes(
   const section = createElement("div", { className: "node__attributes" }, [
     addRow(handlers, scale),
   ]);
-  // Keep field/button interaction from starting a node drag or selection.
+  // Do not start a node drag or selection.
   section.addEventListener("pointerdown", (event) => event.stopPropagation());
   return section;
 }

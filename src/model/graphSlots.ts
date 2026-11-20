@@ -1,9 +1,6 @@
 /**
- * The graphs an entity authors, named once: for each graph name (`"render"`/`"behavior"`/
- * `"trail"`/`"ribbon"`), the document field it lives in, the palette kind it draws from, the derived status
- * the pipeline reports it under, and the render host its surface sink is shaped for. Every layer
- * that maps between these (the graph commands, the agent API, the graph canvas and panel, the
- * scene sync) reads this one table rather than its own switch.
+ * Table of graph names (`"render"`, `"behavior"`, `"trail"`, `"ribbon"`) with each graph's document
+ * field, palette kind, derived status field and render host.
  */
 
 import type { EditorGraph } from "../domain/graphModel";

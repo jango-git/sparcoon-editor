@@ -34,7 +34,6 @@ import { type GraphTarget, targetGraph } from "./address.Internal";
  *  trail or ribbon (render-kind, each on its own host) - see `model/graphSlots.ts`. */
 export type { GraphName };
 
-/** A socket as the agent names it: a node id and that node's socket key. */
 export interface SocketAddress {
   readonly node: string;
   readonly socket: string;

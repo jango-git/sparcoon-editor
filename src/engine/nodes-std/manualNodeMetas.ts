@@ -5,10 +5,8 @@ import type { FXGLSLTypeName } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../core/socket/FXValueType";
 
 /**
- * Machine-readable palette metadata for the **hand-written** node classes that are not
- * `defineNode` descriptors; each class's static `describe()` returns its entry here. Params
- * {@link FXParamMeta} can't express (a free-string `name`, an opaque texture, a gradient) are
- * listed instead in {@link FXNodeMeta.customParams}, each with an editor-widget `kind`.
+ * Palette metadata of the hand-written node classes. Params FXParamMeta cannot express go in
+ * `customParams` with an editor widget `kind`.
  */
 
 /** Attribute element types a store/custom-attribute node can carry. */
@@ -71,14 +69,12 @@ export const CUSTOM_ATTRIBUTE_META: FXNodeMeta = {
       options: ATTRIBUTE_TYPES,
       default: "vec4",
     },
-    // No `stage` param: placement is inferred, so `stage: "param"` above is palette
-    // filtering only - mirroring the `defineNode` convention (no editable stage).
+    // Not an editable stage: placement is inferred, `"param"` only filters the palette.
   },
   // The varying it reads is p_fx_<name>, which depends on the instance's name.
   reads: "dynamic",
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "attribute-name", required: true }],
-  // A varying/buffer read, no arithmetic.
   cost: 0,
 };
 
@@ -104,7 +100,6 @@ export const BEHAVIOR_CUSTOM_ATTRIBUTE_META: FXNodeMeta = {
   reads: "dynamic",
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "attribute-name", required: true }],
-  // A buffer read, no arithmetic.
   cost: 0,
 };
 
@@ -139,12 +134,10 @@ export const CUSTOM_ATTRIBUTE_SPLIT_META: FXNodeMeta = {
   },
   // The varying it reads is p_fx_<name>, which depends on the instance's name.
   reads: "dynamic",
-  // No socket here is literally "T" (the outputs are concrete floats, reshaped by the node family
-  // instead - see the doc comment above), but `generic` still must be set: it is what gates
-  // `resolveNodeMeta` into the family-lookup branch that does that reshaping.
+  // `generic` is required: it routes `resolveNodeMeta` to the family lookup that reshapes the
+  // outputs.
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "attribute-name", required: true }],
-  // A varying/buffer read plus a re-index, no arithmetic.
   cost: 0,
 };
 
@@ -178,7 +171,6 @@ export const BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META: FXNodeMeta = {
   // `resolveNodeMeta` into the family-lookup branch that reshapes the outputs for display.
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "attribute-name", required: true }],
-  // A buffer read plus a re-index, no arithmetic.
   cost: 0,
 };
 
@@ -207,7 +199,6 @@ export const STORE_ATTRIBUTE_META: FXNodeMeta = {
   reads: [],
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "attribute-name", required: true }],
-  // A pass-through buffer write, no arithmetic.
   cost: 0,
 };
 
@@ -243,7 +234,6 @@ export const INHERITED_ATTRIBUTE_META: FXNodeMeta = {
   reads: "dynamic",
   generic: { constraint: ATTRIBUTE_TYPES },
   customParams: [{ key: "name", kind: "inherit-source", required: true }],
-  // A value shared by the whole spawn call, no arithmetic.
   cost: 0,
 };
 
@@ -279,7 +269,6 @@ export const TIMELINE_VALUE_RENDER_META: FXNodeMeta = {
   reads: [],
   generic: { constraint: NUMERIC_VALUE_TYPES },
   customParams: [{ key: "name", kind: "param-name", required: true }],
-  // A live uniform read, no arithmetic (like `constant`).
   cost: 0,
 };
 
@@ -303,7 +292,6 @@ export const TIMELINE_VALUE_BEHAVIOR_META: FXNodeMeta = {
   reads: [],
   generic: { constraint: NUMERIC_VALUE_TYPES },
   customParams: [{ key: "name", kind: "param-name", required: true }],
-  // A live binding read, no arithmetic (like `constant`).
   cost: 0,
 };
 
@@ -352,6 +340,5 @@ export const FX_MANUAL_NODE_METAS: readonly FXNodeMeta[] = [
   TIMELINE_VALUE_RENDER_META,
   TIMELINE_VALUE_BEHAVIOR_META,
   TEXTURE_META,
-  // Deep-frozen (the same objects the classes' `describe()` return), so a mutating
-  // palette consumer fails loudly instead of corrupting shared metadata (M9).
+  // Deep-frozen, so a consumer that mutates the shared metadata fails loudly.
 ].map(deepFreeze);

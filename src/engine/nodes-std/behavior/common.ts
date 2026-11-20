@@ -37,8 +37,8 @@ export function unitOrZero(
   return local(hint, fn.div(vector, nonZero(length, fn)));
 }
 
-/** A fresh draw in [0, 1) - `Math.random()` on the JS backend, a decorrelated GLSL hash on the
- *  standard tier (see the `rand` entry in `core/ir/FXFunctions.Internal.ts`). */
+/** A fresh draw in [0, 1): a hash on either backend, of the particle's id on the CPU and of its
+ *  slot on the GPU (see the `rand` entry in `core/ir/FXFunctions.Internal.ts`). */
 export function rand(fn: FXExprBuilderApi): FXExpr {
   return fn.call("rand");
 }

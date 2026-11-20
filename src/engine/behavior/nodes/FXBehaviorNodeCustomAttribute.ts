@@ -67,7 +67,6 @@ export class FXBehaviorNodeCustomAttribute extends FXBehaviorNode {
     return BEHAVIOR_CUSTOM_ATTRIBUTE_META;
   }
 
-  /** A buffer read, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

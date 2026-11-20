@@ -1,11 +1,10 @@
 /**
- * Fake nodes: authored like any node (reconcile/move/undo by id) but dropped at the compile
- * boundary (`serialize.ts`). The one type today is the route - a reroute knot spliced out at serialize.
+ * Fake nodes are authored like any node but removed at serialize. The only type is the route, a
+ * reroute knot spliced out at serialize.
  */
 
 import type { FXNodeMeta } from "./nodePalette";
 
-/** The one fake node type today. */
 export const ROUTE_TYPE = "$route";
 
 const FAKE_NODE_TYPES: ReadonlySet<string> = new Set([ROUTE_TYPE]);
@@ -14,7 +13,6 @@ export function isFakeNodeType(type: string): boolean {
   return FAKE_NODE_TYPES.has(type);
 }
 
-/** The route's single pass-through input and output. */
 export const ROUTE_INPUT_KEY = "in";
 export const ROUTE_OUTPUT_KEY = "out";
 

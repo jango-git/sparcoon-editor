@@ -113,7 +113,7 @@ function createInputModeToggle(inputMode: InputModeState): HTMLElement {
 }
 
 /**
- * The interface-language switch, ported from the tesselot editor: a compact trigger showing the
+ * The interface-language switch: a compact trigger showing the
  * active locale badge (e.g. "EN"); clicking opens a grid of the available languages, each labelled
  * by name with the badge as a hint. Selecting one persists it and reloads (see setLocale).
  */

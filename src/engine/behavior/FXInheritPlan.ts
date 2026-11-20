@@ -2,7 +2,6 @@ import type { FXInheritLayout } from "sparcoon";
 
 import type { FXValueType } from "../core/socket/FXValueType";
 
-/** A core field of the source particle a newborn can inherit. */
 export type FXInheritBuiltin = "id" | "lifetime";
 
 /** Where an inherited value comes from: a user attribute of the source particle, by name, or a

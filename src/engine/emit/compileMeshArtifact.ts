@@ -7,9 +7,10 @@ import type { FXRenderNode } from "../render/FXRenderNode";
 import { FX_MESH_TARGET } from "../render/target/FXParticleRenderTarget";
 import { assembleRenderArtifact } from "./assembleArtifacts";
 
-/** Render-only sibling of {@link compileToArtifacts} for a VFX mesh: a single, non-instanced
- *  mesh with a render graph but no simulation, behavior graph, or per-particle attributes - the
- *  whole particle half is skipped. `attributeReads` is always empty. */
+/**
+ * Compiles the render graph of a VFX mesh: one non-instanced mesh, no simulation or attributes
+ * (`attributeReads` is empty).
+ */
 export interface FXCompileMeshOptions {
   /** The geometry the mesh renders: a built-in primitive or a custom mesh asset, named.
    *  @defaultValue `{ type: "primitive", primitive: "plane" }` */
@@ -20,8 +21,7 @@ export interface FXCompileMeshOptions {
 
 export interface FXCompiledMeshArtifact {
   readonly render: FXRenderArtifact;
-  /** Structural hash (shader hash + renderMode + geometry). Equal across two compiles => the
-   *  host can rebind (`applyUniformValues`) instead of rebuilding the material. */
+  /** Shader hash plus renderMode and geometry. Equal hashes allow a rebind instead of a rebuild. */
   readonly hash: string;
 }
 
@@ -33,13 +33,13 @@ export function compileMeshArtifact(
   const renderMode = options.renderMode ?? "blending";
   const geometry: FXGeometrySource = options.geometry ?? { type: "primitive", primitive: "plane" };
   const render = assembleRenderArtifact(shader, geometry, [], renderMode);
-  // renderMode/geometry reshape the runtime material, not the shader, so fold them into the hash
-  // explicitly (mirrors compileToArtifacts) - toggling either counts as structural.
   return { render, hash: `${shader.hash}::rm-${renderMode}::geo-${JSON.stringify(geometry)}` };
 }
 
-/** Validates a mesh render graph against {@link FX_MESH_TARGET} without throwing. Reading a
- *  particle-only builtin surfaces here as an `unknown-target-input` error. */
+/**
+ * Validates against FX_MESH_TARGET without throwing. A particle-only builtin read is an
+ * `unknown-target-input` error.
+ */
 export function validateMeshArtifact(
   renderGraph: FXGraph<FXRenderNode>,
 ): readonly FXCompilerError[] {

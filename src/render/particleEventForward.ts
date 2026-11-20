@@ -32,13 +32,11 @@ export class ParticleEventForward {
     };
   }
 
-  /** Listens to `emitter`, the one now running: the subscription to the one before went with it. */
   public follow(emitter: FXEmitter | undefined): void {
     this.detach = undefined;
     this.attach(emitter);
   }
 
-  /** Drops every listener; the running emitter goes with the view. */
   public clear(): void {
     this.listeners.clear();
     this.snapshot = undefined;

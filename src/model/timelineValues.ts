@@ -1,7 +1,6 @@
 /**
- * What an emitter or a mesh keeps per Timeline Value name - its keyframes (`tracks`) and whether it is
- * live (`liveParams`) - exists only while some `timeline-value` node of the entity's graphs declares
- * that name. Every edit that can take a name out of the graphs ends with {@link withPrunedTimelineValues}.
+ * Tracks and live flags exist only for names some `timeline-value` node declares. Every edit that
+ * can remove a name ends with {@link withPrunedTimelineValues}.
  */
 
 import type { EditorGraph } from "../domain/graphModel";

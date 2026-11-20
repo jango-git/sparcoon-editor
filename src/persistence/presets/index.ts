@@ -1,10 +1,7 @@
 /**
- * Bundled starter projects, offered on the Content screen's Import/Export panel and used as the
- * first-load fallback (`main.ts`). Loaded the same way locale dictionaries are - fetched at
- * runtime from `dist/presets/<fileName>` (`rollup.config.js`'s `copyJsonAssets` copies this
- * directory's own `.json` files there, mirroring `copyJsonAssets("src/i18n/locales", "locales")`)
- * rather than imported as a module, so parsing can reuse {@link deserializeProject} without an
- * import cycle back into `loadState.ts` (which is also where the first-load fallback is decided).
+ * Bundled starter projects, offered on the Content screen and used as the first-load fallback
+ * (`main.ts`). They are fetched at runtime from `dist/presets/<fileName>`, not imported, to avoid
+ * an import cycle with `loadState.ts`.
  */
 
 import type { TKey } from "../../i18n";
@@ -29,7 +26,6 @@ export const SPARKS_PRESET: ProjectPreset = {
   fileName: "sparks.json",
 };
 
-/** The showcase effects, built with the editor's agent API (see each one's builder script). */
 export const EFFECT_PRESETS: readonly ProjectPreset[] = [
   { id: "campfire", labelKey: "content.presetCampfire", fileName: "campfire.json" },
   {

@@ -1,10 +1,7 @@
 /**
- * The render coordinator: owns the Three renderer, scene, camera, orbit controls and frame loop. It
- * only reflects the model - it never writes to it.
- *
- * The canvas is opaque and shadow-mapped: it renders into the neutral studio `SceneEnvironment`
- * (ground, sun, SH light-probe fill) rather than showing the CSS stage through. Each frame ticks
- * every emitter and VFX mesh (via `FXWorld.update`), updates the orbit controls, then renders.
+ * Owns the renderer, scene, camera, orbit controls and frame loop. Each frame ticks every emitter
+ * and VFX mesh via `FXWorld.update`, updates the controls and renders into the opaque,
+ * shadow-mapped studio.
  */
 
 import { FXWorld } from "sparcoon";
@@ -39,12 +36,9 @@ import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
 
 /**
- * Builds the preview's `WebGLRenderer`, forcing an actual WebGL1 context for the `baseline`
- * tier (`THREE.WebGL1Renderer` drops "webgl2" from three's own context-negotiation candidate
- * list) rather than letting three pick whatever the browser offers. If even a WebGL1 context
- * can't be created (a real device/browser limitation, not hypothetical - three's own constructor
- * throws synchronously in that case), fall back to the ordinary negotiated renderer and reset the
- * stored preference so the *next* reload doesn't repeat the same failure.
+ * Builds the renderer. The `baseline` tier forces a real WebGL1 context (`WebGL1Renderer`). If that
+ * fails, falls back to the negotiated renderer and resets the stored preference so the next reload
+ * does not repeat the failure.
  */
 function createSceneRenderer(
   canvas: HTMLCanvasElement,
@@ -67,7 +61,6 @@ function createSceneRenderer(
 
 /** Where an offscreen shot is taken from and at what size; the viewport camera is left alone. */
 export interface CaptureShot {
-  /** Pixel size to render at; omitted, the viewport's own drawing-buffer size. */
   readonly size?: { readonly width: number; readonly height: number };
   /** Where the frame is shot from; omitted, the viewport camera's own view. */
   readonly view?: CaptureView;
@@ -83,8 +76,6 @@ export interface OverdrawMeasure {
 
 /** What one {@link SceneCoordinator.capture} renders. */
 export interface FrameCaptureOptions extends CaptureShot {
-  /** Whether the editor's furniture (grid, player figure, gizmos) is drawn as the viewport shows
-   *  it. Default true. */
   readonly overlays?: boolean;
   /**
    * Whether the studio ground is drawn - what shadows fall on and a Depth Fade fades against.
@@ -98,17 +89,14 @@ export interface FrameCaptureOptions extends CaptureShot {
 }
 
 /**
- * A capture-only point of view - the viewport camera and its orbit limits are left alone. `look`
- * places the camera outright; `frame` fits a sphere of `radius` around `object`, seen from the
- * viewport camera's current side of it, at any distance (no orbit clamp, so a 0.1-unit object
- * can fill the frame).
+ * Capture view. `look` places the camera outright. `frame` fits a sphere of `radius` around
+ * `object` from the viewport camera's side, with no orbit clamp.
  */
 export type CaptureView =
   | {
       readonly kind: "look";
       readonly position: Vector3;
       readonly target: Vector3;
-      /** Vertical field of view in degrees; omitted, the viewport's. */
       readonly fov?: number;
     }
   | { readonly kind: "frame"; readonly object: Object3D; readonly radius: number };
@@ -123,23 +111,20 @@ export class SceneCoordinator {
   private readonly depthPass: SceneDepthPass;
   private readonly overdrawPass: OverdrawPass;
   private viewMode: PreviewViewMode = "shaded";
-  // The pointer over the canvas in drawing-buffer pixels (y down), for the overdraw readout.
   private pointer: { x: number; y: number } | undefined = undefined;
   private reportOverdraw: ((layers: number | undefined) => void) | undefined = undefined;
   private readonly settings: PreviewSettingsStore;
-  /** The decoded active-environment textures (ADR-0004), set externally as the library resolves them. */
   private activeEnvironment: DecodedEnvironment | undefined;
   private readonly resizeObserver: ResizeObserver;
   private previousTimestamp: number | undefined;
   private running = false;
   private frameHandle: number | undefined;
-  // In touchpad mode the wheel pans (two-finger scroll) / pinch-zooms; in mouse mode it dollies.
-  // Either way {@link onWheel} owns the zoom (OrbitControls' wheel-zoom stays off); see {@link setTouchpad}.
+  // `onWheel` owns wheel zoom in both modes, so OrbitControls wheel zoom stays off. Touchpad pans
+  // and pinch-zooms, mouse dollies.
   private touchpad = false;
   /** Guards mouse-mode wheel-dolly against a spurious single-notch direction flip. */
   private readonly wheelDirection = new WheelDirectionLock();
-  // FPS is reported from a running average over a short window rather than each raw frame,
-  // so the readout is legible instead of flickering; these accumulate that window.
+  // FPS is a running average over a short window. These fields accumulate it.
   private statsFrames = 0;
   private statsElapsed = 0;
 
@@ -147,11 +132,8 @@ export class SceneCoordinator {
     canvas: HTMLCanvasElement,
     private readonly container: HTMLElement,
     settings: PreviewSettingsStore,
-    // Which GLSL tier (and, for `baseline`, which literal WebGL context version) the preview
-    // renders with - a session-fixed choice (`settings/renderBackend.ts`), read once here.
     renderBackend: FXGLSLRenderTier,
-    // Gates the simulation clock: the timeline transport drives it, so a stopped/paused
-    // timeline freezes every emitter (see {@link frame}). Defaults to always-on.
+    // The transport gates the simulation clock. A stopped or paused timeline freezes emitters.
     private readonly isSimulating: () => boolean = () => true,
     private readonly onStats?: (
       fps: number,
@@ -168,26 +150,20 @@ export class SceneCoordinator {
 
     this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
     this.camera.position.set(0, 2, 7);
-    // The viewport shows the editor's furniture too; a clean capture switches this layer off. The
-    // gizmo and ground layers follow the preview settings (applyViewLayers).
+    // A clean capture switches the furniture layer off.
     this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
 
-    // Damping off so the camera stops exactly when the pointer does; polar clamp keeps it from
-    // diving below the floor. Bound to the container (not the canvas) so a drag starting over a
-    // viewport overlay still orbits - the overlays' interactive parts stopPropagation to opt out.
+    // Damping off, so the camera stops with the pointer. Polar clamp keeps it above the floor.
+    // Bound to the container so drags over overlays still orbit.
     this.controls = new OrbitControls(this.camera, container);
     this.controls.target.set(0, 0, 0);
     this.controls.enableDamping = false;
     this.controls.minDistance = 2;
     this.controls.maxDistance = 30;
     this.controls.maxPolarAngle = Math.PI * 0.495;
-    // {@link onWheel} owns wheel-zoom in both modes (dolly in mouse mode, pan/pinch in touchpad),
-    // so the mouse notch can run through the direction lock; OrbitControls only orbits and drag-pans.
     this.controls.enableZoom = false;
     this.controls.update();
 
-    // Touchpad navigation: touchpad mode pans/pinch-zooms, mouse mode dollies - onWheel
-    // drives both (OrbitControls' own wheel-zoom stays off). On the container so it works over overlays.
     container.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     container.addEventListener("pointermove", (event) => this.trackPointer(event));
     container.addEventListener("pointerleave", () => {
@@ -211,44 +187,35 @@ export class SceneCoordinator {
     this.resizeObserver.observe(container);
     this.resize();
 
-    // A backgrounded tab still fires (throttled) rAF callbacks, so without this the frame after
-    // the tab regains visibility sees a huge raw timestamp gap and feeds it straight into
-    // FXWorld.update as one giant simulation step - a burst of particles aged/spawned at once.
-    // Halting the loop while hidden and resuming with a fresh timestamp anchor avoids both that
-    // and any simulation progressing unseen in the background.
+    // Hidden tabs still fire throttled rAF callbacks, and the first frame after returning would
+    // simulate one huge step. Halt the loop while hidden and restart with a fresh timestamp anchor.
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
   }
 
-  /** The preview camera - handed to emitters that opt into camera depth-sorting (render sink). */
   public getCamera(): PerspectiveCamera {
     return this.camera;
   }
 
-  /** The live renderer - handed to emitters that opt into GPU (transform-feedback) simulation,
-   *  so they can check `capabilities.isWebGL2` and construct the GPU driver against it. */
   public getRenderer(): WebGLRenderer {
     return this.renderer;
   }
 
-  /** Wires what runs after each viewport frame is drawn, once its materials are compiled. */
   public setAfterRender(callback: () => void): void {
     this.afterRender = callback;
   }
 
-  /** Wires the live particle-count source (the scene emitters), reported alongside FPS. */
   public setParticleCountSource(source: () => number): void {
     this.getParticleCount = source;
   }
 
-  /** Wires the effects a scene depth pre-pass serves (the scene emitters); none until then. */
   public setSceneDepthSource(source: SceneDepthSource): void {
     this.depthPass.source = source;
     this.overdrawPass.source = source;
   }
 
   /**
-   * Switches what the viewport shows: the shaded frame or an overdraw view. Captures always take
-   * the shaded frame.
+   * Switches the viewport between the shaded frame and the overdraw view. Captures are always
+   * shaded.
    */
   public setViewMode(mode: PreviewViewMode): void {
     this.viewMode = mode;
@@ -258,44 +225,35 @@ export class SceneCoordinator {
     this.renderViewport();
   }
 
-  /** Wires the readout of the overdraw under the pointer, pushed every overdraw frame. */
   public setOverdrawReadout(report: (layers: number | undefined) => void): void {
     this.reportOverdraw = report;
   }
 
-  /** Wires the live particle-overflow source (the scene emitters), reported alongside FPS. */
   public setParticleOverflowSource(source: () => ParticleOverflow | undefined): void {
     this.getParticleOverflow = source;
   }
 
-  /**
-   * Sets the decoded active-environment textures (ADR-0004), or `undefined` for manual lighting.
-   * The composition root resolves this from the preview settings' active name against the content
-   * library's decoded HDRI cache and calls this whenever either changes.
-   */
+  /** Sets the active environment textures, or `undefined` for manual lighting. */
   public setActiveEnvironment(environment: DecodedEnvironment | undefined): void {
     this.activeEnvironment = environment;
     this.environment.apply(this.settings.get(), environment);
   }
 
-  /** Enables/disables orbit controls - the modal transform tool suspends them while it runs. */
   public setControlsEnabled(enabled: boolean): void {
     this.controls.enabled = enabled;
   }
 
   /**
-   * Switches viewport navigation between mouse and touchpad. In touchpad mode a plain
-   * two-finger scroll pans and a pinch (Ctrl+wheel) zooms; in mouse mode the wheel dollies. Either
-   * way {@link onWheel} drives the zoom - OrbitControls' own wheel-zoom stays off (set in the ctor).
+   * Switches navigation between mouse and touchpad. In touchpad mode two-finger scroll pans and
+   * Ctrl+wheel zooms. In mouse mode the wheel dollies.
    */
   public setTouchpad(enabled: boolean): void {
     this.touchpad = enabled;
   }
 
   /**
-   * Frames `object` in the viewport (the preview's `F` shortcut): re-aims the orbit target at the
-   * object's world origin and dollies the camera - along its current viewing direction - to a
-   * distance that fits a sphere of `radius`, clamped to the orbit distance limits.
+   * Aims the orbit target at the object's world origin and dollies along the view direction to fit
+   * a sphere of `radius`, within the distance limits.
    */
   public focusOn(object: Object3D, radius: number): void {
     const center = worldCenter(object);
@@ -309,30 +267,25 @@ export class SceneCoordinator {
   }
 
   /**
-   * Advances every emitter and VFX mesh by `deltaSeconds` of simulation time - the one place the
-   * simulation clock is stepped, whether by the live frame loop or an offline capture driving
-   * time itself (the agent API's deterministic snapshots).
+   * Advances every emitter and VFX mesh by `deltaSeconds`. The only place the simulation clock
+   * steps, for the frame loop and for offline capture.
    */
   public advance(deltaSeconds: number): void {
     FXWorld.update(deltaSeconds);
   }
 
   /**
-   * Renders the scene once and returns a 2D-canvas copy of the frame, taken in the same task as
-   * the render because the WebGL drawing buffer is not preserved past it. See
-   * {@link FrameCaptureOptions} for size, overlays, ground and background; whatever they change is
-   * restored afterwards and the live view repainted. The copy is always the drawing buffer's real
-   * size, which a GPU limit can clamp below the requested one; the frame is never stretched.
+   * Renders once and returns a 2D-canvas copy, copied in the same task because the drawing buffer
+   * is not preserved. Options changed for the shot are restored and the view repainted. The copy
+   * has the drawing buffer's real size, which a GPU limit may clamp below the request.
    */
   public capture(options: FrameCaptureOptions = {}): HTMLCanvasElement {
     return this.shoot(options, (camera, target) => this.captureFrom(camera, target, options));
   }
 
   /**
-   * Counts the overdraw of `camera`'s frame as the viewport's overdraw view does, at `shot`'s size
-   * and point of view: every part together, then each of `parts` (the effect's top-level objects)
-   * drawn alone. The counts add up, as the effects never hide each other in them, so the parts'
-   * fragments sum to the total's wherever no pixel reaches 255.
+   * Counts overdraw for `shot`, all parts together and then each of `parts` alone. Part counts sum
+   * to the total wherever no pixel reaches 255.
    */
   public measureOverdraw(
     count: OverdrawCount,
@@ -340,7 +293,6 @@ export class SceneCoordinator {
     parts: readonly Object3D[],
   ): OverdrawMeasure {
     return this.shoot(shot, (camera) => {
-      // Depth Fade fades against the scene depth, and a fade can discard.
       this.depthPass.update(camera);
       const total = this.overdrawPass.measure(camera, count);
       const shown = parts.filter((part) => part.visible);
@@ -385,17 +337,12 @@ export class SceneCoordinator {
     this.renderer.dispose();
   }
 
-  // Function-valued field: eslint's member-ordering ranks this as a private method (not a
-  // field), so it lives here with the other private methods rather than up in the field block.
-  // Total alive particle count across the scene, sampled when stats are reported. The scene
-  // emitters own this figure and wire it in via {@link setParticleCountSource}; 0 until then.
+  // Alive particle count across the scene, 0 until wired.
   private getParticleCount: () => number = () => 0;
   // Births lost to full emitters, sampled alongside the particle count; `undefined` = unknown.
   private getParticleOverflow: () => ParticleOverflow | undefined = () => undefined;
-  // Runs after each viewport frame; see setAfterRender.
   private afterRender: () => void = () => undefined;
 
-  /** Shows or hides the gizmo and ground layers in the viewport, as the preview settings say. */
   private applyViewLayers(settings: PreviewSettings): void {
     for (const [layer, shown] of [
       [EDITOR_GIZMO_LAYER, settings.gizmos],
@@ -409,10 +356,9 @@ export class SceneCoordinator {
     }
   }
 
-  /** Wheel handler: touchpad pans/pinch-zooms; mouse dollies through the direction lock. */
   private onWheel(event: WheelEvent): void {
     if (!this.controls.enabled) {
-      return; // a modal transform owns the pointer
+      return;
     }
     event.preventDefault();
     if (this.touchpad) {
@@ -429,7 +375,6 @@ export class SceneCoordinator {
     this.dollyBy(deltaY < 0 ? 1 / 1.1 : 1.1);
   }
 
-  /** Dollies the camera toward/away from the orbit target by `scale`, clamped to the zoom limits. */
   private dollyBy(scale: number): void {
     const offset = this.camera.position.clone().sub(this.controls.target);
     const distance = Math.min(
@@ -442,9 +387,8 @@ export class SceneCoordinator {
   }
 
   /**
-   * Pans the camera and its orbit target across the view plane by a screen-space delta (px),
-   * scaled so the drag tracks the cursor at the current distance. Mirrors the graph's two-finger
-   * scroll direction (the scene follows the fingers).
+   * Pans the camera and orbit target across the view plane by a pixel delta, scaled to track the
+   * cursor at the current distance.
    */
   private panByPixels(deltaX: number, deltaY: number): void {
     const distance = this.camera.position.distanceTo(this.controls.target);
@@ -460,8 +404,6 @@ export class SceneCoordinator {
     this.controls.update();
   }
 
-  /** Halts ticking while the tab is hidden, resuming with a fresh timestamp anchor once it is
-   *  visible again - see the constructor's `visibilitychange` registration for why. */
   private readonly handleVisibilityChange = (): void => {
     if (document.hidden) {
       if (this.frameHandle !== undefined) {
@@ -485,8 +427,6 @@ export class SceneCoordinator {
     this.previousTimestamp = timestamp;
     this.reportFps(deltaSeconds);
 
-    // The transport gates the simulation clock: a stopped/paused timeline advances no
-    // emitter time (no spawn, no integration) while the camera and render stay live.
     this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
     this.renderViewport();
@@ -495,9 +435,7 @@ export class SceneCoordinator {
   }
 
   /**
-   * Accumulates frame timings and pushes a running-average FPS to {@link onStats} roughly
-   * twice a second. The first frame's delta is 0 (no prior timestamp); that and any other
-   * zero delta is skipped so it neither inflates the count nor divides by zero.
+   * Reports average FPS about twice a second. Zero deltas (the first frame included) are skipped.
    */
   private reportFps(deltaSeconds: number): void {
     if (this.onStats === undefined || deltaSeconds <= 0) {
@@ -516,15 +454,10 @@ export class SceneCoordinator {
     }
   }
 
-  /**
-   * Runs `draw` with a copy of the viewport camera aimed and sized as `shot` asks (`target` is
-   * what it looks at), then restores the drawing-buffer size and repaints the live view.
-   */
   private shoot<T>(shot: CaptureShot, draw: (camera: PerspectiveCamera, target: Vector3) => T): T {
     const { size, view } = shot;
     const pixelRatio = this.renderer.getPixelRatio();
     const viewportSize = this.renderer.getSize(new Vector2());
-    // Shot through a copy, so size, overlays and point of view never touch the viewport camera.
     const camera = this.camera.clone();
     try {
       if (size !== undefined) {
@@ -544,7 +477,6 @@ export class SceneCoordinator {
     }
   }
 
-  /** {@link capture}'s frame from the aimed `camera`: its overlays, ground and background. */
   private captureFrom(
     camera: PerspectiveCamera,
     target: Vector3,
@@ -589,21 +521,17 @@ export class SceneCoordinator {
   }
 
   /**
-   * Renders into an offscreen target cleared to transparent (the canvas itself has no alpha) and
-   * reads it back as a straight-alpha image. The runtime blends premultiplied and makes additive
-   * light by lowering alpha, so a fully additive pixel carries color at alpha 0: a straight-alpha
-   * image cannot hold it, and it comes out empty. A solid background keeps it.
+   * Renders offscreen and reads back straight-alpha. Additive pixels carry color at alpha 0 and
+   * come out empty, so a solid background is needed to keep them.
    */
   private renderTransparent(camera: PerspectiveCamera): HTMLCanvasElement {
     const { x: width, y: height } = this.renderer.getDrawingBufferSize(new Vector2());
     const target = new WebGLRenderTarget(width, height, { samples: 4 });
-    // Encode like the canvas does, so the two capture paths agree on color.
     target.texture.colorSpace = SRGBColorSpace;
     const previousTarget = this.renderer.getRenderTarget();
     const clearColor = this.renderer.getClearColor(new Color());
     const clearAlpha = this.renderer.getClearAlpha();
-    // three's "no background" is `null`; its type admits nothing else, so the project's
-    // no-null rule cannot apply to this third-party field.
+    // three's "no background" is `null`.
     // eslint-disable-next-line no-restricted-syntax
     this.scene.background = null;
     this.renderer.setClearColor(0x000000, 0);
@@ -620,19 +548,16 @@ export class SceneCoordinator {
     }
   }
 
-  /** Draws `camera`'s frame into the current target - after its scene depth, when an effect reads it. */
   private renderFrom(camera: Camera): void {
     this.depthPass.update(camera);
     this.renderer.render(this.scene, camera);
   }
 
-  /** Draws the viewport's own frame: shaded, or the overdraw view with its pointer readout. */
   private renderViewport(): void {
     if (this.viewMode === "shaded") {
       this.renderFrom(this.camera);
       return;
     }
-    // Depth Fade fades against the scene depth, and a fade can discard.
     this.depthPass.update(this.camera);
     this.overdrawPass.render(this.camera, this.viewMode);
     if (this.reportOverdraw !== undefined) {
@@ -670,18 +595,14 @@ export class SceneCoordinator {
   }
 }
 
-/** Margin around a framed sphere, so it does not touch the frame's edges. */
 const FRAMING_MARGIN = 1.3;
-/** The closest a capture camera's near plane comes in - keeps the depth range finite. */
 const MIN_CAPTURE_NEAR = 1e-4;
 
-/** `object`'s world-space origin, with its world matrix brought up to date first. */
 function worldCenter(object: Object3D): Vector3 {
   object.updateWorldMatrix(true, false);
   return object.getWorldPosition(new Vector3());
 }
 
-/** The unit direction from `center` toward `camera` (a fixed side when they coincide). */
 function viewDirection(camera: PerspectiveCamera, center: Vector3): Vector3 {
   const direction = camera.position.clone().sub(center);
   if (direction.lengthSq() < 1e-6) {
@@ -690,21 +611,19 @@ function viewDirection(camera: PerspectiveCamera, center: Vector3): Vector3 {
   return direction.normalize();
 }
 
-/** The camera distance at which a sphere of `radius` fills `camera`'s view, with a margin. */
 function fitDistance(camera: PerspectiveCamera, radius: number): number {
   return (radius / Math.tan((camera.fov * Math.PI) / 360)) * FRAMING_MARGIN;
 }
 
-/**
- * Points a capture camera along `view`, pulling its near plane in for a close shot - the
- * viewport's fixed near plane would otherwise clip an object smaller than it.
- */
 /** Where a clean frame's ground starts and ends fading into its background, as multiples of the
  *  camera's distance to what it is aimed at. */
 const GROUND_FADE_START = 1.2;
 const GROUND_FADE_END = 2.4;
 
-/** Aims `camera` as `view` says; returns the point it is aimed at. */
+/**
+ * Aims `camera` along `view`, pulling the near plane in for a close shot (the fixed near plane
+ * would clip a small object). Returns the aim point.
+ */
 function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): Vector3 {
   let target: Vector3;
   if (view.kind === "look") {
@@ -727,7 +646,6 @@ function aimCaptureCamera(camera: PerspectiveCamera, view: CaptureView): Vector3
   return target;
 }
 
-/** A 2D-canvas copy of `source`'s current pixels at `width` x `height`. */
 function copyCanvas(source: HTMLCanvasElement, width: number, height: number): HTMLCanvasElement {
   const copy = document.createElement("canvas");
   copy.width = width;
@@ -736,7 +654,9 @@ function copyCanvas(source: HTMLCanvasElement, width: number, height: number): H
   return copy;
 }
 
-/** A canvas from premultiplied, bottom-up GL pixels: rows flipped, color divided by alpha. */
+/**
+ * Converts premultiplied, bottom-up GL pixels to a canvas. Flips rows and divides color by alpha.
+ */
 function straightAlphaCanvas(pixels: Uint8Array, width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = width;

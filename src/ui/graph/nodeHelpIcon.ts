@@ -1,11 +1,7 @@
 import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
 
-/**
- * A node header's help "?" (inline SVG) that shows the node's documentation in the shared hover
- * tooltip (node label over its description) - the same tooltip used everywhere. Swallows
- * pointerdown so clicking it never drags/selects the node.
- */
+/** Swallows pointerdown so clicking the icon never drags or selects the node. */
 export function buildHelpIcon(title: string, description: string): HTMLElement {
   const svgNamespace = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNamespace, "svg");

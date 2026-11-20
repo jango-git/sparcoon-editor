@@ -1,8 +1,7 @@
 /**
- * The preview's scene depth: what a Depth Fade in the previewed effects fades against and a Depth
- * Sample collides with. The runtime
- * reads depth per camera (`fxSetCameraDepth`), so each camera the preview draws from gets its own
- * pre-pass, rendered just before its frame - and only while some shown effect reads it.
+ * Scene depth for Depth Fade and Depth Sample. The runtime reads depth per camera
+ * (`fxSetCameraDepth`), so each camera gets a pre-pass before its frame, only while a shown effect
+ * reads depth.
  */
 
 import { fxSetCameraDepth } from "sparcoon";
@@ -22,8 +21,7 @@ import { drawnSize, sizedTarget, StudioDepth } from "./offscreenPass";
 export interface SceneDepthSource {
   /** The effects' root, left out of the pre-pass: the effects fade against the studio. */
   readonly effects: Object3D;
-  /** Whether a shown effect reads the scene depth, in a material or a GPU simulation; no pre-pass
-   *  is paid otherwise. */
+  /** Whether a shown effect reads scene depth, in a material or a GPU simulation. */
   readsSceneDepth(): boolean;
 }
 

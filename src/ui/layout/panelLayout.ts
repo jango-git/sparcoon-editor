@@ -44,7 +44,6 @@ export function createWorkspace(
     bottom,
   ]);
 
-  // Vertical split: drag sets the preview's width; the graph (flex: 1) takes the rest.
   attachDividerDrag(
     topResizer,
     "x",

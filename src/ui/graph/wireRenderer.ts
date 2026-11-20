@@ -130,7 +130,6 @@ export class WireRenderer {
       this.appendWire(from, to, className, colorFrom);
       return;
     }
-    // Walk to the arc-length midpoint and split the polyline there.
     const half = total / 2;
     let consumed = 0;
     let splitSegmentIndex = segments.length - 1;

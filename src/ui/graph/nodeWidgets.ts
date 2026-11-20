@@ -1,13 +1,6 @@
 /**
- * The value-editing half of a node card: builds the inline parameter/socket controls, keeps them
- * in sync with the model on undo/redo, and reshapes a type-polymorphic ("generic") field when its
- * sibling `type` parameter changes. {@link NodeView} owns the card's structure and delegates every
- * control to a {@link NodeWidgets} instance, which also disposes them (closing popovers) when the
- * card is dropped.
- *
- * Each builder registers a syncer under its parameter key (re-syncing skips a field the user is actively
- * editing, e.g. a focused text input) and tracks its disposable widget. Controls emit via the
- * caller-supplied `emit` closure, which the dispatch methods wire to `onParamChange`.
+ * Builds a node card's value controls, syncs them on undo and redo, and reshapes a generic field
+ * when its `type` parameter changes. Disposes them with the card.
  */
 
 import type { GraphNode } from "../../domain/graphModel";
@@ -135,10 +128,8 @@ export class NodeWidgets {
       });
     }
     if (parameter.kind === "structural") {
-      // enum | valueType - a fixed option list.
       return this.select(key, parameter.options, String(value), emit);
     }
-    // kind === "value"
     if (parameter.type === "float") {
       return this.numberField(
         key,
@@ -169,7 +160,7 @@ export class NodeWidgets {
       this.genericValueControl = control;
       return control;
     }
-    // curve (and any future kind): a placeholder until the curve editor is wired.
+    // Any other kind gets a placeholder.
     return this.placeholder(key, "curve");
   }
 

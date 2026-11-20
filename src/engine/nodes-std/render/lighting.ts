@@ -10,10 +10,9 @@ import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
- * Lighting-as-nodes (Blender-BSDF style): a lighting node shades a color via a runtime
- * **intrinsic** - `build` emits a bare call with no body, so the IR never sees Three-specific
- * light code. `lightingIntrinsic` lets `collectRenderCapabilities` union the graph's needs into
- * the artifact's capability, so the runtime material defines exactly those `fx`-ABI functions.
+ * A lighting node shades a color through a runtime intrinsic (`build` emits a bare call).
+ * `lightingIntrinsic` lets `collectRenderCapabilities` collect which functions the runtime material
+ * must define.
  */
 
 const VEC4 = FX_VALUE_TYPES.vec4;

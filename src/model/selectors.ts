@@ -1,7 +1,4 @@
-/**
- * Read access to the model from the outside: selectors return the data the UI needs, decoupling
- * panels from the state shape. They read live state; callers must treat results as read-only.
- */
+/** Read-only selectors over the live state. */
 
 import type { LibraryAssetNames } from "../domain/assetChecks";
 import type { EditorGraph } from "../domain/graphModel";
@@ -35,22 +32,18 @@ import {
 } from "./graphSlots";
 import type { Store } from "./store";
 
-/** The scene's VFX group (the container every emitter sits under). */
 export function selectVfx(store: Store): VfxDoc {
   return store.getSource().scene.vfx;
 }
 
-/** The shared asset library (raster textures), in upload order. */
 export function selectTextureAssets(store: Store): readonly TextureAsset[] {
   return store.getSource().assets;
 }
 
-/** The HDRI environment library (hdr), in upload order. */
 export function selectEnvironmentAssets(store: Store): readonly EnvironmentAsset[] {
   return store.getSource().environments;
 }
 
-/** The GLB mesh-asset library, in upload order. */
 export function selectMeshAssets(store: Store): readonly MeshAsset[] {
   return store.getSource().meshAssets;
 }
@@ -101,7 +94,6 @@ export function selectAssetUsage(store: Store, kind: FXAssetKind): ReadonlyMap<s
   return usage;
 }
 
-/** The saved-color palette, in save order. */
 export function selectPaletteSwatches(store: Store): readonly PaletteSwatch[] {
   return store.getSource().palette;
 }
@@ -132,7 +124,6 @@ export function selectTextureAssetUsage(store: Store): ReadonlyMap<string, numbe
   return usage;
 }
 
-/** The emitters in the scene, in authored order. */
 export function selectEmitters(store: Store): readonly EmitterDoc[] {
   return store.getSource().scene.emitters;
 }
@@ -174,15 +165,11 @@ export function hasInfinitePlay(store: Store): boolean {
     );
 }
 
-/** The id of the emitter the editor currently targets; none in a scene of meshes only. */
 export function selectActiveEmitterId(store: Store): string | undefined {
   return store.getSource().scene.activeEmitterId;
 }
 
-/**
- * The emitter the editor currently targets. Falls back to the first emitter if the
- * active id has gone stale (it never should while there is at least one emitter).
- */
+/** The active emitter, or the first one when the active id is stale. */
 export function selectActiveEmitter(store: Store): EmitterDoc {
   const { emitters, activeEmitterId } = store.getSource().scene;
   const active = emitters.find((emitter) => emitter.id === activeEmitterId) ?? emitters[0];
@@ -242,12 +229,10 @@ export function selectActiveGraphOwner(store: Store): ActiveGraphOwner {
   };
 }
 
-/** The VFX meshes in the scene, in authored order (empty when the scene has none). */
 export function selectMeshes(store: Store): readonly VfxMeshDoc[] {
   return store.getSource().scene.meshes;
 }
 
-/** The id of the VFX mesh the editor currently targets, or `undefined` when there is none. */
 export function selectActiveMeshId(store: Store): string | undefined {
   return store.getSource().scene.activeMeshId;
 }

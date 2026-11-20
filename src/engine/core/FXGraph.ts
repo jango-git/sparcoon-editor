@@ -2,7 +2,6 @@ import type { FXGraphNode } from "./FXGraphNode";
 import type { FXSocketRef } from "./socket/FXSocket";
 import { socketRefKey } from "./socket/FXSocket";
 
-/** A directed edge from an output socket to an input socket. */
 export interface FXConnection {
   readonly from: FXSocketRef;
   readonly to: FXSocketRef;
@@ -115,7 +114,6 @@ export class FXGraph<N extends FXGraphNode = FXGraphNode> {
     return this.sourceByInput.get(socketRefKey(input));
   }
 
-  /** Rebuilds derived lookup indices from the current topology. */
   private reindex(): void {
     this.sourceByInput = new Map();
     for (const connection of this.connectionsList) {

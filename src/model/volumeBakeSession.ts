@@ -46,7 +46,6 @@ export class VolumeBakeSession {
     return this.current;
   }
 
-  /** Starts baking `mesh` afresh, from its default settings, ending a session already running. */
   public start(mesh: MeshAsset): void {
     this.stopBake();
     const closed = isClosedMesh(mesh.geometry);
@@ -68,7 +67,6 @@ export class VolumeBakeSession {
     }
   }
 
-  /** Ends the session, stopping a bake under way and dropping what it baked. */
   public close(): void {
     if (this.current === undefined) {
       return;
@@ -139,7 +137,6 @@ export class VolumeBakeSession {
     }
   }
 
-  /** Stops the bake under way, keeping the session. */
   public stopBake(): void {
     if (this.bake === undefined) {
       return;
@@ -167,7 +164,6 @@ export class VolumeBakeSession {
     this.close();
   }
 
-  /** Subscribes to session changes; returns an unsubscribe. */
   public subscribe(listener: () => void): () => void {
     return this.changed.on(listener);
   }

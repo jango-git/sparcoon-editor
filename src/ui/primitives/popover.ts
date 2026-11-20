@@ -21,7 +21,7 @@ export interface PopoverOptions {
    * Written onto `content` as the `--popup-scale` custom property, so a stylesheet can grow the
    * popover's own type/padding/row-height in step with a zoomed anchor (a graph node's dropdown)
    * via `calc()`. Omitted (or 1) outside a zoomable context - the property then reads its `calc()`
-   * fallback of 1 and the popover renders at its authored size, same as before this existed.
+   * fallback of 1 and the popover renders at its authored size.
    */
   readonly scale?: number | undefined;
   /** Nudge the popover to stay fully on screen. Default true. */

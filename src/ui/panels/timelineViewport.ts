@@ -1,19 +1,7 @@
 /**
- * Horizontal zoom + pan for the timeline lanes, plus the Blender-style bottom scrollbar that drives
- * them. The lane covers a padded range (a margin of negative time before frame 0 and past the end,
- * see timelineFormat), so the user can scroll a little before 0 and the rows continue past the
- * authored length. Zoom is a fraction `span` of that range (span = 1 fills the viewport, the max
- * zoom-out; smaller spans zoom in), offset by a `viewStart`.
- *
- * It is realized purely by scaling the lane content: `--timeline-zoom` on `.timeline__rows` makes
- * each lane `zoom x` the viewport width (the label column stays fixed via sticky CSS), and
- * `scrollLeft` picks the visible slice. Because every marker/scrub/drag maps pointer-X through a
- * lane's live `getBoundingClientRect()`, they keep working under zoom with no change. This class
- * repositions the overlays that live outside the scroller: the caret, the gray margin gutters, the
- * frame-tick spacing published to CSS, and the seconds ruler docked above the grid (with the
- * caret's own current-frame flag pinned to it).
- *
- * View state is transient editor focus (like the transport), never persisted.
+ * Horizontal zoom and pan for the lanes. The lane spans a padded range. Zoom is a fraction `span`
+ * of it (1 fills the viewport), offset by `viewStart`. Applied by scaling lane content through
+ * `--timeline-zoom` and `scrollLeft`.
  */
 
 import { t } from "../../i18n";
@@ -149,7 +137,6 @@ export class TimelineViewport {
     this.thumb.addEventListener("pointerdown", (down) => this.beginThumbDrag(down));
     leftHandle.addEventListener("pointerdown", (down) => this.beginHandleDrag(down, "left"));
     rightHandle.addEventListener("pointerdown", (down) => this.beginHandleDrag(down, "right"));
-    // A press on the empty track pages the window so it centres on the click.
     this.track.addEventListener("pointerdown", (down) => {
       if (down.target !== this.track || down.button !== 0) {
         return;
@@ -159,7 +146,6 @@ export class TimelineViewport {
     });
 
     this.config.stage.addEventListener("wheel", this.onWheel, { passive: false });
-    // Trackpad / native scroll keeps the custom thumb + caret in step.
     this.config.scroll.addEventListener("scroll", this.onScroll);
     // The first render()/refresh() runs before the panel is in the DOM, so the lane measures 0 and
     // the tick + gutter paint is skipped until something repaints it. Observing the scroller repaints
@@ -198,7 +184,6 @@ export class TimelineViewport {
     // the caret above, its `left` needs no separate label-width offset.
     this.flag.style.left = `${visibleX}px`;
     this.flag.textContent = String(frameOf(this.config.currentTime(), this.config.fps()));
-    // Matches the caret's own colour swap while an infinite play event runs.
     this.flag.classList.toggle("timeline__ruler-flag--infinite", this.config.isInfinite());
   }
 
@@ -328,15 +313,8 @@ export class TimelineViewport {
   }
 
   /**
-   * Rebuilds the ruler's labelled ticks for the current zoom/scroll: always seconds and fractions
-   * of a second (the flag beside it names the frame instead - see positionPlayhead), on the same
-   * "nice" 1-2-5 ladder {@link updateTicks} steps the lane's own frame gridlines with, just in a
-   * continuous unit - so zooming in refines the label down through tenths, hundredths, thousandths
-   * of a second instead of switching units. Floored at one frame's duration regardless of how far
-   * the nice-step ladder itself would shrink: a finer step would label positions the caret can
-   * never actually land on (it always snaps to the frame grid). Ticks are plain children of
-   * `rulerLane`, tracked separately from the persistent flag so only they get torn down each
-   * repaint.
+   * Rebuilds ruler tick labels in seconds on the 1-2-5 ladder, never finer than one frame because
+   * the caret snaps to frames.
    */
   private updateRuler(): void {
     for (const tick of this.rulerTicks) {

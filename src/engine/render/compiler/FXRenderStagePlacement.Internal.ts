@@ -26,7 +26,6 @@ import { RENDER_DRAW_INPUTS } from "./FXRenderDrawInputs.Internal";
  */
 const RENDER_MINIMUM_LIFT_COST: readonly number[] = [3, 0];
 
-/** One vertex value the fragment stage reads, and whether it is the same across a primitive. */
 export interface FXRenderCrossing<L extends FXTypedLocal> {
   readonly local: L;
   readonly perPrimitive: boolean;
@@ -47,7 +46,6 @@ export interface FXRenderStagePlacement<L extends FXTypedLocal> {
     readonly program: FXPlacedProgram<L>;
     readonly slots: ReadonlyMap<string, FXSlotValue>;
   };
-  /** The draw uniform an output slot now reads, by the local it read (see `liftDrawStage`). */
   readonly renamed: ReadonlyMap<string, string>;
   readonly draw: FXCompiledDrawStage | undefined;
 }

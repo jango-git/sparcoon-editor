@@ -33,7 +33,6 @@ function exprSignature(expr: FXExpr): string {
   }
 }
 
-/** A canonical, order-independent string capturing a behavior {@link FXKernelTarget}'s whole shape. */
 function kernelTargetSignature(target: FXKernelTarget): string {
   // A field left out here lets a host re-shape its target without forcing a recompile (a stale
   // kernel keeps running); `satisfies` over this keyed object makes a new FXKernelTarget field
@@ -41,8 +40,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
   const parts = {
     name: target.name,
     buffers: target.buffers.map((buffer) => [buffer.name, buffer.stride]).sort(byJSON),
-    // Array position, not an object key: JSON.stringify already turns an `undefined` element
-    // into `null`, so no `?? null` fallback is needed to keep the encoding stable.
+    // Array position keeps `undefined` stable: JSON.stringify writes it as `null`.
     inputs: target.inputs
       .map((input) => [
         input.name,
@@ -51,6 +49,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
         input.buffer,
         input.atBirth,
         input.inheritOffset,
+        input.host,
       ])
       .sort(byJSON),
     outputs: target.outputs
@@ -92,11 +91,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
  * bare target names, so a re-shaped target (without renaming) forces a recompile.
  */
 export function behaviorTargetsSignature(targets: FXBehaviorTargets): string {
-  // `satisfies` over this keyed object makes a new FXBehaviorTargets field a compile error here
-  // until it is folded in - the same discipline kernelTargetSignature already applies above.
   const parts = {
-    // Array position in the return below, not an object key: JSON.stringify already turns an
-    // `undefined` element into `null`, so no explicit fallback is needed.
     spawn: targets.spawn === undefined ? undefined : kernelTargetSignature(targets.spawn),
     update: kernelTargetSignature(targets.update),
     // Coerced to a real boolean: undefined (a hand-built target with no GPU concept) and false

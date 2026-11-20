@@ -18,7 +18,6 @@ function evalGradient(gradient: FXGradientData, t: FXExpr, fn: FXExprBuilderApi)
   const stops = [...gradient.stops].sort((a, b) => a.position - b.position);
   const colorLit = (components: readonly number[]): FXExpr =>
     fn.litVec(components[0] ?? 0, components[1] ?? 0, components[2] ?? 0, components[3] ?? 1);
-  // Guarded above (coerce rejects an empty gradient), but stay defensive: opaque white.
   const firstStop = stops[0];
   let rgba: FXExpr = firstStop !== undefined ? colorLit(firstStop.color) : fn.litVec(1, 1, 1, 1);
   for (let i = 0; i < stops.length - 1; i++) {
@@ -84,7 +83,6 @@ export const fxCombineColor = defineNode({
   },
   outputs: { color: { type: "vec4" } },
   params: {},
-  // `construct` assembles a vector from parts - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, fn }) => ({
     color: fn.construct(FX_VALUE_TYPES.vec4, inputs["rgb"], inputs["alpha"]),

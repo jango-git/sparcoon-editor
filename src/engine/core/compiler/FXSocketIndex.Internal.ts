@@ -13,7 +13,7 @@ interface FXSocketMaps {
  */
 const SOCKET_CACHE = new WeakMap<FXGraphNode, FXSocketMaps>();
 
-/** Builds the key->descriptor maps, keeping the first descriptor per key (as a linear scan did). */
+/** Builds the key->descriptor maps, keeping the first descriptor per key. */
 function buildMaps(node: FXGraphNode): FXSocketMaps {
   const inMap = new Map<string, FXSocketDescriptor>();
   for (const socket of node.inputs) {
@@ -30,7 +30,6 @@ function buildMaps(node: FXGraphNode): FXSocketMaps {
   return { in: inMap, out: outMap };
 }
 
-/** Returns the cached socket maps for `node`, building them on first access. */
 function mapsFor(node: FXGraphNode): FXSocketMaps {
   let maps = SOCKET_CACHE.get(node);
   if (maps === undefined) {

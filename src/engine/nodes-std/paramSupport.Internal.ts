@@ -3,12 +3,10 @@ import type { FXGLSLTypeName, FXValueType } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES, resolveValueType } from "../core/socket/FXValueType";
 
 /**
- * Shared support for the named-**param** nodes (`timeline-value` render/behavior, `texture`): a
- * uniform/binding addressed by a stable user name (unlike a baked `constant`), driven live via
- * {@link FXEmitter.applyValues}. The slot name derives deterministically from that name (below).
+ * Support for named param nodes (`timeline-value`, `texture`): a uniform or binding addressed by a
+ * stable user name and driven through `FXEmitter.applyValues`.
  */
 
-/** The value types a Timeline Value can carry (the shared numeric value-type set). */
 export const PARAM_VALUE_TYPES = NUMERIC_VALUE_TYPES;
 
 /**
@@ -72,9 +70,8 @@ export function coerceParamValue(width: number, raw: unknown): number | readonly
 }
 
 /**
- * The shared, mutable state of a `timeline-value` node - identical across its render (uniform) and
- * behavior (binding) twins, so it lives here rather than hand-synced in both. `name`/`type` are
- * structural (fold into {@link cacheKey}); `currentValue` is the live default.
+ * State shared by the render and behavior `timeline-value` nodes. `name` and `type` are structural
+ * (in cacheKey), `currentValue` is the live default.
  */
 export class FXTimelineValueState {
   public paramName: string;

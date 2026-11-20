@@ -1,8 +1,6 @@
 /**
- * The unified edge view over an authored graph: an input socket is fed either by a node-to-node
- * {@link GraphConnection} or - when the input belongs to a reserved sink - by a
- * {@link GraphOutputBinding}. Everything that needs "the edge into this input" (the canvas, the
- * agent API, the edge commands) resolves it here, so the connection/binding split has one owner.
+ * An input socket is fed by a node connection, or by an output binding when the input belongs to a
+ * sink. This is the one place that resolves the split.
  */
 
 import { type EditorGraph, type GraphSocketReference, incomingConnection } from "./graphModel";

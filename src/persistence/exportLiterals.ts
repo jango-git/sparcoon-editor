@@ -74,8 +74,7 @@ export function tracksLiteral(
   );
 }
 
-/** The shape `liveGetterOverride`/`liveParamSetterOverride`/`assertUniqueLiveNames` need;
- *  `EmitterDoc`/`VfxMeshDoc` satisfy it directly, so call sites just pass the doc. */
+/** The fields the live-name helpers read from an emitter or mesh doc. */
 interface LiveEntity {
   readonly name: string;
   readonly liveChannels: readonly TransformChannel[];
@@ -217,21 +216,18 @@ export function emitterSpecLiteral(
   return [
     "    {",
     `      name: ${JSON.stringify(emitter.name)},`,
-    // Omitted when the particles are not drawn.
     ...(names.render === undefined ? [] : [`      render: ${byTier(names.render)},`]),
     `      behavior: ${behaviorName},`,
     // Present only when GPU simulation compiled (ir.gpuProgram); the JS `behavior` above is
     // always present, so an omitted gpuBehavior just means this emitter falls back to JS, as at runtime.
     ...(gpuKernelName !== undefined ? [`      gpuBehavior: ${gpuKernelName},`] : []),
     `      expectedCapacity: ${String(ir.expectedCapacity)},`,
-    // Present only when the behavior graph tells it (see lifetimeBound.ts).
     ...(ir.maxLifetime !== undefined ? [`      maxLifetime: ${String(ir.maxLifetime)},`] : []),
     `      sortInterval: ${String(ir.sortInterval)},`,
     // Read from the surface sink (like sortInterval); emitted only when true, matching the
     // omit-when-false optional FXEffectEmitterSpec fields.
     ...(ir.castShadow ? ["      castShadow: true,"] : []),
     ...(ir.receiveShadow ? ["      receiveShadow: true,"] : []),
-    // Present only when the emitter has a trail or ribbon graph.
     ...STRIP_NAMES.flatMap((name) => {
       const strip = ir[name];
       const stripNames = names[name];
@@ -244,7 +240,6 @@ export function emitterSpecLiteral(
     `      transformTracks: ${transformTracksLiteral(emitter.transformTracks, emitter.liveChannels)},`,
     `      tracks: ${tracksLiteral(emitter.tracks, emitter.liveParams)},`,
     `      events: ${eventsLiteral(emitter.events, emitter.liveEvents)},`,
-    // Omitted when the emitter reacts to nothing, like the optional fields above.
     ...(emitter.reactions.length > 0
       ? [`      reactions: ${reactionsLiteral(emitter.reactions, emitterIndex, copiesOf)},`]
       : []),
@@ -293,8 +288,7 @@ export function projectSpecLiteral(
     `  fps: ${String(source.timeline.fps)},`,
     `  loop: ${String(source.timeline.loop)},`,
     `  transform: ${transformLiteral(source.scene.vfx.transform)},`,
-    // The VFX group's transform is unconditionally live (see VfxDoc's doc) - every channel, always,
-    // enforced right here rather than by anything upstream having remembered to mark it so.
+    // The VFX group's transform is always live: every channel is excluded from the export.
     `  transformTracks: ${transformTracksLiteral(source.scene.vfx.transformTracks, TRANSFORM_CHANNELS)},`,
     `  emitters: ${emitters},`,
     `  meshes: ${meshes},`,
@@ -340,9 +334,9 @@ const EXTERNAL_ASSET_TYPES: Readonly<Record<keyof ExternalAssetNames, string>> =
   volumes: "Data3DTexture",
 };
 
-/** The `<Name>Assets` constructor-parameter interface - one entry per external asset, a single flat
- *  namespace shared by every kind (ADR-0002), not a nested shape. A texture slot takes the runtime's
- *  `FXExternalTexture` - a whole `Texture`, or an atlas region of one. */
+/** The `<Name>Assets` constructor-parameter interface. One entry per external asset, in a single
+ *  flat namespace shared by every kind. A texture slot takes `FXExternalTexture` (a `Texture`, or
+ *  an atlas region of one). */
 export function assetsInterface(className: string, names: ExternalAssetNames): string {
   const lists = Object.keys(EXTERNAL_ASSET_TYPES) as (keyof ExternalAssetNames)[];
   const owners = new Map<string, keyof ExternalAssetNames>();
@@ -443,10 +437,8 @@ export function classDeclaration(
   ].join("\n");
 }
 
-// Identifiers a PascalCased project name could collide with in module scope: "FXEmitter"/"Mesh"/
-// "FXExternalTexture" are imported only conditionally (see needsLiveGetter, texture slots) -
-// reserving them regardless is cheap and keeps this list independent of which project triggers
-// which import.
+// Module-scope identifiers a PascalCased project name must not equal. The conditionally imported
+// ones are reserved always, so the list does not depend on the project.
 const RESERVED_NAMES = new Set([
   "FXEffect",
   "FXEffectOptions",

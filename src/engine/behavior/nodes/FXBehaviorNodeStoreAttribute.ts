@@ -48,7 +48,6 @@ export class FXBehaviorNodeStoreAttribute extends FXBehaviorNode {
     return STORE_ATTRIBUTE_META;
   }
 
-  /** A pass-through buffer write, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

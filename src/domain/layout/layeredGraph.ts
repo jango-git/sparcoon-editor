@@ -1,12 +1,10 @@
 /**
- * The layered view of an authored graph the auto-layout works on (see `arrangeGraph.ts`): every
- * real node in a column (a layer) by its longest path to the sinks, which take layer 0 (the
- * rightmost column); every wire as a signal - one source socket with all the inputs it feeds -
- * that occupies one placeholder row (a dummy) in each column it crosses, so a wire never runs
- * through a card. Routes are spliced out: the layout rebuilds them.
+ * Layered view for the auto-layout. Every real node sits in a column (layer) by its longest path to
+ * the sinks, which take layer 0, the rightmost column. Every wire is a signal (one source socket
+ * with all the inputs it feeds) occupying one placeholder row (a dummy) in each column it crosses,
+ * so a wire never runs through a card. Routes are spliced out, the layout rebuilds them.
  *
- * Entities carry a mutable `y` (their top edge): the row placement writes it, the channel routing
- * and the emitter read it. Nothing outside the layout sees these objects.
+ * Entities carry a mutable `y` (top edge), written by row placement and read by channel routing.
  */
 
 import { isFakeNodeType, ROUTE_TYPE } from "../fakeNodes";

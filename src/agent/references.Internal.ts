@@ -58,7 +58,6 @@ function socketsOf(metadata: FXNodeMeta, side: "input" | "output"): readonly FXS
   ];
 }
 
-/** Resolves `address` to a socket reference, checking the node exists and has that socket. */
 export function requireSocket(
   source: SourceState,
   target: GraphTarget,
@@ -95,7 +94,6 @@ function parameterKeysOf(metadata: FXNodeMeta): ReadonlySet<string> {
   ]);
 }
 
-/** Checks every key of `patch` is a parameter a node of `metadata`'s type stores. */
 export function requireParameterKeys(
   metadata: FXNodeMeta,
   patch: Readonly<Record<string, unknown>>,

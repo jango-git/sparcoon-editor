@@ -1,7 +1,6 @@
 /**
- * Converts between a live `BufferGeometry` and the plain `position`/`normal`/`uv`/`index` arrays a
- * {@link MeshAsset} persists (ADR-0001). Baking runs once at upload; rebuilding runs wherever a
- * mesh asset needs a live geometry again (preview, or a GLB written for download).
+ * Converts a live `BufferGeometry` to and from the plain `position`/`normal`/`uv`/`index` arrays of
+ * a {@link MeshAsset}.
  */
 
 import type { BufferAttribute, InterleavedBufferAttribute } from "three";
@@ -33,8 +32,9 @@ function flattenVec3(attribute: VertexAttribute, vertexCount: number): number[] 
   return values;
 }
 
-/** Bakes `geometry`'s position/normal/uv/index into plain flat arrays. Missing normals are
- * computed; missing UVs default to zero; a non-indexed source gets a trivial sequential index. */
+/**
+ * Missing normals are computed, missing UVs are zero, a non-indexed source gets a sequential index.
+ */
 export function bakeGeometryArrays(geometry: BufferGeometry): BakedMeshGeometry {
   // @types/three types named attributes as always present; a source mesh can genuinely lack one.
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -44,8 +44,7 @@ export function bakeGeometryArrays(geometry: BufferGeometry): BakedMeshGeometry 
   const position = geometry.getAttribute("position");
   const normal = geometry.getAttribute("normal");
   const uv = geometry.getAttribute("uv");
-  // `getIndex()` is the one geometry accessor that returns `null` (three's non-indexed convention),
-  // not `undefined` - converted once, right at this boundary.
+  // `getIndex()` returns `null` for non-indexed geometry.
   const index = geometry.getIndex() ?? undefined;
 
   const vertexCount = position.count;
@@ -63,7 +62,6 @@ export function bakeGeometryArrays(geometry: BufferGeometry): BakedMeshGeometry 
   };
 }
 
-/** Rebuilds a live `BufferGeometry` from a mesh asset's baked arrays. */
 export function buildGeometryFromArrays(baked: BakedMeshGeometry): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(baked.position, 3));
@@ -73,12 +71,10 @@ export function buildGeometryFromArrays(baked: BakedMeshGeometry): BufferGeometr
   return geometry;
 }
 
-/** A single-mesh GLB of a mesh asset's baked arrays - written anew, as the upload's own bytes are not
- *  kept (ADR-0001). */
+/** Single-mesh GLB written from the baked arrays, since the uploaded bytes are not kept. */
 export async function encodeMeshGlb(baked: BakedMeshGeometry): Promise<ArrayBuffer> {
   const geometry = buildGeometryFromArrays(baked);
   try {
-    // `binary: true` makes the result an ArrayBuffer.
     return (await new GLTFExporter().parseAsync(new Mesh(geometry), {
       binary: true,
     })) as ArrayBuffer;

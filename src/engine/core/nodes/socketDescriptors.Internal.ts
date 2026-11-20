@@ -50,8 +50,7 @@ export function toSocketDescriptors(
 }
 
 export function isTargetInputDefault(value: unknown): value is FXTargetInputDefault {
-  // `typeof null === "object"` too; `!value` excludes exactly that case without writing the
-  // banned null literal.
+  // A null is also `typeof "object"`; `!value` excludes it.
   if (typeof value !== "object" || !value) {
     return false;
   }

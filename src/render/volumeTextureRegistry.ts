@@ -1,7 +1,6 @@
 /**
- * The editor's live volume cache: turns the library's PNG atlas data URLs into R8 `Data3DTexture`s,
- * the form the runtime takes them in. Decoding is asynchronous, so until it lands an asset resolves
- * to a one-texel stand-in, and the preview rebuilds once the real texture is in.
+ * Turns PNG atlas data URLs into R8 `Data3DTexture`s. Until decoding finishes an asset resolves to
+ * a one-texel stand-in.
  */
 
 import { Data3DTexture, RedFormat, UnsignedByteType } from "three";
@@ -16,7 +15,6 @@ interface VolumeSlot {
   disposed: boolean;
 }
 
-/** An R8 texture of `texels`. */
 function r8Texture(
   texels: Uint8Array<ArrayBuffer>,
   width: number,
@@ -38,14 +36,12 @@ export class VolumeTextureRegistry {
     },
   );
 
-  /** @param onLoaded Called once a volume finishes decoding, so the preview can rebuild. */
   constructor(private readonly onLoaded: () => void) {}
 
   public sync(assets: readonly VolumeAsset[]): void {
     this.cache.sync(assets);
   }
 
-  /** Every volume asset's texture, by name - the stand-in while it decodes. */
   public resolveAll(): Record<string, Data3DTexture> {
     return Object.fromEntries(
       Object.entries(this.cache.all()).map(([name, slot]) => [name, slot.texture]),

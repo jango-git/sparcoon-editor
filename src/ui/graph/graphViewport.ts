@@ -1,9 +1,6 @@
 /**
- * Screen <-> graph coordinate transform for the node canvas. The viewport owns one camera
- * (pan + zoom) and broadcasts it to every {@link CameraTarget} it was built with - each surface
- * applies the same camera in its own idiom (a CSS transform, an SVG group transform, a background
- * offset). Nothing inherits the camera by DOM nesting, so a layer's stacking order and its
- * coordinate system stay independent choices.
+ * Screen to graph coordinate transform. Pushes one camera to every {@link CameraTarget}, each
+ * applying it its own way, so layer order and coordinates stay independent.
  */
 
 import { clamp } from "../primitives/math";
@@ -21,7 +18,6 @@ export interface CameraState {
   readonly zoom: number;
 }
 
-/** A rectangle in graph coordinates, used to frame a region of the graph. */
 export interface GraphRect {
   readonly minX: number;
   readonly minY: number;
@@ -93,7 +89,9 @@ export class GraphViewport {
     return { panX: this.panX, panY: this.panY, zoom: this.zoom };
   }
 
-  /** Restores a previously stashed pan/zoom (when returning to a graph). */
+  /**
+   * Restores a saved pan and zoom.
+   */
   public setState(state: CameraState): void {
     this.panX = state.panX;
     this.panY = state.panY;

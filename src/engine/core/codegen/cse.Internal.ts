@@ -3,12 +3,9 @@ import { childAt, childrenOf, withChildren } from "../ir/visit.Internal";
 import { classifyRates } from "./rates.Internal";
 
 /**
- * CSE over a phase's scalarized JS-backend locals (GLSL prints vectors directly and its own
- * driver handles CSE). `raw` nodes are never merged, so distinct `Math.random()` draws stay
- * distinct; a `call` to an impure function (`isImpureCall`, currently only `rand`) gets the same
- * treatment - unlike `raw`, an impure call can otherwise look identical to every other call of the
- * same function (same name, same - possibly zero - args), so it needs an explicit check rather
- * than falling out of the node kind alone.
+ * CSE over a phase's scalarized JS locals (the GLSL driver does its own). `raw` nodes and impure
+ * calls (`isImpureCall`, currently `rand`) are never merged: their result is not a function of
+ * their text, and a zero-arg impure call would hash like every other call.
  */
 export interface FXScalarLocal {
   readonly name: string;
@@ -66,7 +63,7 @@ export function commonSubexpressionElimination(
     const typeId = expression.type.id;
     switch (expression.kind) {
       case "raw":
-        return register(node, undefined); // never deduped: preserves Math.random() distinctness
+        return register(node, undefined); // never deduped: its text may not be pure
       case "lit":
         return register(node, `lit:${typeId}:${expression.values.join(",")}`);
       case "ref":
@@ -79,8 +76,7 @@ export function commonSubexpressionElimination(
       case "un":
         return register(node, `un:${expression.op}:${typeId}:${identifier(childAt(children, 0))}`);
       case "call":
-        // An impure call (rand) never dedupes, same reasoning as `raw` above - every call site
-        // is an independent draw, even a zero-arg one that would otherwise hash identically.
+        // An impure call (rand) never dedupes: each call site is an independent draw.
         return isImpureCall(expression.fn)
           ? register(node, undefined)
           : register(node, `call:${expression.fn}:${typeId}:${children.map(identifier).join(",")}`);
@@ -164,13 +160,10 @@ export function commonSubexpressionElimination(
 }
 
 /**
- * Splits `locals` into per-particle-invariant (hoistable out of the loop, computed once) and
- * variant - {@link classifyRates} at two ranks. A `raw` not marked `pure` is variant (it may be
- * `Math.random()`); an impure call (`isImpureCall`, currently only `rand`) is variant too and for
- * the same reason - a zero-arg impure call would otherwise vacuously pass "all children are
- * invariant" (it has none) and get wrongly hoisted to compute once for the whole burst instead of
- * once per particle. Everything else is invariant iff its children are. Order is preserved within
- * each partition.
+ * Splits `locals` into per-particle-invariant (computed once, outside the loop) and variant, by
+ * {@link classifyRates} at two ranks. A `raw` not marked `pure` and an impure call
+ * (`isImpureCall`) are variant: an impure call has no children, so it would otherwise count as
+ * invariant. Order is kept within each part.
  */
 export function partitionByInvariance(
   locals: readonly FXScalarLocal[],

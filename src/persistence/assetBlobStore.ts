@@ -37,7 +37,6 @@ export interface BlobBackend {
   delete(name: string): Promise<boolean>;
 }
 
-/** One IndexedDB object store as a {@link BlobBackend}. */
 export function indexedDbBlobBackend(storeName: string): BlobBackend {
   return {
     put: async (name, payload): Promise<boolean> =>
@@ -53,7 +52,6 @@ export function indexedDbBlobBackend(storeName: string): BlobBackend {
 export interface BlobPayload<T extends { readonly name: string }, P> {
   /** The asset's payload, or `undefined` when it is empty (left out of the saved document). */
   read(asset: T): P | undefined;
-  /** `asset` carrying `payload`. */
   withPayload(asset: T, payload: P): T;
   /** `asset` with its payload emptied, as the document saves it. */
   withoutPayload(asset: T): T;
@@ -178,7 +176,6 @@ export const MESH_GEOMETRY_PAYLOAD: BlobPayload<MeshAsset, BakedMeshGeometry> = 
       : undefined,
 };
 
-/** The editor's libraries, shared by the autosave and the initial load (localStore.ts). */
 export const textureBlobs = new BlobSync(
   dataUrlPayload<TextureAsset>(),
   indexedDbBlobBackend(TEXTURE_BLOB_STORE),

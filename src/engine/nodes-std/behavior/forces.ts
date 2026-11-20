@@ -182,7 +182,6 @@ export const fxFirework = defineNode({
   type: "firework",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "spawn",
   inputs: {

@@ -34,7 +34,6 @@ export function openContextMenu(x: number, y: number, items: readonly ContextMen
   );
   // `.timeline-menu` is display:none until shown; the popover measures it to clamp on screen.
   menu.style.display = "block";
-  // Anchored to a point (not an element), clamped on screen, and - unlike a dropdown - not
-  // dismissed by scroll/resize, matching the old registerDismiss behaviour.
+  // Anchored to a point, not an element, and - unlike a dropdown - not dismissed by scroll or resize.
   close = openPopover(menu, { anchor: { x, y }, dismissOnScroll: false }).close;
 }

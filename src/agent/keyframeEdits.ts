@@ -267,7 +267,7 @@ function requireDeclared(keys: EntityKeys, name: string): TimelineValueView {
   return declared;
 }
 
-/** The frame `time` snaps to, as a sentence's worth of text. */
+/** The frame `time` snaps to, worded for an error message. */
 function frameText(source: SourceState, time: number): string {
   return `the frame at ${String(snapTime(source, time))}s (keys snap to the ${String(source.timeline.fps)} fps grid)`;
 }

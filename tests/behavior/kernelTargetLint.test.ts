@@ -12,6 +12,7 @@ import type {
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { attributeSlot } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FX_DT_INPUT } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../../src/engine/behavior/live/FXBehaviorLiveBackend";
 import { FXBehaviorNodeStoreAttribute } from "../../src/engine/behavior/nodes/FXBehaviorNodeStoreAttribute";
 import type { FXCompilerErrorCode } from "../../src/engine/core/compiler/FXCompilerError";
@@ -23,9 +24,14 @@ import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 import { buildValueBehaviorTarget } from "../helpers/valueTarget";
 
+const MODEL_MATRIX = {
+  name: "modelMatrix",
+  type: FX_VALUE_TYPES.mat4,
+  host: { kind: "emitter", field: "worldMatrix" },
+} as const;
+
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC3 = FX_VALUE_TYPES.vec3;
-const MAT4 = FX_VALUE_TYPES.mat4;
 
 const reg = behaviorRegistry();
 
@@ -50,10 +56,7 @@ function baseTarget(): FXKernelTarget {
   return {
     name: "lint-update",
     buffers: [{ name: "values", stride: 4 }],
-    inputs: [
-      { name: "VALUE_progress", type: FLOAT, buffer: "values", offsets: [0] },
-      { name: "dt", type: FLOAT },
-    ],
+    inputs: [{ name: "VALUE_progress", type: FLOAT, buffer: "values", offsets: [0] }, FX_DT_INPUT],
     outputs: [
       { slot: "progress", type: FLOAT, required: false, buffer: "values", offsets: [0] },
       { slot: "tint", type: VEC3, required: false, buffer: "values", offsets: [1, 2, 3] },
@@ -228,7 +231,7 @@ describe("validateKernelTarget - numeric and identifier strictness", () => {
         {
           ...base,
           buffers: [{ name: "my values; alert(1)//", stride: 4 }],
-          inputs: [{ name: "dt", type: FLOAT }],
+          inputs: [FX_DT_INPUT],
           outputs: [],
         },
         "not a valid identifier",
@@ -275,22 +278,22 @@ describe("validateKernelTarget - numeric and identifier strictness", () => {
         "bad-target-input-identifier",
       ],
       [
-        "offset-less input that is not dt",
+        "input with no source",
         { ...base, inputs: [...base.inputs, { name: "u_progress", type: FLOAT }] },
-        `reserved for "dt"`,
-        "offsetless-input-not-reserved",
+        "comes from nowhere",
+        "input-has-no-source",
       ],
       [
-        "dt declared with offsets (diverges between function/interpreter modes)",
+        "dt declared with offsets too",
         {
           ...base,
           inputs: [
             { name: "VALUE_progress", type: FLOAT, buffer: "values", offsets: [0] },
-            { name: "dt", type: FLOAT, buffer: "values", offsets: [1] },
+            { ...FX_DT_INPUT, buffer: "values", offsets: [1] },
           ],
         },
-        "must be offset-less",
-        "dt-input-has-offsets",
+        "more than one",
+        "input-has-several-sources",
       ],
       [
         "home-made value type",
@@ -402,17 +405,17 @@ describe("validateKernelTarget - phase awareness and the spawn/update pair", () 
       },
     });
     expect(result.ok).toBe(false);
-    expect(hasError(result, "integration-reads-dt-in-spawn", "spawn kernel has no dt")).toBe(true);
+    expect(hasError(result, "integration-input-not-declared", "not declared")).toBe(true);
   });
 
   it("a spawn target declaring a dt input is invalid", () => {
     const targets = pair();
     const result = lintTargets({
       ...targets,
-      spawn: { ...targets.spawn, inputs: [...targets.spawn.inputs, { name: "dt", type: FLOAT }] },
+      spawn: { ...targets.spawn, inputs: [...targets.spawn.inputs, FX_DT_INPUT] },
     });
     expect(result.ok).toBe(false);
-    expect(hasError(result, "spawn-input-has-dt", "spawn kernel has no dt")).toBe(true);
+    expect(hasError(result, "input-parameter-not-in-phase", "no such parameter")).toBe(true);
   });
 
   it.each<[string, (targets: ReturnType<typeof pair>) => FXBehaviorTargets, FXCompilerErrorCode]>([
@@ -441,7 +444,7 @@ describe("validateKernelTarget - phase awareness and the spawn/update pair", () 
         update: {
           ...targets.update,
           buffers: [...targets.update.buffers, { name: "lifecycle", stride: 3 }],
-          inputs: [...targets.update.inputs, { name: "modelMatrix", type: MAT4, atBirth: true }],
+          inputs: [...targets.update.inputs, { ...MODEL_MATRIX, atBirth: true }],
         },
       }),
       "at-birth-input-not-in-spawn",
@@ -452,7 +455,7 @@ describe("validateKernelTarget - phase awareness and the spawn/update pair", () 
         ...targets,
         spawn: {
           ...targets.spawn,
-          inputs: [...targets.spawn.inputs, { name: "modelMatrix", type: MAT4, atBirth: true }],
+          inputs: [...targets.spawn.inputs, { ...MODEL_MATRIX, atBirth: true }],
         },
       }),
       "at-birth-input-needs-lifecycle",

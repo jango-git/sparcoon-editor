@@ -5,8 +5,8 @@ import type { FXCurveData } from "../../core/nodes/FXParamSpec";
 import { DEFAULT_CURVE } from "../../core/nodes/FXParamSpec";
 
 /**
- * Inline curve baking (adaptive Catmull-Rom) and the `ramp` node, shared by both backends. A
- * `curve` param bakes into a piecewise-linear `mix` chain at compile time, so it works in GLSL and JS alike.
+ * Bakes a `curve` param into a piecewise-linear `mix` chain at compile time, so it runs in GLSL and
+ * JS alike. Also holds the `ramp` node.
  */
 
 /**
@@ -190,7 +190,6 @@ function bakedCurveKnots(curve: FXCurveData): FXCurveKnot[] {
 function evalCurve(curve: FXCurveData, t: FXExpr, fn: FXExprBuilderApi): FXExpr {
   const knots = bakedCurveKnots(curve);
   const firstKnot = knots[0];
-  // Guarded above (coerce keeps points finite), but stay defensive: an empty curve is flat 0.
   if (firstKnot === undefined) {
     return fn.lit(0);
   }

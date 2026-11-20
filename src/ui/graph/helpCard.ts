@@ -1,11 +1,6 @@
 /**
- * A single floating help card, shared by the two places a node's documentation surfaces: the
- * add-node menu (hovering / keyboard-highlighting an item) and a node's header help icon. It
- * shows the node's label and its engine `description`, anchored beside whatever opened it.
- *
- * One module-level instance (lazily mounted on `document.body`) is reused everywhere, so hovers
- * never leave a trail of stray panels behind. Pure chrome - it reads no model state and sends no
- * commands; callers pass in the text and an anchor rectangle.
+ * One shared help card, lazily mounted on `document.body`. Shows a label and description anchored
+ * to a rectangle. Reads no model state.
  */
 
 import { createElement } from "../dom";
@@ -14,7 +9,6 @@ import { clamp } from "../primitives/math";
 /** Gap (px) between the anchor and the card, and the viewport margin it is kept inside. */
 const GAP = 8;
 
-/** The three DOM refs are always created and used together; bundled so one check narrows all three. */
 interface HelpCardParts {
   element: HTMLElement;
   title: HTMLElement;

@@ -1,5 +1,3 @@
-/** A baked volume as a volume asset of the content library. */
-
 import { volumeAtlasDataUrl } from "../domain/volumeAtlas";
 import type { VolumeBakeResult } from "../domain/volumeBake";
 import type { MeshAsset, SourceState, VolumeAsset } from "./editorState";

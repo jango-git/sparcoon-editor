@@ -1,7 +1,7 @@
 /**
- * Derives the Sun from an HDRI's brightest upper-hemisphere pixel. Azimuth/elevation inverts
- * three.js's `equirectUv` mapping against {@link placeSun}'s convention (`environment.ts`), so the
- * derived sun stays aligned with where the bright spot renders in `scene.background`.
+ * Derives the Sun from the brightest upper-hemisphere pixel of an HDRI. Azimuth and elevation
+ * invert three.js `equirectUv` against the {@link placeSun} convention, so the sun matches the
+ * bright spot in `scene.background`.
  */
 
 import type { Rgba } from "../ui/components/color";
@@ -27,14 +27,12 @@ const LUMINANCE_R = 0.2126729;
 const LUMINANCE_G = 0.7151522;
 const LUMINANCE_B = 0.072175;
 
-// HDR luminance at which derived intensity == 1, anchoring the derived scale near the manual
-// default (2.2) rather than an arbitrary unit.
+// HDR luminance that maps to intensity 1.
 const SUN_INTENSITY_REFERENCE_LUMINANCE = 1;
-// Matches sunIntensity's existing slider max (previewSettings.ts) - HDR suns can run several
-// orders of magnitude brighter than this, so intensity is log-compressed then hard-capped.
+// Slider maximum of `sunIntensity`. HDR suns are far brighter, so intensity is log-compressed and
+// capped here.
 const SUN_INTENSITY_MAX = 10;
-// Bright/mean luminance ratio below which the upper hemisphere reads as "no clear sun" (e.g. an
-// overcast sky) - a real sun disc clears this by orders of magnitude; retune against real assets.
+// Bright to mean luminance ratio below which the sky counts as having no sun (overcast).
 const SUN_CONTRAST_THRESHOLD = 4;
 // Guards the max-channel and mean-luminance divisions on an all-black upper hemisphere.
 const LUMINANCE_EPSILON = 1e-6;
@@ -85,7 +83,7 @@ export function deriveSunFromEquirect(image: EquirectImage): DerivedSun {
   };
 }
 
-/** Max-channel normalization preserves hue exactly and keeps every channel within (0, 1]. */
+/** Divides by the max channel, which keeps hue and channels in (0, 1]. */
 function deriveColor(r: number, g: number, b: number): Rgba {
   const channelMax = Math.max(r, g, b, LUMINANCE_EPSILON);
   return [r / channelMax, g / channelMax, b / channelMax, 1];

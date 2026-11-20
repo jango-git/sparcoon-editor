@@ -1,13 +1,8 @@
-/**
- * Three-independent GLSL value type system for socket typing and codegen. Mirrors
- * `GLTypeInfo` (instancedParticle/glTypeInfo) but stays three-free; mapped only at the
- * material adapter boundary.
- */
+/** GLSL value type system for socket typing and codegen, free of `three` types. */
 
 /**
- * Backend-neutral identity of a value type. Structural code (CSE hash-cons, signatures,
- * cache keys) keys on this id, not on `glslTypeName` - kept as a separate field so a future
- * non-GLSL backend is not forced to inherit GLSL spelling as its internal type key.
+ * Backend-neutral identity of a value type. Structural code (CSE, signatures, cache keys) keys on
+ * this id, not on `glslTypeName`.
  */
 export type FXValueTypeId =
   | "float"
@@ -68,7 +63,6 @@ export const FX_VALUE_TYPES: Readonly<Record<FXValueTypeId, FXValueType>> = Obje
   ivec4: Object.freeze({ id: "ivec4", glslTypeName: "ivec4", components: 4, instantiable: true }),
 });
 
-/** Resolves a type name to its canonical {@link FXValueType}. */
 export function resolveValueType(name: FXValueTypeId): FXValueType {
   return FX_VALUE_TYPES[name];
 }
@@ -100,12 +94,10 @@ export interface FXGenericType {
 /** A socket's declared type: a concrete value type, or the node's generic `T`. */
 export type FXSocketType = FXValueType | FXGenericType;
 
-/** Narrows a socket type to its generic form. */
 export function isGenericType(type: FXSocketType): type is FXGenericType {
   return "generic" in type;
 }
 
-/** Whether a type is one of the square matrix types (`mat2`/`mat3`/`mat4`). */
 export function isMatrixType(type: FXValueType): boolean {
   const id = type.id;
   return id === "mat2" || id === "mat3" || id === "mat4";
@@ -116,21 +108,14 @@ export function matrixDimension(components: number): number {
   return Math.round(Math.sqrt(components));
 }
 
-/** Whether a type is one of the integer types (`int`/`ivec2`/`ivec3`/`ivec4`). */
 export function isIntType(type: FXValueType): boolean {
   const id = type.id;
   return id === "int" || id === "ivec2" || id === "ivec3" || id === "ivec4";
 }
 
 /**
- * Whether a type is one of the interconvertible numeric widths (`float`/`vecN`).
- *
- * Matrices are excluded explicitly: `mat2` carries 4 float components just like `vec4`,
- * so a bare component-count test would wrongly let a matrix interconvert with a vector.
- * The `int`/`ivecN` family is excluded the same way: `ivec4` also carries 4 components, and
- * letting it through here would silently make it numeric-interconvertible with `vec4` via
- * `coerceNumeric` - exactly the implicit int<->float coercion this type family must never
- * have (a graph crosses the boundary only through an explicit cast; see `toInt`/`toFloat`).
+ * Whether a type is `float` or `vecN`. Matrices and `int`/`ivecN` are excluded although they have
+ * the same component counts: they never convert implicitly, only through `toInt`/`toFloat`.
  */
 export function isNumericType(type: FXValueType): boolean {
   return !isMatrixType(type) && !isIntType(type) && type.components >= 1 && type.components <= 4;

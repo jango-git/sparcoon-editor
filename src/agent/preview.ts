@@ -246,7 +246,6 @@ function requireCount(value: unknown): OverdrawCount {
   return count;
 }
 
-/** `stats`' layers, with `perPixel` over the whole frame. */
 function layersOf(stats: OverdrawStats): OverdrawLayers {
   return {
     fragments: stats.fragments,

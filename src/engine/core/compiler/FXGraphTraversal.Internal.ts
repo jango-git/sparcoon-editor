@@ -37,7 +37,6 @@ export function collectReachableNodeIds(graph: FXGraph, slots?: readonly string[
   return reachable;
 }
 
-/** Result of {@link topologicalOrder}. */
 export interface FXTopologicalResult {
   /** Node ids ordered dependencies-first; empty tail is dropped on a cycle. */
   readonly order: readonly string[];
@@ -71,10 +70,8 @@ export function topologicalOrder(
     }
     const stack: Frame[] = [{ id: rootId, entered: false }];
     while (stack.length > 0) {
-      // Pop, then re-push before diving into dependencies: the `entered` flag decides whether
-      // this frame finishes here (already re-visited) or dives into its dependencies (re-pushed
-      // below deps). Popping (instead of peeking the top) lets TypeScript prove `frame` is
-      // defined via the guard, matching the `stack.length > 0` invariant the loop already holds.
+      // Pop and re-push before descending into dependencies; `entered` tells whether this frame
+      // finishes or descends.
       const frame = stack.pop();
       if (frame === undefined) {
         continue;

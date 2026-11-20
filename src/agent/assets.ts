@@ -73,7 +73,6 @@ const IMAGE_TYPES: Readonly<Record<string, string>> = {
   gif: "image/gif",
 };
 
-/** Each library's entry names, by kind. */
 function libraryNames(source: SourceState): Readonly<Record<AssetKind, readonly string[]>> {
   return {
     texture: source.assets.map((asset) => asset.name),
@@ -84,7 +83,6 @@ function libraryNames(source: SourceState): Readonly<Record<AssetKind, readonly 
 
 const ASSET_KINDS: readonly AssetKind[] = ["texture", "mesh", "environment", "volume"];
 
-/** Each library's remove command. */
 const REMOVE: Readonly<Record<AssetKind, (store: Store, name: string) => void>> = {
   texture: removeTextureAsset,
   mesh: removeMeshAsset,
@@ -92,7 +90,6 @@ const REMOVE: Readonly<Record<AssetKind, (store: Store, name: string) => void>> 
   volume: removeVolumeAsset,
 };
 
-/** `defaults` with `overrides`, checked. */
 function bakeSettings(defaults: VolumeBakeSettings, overrides: unknown): VolumeBakeSettings {
   if (overrides !== undefined && (typeof overrides !== "object" || !overrides)) {
     throw new AgentError("invalid_argument", "settings must be an object.");
@@ -105,7 +102,6 @@ function bakeSettings(defaults: VolumeBakeSettings, overrides: unknown): VolumeB
   return settings;
 }
 
-/** The bytes of `data` as a blob, whichever of the accepted forms it arrives in. */
 async function blobFrom(data: unknown): Promise<Blob> {
   if (data instanceof Blob) {
     return data;

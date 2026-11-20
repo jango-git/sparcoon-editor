@@ -4,10 +4,8 @@
  * `page.evaluate`. Every input and every return value is plain JSON; errors are
  * {@link AgentError}s with the code in the message.
  *
- * This module only assembles the namespaces. Each one is built from the few services it needs,
- * and every edit goes through the editor's own model commands, so undo, autosave, recompiling
- * and the UI all follow an agent edit exactly as they follow a hand edit.
- *
+ * - Every edit goes through the editor's own commands, so undo, autosave, recompiling and the UI
+ *   follow it as they follow a hand edit.
  * - Top-level edits (`scene`, `graph(...)`, `timeline`) are one undo step each;
  *   `edit((transaction) => ...)` makes a whole body one step, all or nothing.
  * - A graph edit makes that graph's owner the active one, like a click on it in the editor.
@@ -39,7 +37,6 @@ import type { StatusView } from "./views";
 export { AgentError, type AgentErrorCode } from "./errors";
 
 /** Bumped on a breaking change to this surface. */
-// 2: setting a key on a frame that already holds one is refused unless asked to replace it.
 const AGENT_API_VERSION = 2;
 
 export interface SparcoonAgentApi extends EditApi {
@@ -55,10 +52,9 @@ export interface SparcoonAgentApi extends EditApi {
   /** Returns whether there was anything to redo. */
   redo(): boolean;
   /**
-   * Compile status of the active owner, or of `ownerId` after focusing it. Asynchronous on
-   * purpose, unlike the other reads: it waits for the recompute the last edit scheduled, or it
-   * would report the graph as it was before that edit. Await it - a pending Promise placed inside
-   * a returned object serializes to `{}`. A VFX mesh reports no `behavior` (it has no such graph).
+   * Compile status of the active owner, or of `ownerId` after focusing it. Waits for the
+   * recompute the last edit scheduled, so await it: a Promise inside a returned object serializes
+   * to `{}`. A VFX mesh reports no `behavior`.
    */
   status(ownerId?: string): Promise<StatusView>;
   /**

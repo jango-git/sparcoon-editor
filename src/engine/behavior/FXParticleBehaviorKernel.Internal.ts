@@ -40,6 +40,7 @@ import type {
   FXKernelWrite,
 } from "./FXCompiledKernel";
 import type { FXKernelContext } from "./FXKernelContext";
+import { seedRandomDraws } from "./FXKernelRandom.Internal";
 import {
   generateEpilogue,
   isInvariantKernelRef,
@@ -65,25 +66,17 @@ import type {
 } from "./FXParticleBehaviorTarget";
 import { particleBehaviorTargetsFor } from "./FXParticleBehaviorTarget";
 
-// This module is the behavior compile family's entry point; re-export the public symbols that
-// moved to the split files so existing importers keep their one import path.
 export {
   assembleKernelBody,
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
 } from "./FXKernelBuild.Internal";
-export type {
-  FXEmitterTransform,
-  FXParticleSpawnKernel,
-  FXParticleUpdateKernel,
-} from "./FXKernelShared.Internal";
+export type { FXParticleSpawnKernel, FXParticleUpdateKernel } from "./FXKernelShared.Internal";
 export { previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
 export { resolvePlacementPhases, validateBehavior } from "./FXKernelValidation.Internal";
 
-/** Component suffixes for a vector value param's per-component binding hints (`positionx`, ...). */
 const VEC_COMPONENT_NAMES = ["x", "y", "z", "w"] as const;
 
-/** Mutable accumulator for one phase's compilation (JS SSA). */
 class FXKernelState {
   private readonly preLoopLines: string[] = [];
   private readonly bodyLines: string[] = [];
@@ -106,17 +99,14 @@ class FXKernelState {
   }
 
   /**
-   * Runs CSE over the accumulated SSA plan, splits it into particle-invariant (hoisted before
-   * the loop) and per-particle locals, then prints each. Called once after every node's `build`
-   * has registered its locals, so shared subtrees (a repeated `length`, a matrix determinant)
-   * are deduped across the whole phase and invariants (bindings, `dt`, the emitter transform)
-   * leave the hot loop.
+   * Runs CSE over the plan, hoists particle-invariant locals before the loop, and prints the rest.
+   * Called once after every node has registered its locals.
    */
   public finalize(target: FXKernelTarget): void {
     const isImpureCall = (fn: string): boolean =>
       FX_BEHAVIOR_ALL_FUNCTIONS.get(fn)?.impure === true;
     const optimized = commonSubexpressionElimination(
-      this.localsIR,
+      seedRandomDraws(this.localsIR, target),
       (hint) => this.uniqueName(hint),
       isImpureCall,
     );
@@ -197,10 +187,8 @@ class FXKernelState {
   }
 }
 
-/** Builder facade for the behavior backend - `call` resolves against core + behavior signatures. */
 const BEHAVIOR_BUILDERS = createBuilders(signaturesFrom(FX_BEHAVIOR_ALL_FUNCTIONS));
 
-/** {@link FXKernelContext} bound to one node; emits JS over the packed state. */
 class FXParticleKernelContext
   extends FXCompileContextBase<FXBehaviorNode, readonly string[]>
   implements FXKernelContext
@@ -247,8 +235,7 @@ class FXParticleKernelContext
   }
 
   public readTargetInput(name: string): FXExpr {
-    // Typed throws so a live apply repackages a third-party node's bad target read
-    // with its code/nodeId intact, instead of a bare Error folded to compile-failed.
+    // Throw a typed error so the live apply keeps the code and nodeId.
     const input = this.target.inputs.find((candidate) => candidate.name === name);
     if (input === undefined) {
       throw new FXCompilerErrorException({
@@ -302,8 +289,8 @@ class FXParticleKernelContext
   }
 
   /**
-   * A scalar value param is one binding; a vector is one binding per component, referenced
-   * through a `construct` (bindings are scalar). Edits publish by rewriting each binding value.
+   * A scalar param is one binding, a vector one per component (bindings are scalar) joined by a
+   * `construct`.
    */
   public allocateValueParam(
     type: FXValueType,
@@ -365,10 +352,8 @@ class FXParticleKernelContext
   }
 
   /**
-   * Scalarizes an expression into one SSA local per component and registers each into the
-   * phase plan. Printing is **deferred** to {@link FXKernelState.finalize}, which runs CSE
-   * over the whole plan before emitting - so a subtree shared across components (or across
-   * nodes) is printed once. Returns the component local names for the caller to reference.
+   * Splits an expression into one local per component. Printing waits for finalize, so CSE can
+   * share subtrees across components and nodes. Returns the local names.
    */
   private materialize(hint: string, expression: FXExpr): string[] {
     const components = scalarize(expression);
@@ -383,7 +368,6 @@ class FXParticleKernelContext
   }
 }
 
-/** Compiles one already-isolated phase view into its {@link FXCompiledKernelPhase}. */
 function compilePhase(
   view: FXGraph<FXBehaviorNode>,
   target: FXKernelTarget,
@@ -429,8 +413,6 @@ function compilePhase(
     }
   }
 
-  // All nodes have registered their locals; print the phase once, after CSE dedups shared
-  // subtrees across the whole plan.
   state.finalize(target);
 
   const integration = target.integration ?? [];
@@ -445,11 +427,6 @@ function compilePhase(
   );
 }
 
-/**
- * Compiles a two-phase behavior graph into an {@link FXCompiledKernel}. Validates
- * first (throws on invalid), then splits the graph by node phase and compiles each
- * phase view against its target. The structural hash covers the whole graph.
- */
 export function compileBehavior(
   graph: FXGraph<FXBehaviorNode>,
   targets: FXBehaviorTargets,
@@ -492,25 +469,21 @@ export function compileBehavior(
 }
 
 /**
- * The standard particle phase targets extended with the graph's own declared attributes
- * (`store-attribute`/`custom-attribute`) - velocity/scale/rotation/torque/seed are now
- * ordinary attributes, so the plain core-only targets would reject their `attr:<name>` slots.
+ * The particle phase targets extended with the graph's declared attributes, whose `attr:<name>`
+ * slots the core-only targets reject.
  */
 function particleTargetsFor(graph: FXGraph<FXBehaviorNode>): FXBehaviorTargets {
   return particleBehaviorTargetsFor(graph);
 }
 
-/** Validates the graph against the built-in particle targets (with its attributes). */
 export function validateParticleBehavior(graph: FXGraph<FXBehaviorNode>): FXValidationResult {
   return validateBehavior(graph, particleTargetsFor(graph));
 }
 
-/** Structural hash of the graph against the built-in particle targets (with its attributes). */
 export function previewParticleBehaviorHash(graph: FXGraph<FXBehaviorNode>): string {
   return previewBehaviorHash(graph, particleTargetsFor(graph));
 }
 
-/** Compiles the graph against the built-in particle targets (with its attributes). */
 export function compileParticleBehavior(graph: FXGraph<FXBehaviorNode>): FXCompiledKernel {
   return compileBehavior(graph, particleTargetsFor(graph));
 }

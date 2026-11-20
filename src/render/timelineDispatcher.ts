@@ -1,9 +1,7 @@
 /**
- * Fires each authored `burst`/`play` event on its owning emitter's view as the transport playhead
- * crosses it, and drives the timeline's poses and values into the views. Notified every tick with
- * no delta, so it remembers the last playhead and fires the half-open interval `[lastTime, now)`.
- * Playback looping back to the start runs on seamlessly, live particles kept; a seek backwards
- * while playing replays from the top, cleared. Same order and loop as the runtime's `FXEffect`.
+ * Fires `burst`/`play` events when the playhead crosses them and drives poses and values into the
+ * views. Fires the half-open interval `[lastTime, now)`. A loop continues with live particles kept.
+ * A backward seek while playing replays from the top, cleared.
  */
 
 import type { AnimationTrack, SourceState } from "../model/editorState";
@@ -53,12 +51,9 @@ export class TimelineDispatcher {
   }
 
   /**
-   * Drives values for the frame `time` falls in, sampled at that frame's canonical time -
-   * frame-stepped, so moving within a frame updates nothing. Poses follow the same grid while the
-   * caret is parked or scrubbed, but while playing they are sampled at `time` itself on every tick:
-   * a pose held still between two frames would read as no motion on each tick between them (and as
-   * a jump on the next) to anything reading an emitter's velocity. Spawns fire across the continuous
-   * interval the caret swept (see dispatchSpawns). Same drive as the runtime's `FXEffect`.
+   * Values are sampled once per frame, at the frame's time. Poses follow the same grid while parked
+   * or scrubbed. While playing they are sampled at `time`, so velocity stays continuous. Spawns
+   * fire over the continuous interval swept (see dispatchSpawns).
    */
   private driveFrame(time: number): void {
     const fps = this.store.getSource().timeline.fps;
@@ -78,7 +73,6 @@ export class TimelineDispatcher {
     }
   }
 
-  /** Fires burst/play events the playhead crossed since the last tick (only while playing). */
   private dispatchSpawns(now: number): void {
     if (!this.transport.isPlaying()) {
       // Stop rewinds the playhead to 0 -> reset so a fresh play replays from the top.
@@ -99,26 +93,22 @@ export class TimelineDispatcher {
     this.lastTime = now;
   }
 
-  /** Samples each emitter's and mesh's value tracks at `now` and scrubs them into its runtime object. */
   private driveValues(now: number): void {
     const source: SourceState = this.store.getSource();
     for (const emitter of source.scene.emitters) {
       // Always call - an empty map reverts params that just lost their last keyframe.
       this.emitters.driveParamValues(emitter.id, sampleTracks(emitter.tracks, now));
     }
-    // Meshes carry only render-graph Timeline Values (no events, no behavior); same value-drive.
     for (const mesh of source.scene.meshes) {
       this.emitters.driveMeshParamValues(mesh.id, sampleTracks(mesh.tracks, now));
     }
   }
 
-  /** Clears every emitter and parks the cursor at 0, ready to replay a lap from the start. */
   private rewind(): void {
     this.emitters.resetAll();
     this.lastTime = 0;
   }
 
-  /** Fires every event whose time lies in `[from, to)` on its owning emitter's view. */
   private fire(from: number, to: number): void {
     if (to <= from) {
       return;
@@ -135,7 +125,6 @@ export class TimelineDispatcher {
   }
 }
 
-/** Samples every value track at `now` into a name -> value map (a track with no value is skipped). */
 function sampleTracks(
   tracks: readonly AnimationTrack[],
   now: number,

@@ -65,7 +65,6 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     nameInput,
   ]);
 
-  // A hidden picker restricted to JSON; the Import button opens it, a pick loads the project.
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = "application/json,.json";
@@ -75,7 +74,6 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
     fileInput.value = "";
   });
 
-  // Save the project to a JSON file (down-arrow, a download), or load one back (up-arrow, an upload).
   const saveButton = exportButton(assetIcons.download, "content.saveJson", "content.saveJsonTip");
   saveButton.addEventListener("click", () => saveProjectJson(store));
   const loadButton = exportButton(assetIcons.upload, "content.loadJson", "content.loadJsonTip");

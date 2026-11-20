@@ -1,12 +1,8 @@
 /**
- * Persistence: only the *source* is saved - derived data is never written, it is recomputed on
- * load. This is the autosaved-session backing store, a localStorage JSON round-trip of a stored
- * project (`projectEnvelope.ts`), the same one the project file holds.
- *
- * The asset libraries' heavy payloads (texture and HDRI bytes, mesh geometry) are the exception:
- * they are kept in IndexedDB (assetBlobStore.ts), and the document leaves an asset's payload empty
- * once it is confirmed stored there. A save stores the payloads first and then writes the document
- * once, without them; {@link hydrateSource} is the inverse on load.
+ * The autosaved session: only the source is saved, as JSON in `localStorage`, in the project
+ * envelope (`projectEnvelope.ts`). Asset payloads go to IndexedDB (`assetBlobStore.ts`). A save
+ * stores the payloads first, then writes the document once without them. {@link hydrateSource}
+ * reverses this on load.
  */
 
 import type { SourceState } from "../model/editorState";
@@ -107,7 +103,6 @@ export async function hydrateSource(source: SourceState): Promise<SourceState> {
   return Object.assign({ ...source }, ...fields) as SourceState;
 }
 
-/** Writes the document without the stored payloads; `false` if the write failed. */
 function writeDocument(source: SourceState): boolean {
   return writeJson(
     STORAGE_KEY,

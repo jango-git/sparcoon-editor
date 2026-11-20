@@ -62,8 +62,7 @@ export function resolveGenerics(graph: FXGraph, order: readonly string[]): FXTyp
     const constraint = genericConstraintOf(node);
 
     const candidates: { type: FXValueType; socketKey: string }[] = [];
-    // Tracked alongside `candidates` (rather than read back via candidates[0]) so
-    // TypeScript can prove it non-null below without a non-null assertion.
+    // Kept apart from `candidates` so no non-null assertion is needed.
     let first: FXValueType | undefined;
     for (const socket of node.inputs) {
       if (!isGenericType(socket.type)) {
@@ -90,11 +89,9 @@ export function resolveGenerics(graph: FXGraph, order: readonly string[]): FXTyp
 
     let resolved: FXValueType | undefined;
     if (first !== undefined) {
-      // The first connected generic input fixes `T` - unless it is a scalar and a vector is wired
-      // too: then the first vector does, and the scalar splats across it (`vec3 * float` works
-      // whichever side the float is on, instead of the vector being cut to its `.x`). The rest
-      // coerce at readInput, so differing numeric widths are not a conflict - only
-      // numeric-vs-opaque is.
+      // The first connected generic input fixes `T`. If it is a scalar and a vector is wired
+      // too, the first vector does and the scalar splats (`vec3 * float` works on either side).
+      // Widths coerce at readInput, so only numeric against opaque conflicts.
       const chosen = genericWinner(candidates.map((candidate) => candidate.type)) ?? first;
       const conflict = candidates.find(
         (candidate) =>

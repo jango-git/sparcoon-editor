@@ -64,7 +64,6 @@ export class GraphMarquee {
           !additive &&
           (this.ctx.selected.size > 0 || this.ctx.selectedComments.size > 0)
         ) {
-          // A plain click on empty space clears the selection.
           this.ctx.selected.clear();
           this.ctx.selectedComments.clear();
           this.ctx.refreshSelection();

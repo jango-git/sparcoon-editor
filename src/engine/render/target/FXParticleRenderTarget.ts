@@ -27,7 +27,6 @@ const VEC3 = FX_VALUE_TYPES.vec3;
 const VEC4 = FX_VALUE_TYPES.vec4;
 const MAT4 = FX_VALUE_TYPES.mat4;
 
-/** Both shader stages - most particle builtins are readable in either. */
 const BOTH_STAGES: readonly FXShaderStage[] = [FXShaderStage.VERTEX, FXShaderStage.FRAGMENT];
 
 /** The core per-particle builtins the particle shaders expose, backed by the two split-buffer
@@ -37,8 +36,7 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "PARTICLE_POSITION_X", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_POSITION_Y", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_POSITION_Z", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
-  // A single `vec3` (the `p_position` varying), so `builtin-attribute`'s position output
-  // reads the core builtin symmetrically to the behavior side.
+  // A `vec3` (the `p_position` varying).
   { name: "PARTICLE_POSITION", type: VEC3, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_AGE", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
   { name: "PARTICLE_LIFETIME", type: FLOAT, stages: BOTH_STAGES, rate: "primitive" },
@@ -53,14 +51,12 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "geometryNormal", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
   { name: "geometryTangent", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
   { name: "worldPosition", type: VEC3, stages: [FXShaderStage.FRAGMENT], rate: "fragment" },
-  // Global clock (seconds since start), updated per frame by the material adapter + FXEmitter.
   { name: "u_time", type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
   // Time elapsed since the previous frame (seconds), updated per frame likewise.
   { name: "u_deltaTime", type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
   // View-space distance from the camera to the particle center, computed in the vertex stage
   // and interpolated. Enables distance-based fades.
   { name: "p_cameraDistance", type: FLOAT, stages: [FXShaderStage.FRAGMENT], rate: "vertex" },
-  // Three declares and populates `modelMatrix` automatically; costs no per-frame plumbing.
   { name: "modelMatrix", type: MAT4, stages: BOTH_STAGES, rate: "frame" },
   // Three declares and updates `viewMatrix` in both prefixes (BOTH_STAGES also keeps a
   // stage-flexible reader like `look-at-camera` from failing the nominal-stage read check).
@@ -74,7 +70,6 @@ const PARTICLE_BUILTINS: readonly FXTargetInput[] = [
   { name: "objectAngularVelocity", type: VEC3, stages: BOTH_STAGES, rate: "frame" },
 ];
 
-/** Varying (and render target-input) name a user attribute `name` is read through. */
 export function attributeVaryingName(name: string): string {
   return `p_fx_${name}`;
 }
@@ -239,9 +234,8 @@ const PARTICLE_TRANSFORM_OUTPUT: FXTargetOutput = {
   required: false,
 };
 
-// Compositing slots the `$out` surface sink owns: `additivity` (0 = normal "over" -> 1 = additive,
-// honored only in `blending`), `intensity` (a multiplier on the color alone, never its alpha, in every
-// mode) and `alphaThreshold` (discard cutoff, honored in every mode but `opaque`).
+// `additivity` 0 = "over", 1 = additive (blending only). `intensity` scales color, not alpha (all
+// modes). `alphaThreshold` is the discard cutoff (all modes but opaque).
 const COMPOSITING_OUTPUTS: readonly FXTargetOutput[] = [
   { slot: "additivity", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
   { slot: "intensity", type: FLOAT, stage: FXShaderStage.FRAGMENT, required: false },
@@ -284,7 +278,6 @@ const SHADOW_OUTPUTS: readonly FXShadowOutput[] = [
   { slot: "particleTransform", from: "particleTransform" },
 ];
 
-/** The particle surface interface: the shared slots plus the particle-only `particleTransform`. */
 const SURFACE_OUTPUTS: readonly FXTargetOutput[] = [
   ...SHARED_SURFACE_OUTPUTS,
   PARTICLE_TRANSFORM_OUTPUT,
@@ -305,7 +298,6 @@ export function buildParticleTarget(
   };
 }
 
-/** The particle render target with no user attributes (the common case). */
 export const FX_PARTICLE_TARGET: FXTarget = buildParticleTarget();
 
 /** Per-particle builtins a VFX mesh has no runtime for - excluded from {@link MESH_BUILTINS},
@@ -330,10 +322,10 @@ const MESH_BUILTINS: readonly FXTargetInput[] = [
   { name: FX_RANDOM_SEED_INPUT, type: FLOAT, stages: BOTH_STAGES, rate: "frame" },
 ];
 
-/** The VFX-mesh render target, with a shadow program only for a mesh that casts a shadow. No
- *  particle builtins and no per-particle attributes, so a render node reading one
- *  (`custom-attribute`, `life-ratio`, `dissolve`) fails validation against it - that
- *  missing-input rejection IS the intended palette restriction. */
+/**
+ * The VFX-mesh target. It has no particle builtins, so a node reading one (`custom-attribute`,
+ * `life-ratio`, `dissolve`) fails validation, which restricts the palette.
+ */
 export function buildMeshTarget(castShadow = false): FXTarget {
   return {
     name: "mesh",
@@ -343,7 +335,6 @@ export function buildMeshTarget(castShadow = false): FXTarget {
   };
 }
 
-/** The VFX-mesh render target of a mesh that casts no shadow. */
 export const FX_MESH_TARGET: FXTarget = buildMeshTarget();
 
 /** Particle builtins a trail does not expose: a ribbon segment has no authored surface frame, so
@@ -395,7 +386,6 @@ export function buildTrailTarget(attributes: readonly FXAttributeRequest[] = [])
   };
 }
 
-/** The trail render target with no user attributes. */
 export const FX_TRAIL_TARGET: FXTarget = buildTrailTarget();
 
 /**
@@ -412,7 +402,6 @@ export function buildRibbonTarget(attributes: readonly FXAttributeRequest[] = []
   };
 }
 
-/** The ribbon render target with no user attributes. */
 export const FX_RIBBON_TARGET: FXTarget = buildRibbonTarget();
 
 /** The target strip `strip`'s graph compiles against, with a `p_fx_<name>` input per requested

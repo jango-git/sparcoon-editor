@@ -1,7 +1,6 @@
 /**
- * The axis/plane guide lines the modal transform tool shows while a drag is constrained. Owns the
- * Line objects so the UI tool never touches the scene graph directly - only `show`/`reposition`/`clear`.
- * Axis directions are fixed at grab; only the center moves, so `reposition` just re-lays endpoints.
+ * Axis and plane guide lines for a constrained modal transform. Axis directions are fixed at grab,
+ * so `reposition` only moves endpoints.
  */
 
 import type { Vector3 } from "three";
@@ -17,7 +16,7 @@ import {
 import { AXIS_COLORS } from "./axisColors";
 import { markEditorOverlay } from "./editorOverlay";
 
-/** Half-length of a guide line (long enough to read as "infinite" across the viewport). */
+/** Half-length of a guide line, long enough to look infinite. */
 const GUIDE_HALF = 1000;
 
 export class TransformGuides {
@@ -26,7 +25,6 @@ export class TransformGuides {
 
   constructor(private readonly scene: Scene) {}
 
-  /** Draws a guide per `axis` along `axisDirections`, centred at `center`; replaces any current guides. */
   public show(
     axes: readonly (0 | 1 | 2)[],
     axisDirections: readonly [Vector3, Vector3, Vector3],
@@ -48,7 +46,6 @@ export class TransformGuides {
     this.reposition(center);
   }
 
-  /** Re-lays the active guides' endpoints around `center` (called as the entity moves). */
   public reposition(center: Vector3): void {
     const axisDirections = this.axisDirections;
     if (axisDirections === undefined) {

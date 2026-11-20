@@ -17,7 +17,6 @@ import type { FXGraphSnapshotData } from "./FXSnapshotData";
  */
 export type FXLiveStatus = "recompiled" | "rebound" | "invalid";
 
-/** Result of {@link FXLiveGraph.apply}. */
 export interface FXLiveResult<N extends FXGraphNode = FXGraphNode> {
   readonly status: FXLiveStatus;
   readonly errors: readonly FXCompilerError[];
@@ -73,7 +72,6 @@ export class FXLiveGraph<N extends FXGraphNode = FXGraphNode, A = unknown> {
     return this.graph;
   }
 
-  /** Applies one editor snapshot and returns what the gate decided. */
   public apply(data: FXGraphSnapshotData): FXLiveResult<N> {
     // A snapshot arriving after teardown is a natural editor race - refuse it structurally
     // rather than rebinding into destroyed handles or re-preparing over freed resources.
@@ -84,9 +82,8 @@ export class FXLiveGraph<N extends FXGraphNode = FXGraphNode, A = unknown> {
         diff: { addedNodeIds: [], removedNodes: [] },
       };
     }
-    // `apply` must never crash the editor - reconcile is result-based (never throws), and
-    // the graph may be left half-mutated by a failed run; that's fine, since editor-is-master
-    // means the next full snapshot re-reconciles the whole state.
+    // `apply` never throws: reconcile is result-based. A half-mutated graph after a failed run
+    // is fine, the next full snapshot reconciles everything.
     const {
       diff,
       discarded,
@@ -121,7 +118,6 @@ export class FXLiveGraph<N extends FXGraphNode = FXGraphNode, A = unknown> {
       return { status: "invalid", errors: [foldThrow(error, "hash-failed")], diff };
     }
     const reachable = collectReachableNodeIds(this.graph);
-    // The four rebind-gate conditions from the class doc above.
     if (
       nextHash === this.currentHash &&
       sameIdSet(reachable, this.installedReachableIds) &&
@@ -152,9 +148,8 @@ export class FXLiveGraph<N extends FXGraphNode = FXGraphNode, A = unknown> {
       return { status: "rebound", errors: [], diff };
     }
 
-    // A valid graph can still fail compilation (e.g. a third-party node bug). Never
-    // crash the editor - hold the last good artifact and surface a synthetic error.
-    // Discards stay deferred here (currentArtifact still references them).
+    // A valid graph can still fail to compile (a node bug). Hold the last good artifact and
+    // report a synthetic error. Discards stay deferred, the artifact still references them.
     let nextArtifact: A;
     try {
       nextArtifact = this.backend.compile(this.graph);
@@ -229,7 +224,6 @@ function foldThrow(error: unknown, code: FXCompilerError["code"]): FXCompilerErr
     : { code, message: error instanceof Error ? error.message : String(error) };
 }
 
-/** Whether two id-sets contain exactly the same ids. */
 function sameIdSet(first: ReadonlySet<string>, second: ReadonlySet<string>): boolean {
   if (first.size !== second.size) {
     return false;

@@ -1,7 +1,6 @@
 /**
- * Content-library edits (textures/environments/meshes/volumes/palette), each its own array + command
- * pair. Texture/mesh/volume edits are `"structural"` (they rebind preview slots). Environment and palette edits
- * are `"view"` (ADR-0004: no compiled graph reads either).
+ * Content-library edits. Texture, mesh and volume edits are structural. Environment and palette
+ * edits are view edits, since no compiled graph reads them.
  */
 
 import type {
@@ -15,7 +14,7 @@ import type {
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
 
-/** Adds a texture asset. `name` is expected already unique (see {@link uniqueAssetName}); a duplicate is a no-op so a double-fire can't shadow an existing asset. */
+/** Adds a texture asset. A duplicate name is a no-op. */
 export function addTextureAsset(store: Store, asset: TextureAsset): void {
   const source = store.getSource();
   if (source.assets.some((existing) => existing.name === asset.name)) {
@@ -45,7 +44,6 @@ export function addEnvironmentAsset(store: Store, asset: EnvironmentAsset): void
   store.commit(next, "view");
 }
 
-/** Removes the named HDRI environment asset from the library. */
 export function removeEnvironmentAsset(store: Store, name: string): void {
   const source = store.getSource();
   const environments = source.environments.filter((asset) => asset.name !== name);
@@ -75,7 +73,6 @@ export function addMeshAsset(store: Store, asset: MeshAsset): void {
   store.commit(next, "structural");
 }
 
-/** Removes the named GLB mesh asset from the library. */
 export function removeMeshAsset(store: Store, name: string): void {
   const source = store.getSource();
   const meshAssets = source.meshAssets.filter((asset) => asset.name !== name);
@@ -94,7 +91,6 @@ export function addVolumeAsset(store: Store, asset: VolumeAsset): void {
   store.commit({ ...source, volumeAssets: [...source.volumeAssets, asset] }, "structural");
 }
 
-/** Removes the named volume asset from the library. */
 export function removeVolumeAsset(store: Store, name: string): void {
   const source = store.getSource();
   const volumeAssets = source.volumeAssets.filter((asset) => asset.name !== name);
@@ -112,7 +108,6 @@ export function addPaletteSwatch(store: Store, color: PaletteSwatch["color"], la
   store.commit({ ...source, palette: [...source.palette, swatch] }, "view");
 }
 
-/** Removes the named palette swatch from the library. */
 export function removePaletteSwatch(store: Store, name: string): void {
   const source = store.getSource();
   const palette = source.palette.filter((swatch) => swatch.name !== name);

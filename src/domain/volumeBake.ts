@@ -48,7 +48,6 @@ export interface VolumeBakeProgress {
 /** The fewest and most texels a volume may have along its longest side. */
 export const VOLUME_RESOLUTION_RANGE = { min: 4, max: 128 } as const;
 
-/** The mesh's bounding box. */
 export function meshBounds(mesh: BakedMeshGeometry): { readonly min: Vec3; readonly max: Vec3 } {
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
@@ -182,7 +181,6 @@ function bakeGrid(settings: VolumeBakeSettings): BakeGrid {
   return { size, origin: settings.boxMin, cell };
 }
 
-/** The centre of texel `index` on `axis`. */
 function texelCentre(grid: BakeGrid, index: number, axis: number): number {
   return (grid.origin[axis] as number) + (index + 0.5) * (grid.cell[axis] as number);
 }

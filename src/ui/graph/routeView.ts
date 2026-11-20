@@ -1,13 +1,7 @@
 /**
- * A route (reroute knot) rendered as a tiny headerless card: just an input dot and an output dot
- * on two adjacent grid cells (a la Unreal Blueprints knots). A route carries no logic - it only
- * tidies wire layout - so it has no title, params or body, and the compiler never sees it
- * ({@link serializeGraph} splices it out).
- *
- * It mirrors {@link NodeView}'s socket-dot markup (the same `.socket__dot` element with the same
- * `data-*` attributes) so the canvas can start a wire from it, hit-test a drop on it via
- * `elementFromPoint`, and measure its endpoints - a route behaves like any other node for wiring,
- * dragging, selection and reconciliation (it lives in `graph.nodes`).
+ * Reroute knot: an input dot and an output dot on two grid cells. Not compiled ({@link
+ * serializeGraph} splices it out). Uses the same `.socket__dot` markup as {@link NodeView}, so
+ * wiring, hit-testing and measuring work unchanged.
  */
 
 import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";

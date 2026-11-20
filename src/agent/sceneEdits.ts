@@ -69,7 +69,6 @@ export interface SceneEdits {
   setTransform(entityId: string, patch: TransformPatch): void;
 }
 
-/** Turns `emitterId`'s `strip` on or off. */
 function setStrip(store: Store, emitterId: string, strip: StripName, enabled: boolean): void {
   const owner = resolveOwner(store.getSource(), emitterId);
   if (owner.kind !== "emitter") {

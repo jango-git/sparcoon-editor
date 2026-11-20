@@ -1,7 +1,6 @@
 /**
- * The asset rule for a behavior graph that samples content-library assets - shared by the live
- * preview and the export, so the two never accept different graphs. The runtime requires each
- * asset too. This pins a missing one to its node before anything is built.
+ * Pins a missing content-library asset to the behavior node that samples it, before anything is
+ * built. The runtime requires each asset too.
  */
 
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";

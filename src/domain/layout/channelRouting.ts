@@ -1,18 +1,18 @@
 /**
- * Horizontal placement and wire routing for the auto-layout. Columns are left-aligned; the gap
- * between two columns is a routing channel sized to fit its wires.
+ * Columns are left-aligned. The gap between two columns is a channel sized to its wires.
  *
- * The editor draws a wire as an elbow (`ui/graph/wireRenderer.ts`'s `wirePoints`): a one-cell stub
- * out of the source dot, a straight segment, a one-cell stub into the target dot. With cards on the
- * grid that segment runs from `x + width + grid` of the source to `x - grid` of the target: level
- * when both dots share a row, upright when those two grid lines coincide, slanted otherwise. So a
- * signal that changes row in a channel turns on a vertical *lane* there, and routes (fixed-size
- * pass-through knots, same stub rule) carry it to and from that lane where a card's own stub cannot:
- * R1 on the source row, ending at the lane; one R2 per other row, starting from it.
+ * A wire is an elbow (`wirePoints` in `ui/graph/wireRenderer.ts`): a one-cell stub out of the
+ * source dot, a straight segment, a one-cell stub into the target dot. With cards on the grid that
+ * segment runs from `x + width + grid` of the source to `x - grid` of the target: level when both
+ * dots share a row, upright when those two grid lines coincide, slanted otherwise. So a signal that
+ * changes row in a channel turns on a vertical lane there, and routes (fixed-size pass-through
+ * knots, same stub rule) carry it to and from that lane where a card's own stub cannot: R1 on the
+ * source row, ending at the lane, and one R2 per other row, starting from it.
  *
- * Per channel: try the narrowest width first; search lane choices (with backtracking, cheapest
- * first) so no two signals share a lane span, no lane runs through a route, no two routes crowd one
- * row, and on a row one signal leaves while another arrives the leaving one turns first.
+ * Per channel the narrowest width is tried first. Lane choices are searched (with backtracking,
+ * cheapest first) so no two signals share a lane span, no lane runs through a route, no two routes
+ * crowd one row, and on a row where one signal leaves while another arrives the leaving one turns
+ * first.
  */
 
 import type { LayeredGraph, LayoutEntity, LayoutLink, LayoutSignal } from "./layeredGraph";

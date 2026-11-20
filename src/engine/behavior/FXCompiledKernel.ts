@@ -3,8 +3,7 @@ import type { FXJSHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXInheritPlan } from "./FXInheritPlan";
 
 /**
- * A value captured from outside the kernel (the behavior analog of a render uniform); `value`
- * is updated in place on edit. A `Float32Array` value is a LUT refilled in place, so an edit
+ * A value captured from outside the kernel. `value` is updated in place on edit. A `Float32Array` value is a LUT refilled in place, so an edit
  * rebinds rather than forcing a recompile.
  */
 export interface FXKernelBindingDescriptor {
@@ -16,18 +15,16 @@ export interface FXKernelBindingDescriptor {
    * Forces a **stable, verbatim** binding name (a param node's user-chosen slot) instead
    * of the auto-numbered `hint`. Two allocations with the same `name` share one binding, so
    * a param addressed by name survives structural edits and a timeline can drive it through
-   * {@link FXEmitter.applyValues}. The behavior analog of {@link FXUniformDescriptor.name}.
+   * {@link FXEmitter.applyValues}.
    */
   name?: string;
 }
 
-/** Live handle to a kernel binding, retained by a node for runtime updates. */
 export interface FXKernelBindingHandle {
   readonly name: string;
   value: number | Float32Array;
 }
 
-/** One state buffer the kernel operates on: its name and per-particle float stride. */
 export interface FXKernelBufferLayout {
   readonly name: string;
   readonly stride: number;
@@ -102,11 +99,7 @@ export interface FXCompiledKernelPhase extends FXKernelResourceFields {
   readonly writtenBuffers: readonly string[];
 }
 
-/**
- * Backend-independent (no Three) intermediate representation for a compiled
- * behavior graph. A kernel adapter turns each phase into a JS function operating
- * on the particle buffers.
- */
+/** Compiled behavior graph IR, independent of three. */
 export interface FXCompiledKernel {
   /**
    * Phase run once at particle birth (initial state). Absent when the target has no

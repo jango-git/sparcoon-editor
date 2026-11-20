@@ -1,7 +1,4 @@
-/**
- * The editor's live mesh-geometry cache: turns baked mesh-asset arrays into `BufferGeometry`
- * objects. Unlike {@link TextureRegistry}, fully synchronous - no image decode to await.
- */
+/** Turns baked mesh-asset arrays into `BufferGeometry`, synchronously. */
 
 import type { BufferGeometry } from "three";
 
@@ -20,7 +17,6 @@ export class MeshGeometryRegistry {
     this.cache.sync(assets);
   }
 
-  /** Every cached mesh asset's live geometry, by name - the shape `resolveGeometrySource` expects. */
   public resolveAll(): Record<string, BufferGeometry> {
     return this.cache.all();
   }

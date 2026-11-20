@@ -12,7 +12,6 @@ import {
   NUMERIC_VALUE_TYPES,
 } from "../engine/core/socket/FXValueType";
 
-/** The concrete type wired into one of a placed node's inputs (undefined if unconnected). */
 export type ResolveWired = (inputKey: string) => FXGLSLTypeName | undefined;
 
 /** Component socket keys a family reuses across every variant (so wires/inline values survive a reshape). */
@@ -60,7 +59,6 @@ export interface NodeFamily {
   ): FamilyExpansion;
 }
 
-/** The canonical value type for a name, or `undefined` for an unknown/garbage name. */
 function valueTypeOf(name: FXGLSLTypeName | undefined): FXValueType | undefined {
   return name === undefined ? undefined : FX_VALUE_TYPES[name];
 }
@@ -115,9 +113,8 @@ const COMBINE_FAMILY: NodeFamily = {
     // Vector: N float inputs, defaults from COMPONENT_DEFAULTS (x/y/z = 0, w = 1).
     const inputs = COMPONENT_KEYS.slice(0, valueType.components).map((key) => ({
       key,
-      // Read off FX_VALUE_TYPES (typed as FXGLSLTypeName), not the "float" literal directly - a
-      // bare literal here widens to `string` once this object flows back out through this array's
-      // own inference, past the point a same-line type assertion could narrow it again.
+      // Read from FX_VALUE_TYPES because a bare "float" literal widens to string through this
+      // array's inference.
       type: FX_VALUE_TYPES.float.id,
       label: key.toUpperCase(),
       control: { default: COMPONENT_DEFAULTS[key] },
@@ -159,7 +156,6 @@ const COMBINE_FAMILY: NodeFamily = {
 function splitNeutralSockets(): FamilySockets {
   const outputs = COMPONENT_KEYS.map((key) => ({
     key,
-    // See COMBINE_FAMILY's identical comment: read off FX_VALUE_TYPES, not the literal.
     type: FX_VALUE_TYPES.float.id,
     label: key.toUpperCase(),
   }));
@@ -198,7 +194,6 @@ const SPLIT_FAMILY: NodeFamily = {
     }
     const outputs = COMPONENT_KEYS.slice(0, valueType.components).map((key) => ({
       key,
-      // See COMBINE_FAMILY's identical comment: read off FX_VALUE_TYPES, not the literal.
       type: FX_VALUE_TYPES.float.id,
       label: key.toUpperCase(),
     }));
@@ -219,11 +214,8 @@ const SPLIT_FAMILY: NodeFamily = {
 };
 
 /**
- * `custom-attribute-split`: the fused `custom-attribute` + `split` (param-driven,
- * like `combine` - the width comes from the selected attribute's own `type` param, not a wired
- * input). A user attribute is never a matrix, so unlike `combine`/`split` there is no matrix
- * variant to expand to at serialize; the one engine node type handles every width
- * (float/vec2/vec3/vec4) itself, so `serialize` is an identity passthrough.
+ * `custom-attribute-split`: `custom-attribute` fused with `split`, with the width taken from the
+ * attribute's `type` param. There is no matrix variant, so serialize passes it through.
  */
 const CUSTOM_ATTRIBUTE_SPLIT_FAMILY: NodeFamily = {
   facadeType: "custom-attribute-split",
@@ -236,7 +228,6 @@ const CUSTOM_ATTRIBUTE_SPLIT_FAMILY: NodeFamily = {
     const valueType = valueTypeOf(resolvedType) ?? FX_VALUE_TYPES.vec4;
     const outputs = COMPONENT_KEYS.slice(0, valueType.components).map((key) => ({
       key,
-      // See COMBINE_FAMILY's identical comment: read off FX_VALUE_TYPES, not the literal.
       type: FX_VALUE_TYPES.float.id,
       label: key.toUpperCase(),
     }));
@@ -271,9 +262,8 @@ export function expandFamilyNode(
 }
 
 /**
- * Prunes component params that no longer fit the facade's current variant shape (e.g. after a
- * `combine` type change), so the editor never shows a stale value on a resized pin. A value on a
- * pin merely *inactive* (hidden by a narrower vector) is left alone, so it survives a round-trip.
+ * Drops component params that do not fit the facade's current variant (for example after a
+ * `combine` type change). Values on merely inactive pins are kept.
  */
 export function pruneStaleFamilyComponents(
   family: NodeFamily,

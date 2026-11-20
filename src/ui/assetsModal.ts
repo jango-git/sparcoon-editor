@@ -6,7 +6,7 @@
  * examples/export) and Help (a static quick-reference). A single "Upload asset" affordance
  * (button or drag-drop) routes dropped files to their library by type, and drag-drop is live over
  * the whole sheet regardless of which block it lands on. A row's user count is the nodes using the
- * asset (and the surfaces drawing a mesh), for an HDRI whether it is the active one (ADR-0004).
+ * asset (and the surfaces drawing a mesh), for an HDRI whether it is the active one.
  */
 
 import { t } from "../i18n";
@@ -151,8 +151,7 @@ export function createAssetsModal(context: EditorContext): AssetsModal {
 
   // Re-render whenever the document changes (an upload/delete here, or an undo/redo). Texture edits
   // are structural; environment/mesh edits are view-only - listen to both so every section refreshes.
-  // This also covers the HDRI rows' active-environment badge (ADR-0004: now a document field) -
-  // picking one in the Lighting panel while this sheet is open still updates it.
+  // The HDRI rows' active-environment badge also refreshes when the Lighting panel changes it.
   store.events.sourceStructureChanged.on(render);
   store.events.sourceViewChanged.on(render);
   render();

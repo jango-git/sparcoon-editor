@@ -17,8 +17,6 @@ export enum GraphMode {
 }
 
 export class GraphViewState {
-  // The Behavior graph is the default on start: an emitter's motion/spawn is authored there
-  // first, and the graph panel's switch + status display read this initial mode.
   private readonly signal: Signal<GraphMode> = createSignal(GraphMode.Behavior);
 
   public get mode(): GraphMode {

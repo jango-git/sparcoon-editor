@@ -19,9 +19,8 @@ import type { FXKernelContext } from "../FXKernelContext";
 const FLOAT = FX_VALUE_TYPES.float;
 
 /**
- * Behavior node: a named, runtime-tunable **value** captured as a live kernel **binding** - the
- * behavior half of Timeline Value (the CPU analog of the render uniform). Binding names derive
- * from the stable user name, so a timeline drives it by name through {@link FXEmitter.applyValues}.
+ * Behavior half of Timeline Value: a named value captured as a live kernel binding. Binding names
+ * derive from the stable user name, so a timeline drives it by name through {@link FXEmitter.applyValues}.
  * `name`/`type` are structural ({@link cacheKey}); the default `value` is live.
  */
 export class FXBehaviorNodeTimelineValue extends FXBehaviorNode {
@@ -54,7 +53,6 @@ export class FXBehaviorNodeTimelineValue extends FXBehaviorNode {
     return this.parameter.valueType.id;
   }
 
-  /** A live binding read, no arithmetic (like `constant`). */
   public override estimateCost(): number {
     return 0;
   }

@@ -1,17 +1,7 @@
 /**
- * A color-ramp (gradient) editor: a preview bar with draggable stop handles, plus an
- * inline editor for the selected stop (a {@link ColorPicker} swatch, a position field and a
- * delete button). Clicking an empty spot on the bar inserts a stop with the interpolated
- * color; dragging a handle moves it; a stop can be removed down to a single one.
- *
- * The selection + emit + teardown state machine lives in {@link HandleListEditor}; this class owns
- * the 1D bar, its handles and the selected-stop editor.
- *
- * Presentational and in the engine's color model: it takes and emits a {@link RampGradient} whose
- * stop colors are linear RGBA (`[r, g, b, a]`, each `0..1`) - the exact shape a `color-ramp` node's
- * `gradient` param carries. `onChange` fires once per gesture (see {@link HandleListEditor.emit});
- * `live` fires on every intermediate step instead. `setValue` re-syncs from external state (undo /
- * redo) without firing.
+ * Gradient editor: preview bar with draggable stops, plus the selected stop's fields. Takes and
+ * emits a {@link RampGradient} in linear RGBA. Selection and emit logic live in {@link
+ * HandleListEditor}.
  */
 
 import { t } from "../../i18n";
@@ -116,7 +106,6 @@ export class ColorRamp extends HandleListEditor<Stop, RampGradient> {
 
     this.bar = createElement("div", { className: "color-ramp__bar" });
     this.bar.addEventListener("pointerdown", (event) => {
-      // A press on the bar itself (not on a handle) adds a stop at that position.
       if (event.target === this.bar) {
         event.stopPropagation();
         this.addStopAt(this.fractionAt(event.clientX));
@@ -129,7 +118,7 @@ export class ColorRamp extends HandleListEditor<Stop, RampGradient> {
     ]);
     this.editorHost = createElement("div", { className: "color-ramp__editor" });
     this.element = createElement("div", { className: "color-ramp" }, [barWrap, this.editorHost]);
-    // Editing on the ramp must never start a node drag / marquee.
+    // Do not start a node drag or marquee.
     this.element.addEventListener("pointerdown", (event) => event.stopPropagation());
 
     this.render();
@@ -167,7 +156,6 @@ export class ColorRamp extends HandleListEditor<Stop, RampGradient> {
   }
 
   protected disposeParts(): void {
-    // Close the child picker's popover so it can't outlive the ramp, and release the number field.
     this.picker?.dispose();
     this.positionControl?.dispose();
   }

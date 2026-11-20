@@ -78,16 +78,13 @@ export function printJS(
         return printBin(node.op, print(node.a), print(node.b));
       case "un":
         switch (node.op) {
-          // FXUnOp has a single member today, making this case tautological - see the
-          // fallthrough comment below for why the switch stays anyway.
+          // FXUnOp has one member, so the case is always true.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           case "neg":
-            // Space after `-` matters: `(--1)` is a `new Function` SyntaxError
-            // (`--` decrements a non-lvalue).
+            // Space after `-`: `(--1)` is a syntax error.
             return `(- ${print(node.a)})`;
         }
-      // The inner switch above is exhaustive over FXUnOp (single member today) and always
-      // returns; a future member would fail to compile there, never reach here.
+      // The switch above is exhaustive over FXUnOp; a new member fails to compile there.
       // eslint-disable-next-line no-fallthrough
       case "call": {
         const definition = functions.get(node.fn);

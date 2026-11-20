@@ -1,9 +1,6 @@
 /**
- * Preview view settings - how the studio surroundings are drawn (lights, fill colors, reference
- * gizmos, background). UI settings separate from the document, persisted on their own localStorage
- * key (see {@link PersistedStore}). Colors are stored as linear RGBA (`0..1` per channel), the way
- * the rest of the editor speaks color, so {@link ColorPicker} and the render layer need no
- * conversion at this boundary.
+ * How the studio surroundings are drawn (lights, ground, gizmos, background). Colors are linear
+ * RGBA, `0..1` per channel.
  */
 
 import { parseHex, type Rgba, srgbToLinearRgba } from "../ui/components/color";
@@ -13,9 +10,7 @@ import { PersistedStore } from "./persistedStore";
 export interface PreviewSettings {
   /** The shadow-casting key light. */
   readonly sun: boolean;
-  /** Sun (key light) color, linear RGBA. */
   readonly sunColor: Rgba;
-  /** Sun (key light) intensity. */
   readonly sunIntensity: number;
   /** Sun compass direction in degrees (0..360, measured around the up axis). */
   readonly sunAzimuth: number;
@@ -23,15 +18,11 @@ export interface PreviewSettings {
   readonly sunElevation: number;
   /** The sky/ground hemisphere fill light. */
   readonly hemisphere: boolean;
-  /** Hemisphere sky color ("first" color), linear RGBA. */
   readonly hemisphereSky: Rgba;
-  /** Hemisphere ground color ("second" color), linear RGBA. */
   readonly hemisphereGround: Rgba;
-  /** Hemisphere fill intensity. */
   readonly hemisphereIntensity: number;
   /** The studio ground: what shadows fall on and a Depth Fade fades against. */
   readonly ground: boolean;
-  /** A grid drawn on the ground plane. */
   readonly grid: boolean;
   /** A wireframe player-figure box (2 x 0.5 x 0.75) as a scale reference. */
   readonly playerFigure: boolean;
@@ -50,7 +41,6 @@ function linearFromHex(hex: string): Rgba {
   return parsed === undefined ? [0, 0, 0, 1] : srgbToLinearRgba(parsed);
 }
 
-/** Defaults mirror the studio colors the environment shipped with. */
 export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   sun: true,
   sunColor: linearFromHex("ffffff"),
@@ -68,10 +58,6 @@ export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   background: linearFromHex("2b2e33"),
 };
 
-/**
- * A single instance is created at the composition root and shared by the settings overlay (which
- * writes it) and the render layer (which subscribes to it).
- */
 export class PreviewSettingsStore extends PersistedStore<PreviewSettings> {
   constructor() {
     super(STORAGE_KEY, DEFAULT_PREVIEW_SETTINGS, parsePreviewSettings);

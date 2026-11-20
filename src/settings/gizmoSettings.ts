@@ -1,7 +1,6 @@
 /**
- * Transform-gizmo settings: axis space + per-mode snap increments. Editor preferences, not document
- * state - never entering undo/the saved source (see {@link PersistedStore}). Snap defaults off;
- * holding Ctrl temporarily inverts each mode's snap, Blender's "increment snap" toggle.
+ * Transform-gizmo settings: axis space and per-mode snap increments. Snap defaults off. Holding
+ * Ctrl inverts each mode's snap.
  */
 
 import { isRecord } from "../util/guards";

@@ -1,15 +1,9 @@
 /**
- * Auto-layout of one authored graph: a tidy left-to-right arrangement with the sinks in the
- * rightmost column, every card on the grid, no card over another, and every wire drawn at right
- * angles - level, or turning on a vertical lane with routes where a card's own stubs cannot reach
- * it. Pure: it gets each card's measured size and socket rows, and returns the rearranged graph.
+ * Auto-layout of one graph: columns left to right, sinks rightmost, cards on the grid, wires at
+ * right angles. Pure: takes measured card sizes and returns the rearranged graph.
  *
- * What compiles is unchanged (routes are spliced out at serialize); node positions, routes and
- * the wires through them are rebuilt, and comments are dropped - their boxes would no longer frame
- * anything. The topmost sink stays where it was, so the graph does not jump away from the view.
- *
- * Stages: {@link buildLayeredGraph} (columns, signals, placeholder rows), {@link placeRows}
- * (heights), {@link planColumns} (column x and per-channel lanes), then the wiring below.
+ * Routes, positions and wires are rebuilt and comments are dropped, since their boxes would frame
+ * nothing. The topmost sink keeps its place so the graph does not jump out of view.
  */
 
 import { isFakeNodeType, ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY, ROUTE_TYPE } from "../fakeNodes";

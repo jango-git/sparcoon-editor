@@ -1,6 +1,6 @@
 /**
- * What picking an asset in a node sets besides the pick - a volume asset's box and distance encoding,
- * into the node's inputs of the same names (SDF Sample's), so the node reads the volume as baked.
+ * Picking a volume asset also sets the node inputs of the same names (box and distance encoding),
+ * so the node reads the volume as baked.
  */
 
 import type { GraphNode } from "../domain/graphModel";

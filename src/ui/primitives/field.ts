@@ -1,11 +1,6 @@
 /**
- * One "labelled row" builder. A caption span beside its control(s) was hand-built ~10 times across
- * previewSettings, the timeline inspector, viewportTransform, viewportStats and curveEditor - each
- * differing only in its BEM classes, its row tag and whether the label leads or trails. This is the
- * one place that shape lives; callers pass the classes their surface's CSS targets.
- *
- * It owns layout only, not the control: the caller builds and keeps the control (for re-sync), and
- * an axis sub-row of a vector editor is just a field whose "label" is the axis letter.
+ * A labelled row: a caption beside a control. Layout only. The caller builds and keeps the control.
+ * An axis sub-row is a field whose label is the axis letter.
  */
 
 import { createElement } from "../dom";

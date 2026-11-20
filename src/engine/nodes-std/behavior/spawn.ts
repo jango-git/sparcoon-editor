@@ -7,9 +7,9 @@ import { RANDOM_RANGE } from "../shared/noise";
 import { rand, TWO_PI } from "./common";
 
 /**
- * Standard-library behavior spawn nodes (spawn phase): each seeds initial state at birth via
- * inline `Math.random()`; a value meant to persist across frames must be stored into a `seed`
- * attribute (`Math.random()` in a later phase re-randomizes every frame). The axis-based shapes
+ * Standard-library behavior spawn nodes (spawn phase): each seeds initial state at birth from fresh
+ * random draws (`rand`); a value meant to persist across frames must be stored into a `seed`
+ * attribute (a draw in a later phase is another one every frame). The axis-based shapes
  * (cylinder/cone/torus/disc) sample a local `(inPlaneA, inPlaneB, axisOffset)` frame folded by
  * {@link orient}.
  */
@@ -66,7 +66,6 @@ export const fxLifetime = defineNode({
   type: "lifetime",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -87,7 +86,6 @@ export const fxSpawnBox = defineNode({
   type: "random-box-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -159,7 +157,6 @@ export const fxSpawnSphere = defineNode({
   type: "random-sphere-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -206,7 +203,6 @@ export const fxSpawnCylinder = defineNode({
   type: "random-cylinder-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -245,7 +241,6 @@ export const fxSpawnCone = defineNode({
   type: "random-cone-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -292,7 +287,6 @@ export const fxSpawnTorus = defineNode({
   type: "random-torus-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -335,7 +329,6 @@ export const fxSpawnDisc = defineNode({
   type: "random-disc-point",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is a free choice.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -370,7 +363,6 @@ export const fxInitialVelocity = defineNode({
   type: "initial-velocity",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "spawn",
   inputs: {
@@ -395,7 +387,6 @@ export const fxRandom = defineNode({
   type: "random",
   domain: "behavior",
   phase: "spawn",
-  // Value-only: reads no `dt` or update-only state, so its phase is inferred, not pinned.
   phaseFlexible: true,
   category: "source",
   generic: { constraint: NUMERIC_VALUE_TYPES },

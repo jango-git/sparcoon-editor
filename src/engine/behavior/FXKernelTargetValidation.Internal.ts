@@ -10,17 +10,11 @@ import {
 } from "../core/compiler/targetLint.Internal";
 import type { FXExpr } from "../core/ir/FXExpr";
 import { childrenOf } from "../core/ir/visit.Internal";
+import { SPAWN_KERNEL_PARAMETERS, UPDATE_KERNEL_PARAMETERS } from "./FXKernelShared.Internal";
 import type { FXKernelTarget, FXKernelTargetInput } from "./FXParticleBehaviorTarget";
-import {
-  FX_EMITTER_INPUT_FIELD,
-  FX_MODEL_MATRIX_INPUT,
-  FX_PARTICLE_INDEX_INPUT,
-} from "./FXParticleBehaviorTarget";
 
-/** The packed builtin state buffer the kernel's integration always writes into. */
 const BUILTIN_BUFFER = "builtin";
 
-/** Invokes `visit` on every `ref` node reachable in an expression tree. */
 function visitRefs(expr: FXExpr, visit: (ref: Extract<FXExpr, { kind: "ref" }>) => void): void {
   if (expr.kind === "ref") {
     visit(expr);
@@ -31,10 +25,9 @@ function visitRefs(expr: FXExpr, visit: (ref: Extract<FXExpr, { kind: "ref" }>) 
 }
 
 /**
- * Structurally lints a behavior {@link FXKernelTarget} - host-provided data, so a shape
- * violation surfaces as `invalid-target` here rather than a `ReferenceError` on the first
- * frame or silent cross-particle corruption. Phase-aware: `dt` is a spawn-target error
- * (a spawn kernel has no timestep), catching a copy-pasted update integration.
+ * Lints a host-provided kernel target, reporting `invalid-target` instead of a ReferenceError on
+ * the first frame. An input may read only parameters the phase's kernel takes (a spawn kernel has
+ * no `dt`).
  */
 export function validateKernelTarget(
   target: FXKernelTarget,
@@ -126,22 +119,9 @@ export function validateKernelTarget(
       });
     }
     seenInputs.add(input.name);
-    if (phase === "spawn" && input.name === "dt") {
-      errors.push({
-        code: "spawn-input-has-dt",
-        message: `target "${target.name}" declares input "dt", but a spawn kernel has no dt`,
-        params: { targetName: target.name },
-      });
-      continue;
-    }
-    if (input.name === "dt" && input.offsets !== undefined) {
-      // `dt` is the synthesized timestep and must stay offset-less; an offset-bearing
-      // `dt` would read a buffer instead of the loop timestep (see the offset-less rule below).
-      errors.push({
-        code: "dt-input-has-offsets",
-        message: `target "${target.name}" declares input "dt" with offsets; "dt" is the synthesized timestep and must be offset-less`,
-        params: { targetName: target.name },
-      });
+    const sourceError = inputSourceError(target, phase, input);
+    if (sourceError !== undefined) {
+      errors.push(sourceError);
       continue;
     }
     const typeError = valueTypeError(target.name, input.type, `input "${input.name}"`);
@@ -150,7 +130,7 @@ export function validateKernelTarget(
       continue;
     }
     if (input.atBirth === true) {
-      errors.push(...atBirthErrors(target, phase, input.name));
+      errors.push(...atBirthErrors(target, phase, input));
     }
     if (input.inheritOffset !== undefined) {
       errors.push(...inheritInputErrors(target, phase, input));
@@ -171,18 +151,6 @@ export function validateKernelTarget(
         });
       }
       checkOffsets(input.buffer ?? BUILTIN_BUFFER, input.offsets, `input "${input.name}"`);
-    } else if (
-      input.name !== "dt" &&
-      input.name !== FX_PARTICLE_INDEX_INPUT &&
-      FX_EMITTER_INPUT_FIELD[input.name] === undefined
-    ) {
-      // Offset-less inputs are reserved for `dt`, `PARTICLE_INDEX`, and the emitter-transform
-      // fields (FX_EMITTER_INPUT_FIELD); anything else must be backed by buffer storage.
-      errors.push({
-        code: "offsetless-input-not-reserved",
-        message: `target "${target.name}" input "${input.name}" declares no offsets; offset-less inputs are reserved for "dt", "PARTICLE_INDEX", and the model matrix`,
-        params: { targetName: target.name, inputName: input.name },
-      });
     }
   }
 
@@ -266,18 +234,6 @@ export function validateKernelTarget(
           });
           return;
         }
-        // `dt` need not be a declared input (only the update kernel has it); the exact-name
-        // check also rejects the internal `name@component` encoding, unsupported here.
-        if (ref.name === "dt") {
-          if (phase === "spawn") {
-            errors.push({
-              code: "integration-reads-dt-in-spawn",
-              message: `target "${target.name}" integration reads "dt", but a spawn kernel has no dt`,
-              params: { targetName: target.name },
-            });
-          }
-          return;
-        }
         if (!inputNames.has(ref.name)) {
           errors.push({
             code: "integration-input-not-declared",
@@ -292,13 +248,54 @@ export function validateKernelTarget(
   return errors;
 }
 
-/** Whether `target` holds the core `lifecycle` buffer (age, lifetime, id). */
+const KERNEL_PARAMETERS: Readonly<Record<"spawn" | "update", readonly string[]>> = {
+  spawn: SPAWN_KERNEL_PARAMETERS,
+  update: UPDATE_KERNEL_PARAMETERS,
+};
+
+/** What is wrong with where an input comes from: no place or more than one, or a kernel parameter
+ *  the phase's kernel does not take. */
+function inputSourceError(
+  target: FXKernelTarget,
+  phase: "spawn" | "update",
+  input: FXKernelTargetInput,
+): FXCompilerError | undefined {
+  const params = { targetName: target.name, inputName: input.name };
+  const sources = [input.offsets, input.inheritOffset, input.host].filter(
+    (source) => source !== undefined,
+  ).length;
+  if (sources === 0) {
+    return {
+      code: "input-has-no-source",
+      message: `target "${target.name}" input "${input.name}" comes from nowhere: it has no offsets, no inherit offset and no host value`,
+      params,
+    };
+  }
+  if (sources > 1) {
+    return {
+      code: "input-has-several-sources",
+      message: `target "${target.name}" input "${input.name}" comes from more than one of its offsets, its inherit offset and its host value`,
+      params,
+    };
+  }
+  if (
+    input.host?.kind === "parameter" &&
+    !KERNEL_PARAMETERS[phase].includes(input.host.parameter)
+  ) {
+    return {
+      code: "input-parameter-not-in-phase",
+      message: `target "${target.name}" input "${input.name}" reads "${input.host.parameter}", but a ${phase} kernel has no such parameter`,
+      params: { ...params, parameter: input.host.parameter, phase },
+    };
+  }
+  return undefined;
+}
+
 function hasCoreLifecycle(target: FXKernelTarget): boolean {
   const lifecycle = target.buffers.find((buffer) => buffer.name === FX_CORE_LIFECYCLE);
   return lifecycle?.stride === FX_CORE_LIFECYCLE_STRIDE;
 }
 
-/** An at-birth input is a spawn target's model matrix, placed by the age in its lifecycle. */
 /**
  * What is wrong with an inherited input: one outside a spawn target (only births inherit), or one
  * whose floats do not lie inside the target's inherit layout.
@@ -320,12 +317,7 @@ function inheritInputErrors(
   }
   const offset = input.inheritOffset ?? 0;
   const stride = target.inherit?.layout.stride ?? 0;
-  if (
-    input.offsets !== undefined ||
-    !Number.isInteger(offset) ||
-    offset < 0 ||
-    offset + input.type.components > stride
-  ) {
+  if (!Number.isInteger(offset) || offset < 0 || offset + input.type.components > stride) {
     return [
       {
         code: "inherit-input-out-of-layout",
@@ -340,11 +332,12 @@ function inheritInputErrors(
 function atBirthErrors(
   target: FXKernelTarget,
   phase: "spawn" | "update",
-  inputName: string,
+  input: FXKernelTargetInput,
 ): FXCompilerError[] {
+  const inputName = input.name;
   const errors: FXCompilerError[] = [];
   const params = { targetName: target.name, inputName };
-  if (inputName !== FX_MODEL_MATRIX_INPUT) {
+  if (input.host?.kind !== "emitter" || input.host.field !== "worldMatrix") {
     errors.push({
       code: "at-birth-input-not-model-matrix",
       message: `target "${target.name}" reads input "${inputName}" at birth, but only the model matrix moves with a birth`,
@@ -400,12 +393,10 @@ function killSlotErrors(
   return errors;
 }
 
-/** Whether `value` is an array of numbers (offsets). */
 function isNumberArray(value: unknown): boolean {
   return Array.isArray(value) && value.every((entry) => typeof entry === "number");
 }
 
-/** The first offset appearing more than once in `offsets`, or `undefined`. */
 function firstDuplicateOffset(offsets: readonly number[]): number | undefined {
   const seen = new Set<number>();
   for (const offset of offsets) {
@@ -417,10 +408,6 @@ function firstDuplicateOffset(offsets: readonly number[]): number | undefined {
   return undefined;
 }
 
-/**
- * Structural (shape) check of a kernel target, so a malformed host literal surfaces as
- * `invalid-target` errors here instead of a TypeError inside `validate`/`apply`.
- */
 export function kernelTargetShapeErrors(target: unknown): FXCompilerError[] {
   if (!isRecord(target)) {
     return [shapeError("<unknown>", "target", "an object")];

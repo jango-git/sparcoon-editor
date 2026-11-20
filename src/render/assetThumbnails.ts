@@ -1,10 +1,6 @@
 /**
- * Still-image previews for the content sheet's two kinds with no native browser preview: an HDR
- * radiance file can't be decoded by an `<img>`, and a mesh asset is bare vertex arrays with no
- * baked image at all. Both are rendered once to an offscreen canvas and cached as a PNG data URL,
- * keyed by asset identity - mirrors {@link TextureRegistry}'s "resolve, don't recompute" cache
- * shape, but as plain functions since neither needs the app-lifecycle `sync`/`destroy` a live
- * render-pipeline registry does.
+ * Still-image previews for HDR and mesh assets, which the browser cannot show natively. Rendered
+ * once offscreen and cached as a PNG data URL by asset identity.
  */
 
 import {
@@ -27,7 +23,7 @@ import { buildGeometryFromArrays } from "./meshGeometryBaking";
 const HDRI_THUMBNAIL_WIDTH = 64;
 const HDRI_THUMBNAIL_HEIGHT = 32;
 const MESH_THUMBNAIL_SIZE = 96;
-/** Camera pulled back this many bounding-sphere radii past the tight framing distance. */
+/** Extra camera distance, in bounding-sphere radii, beyond tight framing. */
 const MESH_FRAME_MARGIN = 1.35;
 const MESH_CAMERA_FOV_DEGREES = 35;
 
@@ -42,9 +38,8 @@ const environmentThumbnailCache = new Map<string, EnvironmentThumbnailEntry>();
 const hdriLoader = new RGBELoader().setDataType(FloatType);
 
 /**
- * Tone-mapped PNG thumbnails for the given HDRI library, keyed by asset name. A newly seen or
- * changed asset starts an async decode and is absent from the returned map until it lands, at
- * which point `onReady` fires so the caller can re-list and pick up the cache.
+ * Tone-mapped PNG thumbnails by asset name. A new or changed asset decodes asynchronously and
+ * `onReady` fires when it lands.
  */
 export function environmentThumbnails(
   assets: readonly EnvironmentAsset[],
@@ -75,7 +70,6 @@ function decodeEnvironmentThumbnail(
   hdriLoader.load(
     entry.dataUrl,
     (texture) => {
-      // The entry may have been evicted or replaced by a re-upload while this decode was in flight.
       if (environmentThumbnailCache.get(name) !== entry) {
         texture.dispose();
         return;
@@ -99,7 +93,6 @@ function decodeEnvironmentThumbnail(
   );
 }
 
-/** Draws a tonemapped linear-float RGBA buffer to a canvas and reads it back as a PNG data URL. */
 function renderTonemappedPng(data: Float32Array, width: number, height: number): string {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -114,12 +107,7 @@ function renderTonemappedPng(data: Float32Array, width: number, height: number):
   return canvas.toDataURL("image/png");
 }
 
-/**
- * Reinhard-tonemaps (unbounded HDR -> [0,1]) then linear-to-sRGB gamma encodes an RGBA float
- * buffer into 8-bit channel bytes, ready for `ImageData`. Exported (not just `renderTonemappedPng`)
- * so this half of thumbnail generation - the only part with no canvas/DOM dependency - is unit
- * testable.
- */
+/** Reinhard tonemap (HDR to [0,1]), then linear to sRGB encode, into 8-bit RGBA. */
 export function tonemapToImageBytes(data: Float32Array): Uint8ClampedArray {
   const bytes = new Uint8ClampedArray(data.length);
   for (let index = 0; index < data.length; index += 4) {
@@ -154,8 +142,10 @@ interface MeshRig {
 
 let meshRig: MeshRig | undefined;
 
-/** Builds the shared offscreen renderer/scene/camera lazily, on first thumbnail request - never
- * at module load, where `document.createElement("canvas")` may be a headless-test stub. */
+/**
+ * Built on first use, not at module load, where `document.createElement("canvas")` may be a test
+ * stub.
+ */
 function getMeshRig(): MeshRig {
   if (meshRig !== undefined) {
     return meshRig;
@@ -172,8 +162,7 @@ function getMeshRig(): MeshRig {
   return meshRig;
 }
 
-/** Rendered PNG thumbnails for the given mesh library, keyed by asset name. Synchronous - one
- * offscreen render per asset is cheap enough to run inline, unlike the HDRI decode. */
+/** PNG thumbnails by asset name, rendered synchronously. */
 export function meshThumbnails(assets: readonly MeshAsset[]): ReadonlyMap<string, string> {
   pruneStale(meshThumbnailCache, assets);
   const resolved = new Map<string, string>();
@@ -193,8 +182,7 @@ function resolveMeshThumbnail(asset: MeshAsset): string {
   return thumbnailUrl;
 }
 
-/** Renders `geometry` (normal-shaded, since a baked asset carries no material) into the shared
- * offscreen rig, framed by its bounding sphere; disposes the geometry, which this function owns. */
+/** Renders `geometry` normal-shaded, framed by its bounding sphere. Disposes the geometry. */
 function renderMeshThumbnail(geometry: BufferGeometry): string {
   const { renderer, scene, camera, material } = getMeshRig();
   geometry.computeBoundingSphere();
@@ -208,7 +196,6 @@ function renderMeshThumbnail(geometry: BufferGeometry): string {
   return thumbnailUrl;
 }
 
-/** Points the camera at `sphere`, pulled back far enough on a fixed diagonal to frame it whole. */
 function frameCamera(camera: PerspectiveCamera, sphere: Sphere): void {
   const radius = sphere.radius > 0 ? sphere.radius : 1;
   const halfFovRadians = (camera.fov * Math.PI) / 360;
@@ -221,7 +208,6 @@ function frameCamera(camera: PerspectiveCamera, sphere: Sphere): void {
   camera.updateProjectionMatrix();
 }
 
-/** Drops cache entries for assets no longer in the library (a removed or renamed upload). */
 function pruneStale<Entry>(
   cache: Map<string, Entry>,
   assets: readonly { readonly name: string }[],

@@ -31,8 +31,8 @@ export function prepareCompile<N extends FXGraphNode>(graph: FXGraph<N>): FXComp
 }
 
 /**
- * Runs each reachable node's `build` in dependency order, tagging any build-time throw with the
- * node id so an invalid op/type combo surfacing only at code-gen (M4) is node-attributed, not lost.
+ * Runs each reachable node's `build` in dependency order, tagging a build-time throw with the
+ * node id.
  */
 export function buildNodes<N extends FXGraphNode>(
   graph: FXGraph<N>,

@@ -1,6 +1,6 @@
 /**
- * Keyframe-track math shared by the timeline (value tracks, keyed by param `name`) and transform
- * commands (channel tracks, keyed by `channel`) - the pure key ops (snap/insert/retime/remove/set) live here once.
+ * Keyframe operations shared by value tracks (keyed by param `name`) and transform channel tracks
+ * (keyed by `channel`).
  */
 
 import type { FXKeyEase } from "sparcoon";

@@ -6,12 +6,7 @@
 export class LibraryCache<A extends { readonly name: string }, R> {
   private readonly entries = new Map<string, { readonly asset: A; readonly resource: R }>();
 
-  /**
-   * @param make Makes an asset's resource.
-   * @param dispose Releases a resource that is replaced or gone.
-   * @param changed Whether `next` needs a new resource where `previous` had one; by default any
-   * other asset object does.
-   */
+  /** @param changed Whether `next` needs a new resource. By default any other asset object does. */
   constructor(
     private readonly make: (asset: A) => R,
     private readonly dispose: (resource: R) => void,
@@ -19,7 +14,6 @@ export class LibraryCache<A extends { readonly name: string }, R> {
       previous !== next,
   ) {}
 
-  /** Reconciles the cache with the library's assets: add new, replace changed, drop gone. */
   public sync(assets: readonly A[]): void {
     const live = new Set(assets.map((asset) => asset.name));
     for (const [name, entry] of this.entries) {
@@ -39,12 +33,10 @@ export class LibraryCache<A extends { readonly name: string }, R> {
     }
   }
 
-  /** The resource of asset `name`, if the library holds it. */
   public get(name: string): R | undefined {
     return this.entries.get(name)?.resource;
   }
 
-  /** Every resource, by its asset's name. */
   public all(): Record<string, R> {
     const resources: Record<string, R> = {};
     for (const [name, entry] of this.entries) {

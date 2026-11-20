@@ -5,6 +5,23 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## 0.4.0 - 2026-11-20
+
+### Changed
+
+- On the CPU simulation the random values of an emitter repeat from run to run, as on the GPU. A
+  replay of the same frame times spawns the same particles. A Random in the update still draws
+  another value every frame. An effect gets it once re-exported, and needs the runtime of the
+  same release.
+- On a phone or tablet without a mouse, Example effects leads to the
+  [examples page](https://jango-git.github.io/sparcoon/), where the effects play in the browser.
+
+### Fixed
+
+- A project saved before 24 July 2026 with Read Attribute nodes opens with them as Builtin Attribute
+  or Custom Attribute nodes, and a Read Attribute Components node as Custom Attribute Split. Before,
+  they stayed in the graph with an error and the effect did not export.
+
 ## 0.3.0 - 2026-11-19
 
 ### Changed

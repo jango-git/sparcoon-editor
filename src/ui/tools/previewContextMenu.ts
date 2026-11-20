@@ -40,7 +40,6 @@ export function installPreviewContextMenu(
       return;
     }
     tracking = false;
-    // A right-drag panned the camera - don't pop the menu on it; and a modal op owns right-click.
     if (isToolActive()) {
       return;
     }

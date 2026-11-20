@@ -1,15 +1,8 @@
 /**
- * Node-graph text (label/description/socket+param labels), resolved by a node's stable `type`
- * (plus a socket/param key) at render time - never baked into `FXNodeMeta`. `NODE_PALETTE`
- * (domain/nodePalette.ts) builds eagerly at module-load time, before `initGraphText` resolves, so
- * baking translated text into it would race the locale fetch; resolving here, at the point the
- * UI actually paints a label, sidesteps that entirely (painting only starts after
- * `mountApplicationShell`, itself after `await initGraphText()`).
- *
- * Keys are runtime strings (a node `type`), not compile-time literals, so there is no `TKey`-style
- * type check here - `tests/i18n/nodeText.test.ts` covers completeness instead. Every resolver
- * returns `undefined` on a miss (in both the active and English fallback dictionaries); the caller
- * decides the final fallback (usually `humanizeKey` or the raw `type`/key).
+ * Node-graph text (labels, descriptions, socket and parameter labels), resolved by node `type`
+ * when a label is painted, not baked into `FXNodeMeta`: `NODE_PALETTE` builds before the locale
+ * loads. Keys are runtime strings, so `tests/i18n/nodeText.test.ts` checks completeness. Each
+ * resolver returns `undefined` on a miss in both dictionaries and the caller picks the fallback.
  */
 
 interface NodeTextVariant {
@@ -112,10 +105,8 @@ export function nodeParamLabel(type: string, key: string): string | undefined {
 }
 
 /**
- * Curated search aliases for `type`, merged from the active locale AND the English fallback (not
- * "active, else fallback" like the other resolvers above) - these tags are never displayed, only
- * matched, so there is no mixed-language-display risk, and merging means a user who types an
- * English technical term still finds the node even when the active locale has its own aliases too.
+ * Search aliases for `type`, merged from the active locale and the English dictionary. They are
+ * only matched, never shown, so a user typing an English term still finds the node.
  */
 export function nodeSearchTags(type: string): readonly string[] {
   const tags = new Set<string>(activeDictionary[type]?.searchTags ?? []);

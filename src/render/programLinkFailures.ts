@@ -10,7 +10,6 @@ import { Mesh } from "three";
 
 import type { GraphName } from "../model/graphSlots";
 
-/** The diagnostics three keeps on a program it linked with `debug.checkShaderErrors` on. */
 interface ProgramDiagnostics {
   readonly runnable: boolean;
   readonly programLog: string;
@@ -91,7 +90,6 @@ export function programLinkFailures(
   return failures;
 }
 
-/** Whether two sets of failures name the same graphs with the same logs. */
 export function sameProgramLinkFailures(a: ProgramLinkFailures, b: ProgramLinkFailures): boolean {
   const graphs = Object.keys(a) as GraphName[];
   return graphs.length === Object.keys(b).length && graphs.every((graph) => a[graph] === b[graph]);

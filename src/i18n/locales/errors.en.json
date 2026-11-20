@@ -101,17 +101,17 @@
   "duplicate-target-input": {
     "message": "target \"{targetName}\" declares input \"{inputName}\" more than once"
   },
-  "spawn-input-has-dt": {
-    "message": "target \"{targetName}\" declares input \"dt\", but a spawn kernel has no dt"
+  "input-parameter-not-in-phase": {
+    "message": "target \"{targetName}\" input \"{inputName}\" reads \"{parameter}\", but a {phase} kernel has no such parameter"
   },
-  "dt-input-has-offsets": {
-    "message": "target \"{targetName}\" declares input \"dt\" with offsets; \"dt\" is the synthesized timestep and must be offset-less"
+  "input-has-several-sources": {
+    "message": "target \"{targetName}\" input \"{inputName}\" comes from more than one of its offsets, its inherit offset and its host value"
   },
   "target-input-offset-count-mismatch": {
     "message": "target \"{targetName}\" input \"{inputName}\" has {offsetCount} offset(s) but its {typeId} type needs {typeComponents}"
   },
-  "offsetless-input-not-reserved": {
-    "message": "target \"{targetName}\" input \"{inputName}\" declares no offsets; offset-less inputs are reserved for \"dt\", \"PARTICLE_INDEX\", and the model matrix"
+  "input-has-no-source": {
+    "message": "target \"{targetName}\" input \"{inputName}\" comes from nowhere: it has no offsets, no inherit offset and no host value"
   },
   "at-birth-input-not-model-matrix": {
     "message": "target \"{targetName}\" reads input \"{inputName}\" at birth, but only the model matrix moves with a birth"
@@ -139,9 +139,6 @@
   },
   "integration-ref-not-scalar": {
     "message": "target \"{targetName}\" integration reads input \"{refName}\" as a {typeId}; integration refs must be scalar"
-  },
-  "integration-reads-dt-in-spawn": {
-    "message": "target \"{targetName}\" integration reads \"dt\", but a spawn kernel has no dt"
   },
   "kill-slot-in-spawn": {
     "message": "target \"{targetName}\" declares a kill slot, but only an update kernel can kill"

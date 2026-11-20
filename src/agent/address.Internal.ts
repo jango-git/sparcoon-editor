@@ -21,7 +21,6 @@ import type { Store } from "../model/store";
 import { AgentError } from "./errors";
 import type { GraphName } from "./views";
 
-/** One resolved graph: its owner, the command slot, and the palette kind it draws from. */
 export interface GraphTarget {
   readonly owner: GraphOwnerRef;
   readonly name: GraphName;
@@ -31,7 +30,6 @@ export interface GraphTarget {
   readonly host: RenderHost;
 }
 
-/** The emitter or VFX mesh `ownerId` names. */
 export function resolveOwner(source: SourceState, ownerId: string): GraphOwnerRef {
   if (source.scene.emitters.some((emitter) => emitter.id === ownerId)) {
     return { kind: "emitter", id: ownerId };

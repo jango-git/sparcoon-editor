@@ -1,6 +1,6 @@
 /**
- * Node count + total complexity of the authored graph, for the editor's Stats readout. Mints
- * throwaway engine node instances and delegates to the engine's `collectGraphStats` for the answer.
+ * Node count and total complexity of the authored graph, taken from the engine on throwaway node
+ * instances.
  */
 
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
@@ -25,7 +25,7 @@ import { serializeGraph } from "./serialize";
 
 export type { FXGraphStats } from "../engine/core/compiler/collectGraphStats";
 
-/** Lazily built once (stateless factory maps), reused across every call - mirrors sceneEmitters.ts. */
+/** Built on first use and reused. */
 let renderRegistry: FXNodeRegistry<FXRenderNode> | undefined;
 function getRenderRegistry(): FXNodeRegistry<FXRenderNode> {
   if (renderRegistry === undefined) {
@@ -62,7 +62,7 @@ function mintNodes<N extends FXGraphNode>(
     try {
       nodes.set(id, registry.create(data.type, data.params));
     } catch {
-      // Dropped - see doc comment above.
+      // A node that fails to build is left out.
     }
   }
   return nodes;
@@ -94,7 +94,6 @@ function buildEngineGraph(
   return fxGraph;
 }
 
-/** Node count + total complexity of `graph`'s reachable nodes (see {@link collectGraphStats}). */
 export function computeGraphStats(kind: GraphKind, graph: EditorGraph): FXGraphStats {
   return collectGraphStats(buildEngineGraph(kind, graph));
 }

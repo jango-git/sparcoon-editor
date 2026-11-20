@@ -18,8 +18,6 @@ import {
   validateStageDirection,
 } from "./FXCompilePipelineBaseline.Internal";
 
-/** Turns an {@link FXGraph} into a Three-independent {@link FXCompiledShader} for a given
- *  {@link FXTarget}: validate, topo-sort, build each node through a context, then assemble. */
 export class FXCompilerBaseline {
   /**
    * Runs validation only, collecting every problem. Never throws - intended for
@@ -46,8 +44,6 @@ export class FXCompilerBaseline {
     return { ok: errors.length === 0, errors };
   }
 
-  /** Structural hash of the graph for `target`, without emitting code. Matches the hash a full
-   *  {@link compile} would carry, so the live orchestrator can gate recompile vs. rebind cheaply. */
   public previewHash(graph: FXGraph<FXRenderNode>, target: FXTarget): string {
     const { order, resolution } = prepareCompile(graph);
     const stages = resolvePlacementStages(graph, target, order);
@@ -60,9 +56,7 @@ export class FXCompilerBaseline {
   }
 
   /**
-   * Validates then compiles. On an invalid graph {@link throwIfInvalid} throws the first
-   * validation error (so the static surface keeps the `code`/`nodeId`); call {@link validate}
-   * first when a non-throwing path or the full error list is needed.
+   * Validates then compiles. Throws the first validation error, keeping its `code` and `nodeId`.
    */
   public compile(graph: FXGraph<FXRenderNode>, target: FXTarget): FXCompiledShader {
     throwIfInvalid(this.validate(graph, target));

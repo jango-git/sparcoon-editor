@@ -1,9 +1,6 @@
 /**
- * The generic grid-row layout mechanism a node card's body is built from: one CSS grid whose five
- * columns line up across every row - `[input dot][input label][center control][output label]
- * [output dot]`. A cell names its start column (1-based); an optional `colEnd` spans to a later
- * line, where `-1` is the grid's end. Sharing one grid keeps dots, names and controls aligned
- * between rows. No knowledge of nodes/params - reusable wherever a row needs this layout.
+ * One CSS grid with five columns: input dot, input label, center control, output label, output dot.
+ * A cell gives its start column (1-based) and optional `colEnd` (-1 is the grid end).
  */
 
 import { createElement } from "../dom";

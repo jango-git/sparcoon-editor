@@ -1,9 +1,6 @@
 /**
- * The graph editor's complexity readout: reachable node count + the active owner's own cost (see
- * `domain/graphStats.ts`), labelled "Object cost". The whole-scene total lives on the viewport's
- * stats panel instead (see `viewportStats.ts`), labelled "Total cost" there - it is an effect-wide
- * number, not specific to whichever graph happens to be open here.
- * Pure UI - the caller recomputes and pushes the numbers in via {@link GraphStats.report}.
+ * Node count and the active owner's cost, labelled "Object cost". The caller pushes numbers via
+ * {@link GraphStats.report}.
  */
 
 import { t } from "../../i18n";

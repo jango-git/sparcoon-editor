@@ -138,8 +138,7 @@ export function resolveSocketType(
 }
 
 /**
- * The concrete type wired into an input socket, or `undefined` when unconnected/undeterminable -
- * the hook a wire-driven node family (e.g. `split`) uses to follow its input's type.
+ * The concrete type wired into an input socket, or undefined when unconnected or undeterminable.
  */
 export function resolveInputType(
   kind: GraphKind,

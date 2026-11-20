@@ -27,24 +27,15 @@ import { buildParticleTarget } from "../render/target/FXParticleRenderTarget";
 import { assembleBehaviorArtifact, assembleRenderArtifact } from "./assembleArtifacts";
 
 /**
- * Compiles a render + behavior graph into **in-memory artifact objects** (not module
- * text). This is the sibling of {@link emitEffectModule}: the module emitter serializes
- * the same `FXCompilerBaseline` / `compileBehavior` output to an ESM string for shipping, while
- * this returns live `{ render, behavior }` objects the editor hands straight to
- * `FXEmitter.fromArtifacts` for a preview.
- *
- * The behavior `spawn`/`update` are built here as **real functions** via the engine's
- * `new Function` kernel builders (`buildParticleSpawnKernel` / `buildParticleUpdateKernel`)
- * - the same byte-identical per-particle source the module emitter would print. `eval`
- * is allowed in the editor; only the runtime forbids it (it receives finished functions).
- *
- * Texture uniforms cross as their live `Texture` object (the module emitter cannot
- * serialize those to text, so this in-memory path is strictly more capable for a preview).
+ * Compiles both graphs into live `{ render, behavior }` objects for `FXEmitter.fromArtifacts`.
+ * Texture uniforms keep their `Texture`, which module text cannot carry. `spawn`/`update` are built
+ * with `new Function`, from the same source emitEffectModule prints.
  */
 export interface FXCompileArtifactsOptions {
-  /** The geometry to instance per particle: a built-in primitive (`"plane"` + a camera-facing
-   *  `particleTransform` is the billboard) or a custom mesh asset. @defaultValue `{ type:
-   *  "primitive", primitive: "plane" }` */
+  /**
+   * Geometry to instance per particle. A `"plane"` primitive with a camera-facing
+   * `particleTransform` is the billboard.
+   */
   readonly geometry?: FXGeometrySource;
   /** How the particle fragment's alpha composites into the framebuffer. @defaultValue
    *  `"blending"` */
@@ -67,15 +58,15 @@ interface CompiledGraphs {
   readonly behaviorAttributes: readonly FXAttributeRequest[];
 }
 
-/** Attribute type conflicts that surface only across the two graphs (a name written by behavior
- *  and read by render at different types) - each graph's own `collectAttributeRequests` is blind
- *  to the other, so neither would ever catch this alone. */
+/**
+ * Attribute type conflicts across the two graphs (written by behavior, read by render at another
+ * type).
+ */
 function crossGraphAttributeErrors(
   render: FXAttributeCollection,
   behavior: FXAttributeCollection,
 ): readonly FXCompilerError[] {
-  // mergeAttributeCollections returns [...render.errors, ...behavior.errors, ...cross], so this
-  // offset is exactly the tail past the two inputs' own errors.
+  // The cross-graph errors follow the two graphs' own, so skip those.
   const merged = mergeAttributeCollections(render, behavior);
   return merged.errors.slice(render.errors.length + behavior.errors.length);
 }
@@ -88,7 +79,6 @@ function compileGraphs(
   const behaviorCollection = collectAttributeRequests(behaviorGraph);
   const [firstCrossError] = crossGraphAttributeErrors(renderCollection, behaviorCollection);
   if (firstCrossError !== undefined) {
-    // Refuse to emit a corrupt artifact; compileToArtifacts throws the first error.
     throw new FXCompilerErrorException(firstCrossError);
   }
 
@@ -105,10 +95,6 @@ function compileGraphs(
   return { shader, kernel, renderAttributes, behaviorAttributes };
 }
 
-/**
- * Compiles both graphs to the two artifacts the runtime executes. A structural edit in
- * the editor re-runs this and hands the result to a fresh `FXEmitter.fromArtifacts`.
- */
 export function compileToArtifacts(
   renderGraph: FXGraph<FXRenderNode>,
   behaviorGraph: FXGraph<FXBehaviorNode>,
@@ -118,7 +104,6 @@ export function compileToArtifacts(
   const renderMode = options.renderMode ?? "blending";
   const geometry: FXGeometrySource = options.geometry ?? { type: "primitive", primitive: "plane" };
   return {
-    // Delegates to the shared in-memory assembler `compileMeshArtifact.ts` also uses.
     render: assembleRenderArtifact(
       compiled.shader,
       geometry,
@@ -126,21 +111,17 @@ export function compileToArtifacts(
       renderMode,
     ),
     behavior: assembleBehaviorArtifact(compiled.kernel),
-    // renderMode/geometry reshape the runtime material, not our compiled shader, so neither
-    // moves the shader hash; fold them in so toggling either counts as structural.
+    // renderMode and geometry change the material, not the shader hash, so fold them in.
     hash: `${compiled.shader.hash}::${compiled.kernel.hash}::rm-${renderMode}::geo-${JSON.stringify(geometry)}`,
   };
 }
 
-/** Every validation problem of the two graphs, split by graph. Unlike {@link compileToArtifacts}
- *  (which throws the first error), this collects them all. */
 export interface FXArtifactValidation {
   readonly render: readonly FXCompilerError[];
   readonly behavior: readonly FXCompilerError[];
 }
 
-/** Validates both graphs against the same targets {@link compileToArtifacts} compiles against,
- *  without throwing - intended for the editor to light up the responsible nodes. */
+/** Validates both graphs without throwing, for error lights on nodes. */
 export function validateArtifacts(
   renderGraph: FXGraph<FXRenderNode>,
   behaviorGraph: FXGraph<FXBehaviorNode>,
@@ -153,8 +134,6 @@ export function validateArtifacts(
     false,
     behaviorCollection.requests,
   );
-  // A cross-graph attribute conflict belongs to neither graph's own validation; surface it so
-  // the editor's error lights match what compileToArtifacts would throw on.
   const crossErrors = crossGraphAttributeErrors(renderCollection, behaviorCollection);
   return {
     render: new FXCompilerBaseline().validate(renderGraph, renderTarget).errors,
@@ -162,9 +141,7 @@ export function validateArtifacts(
   };
 }
 
-/** Projects the current uniform/binding values for a value edit (a rebind), keyed by the same
- *  slot names the installed artifact uses. Feeds `FXEmitter.applyValues` for a shader/kernel-free
- *  color/speed/curve tweak. */
+/** Current uniform and binding values by slot name, for `FXEmitter.applyValues`. */
 export function collectValues(
   renderGraph: FXGraph<FXRenderNode>,
   behaviorGraph: FXGraph<FXBehaviorNode>,

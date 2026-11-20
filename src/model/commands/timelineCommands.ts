@@ -1,7 +1,4 @@
-/**
- * Timeline edits (keyframes on Timeline Value tracks, timeline length). All commit `"view"` -
- * authoring data that never reaches the compiler, so it's saved/undoable but never recompiles.
- */
+/** Timeline edits. All are view edits, since none reaches the compiler. */
 
 import type { FXEmissionBasis, FXKeyEase, FXParticleEventKind } from "sparcoon";
 
@@ -64,11 +61,8 @@ function commitEmitters(store: Store, emitters: readonly EmitterDoc[], live = fa
 }
 
 /**
- * Replaces `entity`'s Timeline Value tracks via `update`, committing the result. `entity` is an
- * emitter or VFX mesh (the VFX group has no tracks, so it's a no-op); also a no-op for an unknown id.
- * `live: true` (an intermediate step of a scrub/drag control) commits through `Store.commitLive`
- * instead, so a whole drag gesture costs undo history exactly one entry, not one per step. An
- * `update` that changes nothing (the same tracks back) commits nothing.
+ * Replaces the entity's Timeline Value tracks via `update`. No-op for the VFX group, an unknown id,
+ * or an unchanged result. `live: true` commits through `Store.commitLive`, without an undo entry.
  */
 function updateTracks(
   store: Store,
@@ -109,7 +103,6 @@ function updateTracks(
   }
 }
 
-/** Bakes `key` onto the track named `name` (creating the track on first key). */
 export function withNamedTrackKey(
   tracks: readonly AnimationTrack[],
   name: string,
@@ -153,7 +146,6 @@ export function removeKeyframe(store: Store, entity: SceneEntity, keyId: string)
   updateTracks(store, entity, (tracks) => removeKeyById(tracks, keyId));
 }
 
-/** Sets keyframe `keyId`'s value in place (the inspector's value editor). No-op if unknown. */
 export function setKeyframeValue(
   store: Store,
   entity: SceneEntity,
@@ -371,7 +363,6 @@ export function updateEvent(
   );
 }
 
-/** Removes event `eventId` from emitter `id`. No-op if nothing matches. */
 export function removeEvent(store: Store, id: string, eventId: string): void {
   updateEvents(store, id, (events) => events.filter((event) => event.id !== eventId));
 }
@@ -477,7 +468,6 @@ export function updateReaction(
   );
 }
 
-/** Removes reaction `reactionId` from emitter `id`. No-op if nothing matches. */
 export function removeReaction(store: Store, id: string, reactionId: string): void {
   updateReactions(store, id, (reactions) =>
     reactions.filter((reaction) => reaction.id !== reactionId),
@@ -583,10 +573,8 @@ export function setTimelineDuration(store: Store, duration: number, live = false
   }
   const source: SourceState = store.getSource();
   const next = Math.max(MIN_DURATION, duration);
-  // Skipping a no-op is only safe for a live (intermediate) call - a final, non-live call must
-  // always commit even when `next` already matches the live-applied `source`, or the gesture's
-  // one real commit (which promotes history's stale pre-gesture `present`) would be silently
-  // dropped, leaving the whole drag with no undo entry at all.
+  // Only a live call may skip a no-op. A final call must commit even when `next` matches the
+  // live-applied source, or the gesture would get no undo entry.
   if (live && next === source.timeline.duration) {
     return;
   }
@@ -609,7 +597,6 @@ export function setTimelineFps(store: Store, fps: number, live = false): void {
   }
   const source: SourceState = store.getSource();
   const next = Math.max(MIN_FPS, Math.round(fps));
-  // See setTimelineDuration's identical guard for why this only short-circuits a live call.
   if (live && next === source.timeline.fps) {
     return;
   }

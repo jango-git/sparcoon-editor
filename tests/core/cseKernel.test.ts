@@ -6,7 +6,7 @@ import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKer
 import { buildParticleBehaviorTargets } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
-import { fieldSpawnKernel } from "../helpers/graphBuild";
+import { buffersFor, fieldSpawnKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // The behavior kernel runs a whole-phase CSE pass before printing (see cse.Internal.ts): a
@@ -77,7 +77,7 @@ describe("behavior kernel CSE", () => {
     expect(buffers.position[2]).toBeCloseTo(0, 5);
   });
 
-  it("never merges Math.random(): three independent axes stay three draws", () => {
+  it("keeps three random draws for three axes", () => {
     const r = behaviorRegistry();
     // A filled random-box-point draws one independent random per axis; CSE must keep all three.
     const compiled = spawnPhase(
@@ -86,21 +86,16 @@ describe("behavior kernel CSE", () => {
       "box",
       "position",
     );
-    expect(occurrences(compiled.spawn!.body.join("\n"), "Math.random()")).toBe(3);
+    expect(occurrences(compiled.spawn!.body.join("\n"), "fxRandom(")).toBe(3);
 
-    const spawn = fieldSpawnKernel(compiled);
-    // If the three draws had merged, x==y==z every particle. Across samples they must differ.
-    let anyAxisDiffers = false;
-    for (let i = 0; i < 32 && !anyAxisDiffers; i += 1) {
-      const buffers = { position: new Float32Array(3), lifecycle: new Float32Array(2) };
-      spawn(buffers, 0, 1, compiled.spawn!.bindings);
-      if (
-        buffers.position[0] !== buffers.position[1] ||
-        buffers.position[1] !== buffers.position[2]
-      ) {
-        anyAxisDiffers = true;
-      }
-    }
+    // Had the three draws merged, x == y == z for every particle.
+    const count = 32;
+    const buffers = buffersFor(compiled, count);
+    fieldSpawnKernel(compiled)(buffers, 0, count, compiled.spawn!.bindings);
+    const position = buffers.position;
+    const anyAxisDiffers = Array.from({ length: count }, (_, i) => i * 3).some(
+      (at) => position[at] !== position[at + 1] || position[at + 1] !== position[at + 2],
+    );
     expect(anyAxisDiffers).toBe(true);
   });
 });

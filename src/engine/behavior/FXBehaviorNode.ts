@@ -3,10 +3,6 @@ import type { FXBehaviorPhase } from "./FXBehaviorPhase";
 import type { FXInheritRequest } from "./FXInheritPlan";
 import type { FXKernelContext } from "./FXKernelContext";
 
-/**
- * Base for CPU behavior-backend nodes: an {@link FXGraphNode} bound to {@link FXKernelContext},
- * additionally declaring its execution phase (SPAWN at birth, UPDATE per frame).
- */
 export abstract class FXBehaviorNode extends FXGraphNode<FXKernelContext> {
   /** `true` for a phase-agnostic node (e.g. `constant`, `split`): compiled into every
    * phase that consumes it, rather than one fixed phase. */

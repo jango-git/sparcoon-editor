@@ -188,7 +188,6 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
   };
 }
 
-/** Keeps only well-formed persisted VFX meshes (a mesh missing its id is dropped, not fatal). */
 function normalizeMeshes(raw: unknown): readonly VfxMeshDoc[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -237,7 +236,6 @@ function normalizeVfxMesh(value: unknown): VfxMeshDoc | undefined {
   return withDeclaredTimelineValues(mesh, meshGraphs(mesh));
 }
 
-/** Keeps only well-formed persisted assets (a corrupt entry is dropped, not fatal). */
 function normalizeAssets(raw: unknown): readonly TextureAsset[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -263,7 +261,6 @@ function normalizeAssets(raw: unknown): readonly TextureAsset[] {
   return assets;
 }
 
-/** A finite `[x, y, z]` from `raw`, or `undefined`. */
 function vec3(raw: unknown): readonly [number, number, number] | undefined {
   return Array.isArray(raw) && raw.length === 3 && raw.every(isFiniteNumber)
     ? [raw[0] as number, raw[1] as number, raw[2] as number]
@@ -310,7 +307,6 @@ function normalizeVolumeAssets(raw: unknown): readonly VolumeAsset[] {
   return assets;
 }
 
-/** Keeps only well-formed persisted HDRI library entries (name + dataUrl + byteSize). */
 function normalizeEnvironments(raw: unknown): readonly EnvironmentAsset[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -355,8 +351,8 @@ function normalizeBakedGeometry(raw: unknown): MeshAsset["geometry"] | undefined
   };
 }
 
-/** Keeps only well-formed persisted mesh-asset library entries (name + baked geometry + byteSize);
- *  drops an entry whose geometry did not survive (ADR-0001: the arrays are the source of truth). */
+/** Keeps well-formed mesh assets. An entry whose geometry arrays did not survive is dropped, since
+ *  the arrays are the source of truth. */
 function normalizeMeshAssets(raw: unknown): readonly MeshAsset[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -445,7 +441,7 @@ function normalizeEmitter(value: unknown): EmitterDoc | undefined {
   return withDeclaredTimelineValues(emitter, emitterGraphs(emitter));
 }
 
-/** Restores the VFX group, defaulting documents authored before the group existed. */
+/** Restores the VFX group; a missing one gets the default. */
 function normalizeVfx(raw: unknown): VfxDoc {
   if (!isRecord(raw) || typeof raw["id"] !== "string") {
     return createDefaultVfx("vfx_1");
@@ -489,7 +485,6 @@ function normalizeTransform(raw: unknown): Transform {
   };
 }
 
-/** Keeps only well-formed persisted transform tracks (one per known channel; corrupt keys dropped). */
 function normalizeTransformTracks(raw: unknown): readonly TransformTrack[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -508,7 +503,6 @@ function normalizeTransformTracks(raw: unknown): readonly TransformTrack[] {
   return tracks;
 }
 
-/** Keeps only well-formed persisted live-channel names (an unknown channel string is dropped). */
 function normalizeLiveChannels(raw: unknown): readonly TransformChannel[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -519,7 +513,6 @@ function normalizeLiveChannels(raw: unknown): readonly TransformChannel[] {
   return [...new Set(channels)];
 }
 
-/** Keeps only well-formed persisted live-param names (a non-string entry is dropped). */
 function normalizeLiveParams(raw: unknown): readonly string[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -527,7 +520,7 @@ function normalizeLiveParams(raw: unknown): readonly string[] {
   return [...new Set(raw.filter((value): value is string => typeof value === "string"))];
 }
 
-/** Restores the scene timeline settings, defaulting documents authored before they existed. */
+/** Restores the scene timeline settings; missing fields get defaults. */
 function normalizeTimeline(raw: unknown): TimelineState {
   if (isRecord(raw) && isFiniteNumber(raw["duration"]) && raw["duration"] > 0) {
     return {
@@ -540,7 +533,6 @@ function normalizeTimeline(raw: unknown): TimelineState {
   return DEFAULT_TIMELINE;
 }
 
-/** Keeps only well-formed persisted animation tracks (a corrupt track/key is dropped, not fatal). */
 function normalizeTracks(raw: unknown): readonly AnimationTrack[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -555,7 +547,6 @@ function normalizeTracks(raw: unknown): readonly AnimationTrack[] {
   return tracks;
 }
 
-/** Keeps only well-formed persisted spawn events (a corrupt event is dropped, not fatal). */
 function normalizeEvents(raw: unknown): readonly TimelineEvent[] {
   if (!Array.isArray(raw)) {
     return [];

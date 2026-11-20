@@ -1,9 +1,4 @@
-/**
- * Node and connection edits on the authored graphs, including what a Timeline Value's name carries
- * (renaming/removing one carries or prunes its keyframes and live flag, see `timelineValues`).
- * Route/comment/attribute/fragment commands live in their own sibling modules; all share the
- * {@link activeGraph}/{@link withGraph} substrate from `graphAccess.Internal`.
- */
+/** Node and connection edits on the authored graphs. */
 
 import type { GraphConnection, GraphNode, GraphPosition } from "../../domain/graphModel";
 import { nodeFamily, pruneStaleFamilyComponents } from "../../domain/nodeFamilies";
@@ -46,7 +41,6 @@ export function addCatalogNode(
   return node.id;
 }
 
-/** Sets one parameter on a node. See {@link updateNodeParams}. */
 export function updateNodeParam(
   store: Store,
   slot: GraphSlot,
@@ -59,15 +53,11 @@ export function updateNodeParam(
 }
 
 /**
- * Sets parameters on a node in one edit (inline editing). Committed `"structural"` so the pipeline
- * recomputes, then the emitter view decides rebind vs recompile from the compiled structural hash.
- * Picking a volume asset also sets the inputs it describes (see {@link volumeDescriptionPatch}),
- * unless the same patch sets them.
+ * Sets node parameters in one structural edit. Picking a volume asset also sets the inputs it
+ * describes (see {@link volumeDescriptionPatch}) unless the patch sets them.
  *
- * `live: true` (an intermediate step of a scrub/drag control, never its final release) applies the
- * same edit through {@link Store.commitLive} instead - a preview the pipeline still recomputes
- * from, but that never touches undo history, so a whole drag gesture costs history exactly one
- * entry (the caller's later, non-live call at the gesture's end) rather than one per step.
+ * `live: true` applies the edit through {@link Store.commitLive}, without an undo entry, so a drag
+ * gesture costs one entry (its final non-live call).
  */
 export function updateNodeParams(
   store: Store,
@@ -278,10 +268,7 @@ export function removeConnection(store: Store, slot: GraphSlot, connectionId: st
   store.commit(next, "structural");
 }
 
-/**
- * Breaks every edge leaving an output socket - the node connections and the sink output
- * bindings fed by it. Used by Alt+Click on an output pin (Unreal-style "break all links").
- */
+/** Breaks every edge leaving an output socket: node connections and sink output bindings. */
 export function removeEdgesFromOutput(
   store: Store,
   slot: GraphSlot,

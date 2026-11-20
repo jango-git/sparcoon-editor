@@ -4,6 +4,7 @@ import {
   FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
   FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
+  FX_TRANSFORM_FEEDBACK_RAND_SEED_UNIFORM,
 } from "sparcoon";
 
 import type { FXCompiledDrawStage, FXTypedLocal } from "../core/codegen/drawStage.Internal";
@@ -67,21 +68,13 @@ import type {
   FXKernelTarget,
   FXKernelTargetOutput,
 } from "./FXParticleBehaviorTarget";
-import { FX_EMITTER_INPUT_FIELD, FX_PARTICLE_INDEX_INPUT } from "./FXParticleBehaviorTarget";
+import type { FXEmitterTransformField, FXKernelHostParameter } from "./FXParticleBehaviorTarget";
 
 /**
- * The standard-tier (WebGL2 / GLSL-ES-3.00, transform-feedback) behavior compiler: an independent
- * sibling of `FXParticleBehaviorKernel.Internal.ts`, not a shared-with-JS abstraction below the IR
- * - the same independence the render backend's own standard pipeline already established
- * (`FXCompilePipelineStandard.Internal.ts`'s doc comment). Unlike the JS backend, this one does
- * NOT scalarize its GLSL: the language handles vectors natively. What depends only on the pass
- * (dt, the emitter transform, bindings) is lifted into the draw stage: computed once per pass on
- * the CPU and read as a uniform, not per particle. This mirrors the render-standard pipeline's
- * shape (print each node's output inline as its `build()` runs), not the JS behavior pipeline's.
- *
- * Produces one {@link FXCompiledPhaseStandard} per phase (spawn/update compiled independently, as
- * on the JS side); fusing the two into one transform-feedback program with a birth-branch is the
- * assembler's job (`FXKernelBuildStandard.Internal.ts`), not this file's.
+ * The standard-tier (WebGL2, transform-feedback) behavior compiler. It does not scalarize, since
+ * GLSL has vectors. Values that depend only on the pass (dt, emitter transform, bindings) move to
+ * the draw stage and arrive as uniforms. Produces one {@link FXCompiledPhaseStandard} per phase,
+ * fused by `FXKernelBuildStandard.Internal.ts`.
  */
 
 /** GLSL-safe swizzle channel for offset `0..3`. */
@@ -89,20 +82,18 @@ const SWIZZLE_CHANNELS = ["x", "y", "z", "w"] as const;
 
 const FLOAT = FX_VALUE_TYPES.float;
 
-/** Component suffixes for a vector value param's per-component binding hints (`positionx`, ...). */
 const VEC_COMPONENT_NAMES = ["x", "y", "z", "w"] as const;
 
-/** This backend's bound builders: the core registry only, deliberately excluding
- *  `FX_BEHAVIOR_FUNCTIONS` (documented JS-only, e.g. `sampleLut`) - a node calling one throws a
- *  clean, catchable "unknown function" at build time instead of emitting GLSL that references an
- *  undefined function, which would only fail later when the browser links the shader. */
+/**
+ * Core registry only. A JS-only function (`sampleLut`) then throws "unknown function" at build time
+ * instead of failing at shader link.
+ */
 const STANDARD_BEHAVIOR_BUILDERS: FXExprBuilderApi = createBuilders(signaturesFrom(FX_FUNCTIONS));
 
-/** Deterministic GLSL `in`-attribute name for a state buffer (matches the buffer's own layout -
- *  one vector attribute per buffer, never one scalar attribute per component). Exported so the
- *  assembler (`FXKernelBuildStandard.Internal.ts`) prints the same name in the declaration this
- *  resolver prints in the body - the runtime itself never needs to know it, since it binds by the
- *  buffer's `layout(location = N)` index, not by attribute name. */
+/**
+ * GLSL `in` attribute name of a state buffer. Shared with the assembler. The runtime binds by
+ * `layout(location)` index, not by name.
+ */
 export function glslBufferAttributeName(bufferName: string): string {
   return `in_${bufferName}`;
 }
@@ -113,23 +104,24 @@ export function glslBufferAttributeName(bufferName: string): string {
 export const BIRTH_AGE_LOCAL = "fx_birthAge";
 export const BIRTH_MODEL_MATRIX_LOCAL = "fx_birthModelMatrix";
 
-/** `dt`/emitter-transform-field name -> the fixed, shared uniform name from sparcoon's
- *  `behaviorTransformFeedbackLayout.ts` - both sides import the same literal constants, never
- *  independently derive them (unlike {@link glslBufferAttributeName}, which only the editor's own
- *  two files need to agree on). */
-const SYNTHESIZED_UNIFORM_NAMES: Readonly<
-  Record<"dt" | "worldMatrix" | "velocity" | "angularVelocity", string>
-> = {
+/**
+ * The caller's values as the fixed uniforms of the runtime's transform-feedback layout, imported
+ * from there.
+ */
+const HOST_PARAMETER_UNIFORMS: Readonly<Record<FXKernelHostParameter, string>> = {
   dt: FX_TRANSFORM_FEEDBACK_DELTA_TIME_UNIFORM,
+  seed: FX_TRANSFORM_FEEDBACK_RAND_SEED_UNIFORM,
+};
+const EMITTER_FIELD_UNIFORMS: Readonly<Record<FXEmitterTransformField, string>> = {
   worldMatrix: FX_TRANSFORM_FEEDBACK_MODEL_MATRIX_UNIFORM,
   velocity: FX_TRANSFORM_FEEDBACK_OBJECT_VELOCITY_UNIFORM,
   angularVelocity: FX_TRANSFORM_FEEDBACK_OBJECT_ANGULAR_VELOCITY_UNIFORM,
 };
 
-/** One compiled phase's GLSL fragment - the assembler's fusion input. Deliberately not
- *  `FXCompiledKernelPhase` (that shape assumes JS's untyped, string-keyed bindings-as-closures;
- *  GLSL needs each binding's declared type to print a `uniform` statement, so uniform
- *  declarations are tracked as real text here, not derived later from a value's runtime shape). */
+/**
+ * One compiled GLSL phase, the input to the fused program. Uniform declarations are kept as text
+ * because GLSL needs each binding's type.
+ */
 export interface FXCompiledPhaseStandard extends FXKernelResourceFields {
   /** The helpers the phase calls, each behind the ones it calls. */
   readonly helpers: readonly FXGLSLHelperName[];
@@ -170,8 +162,7 @@ export interface FXCompiledKernelStandard {
   readonly hash: string;
 }
 
-/** Mutable accumulator for one phase's compilation - the standard-tier analog of `FXKernelState`,
- *  shaped like render's `FXCompileState`: locals kept as IR, printed once the phase is built. */
+/** Accumulator for one phase: locals are kept as IR and printed once the phase is built. */
 class FXKernelStateStandard {
   /** Each local as its node emitted it: kept as IR until {@link assemblePhase} prints it. */
   private readonly locals: FXTypedLocal[] = [];
@@ -329,8 +320,6 @@ class FXKernelStateStandard {
   }
 }
 
-/** {@link FXKernelContext} bound to one node; emits native-vector GLSL over `in`-attribute state
- *  (no scalarization - see the module doc). */
 class FXParticleKernelContextStandard
   extends FXCompileContextBase<FXBehaviorNode, string>
   implements FXKernelContext
@@ -397,9 +386,8 @@ class FXParticleKernelContextStandard
     this.state.emitHelper(helper);
   }
 
-  // A vector value param is one binding per component (each a plain number), exactly like the
-  // JS backend's own `allocateValueParam` - simpler and unambiguous, at the cost of one
-  // `gl.uniform1f` call per component at runtime instead of a single `gl.uniform3fv`.
+  // One binding per component, as on the JS backend. Costs one `gl.uniform1f` per component instead
+  // of one `uniform3fv`.
   public allocateBinding(descriptor: FXKernelBindingDescriptor): FXKernelBindingHandle {
     return this.state.allocateBinding(descriptor);
   }
@@ -559,11 +547,10 @@ function coerceOutputVariable(
   return name;
 }
 
-/** Compiles a two-phase behavior graph for the standard tier. Throws (never a broken artifact) on
- *  a graph that is not GPU-compilable - an unknown-function throw from a JS-only call (e.g.
- *  `sampleLut`) surfaces exactly like any other build error, so the caller (a "Try GPU
- *  simulation"-gated compile attempt) can catch it and silently omit the GPU artifact for that
- *  emitter. */
+/**
+ * Compiles both phases for the standard tier. Throws for a graph that is not GPU-compilable (for
+ * example a JS-only call), so the caller can omit the GPU artifact.
+ */
 export function compileBehaviorStandard(
   graph: FXGraph<FXBehaviorNode>,
   targets: FXBehaviorTargets,
@@ -606,8 +593,7 @@ export function compileBehaviorStandard(
   return { ...(spawn !== undefined ? { spawn } : {}), update, hash };
 }
 
-/** Resolves a `ref` to its GLSL access string for {@link printGLSLStandard} - the standard-tier
- *  analog of `resolveKernelRef`. */
+/** Resolves a `ref` to its GLSL access string for {@link printGLSLStandard}. */
 export function resolveKernelRefStandard(
   target: FXKernelTarget,
   candidate: Extract<FXExpr, { kind: "ref" }>,
@@ -628,12 +614,6 @@ export function resolveKernelRefStandard(
 }
 
 function resolveTargetInputStandard(target: FXKernelTarget, name: string): string {
-  if (name === "dt") {
-    return SYNTHESIZED_UNIFORM_NAMES["dt"];
-  }
-  if (name === FX_PARTICLE_INDEX_INPUT) {
-    return "gl_VertexID";
-  }
   const input = target.inputs.find((candidate) => candidate.name === name);
   if (input === undefined) {
     throw new Error(
@@ -646,13 +626,18 @@ function resolveTargetInputStandard(target: FXKernelTarget, name: string): strin
   if (input.inheritOffset !== undefined) {
     return inheritedUniformRead(input.inheritOffset, input.type.components);
   }
+  switch (input.host?.kind) {
+    case "parameter":
+      return HOST_PARAMETER_UNIFORMS[input.host.parameter];
+    case "particleIndex":
+      return "gl_VertexID";
+    case "emitter":
+      return EMITTER_FIELD_UNIFORMS[input.host.field];
+    case undefined:
+      break;
+  }
   if (input.offsets === undefined) {
-    const field = FX_EMITTER_INPUT_FIELD[name];
-    const uniformName = field === undefined ? undefined : SYNTHESIZED_UNIFORM_NAMES[field];
-    if (uniformName === undefined) {
-      throw new Error(`resolveTargetInputStandard: input "${name}" has no state offset`);
-    }
-    return uniformName;
+    throw new Error(`resolveTargetInputStandard: input "${name}" has no state offset`);
   }
   const bufferName = input.buffer ?? BUILTIN_BUFFER;
   const attributeName = glslBufferAttributeName(bufferName);

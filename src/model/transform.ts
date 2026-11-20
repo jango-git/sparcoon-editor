@@ -1,6 +1,6 @@
 /**
- * Transform primitives shared by timeline/scene/gizmo (three-free, so this unit-tests as plain
- * math). Rotation is a quaternion (three's native form) edited as Euler degrees via {@link quatToEuler}/{@link eulerToQuat}, the sole conversion point.
+ * Transform math without three. Rotation is a quaternion edited as Euler degrees, converted only by
+ * {@link quatToEuler} and {@link eulerToQuat}.
  */
 
 import {
@@ -17,7 +17,6 @@ export type Vec3 = readonly [number, number, number];
 /** A rotation quaternion in `[x, y, z, w]` order (three's component order). */
 export type Quat = readonly [number, number, number, number];
 
-/** One rigid transform: local position, rotation (quaternion) and per-axis scale. */
 export interface Transform {
   readonly position: Vec3;
   readonly rotation: Quat;
@@ -116,10 +115,7 @@ export function asQuat(value: number | readonly number[]): Quat {
   return quaternionFromValue(value);
 }
 
-/**
- * The effective transform at `time`: a channel with keyframes samples its track, one without holds
- * `base`. So an un-animated transform is exactly `base`; animating one channel leaves others static.
- */
+/** The transform at `time`: keyed channels sample their track, the rest hold `base`. */
 export function sampleTransform(
   base: Transform,
   tracks: readonly TransformTrack[],

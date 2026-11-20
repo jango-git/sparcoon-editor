@@ -1,6 +1,6 @@
 /**
- * Pure transform: the editor's authored graph -> the library's wire snapshot (editor is master,
- * library is a view). View-only data (node positions) is intentionally dropped here.
+ * Converts the authored graph to the library's snapshot. View-only data (node positions) is
+ * dropped.
  */
 
 import { collectUndeclaredAttributeErrors } from "../engine/core/compiler/collectAttributeRequests";
@@ -214,9 +214,8 @@ function materializeAttributeWrite(
 }
 
 /**
- * Flags a `render`/`behavior` request naming (or mistyping) an attribute outside `declared` -
- * e.g. an orphaned `custom-attribute` node after its declaration was removed or retyped elsewhere.
- * Shared by the live preview and the TypeScript export, so a stale reference is refused in both.
+ * Flags a request for an attribute that is not declared or has another type, for example an
+ * orphaned `custom-attribute` node after its declaration was removed or retyped.
  */
 export function undeclaredAttributeErrors(
   render: readonly FXAttributeRequest[],

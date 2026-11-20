@@ -1,12 +1,9 @@
 /**
- * Exports a whole project as a single, self-contained TypeScript module: a class extending
- * `sparcoon`'s `FXEffect` that plays the effect given only the runtime and the assets its external
- * slots reference. Graphs are compiled headlessly by {@link "./exportCompile"}; the resulting IR is
- * rendered to source text by {@link "./exportLiterals"} - this file is just the orchestrating spine
- * between the two. The generic runtime is only imported, never re-emitted: the base class from
- * `sparcoon`, the helpers the compiled code calls (CPU math and noise, GLSL) from `sparcoon/helpers`. A lit effect still needs a light probe + directional
- * light in the consuming scene, since lit graphs read the host scene's lights (studio lighting is
- * not part of the export).
+ * Exports a project as one TypeScript module: a class extending `sparcoon`'s `FXEffect` that
+ * plays the effect given the runtime and the assets its external slots reference. Graphs compile
+ * in `exportCompile`, literals are formatted in `exportLiterals`. The runtime is imported
+ * (`sparcoon`, `sparcoon/helpers`), never emitted. A lit effect needs a light probe and a
+ * directional light in the host scene.
  */
 
 import type { FXGeometrySource, FXRenderMode } from "sparcoon";
@@ -58,7 +55,6 @@ export interface EmitProjectOptions {
   readonly importSpecifier?: string;
 }
 
-/** Serializes a whole project to a ready-to-import TypeScript effect module (text). */
 export function emitProjectModule(source: SourceState, options: EmitProjectOptions = {}): string {
   const importSpecifier = options.importSpecifier ?? "sparcoon";
   const className = classNameFor(source.name);
@@ -128,7 +124,6 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
       linkReaction(reactionSources.get(reaction.source), reaction.on, inherits).copies;
     importHelpers(collectBehaviorHelpers(ir.kernel));
     const behaviorName = `behavior${String(index)}`;
-    // Particles that are not drawn ship no render artifact.
     let renderNames: RenderArtifactNames | undefined;
     if (ir.drawParticles) {
       renderNames = tierNames(`render${String(index)}`);

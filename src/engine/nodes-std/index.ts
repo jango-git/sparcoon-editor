@@ -17,9 +17,8 @@ import { FX_RENDER_TRANSFORM_NODES } from "./render/transform";
 import { FX_SHARED_MATH_NODES } from "./shared/math";
 
 /**
- * The standard library of declarative node definitions (see {@link defineNode}). This is the
- * single source of truth an editor palette reads (`def.describe()`) and the reconciler builds
- * from (`registerStandard*Nodes`).
+ * Standard node definitions. The palette reads `def.describe()`, `registerStandard*Nodes` builds
+ * from them.
  */
 export const FX_STANDARD_NODES: readonly FXNodeDefinition[] = [
   ...FX_SHARED_MATH_NODES,
@@ -37,14 +36,12 @@ export const FX_STANDARD_NODES: readonly FXNodeDefinition[] = [
   ...FX_RENDER_TRANSFORM_NODES,
 ];
 
-/** Node definitions applicable to the behavior backend (`behavior` + `shared`). */
 function behaviorDefinitions(): readonly FXNodeDefinition[] {
   return FX_STANDARD_NODES.filter(
     (definition) => definition.domain === "behavior" || definition.domain === "shared",
   );
 }
 
-/** Node definitions applicable to the render backend (`render` + `shared`). */
 function renderDefinitions(): readonly FXNodeDefinition[] {
   return FX_STANDARD_NODES.filter(
     (definition) => definition.domain === "render" || definition.domain === "shared",

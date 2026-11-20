@@ -1,7 +1,6 @@
 /**
- * The GPU kernel program an `EmitterView`'s next rebuild runs, sent off to build while the running
- * emitter goes on. The rebuild waits for it only while waiting saves a stall: the program builds
- * and the context can tell when it is done.
+ * Builds the GPU kernel program of the next rebuild in the background and tells the rebuild whether
+ * waiting avoids a stall.
  */
 
 import type { FXParticleKernelArtifact } from "sparcoon";
@@ -9,7 +8,6 @@ import { type FXKernelPreparation, fxPrepareKernel } from "sparcoon/editor";
 import type { WebGLRenderer } from "three";
 
 export class KernelBuildWait {
-  /** The claim on the program the next rebuild runs; `undefined` when there is none. */
   private preparation: FXKernelPreparation | undefined = undefined;
   /** Whether {@link takeEnded} reported the end of this build already. */
   private reported = false;
@@ -17,10 +15,9 @@ export class KernelBuildWait {
   constructor(private readonly renderer: WebGLRenderer) {}
 
   /**
-   * Claims `kernel`'s program, sending it off to build unless it is built, and says whether the
-   * rebuild should wait for it. Claimed before the previous claim is let go, so a kernel that did
-   * not change keeps its program. A kernel the context cannot send off (a lost context) is not
-   * waited for: the rebuild falls back to the CPU simulation as `FXEmitter.fromArtifacts` decides.
+   * Claims `kernel`'s program, starting its build if needed. Returns whether the rebuild should
+   * wait. The new claim is taken before the old one is released, so an unchanged kernel keeps its
+   * program. A kernel the context cannot build (lost context) is not waited for.
    */
   public waitsFor(kernel: FXParticleKernelArtifact): boolean {
     let preparation: FXKernelPreparation | undefined;

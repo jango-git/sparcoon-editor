@@ -1,10 +1,7 @@
 /**
- * The preview's performance readout: a small floating panel in the bottom-left of the 3D viewport,
- * showing FPS, total particle count, particle overflow and whole-scene effect cost as labelled
- * rows, and in an overdraw view the layers under the pointer. Pure UI - never
- * touches the model, commands or undo. FPS/particles are pushed by the render loop every frame via
- * {@link ViewportStats.report}; effect cost is pushed separately via {@link ViewportStats.reportCost}
- * since it only changes on a structural/view edit, not every frame.
+ * Overlay with FPS, particle count, overflow and effect cost, plus overdraw layers in an overdraw
+ * view. FPS and particles arrive every frame via {@link ViewportStats.report}, cost via {@link
+ * ViewportStats.reportCost}.
  */
 
 import { t } from "../../i18n";
@@ -45,7 +42,6 @@ export function createViewportStats(viewMode: PreviewViewModeState): ViewportSta
     textContent: "-",
   });
   attachTooltip(overflowValue, t("stats.overflow"), t("stats.overflowTip"));
-  // Whether the tooltip currently carries the partial note - re-attached only when that flips.
   let overflowPartial = false;
   const costValue = createElement("span", {
     className: "viewport-stats__value",
@@ -99,7 +95,6 @@ export function createViewportStats(viewMode: PreviewViewModeState): ViewportSta
     },
     reportOverdraw(layers: number | undefined): void {
       const text = layers === undefined ? "-" : String(layers);
-      // Pushed every frame; the DOM is touched only on a change.
       if (overdrawValue.textContent !== text) {
         overdrawValue.textContent = text;
       }

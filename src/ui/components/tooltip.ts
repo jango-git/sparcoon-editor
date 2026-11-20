@@ -1,11 +1,6 @@
 /**
- * The shared hover tooltip, ported from the tesselot editor: one floating card (a bold accent
- * title over an optional muted description) reused for every hover hint in the editor, so hovers
- * never leave a trail of stray elements behind. Non-interactive - it never steals the pointer.
- *
- * `attachTooltip(el, title, description?)` is the single entry point; it also mirrors the text into
- * `aria-label` so the hint is not purely visual. Prefer it over a native `title` attribute
- * everywhere, so every hover hint shares this identical look.
+ * One shared hover card for every hint. Non-interactive. `attachTooltip(el, title, description?)`
+ * also sets `aria-label`.
  */
 
 import { createElement } from "../dom";
@@ -104,7 +99,6 @@ function positionTooltip(
     Math.max(GAP, Math.min(value, window.innerWidth - width - GAP));
 
   if (anchor === "pointer" && pointer !== undefined) {
-    // Below the cursor; flip above it when that would overflow the viewport bottom.
     let top = pointer.y + CURSOR_OFFSET;
     if (top + height > window.innerHeight - GAP) {
       top = Math.max(GAP, pointer.y - height - CURSOR_OFFSET);
@@ -115,7 +109,6 @@ function positionTooltip(
   }
 
   const rectangle = target.getBoundingClientRect();
-  // Default below the target; flip above when that would overflow the viewport bottom.
   let top = rectangle.bottom + GAP;
   if (top + height > window.innerHeight - GAP) {
     top = Math.max(GAP, rectangle.top - height - GAP);
@@ -154,11 +147,8 @@ function bind(target: HTMLElement): void {
 }
 
 /**
- * Shows the shared tooltip while `target` is hovered: a bold `title` over an optional muted
- * `description` (blank hides the description line). `anchor` places the card at the element's centre
- * (default) or under the pointer (for a wide element whose centre is far from the cursor). Also sets
- * `aria-label` so the hint reaches assistive tech, and hides on press so a click never leaves the
- * tooltip lingering. Idempotent - calling it again on the same element just updates the text.
+ * Shows the tooltip while `target` is hovered. `anchor` places it at the element centre or under
+ * the pointer. Hides on press. Calling again updates the text.
  */
 export function attachTooltip(
   target: HTMLElement,

@@ -1,7 +1,6 @@
 /**
- * The rules for a graph reading the scene depth - shared by the live preview and the export, so
- * the two never accept different graphs: a Depth Fade needs a render mode that writes no depth,
- * which the runtime enforces too, and a Depth Sample reads the depth only on the GPU.
+ * Depth Fade needs a render mode that writes no depth, which the runtime enforces too. Depth Sample
+ * reads depth only on the GPU.
  */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";

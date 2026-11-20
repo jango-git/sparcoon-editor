@@ -18,11 +18,6 @@ import {
   UPDATE_KERNEL_PARAMETERS,
 } from "./FXKernelShared.Internal";
 
-/**
- * The preview's assembly layer: turns a compiled {@link FXCompiledKernel} into executable
- * spawn/update JS (see `buildFunction`).
- */
-
 /** Reads each captured binding and resource once into a local, ahead of the per-particle
  *  loop. */
 function bindingPreamble(phase: FXCompiledKernelPhase): string {
@@ -46,14 +41,12 @@ function bufferBaseDecls(buffers: readonly FXKernelBufferLayout[]): string {
     .join("\n");
 }
 
-/** Emits the resolved state writes, indented for the per-particle loop body. */
 function writeStatements(writes: readonly FXKernelWrite[]): string {
   return writes
     .map((write) => `  ${bufferAccess(write.buffer, write.offset)} = ${write.expr};`)
     .join("\n");
 }
 
-/** Indents a list of target-provided loop statements. */
 function indented(lines: readonly string[]): string {
   return lines.map((line) => `  ${line}`).join("\n");
 }
@@ -69,7 +62,6 @@ function deadSlotSkip(phase: FXCompiledKernelPhase): readonly string[] {
   return [`  if (${deadSlotJS()}) continue;`];
 }
 
-/** Assembles the per-particle loop body shared by both phases' `new Function` source. */
 function phaseLoopBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): string {
   return [
     bufferBaseDecls(phase.buffers),
@@ -83,19 +75,14 @@ function phaseLoopBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): s
   ].join("\n");
 }
 
-/** Which phase a body runs: the update over every drawn slot, or the spawn over the born rows. */
 export type FXKernelPhaseKind = "spawn" | "update";
 
-/** The `for (...)` header of each phase. */
 const LOOP_HEADERS: Readonly<Record<FXKernelPhaseKind, string>> = {
   update: "for (let i = 0; i < count; i++) {",
   spawn: "for (let i = start; i < start + count; i++) {",
 };
 
-/**
- * The runnable body of a compiled phase. Shared verbatim by the preview's builders here and the
- * module emitter, so both run the same code, calling the same helpers.
- */
+/** The runnable body of a compiled phase, shared by the preview builders and the module emitter. */
 export function assembleKernelBody(phase: FXCompiledKernelPhase, kind: FXKernelPhaseKind): string {
   return [
     bindingPreamble(phase),
@@ -116,7 +103,6 @@ export function buildParticleUpdateKernel(compiled: FXCompiledKernel): FXParticl
   ) as FXParticleUpdateKernel;
 }
 
-/** Runs over the freshly born rows `[start, start + count)` at birth. */
 export function buildParticleSpawnKernel(compiled: FXCompiledKernel): FXParticleSpawnKernel {
   const phase = compiled.spawn;
   if (phase === undefined) {

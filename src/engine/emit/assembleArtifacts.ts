@@ -28,16 +28,10 @@ import { zeroValue } from "../render/compiler/FXCompiledShader";
 import { fragmentStageSource, stageSource, varyingDecls } from "./artifactLiterals";
 
 /**
- * In-memory assembler: turns the compiler's IR into the runtime's {@link FXRenderArtifact} /
- * {@link FXBehaviorArtifact} objects, the runnable twin of {@link emitEffectModule} (which
- * serializes the same IR to ESM text) - used to drive a live preview without a bundler round-trip.
- *
- * The value slots are fresh objects that only snapshot the current handle values, deliberately
- * NOT the editor's live handles: a value edit reaches the emitter through
- * {@link FXEmitter.applyValues}, not through shared object identity.
+ * Assembles the runtime artifacts in memory from the compiler IR. Value slots snapshot the current
+ * handle values and are not shared with the editor, so edits arrive through `FXEmitter.applyValues`.
  */
 
-/** The `{name, components}` decls of the attributes a render reads (`attributeReads`). */
 function attributeDecls(attributes: readonly FXAttributeRequest[]): FXAttributeDecl[] {
   return attributes.map((attribute) => ({
     name: attribute.name,
@@ -58,7 +52,6 @@ function toUniformInit(value: unknown, type: string): FXUniformInit {
   return { type: "sampler2D", value: value as Texture };
 }
 
-/** The runtime's program of a compiled one. */
 function renderProgram(program: FXCompiledProgram): FXRenderProgram {
   return {
     varyings: varyingDecls(program),
@@ -68,7 +61,6 @@ function renderProgram(program: FXCompiledProgram): FXRenderProgram {
   };
 }
 
-/** Assembles the render artifact from a compiled shader (fresh uniform value slots). */
 export function assembleRenderArtifact(
   shader: FXCompiledShader,
   geometry: FXGeometrySource,
@@ -78,8 +70,6 @@ export function assembleRenderArtifact(
   const uniforms: Record<string, FXUniformInit> = {};
   for (const [name, handle] of Object.entries(shader.uniforms)) {
     if (handle.external !== undefined) {
-      // An external sampler (a Texture): declared, but the host binds the texture by
-      // slot name - no baked value.
       uniforms[name] = { type: "sampler2D", external: handle.external };
       continue;
     }
@@ -102,9 +92,10 @@ export function assembleRenderArtifact(
   };
 }
 
-/** The single `bindings` record both phases share, as fresh {@link FXValueSlot}s. A same-named
- *  binding carrying a different value across phases would corrupt one phase, so it is rejected
- *  loudly rather than silently overwritten. */
+/**
+ * The `bindings` record both phases share. A same-named binding with different values across phases
+ * is rejected.
+ */
 function mergeBindingSlots(
   kernel: FXCompiledKernel,
 ): Record<string, FXValueSlot<number | Float32Array>> {
@@ -128,9 +119,6 @@ function mergeBindingSlots(
   return merged;
 }
 
-/** Assembles the behavior artifact from a compiled kernel. `spawn`/`update` are the real
- *  `new Function`-built kernels; the binding slots are fresh, scrubbed via
- *  {@link FXEmitter.applyValues}. */
 export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorArtifact {
   const base: FXBehaviorArtifact = {
     // The slot, in the target's order (see `buildParticleBehaviorTargets`).
@@ -150,9 +138,6 @@ export function assembleBehaviorArtifact(kernel: FXCompiledKernel): FXBehaviorAr
   return kernel.spawn === undefined ? base : { ...base, spawn: buildParticleSpawnKernel(kernel) };
 }
 
-/** Assembles the standard-tier (GPU/transform-feedback) behavior artifact from a fused program -
- *  the {@link assembleBehaviorArtifact} sibling for a live GPU-driven emitter (fresh binding value
- *  slots, same reasoning as {@link mergeBindingSlots}). */
 export function assembleGpuKernelArtifact(
   program: FXFusedProgramStandard,
 ): FXParticleKernelArtifact {
@@ -160,7 +145,6 @@ export function assembleGpuKernelArtifact(
   for (const [name, handle] of Object.entries(program.bindings)) {
     bindings[name] = { value: handle.value };
   }
-  // The draw uniforms, seeded at zero: `compute` writes them every pass.
   for (const [name, type] of Object.entries(program.draw?.uniforms ?? {})) {
     bindings[name] = { value: zeroValue(type) };
   }

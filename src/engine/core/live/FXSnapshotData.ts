@@ -1,10 +1,6 @@
 import type { FXConnection, FXOutputBinding } from "../FXGraph";
 
-/**
- * Current snapshot wire-format version. No back-compat migration (the editor is
- * unreleased) - bumping this makes {@link FXGraphReconciler} reject any other version
- * (drop-and-restart) rather than migrate it.
- */
+/** Snapshot wire-format version. {@link FXGraphReconciler} rejects any other version. */
 export const FX_SNAPSHOT_VERSION = 2;
 
 /**

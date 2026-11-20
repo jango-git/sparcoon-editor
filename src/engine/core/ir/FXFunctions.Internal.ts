@@ -28,11 +28,8 @@ export interface FXFunctionDef {
   /** The helpers the JS may call. */
   readonly jsHelper?: readonly FXJSHelperName[];
   /**
-   * Sibling GLSL form {@link printGLSLStandard} prefers over `glslBaseline` - only for a function
-   * whose codegen genuinely differs between tiers (e.g. a future native op under GLSL3 vs a
-   * polyfill under GLSL ES 1.00). Most functions never need this; a brand-new WebGL2-only
-   * function (see {@link standardOnly}) also uses this pair rather than
-   * `glslBaseline`/`glslBaselineHelper`.
+   * GLSL form {@link printGLSLStandard} prefers over `glslBaseline`, for a function that differs
+   * between tiers or exists only on the standard tier (see {@link standardOnly}).
    */
   readonly glslStandard?: string | ((args: readonly string[]) => string);
   /** The helper {@link printGLSLStandard} links in place of `glslBaselineHelper`. */
@@ -43,18 +40,14 @@ export interface FXFunctionDef {
    */
   readonly packed?: true;
   /**
-   * True for a function with no baseline-tier (GLSL ES 1.00 / WebGL1) form at all - e.g. a
-   * bitwise op, `texelFetch`. Excluded from {@link baselineSignaturesFrom}'s signature map
-   * entirely, so a node calling it under the baseline compiler's builders throws at build time
-   * (`fn.call`: unknown function) unless the node supplies a `baselineBuild` that avoids it.
+   * True for a function with no baseline-tier (GLSL ES 1.00) form, such as a bitwise op or
+   * `texelFetch`. It is left out of {@link baselineSignaturesFrom}, so calling it under the
+   * baseline compiler throws at build time unless the node supplies a `baselineBuild`.
    */
   readonly standardOnly?: true;
   /**
-   * True for a function whose result is not determined by its printed arguments alone (currently
-   * only `rand`) - every call is a fresh, independent draw, even a zero-arg one that would
-   * otherwise look identical to every other call of the same function. The JS-backend optimizer
-   * (`codegen/cse.Internal.ts`) must never common-subexpression-eliminate or loop-hoist a call
-   * marked `impure`, the same way it already excludes `raw` nodes for exactly this reason.
+   * True for a function whose result is not determined by its arguments (`rand`): every call is
+   * a fresh draw, even a zero-arg one. Never merged by CSE or hoisted out of the loop, like `raw`.
    */
   readonly impure?: true;
   /**
@@ -221,12 +214,10 @@ function buildFunctions(): Map<string, FXFunctionDef> {
 
   definitions.push(...noiseFunctionDefinitions());
 
-  // A fresh draw in [0, 1), zero graph-authored args - decorrelation across the several `rand()`
-  // calls one node's build() can make is a shader-local concern (a `fxRandCounter` global,
-  // incremented per call within one invocation), not something the IR/args need to carry. JS keeps
-  // real entropy (`Math.random()`); GLSL has none, so it hashes (gl_VertexID, a per-tick seed
-  // uniform the standard-tier behavior assembler must declare as `u_fxRandSeed`, the call counter).
-  // `standardOnly`: `gl_VertexID` and the bitwise mixing below need GLSL ES 3.00 - no baseline form.
+  // A fresh draw in [0, 1). The GPU hashes the particle slot (`gl_VertexID`), the seed uniform
+  // (`u_fxRandSeed`) and a call counter. A CPU kernel replaces each call with a numbered draw
+  // (`seedRandomDraws`), so there is no JS form. `standardOnly`: `gl_VertexID` and bitwise
+  // mixing need GLSL ES 3.00.
   definitions.push({
     name: "rand",
     signatures: [{ args: [], result: "float" }],
@@ -234,7 +225,9 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     impure: true,
     glslStandardHelper: "FX_GLSL_RAND",
     glslStandard: () => "fxNextRandom()",
-    js: () => "Math.random()",
+    js: () => {
+      throw new Error("rand: a CPU kernel draws through seedRandomDraws, never prints rand");
+    },
   });
 
   // Volume-mode radius sampling (random-sphere-point/random-cone-point) needs a real cube root; GLSL has no
@@ -301,12 +294,8 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     crossComponent: true,
   });
 
-  // Bitwise int ops: GLSL ES 1.00 has no bitwise operators at all (unlike int arithmetic, which
-  // is tier-neutral and goes through the ordinary `+`/`*` builders once both operands are
-  // `int`/`ivecN` - see FXExprBuilder.ts's `isScalarOrVector`). These three are genuinely
-  // WebGL2/GLSL-ES-3.00-only: `standardOnly` excludes them from the baseline compiler's signature
-  // map (`baselineSignaturesFrom`), so `fn.call` throws "unknown function" under the baseline tier
-  // unless the calling node supplies a `baselineBuild`.
+  // Bitwise int ops: GLSL ES 1.00 has no bitwise operators, so `standardOnly` excludes them from
+  // the baseline signatures.
   definitions.push({
     name: "intXor",
     signatures: [{ args: ["int", "int"], result: "int" }],
@@ -385,7 +374,6 @@ function buildFunctions(): Map<string, FXFunctionDef> {
 /** `sceneDepthContact` where there is no surface: an up normal and the no-surface distance. */
 const NO_SURFACE_CONTACT = [0, 1, 0, FX_NO_SURFACE_DISTANCE] as const;
 
-/** The canonical, backend-neutral function registry. */
 export const FX_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = buildFunctions();
 
 /** Whether `fn` is one of {@link FX_FUNCTIONS}' impure functions (`rand`), which no pass may share

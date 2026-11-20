@@ -1,15 +1,9 @@
 /**
- * Frame-to-fit for the node canvas whenever the shown graph changes. Switching graphs - between
- * objects, or between an object's render / behavior graphs - re-centres on the whole graph, the
- * same gesture as the "f" hotkey. No per-graph pan/zoom is remembered across switches.
- *
- * "Frame on open" is deferred: the canvas measures 0x0 while its tab is hidden or mid-load, so a
- * requested frame is held (see {@link requestFrame}) until a later frame / resize finds a real size.
- * Which nodes to frame (selection vs the whole graph) is the caller's injected `frame` callback.
+ * Frames the whole graph whenever the shown graph changes. Framing is deferred while the canvas
+ * measures 0x0 (hidden tab or loading). The caller supplies the `frame` callback.
  */
 
 export class GraphCamera {
-  /** The graph the viewport currently shows (its `${emitterId}:${mode}` key), to know when it swaps. */
   private cameraKey: string | undefined;
   private pendingFrame = false;
 

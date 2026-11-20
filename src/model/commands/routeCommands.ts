@@ -16,7 +16,6 @@ import type { Store } from "../store";
 import { activeGraph, bindingMatches, type GraphSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
 
-/** Builds a fresh route node at `position` (top-left in graph coordinates). */
 function makeRouteNode(position: GraphPosition): GraphNode {
   return { id: nextIdentifier("route"), type: ROUTE_TYPE, parameters: {}, position };
 }
@@ -161,7 +160,6 @@ export function addOutputBinding(store: Store, slot: GraphSlot, binding: GraphOu
   store.commit(next, "structural");
 }
 
-/** Removes the binding into `boundSlot` (in `phase`, on behavior). No-op if none matches. */
 export function removeOutputBinding(
   store: Store,
   slot: GraphSlot,

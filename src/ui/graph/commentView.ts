@@ -1,13 +1,7 @@
 /**
- * A comment box: a titled, resizable rectangle drawn behind the nodes to annotate or group a
- * region of the graph (a la Unreal Blueprints comments). It is never compiled - it is not a node
- * and lives in {@link EditorGraph.comments}; every edit on it is view-only.
- *
- * Only the header bar and the four corner handles capture pointer events; the body is click-through
- * (`pointer-events: none`) so nodes sitting over a comment stay fully interactive and a marquee can
- * still sweep across it. The canvas owns the drag/resize geometry (screen<->graph, grid-snapping,
- * enclosed-object detection) and this view only emits the raw pointer gestures, tagged by role,
- * plus commits the header text on edit.
+ * Comment box behind the nodes. Not a node and never compiled. Only the header and corner handles
+ * take pointer events, so nodes above it stay interactive. Emits raw pointer gestures. The canvas
+ * owns geometry.
  */
 
 import { t } from "../../i18n";
@@ -28,7 +22,6 @@ export interface CommentViewHandlers {
   readonly onRename: (text: string) => void;
 }
 
-// Edges first, then corners, so the corner handles stack above the edges they overlap.
 const HANDLES: readonly CommentHandle[] = ["n", "e", "s", "w", "nw", "ne", "sw", "se"];
 
 export class CommentView {
@@ -49,7 +42,6 @@ export class CommentView {
       }
       handlers.onHeaderPointerDown(event);
     });
-    // Double-click the header to rename; blur commits, Escape cancels the edit.
     this.header.addEventListener("dblclick", () => this.beginEdit());
     this.header.addEventListener("blur", () => this.endEdit(true));
     this.header.addEventListener("keydown", (event) => {
@@ -104,7 +96,6 @@ export class CommentView {
     this.header.contentEditable = "true";
     this.element.classList.add("comment--editing");
     this.header.focus();
-    // Place the caret across the whole text so a rename can just start typing.
     const range = document.createRange();
     range.selectNodeContents(this.header);
     const selection = window.getSelection();
@@ -125,7 +116,6 @@ export class CommentView {
       // Cancelled: no commit fires (so no re-render), restore the text the edit started from.
       this.header.textContent = this.editStartText;
     }
-    // Drop focus so the caret leaves; a re-entrant blur -> endEdit is guarded by `editing`.
     this.header.blur();
   }
 }

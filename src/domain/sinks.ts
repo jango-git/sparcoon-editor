@@ -1,7 +1,6 @@
 /**
- * The permanent output **sink** nodes every graph carries (behavior: `spawn` + `update`; render:
- * the surface `$out`). Stored as an ordinary {@link GraphNode} so it reconciles/selects like any
- * node, but is never addable or deletable; `serialize.ts` drops sinks - outputs become bindings.
+ * Permanent sink nodes every graph carries, stored as ordinary nodes but never addable or
+ * deletable.
  */
 
 import type { EditorGraph, GraphNode, GraphPosition } from "./graphModel";

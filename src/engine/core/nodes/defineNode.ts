@@ -17,7 +17,6 @@ import type {
   FXTargetInputDefault,
 } from "./FXSocketSpec";
 
-/** Backend a descriptor instance is compiled against. */
 export type FXNodeBackend = "render" | "behavior";
 /** GLSL stage name (mirrors `FXShaderStage`; kept as a literal to keep core three-/backend-free). */
 export type FXRenderStageName = "vertex" | "fragment";
@@ -42,7 +41,6 @@ type FXResolvedParam<S extends FXParamSpec> = S extends { kind: "value" }
             ? FXCurveData
             : never;
 
-/** Parameter bag as seen inside a descriptor's `build`. */
 export type FXResolvedParams<P extends Record<string, FXParamSpec>> = {
   readonly [K in keyof P]: FXResolvedParam<P[K]>;
 };
@@ -63,7 +61,6 @@ type FXInputGuaranteed<S extends FXSocketSpec> = S extends
 type FXResolvedInput<S extends FXSocketSpec> =
   FXInputGuaranteed<S> extends true ? FXExpr : FXExpr | undefined;
 
-/** Input bag as seen inside a descriptor's `build`, one entry per declared input socket. */
 export type FXResolvedInputs<I extends Record<string, FXSocketSpec>> = {
   readonly [K in keyof I]: FXResolvedInput<I[K]>;
 };
@@ -108,9 +105,7 @@ export interface FXNodeCostArgs {
 export type FXNodeCost = number | ((args: FXNodeCostArgs) => number);
 
 /**
- * Declarative description of a standard node: sockets, params, and a pure {@link build}
- * over the IR. {@link defineNode} derives `applyParams`/`syncLiveValues`/`cacheKey` and
- * the uniform/binding allocation.
+ * Declarative description of a standard node. {@link defineNode} derives the runtime node from it.
  */
 export interface FXNodeDescriptor<
   P extends Record<string, FXParamSpec>,
@@ -190,12 +185,9 @@ export interface FXNodeDescriptor<
     assets: Readonly<Record<string, FXExpr | undefined>>;
   }) => Record<string, FXExpr>;
   /**
-   * Render-only: an alternate `build` the baseline (WebGL1) compiler prefers when present, for a
-   * node whose primary `build` reaches for a WebGL2-only capability (a `standardOnly` function, an
-   * `int`-family value) it cannot offer as-is under GLSL ES 1.00. A hand-authored simplified
-   * algorithm is written exactly like `build` - same shape, real logic (or a plain passthrough
-   * that reads an input and returns it as an output). Omit when the primary `build` never
-   * reaches for a standard-only capability; `FXCompilerStandard` never looks at this field at all.
+   * Render-only: replaces `build` under the baseline (WebGL1) compiler, for a node whose `build`
+   * needs a WebGL2-only capability (a `standardOnly` function, an `int`-family value). Same shape
+   * as `build`. Omit when `build` works on both tiers.
    */
   readonly baselineBuild?: FXNodeDescriptor<P, I>["build"];
 }
@@ -212,8 +204,7 @@ export interface FXNodeDefinition {
 }
 
 function isTargetInputDefault(value: unknown): value is FXTargetInputDefault {
-  // `typeof null === "object"` too; `!value` excludes exactly that case without writing the
-  // banned null literal.
+  // A null is also `typeof "object"`; `!value` excludes it.
   if (typeof value !== "object" || !value) {
     return false;
   }
@@ -355,7 +346,6 @@ function describeCost(descriptor: FXNodeDescriptor<Record<string, FXParamSpec>>)
   });
 }
 
-/** Whether any socket specification is typed as the generic variable `"T"`. */
 function hasGenericSocketSpec(descriptor: FXNodeDescriptor<Record<string, FXParamSpec>>): boolean {
   const all = [...Object.values(descriptor.inputs), ...Object.values(descriptor.outputs)];
   return all.some((specification) => specification.type === "T");
@@ -368,9 +358,8 @@ const SOCKET_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const VEC_WIDTH = { vec2: 2, vec3: 3, vec4: 4 } as const;
 
 /**
- * Turns a declarative {@link FXNodeDescriptor} into an {@link FXNodeDefinition}:
- * a factory of live node instances plus editor metadata. This is the single entry
- * point for authoring a standard (non-resource) node.
+ * Turns a {@link FXNodeDescriptor} into an {@link FXNodeDefinition}: a node factory plus editor
+ * metadata.
  */
 export function defineNode<
   P extends Record<string, FXParamSpec>,

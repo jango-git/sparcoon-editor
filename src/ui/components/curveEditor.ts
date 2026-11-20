@@ -1,19 +1,6 @@
 /**
- * A scalar-curve editor: an SVG plot of the curve with draggable anchor handles, plus an inline
- * editor for the selected anchor (position + value fields, a smooth/sharp toggle and a delete
- * button). Clicking an empty spot in the plot inserts an anchor on the curve at that position;
- * dragging a handle moves it in 2D (x = position, y = value); double-clicking a handle toggles
- * its smoothing. An anchor can be removed down to a single one.
- *
- * The selection + emit + teardown state machine lives in {@link HandleListEditor}; this class owns
- * the 2D SVG plot, its handles and the selected-anchor editor.
- *
- * Presentational and in the engine's curve model: it takes and emits a {@link CurveData} whose
- * points are `{ position, value, interpolation }` - the exact shape a Curve node's inline `curve` param
- * carries. The preview mirrors the node's baked evaluation (Catmull-Rom where both endpoints are
- * smooth, linear across a sharp corner). `onChange` fires once per gesture (see
- * {@link HandleListEditor.emit}); `live` fires on every intermediate step instead. `setValue`
- * re-syncs from external state (undo / redo) without firing.
+ * Scalar-curve editor: SVG plot with draggable anchors, plus fields for the selected anchor. Takes
+ * and emits {@link CurveData}. Selection and emit logic live in {@link HandleListEditor}.
  */
 
 import { t } from "../../i18n";
@@ -166,7 +153,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
 
     this.plot = createElement("div", { className: "curve-editor__plot-wrap" }, [this.svg]);
     this.plot.addEventListener("pointerdown", (event) => {
-      // A press on the plot itself (not on a handle) inserts an anchor at that position.
       if (event.target === this.svg || event.target === this.plot) {
         event.stopPropagation();
         this.addPointAt(this.fractionAt(event.clientX));
@@ -183,7 +169,7 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
       this.plot,
       this.editorHost,
     ]);
-    // Editing on the plot must never start a node drag / marquee.
+    // Do not start a node drag or marquee.
     this.element.addEventListener("pointerdown", (event) => event.stopPropagation());
 
     this.render();
@@ -227,7 +213,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
   }
 
   protected disposeParts(): void {
-    // Release the child number fields (no popovers here, but they may hold a live scrub drag).
     this.positionControl?.dispose();
     this.valueControl?.dispose();
     this.minControl?.dispose();
@@ -244,7 +229,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
   protected buildEditor(): void {
     const anchor = this.items[this.selected];
     this.editorHost.replaceChildren();
-    // Release the previous selection's number fields before rebuilding them.
     this.positionControl?.dispose();
     this.valueControl?.dispose();
     this.minControl?.dispose();
@@ -328,7 +312,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
       interpolationToggle,
       remove,
     ]);
-    // Selected anchor first (next to the plot it edits), the value-window row below it.
     this.editorHost.append(
       createElement("div", { className: "curve-editor__editor" }, [anchorFields, anchorActions]),
       rangeRow,
@@ -455,7 +438,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
           return;
         }
         point.position = this.fractionAt(moveEvent.clientX);
-        // The window is user-set now, so a drag stays inside it rather than widening it.
         point.value = clamp(this.valueAt(moveEvent.clientY), this.domainMin, this.domainMax);
         this.repaintCurve();
         this.repositionHandles();
@@ -510,7 +492,6 @@ export class CurveEditor extends HandleListEditor<Anchor, CurveData> {
       className: "curve-editor__normalize",
       textContent: t("curve.normalize"),
       type: "button",
-      // Rescale the window back to 0..1; the shape is preserved (setValueRange rescales the anchors).
       on: {
         click: (event) => {
           event.stopPropagation();

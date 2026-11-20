@@ -9,9 +9,8 @@ import type { FXParamSpec } from "./FXParamSpec";
 export interface FXSocketSpec {
   /** A concrete GLSL type, or `"T"` (the descriptor must then declare its `generic` constraint). */
   readonly type: FXGLSLTypeName | "T";
-  /** Omit for a static, node-authored socket (its text lives in `i18n/nodeText.ts` by `type` +
-   *  this record's key instead) - set only for instance-specific text with no stable translation
-   *  key, e.g. a user's own attribute name (`sinkMeta.ts`'s `attributeSocket`). */
+  /** Set only for instance-specific text with no stable translation key (a user's attribute
+   *  name). Omit otherwise: static text is resolved by `type` and socket key. */
   readonly label?: string;
   readonly description?: string;
   /** Inputs only: fails validation if unconnected with no {@link default}. */
@@ -30,11 +29,11 @@ export interface FXSocketSpec {
    * resolves to at compile time, padded/truncated at build.
    */
   readonly value?: number | readonly number[];
-  /** Editor hint for the inline {@link value} control (per-component for vectors). */
+  /** Editor hint: lower bound of the inline {@link value} control. */
   readonly min?: number;
-  /** Editor hint for the inline {@link value} control (per-component for vectors). */
+  /** Editor hint: upper bound of the inline {@link value} control. */
   readonly max?: number;
-  /** Editor hint for the inline {@link value} control (per-component for vectors). */
+  /** Editor hint: step of the inline {@link value} control. */
   readonly step?: number;
   /** This vec3/vec4 inline default is a color - render a picker swatch instead of raw fields. */
   readonly color?: boolean;
@@ -45,7 +44,7 @@ export interface FXTargetInputDefault {
   readonly targetInput: string;
 }
 
-/** Palette grouping for a node - fixed (not free-form) so every node lands in exactly one group. */
+/** Palette group of a node. */
 export type FXNodeCategory =
   | "source"
   | "math"
@@ -93,11 +92,9 @@ export interface FXSocketMeta {
 }
 
 /**
- * JSON-serializable metadata describing a node definition: everything an external editor
- * needs for a palette and inspector, with no runtime instance and no `three` types. Carries no
- * display text (label/description) - the editor resolves those by `type` via `i18n/nodeText.ts`
- * at render time, since this can be built before a locale finishes loading.
- * Produced by {@link FXNodeDefinition.describe}.
+ * JSON-serializable metadata of a node definition, produced by {@link FXNodeDefinition.describe}.
+ * Carries no display text: the editor resolves label and description by `type` at render time,
+ * since this can be built before a locale loads.
  */
 export interface FXNodeMeta {
   readonly type: string;
@@ -156,9 +153,5 @@ export interface FXCustomParamMeta {
   readonly required: boolean;
 }
 
-/**
- * JSON-serializable form of one parameter's schema entry - the editor-facing view of a param.
- * It is exactly {@link FXParamSpec}: `describe()` surfaces a node's param specifications verbatim (no
- * transform), so the two are one type rather than two hand-synced unions.
- */
+/** Editor-facing view of a param schema entry. Identical to {@link FXParamSpec}. */
 export type FXParamMeta = FXParamSpec;

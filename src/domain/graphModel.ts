@@ -1,7 +1,6 @@
 /**
- * The editor's authored *source* graph, deliberately independent of sparcoon's runtime
- * types: the library is a view fed a serialized `FXGraphSnapshotData` (`serialize.ts`). The
- * source keeps view-only data (node positions) that never reaches the library.
+ * The editor's authored source graph. It holds view-only data (node positions) that is not sent to
+ * the library.
  */
 
 /** Authored and saved, but not sent to the library. */
@@ -18,7 +17,6 @@ export interface GraphSocketReference {
 /** `parameters` is a plain-data bag applied to the live instance. */
 export interface GraphNode {
   readonly id: string;
-  /** Registered node type string, e.g. `"color-over-life"`. */
   readonly type: string;
   readonly parameters: Readonly<Record<string, unknown>>;
   /** View-only; excluded from the serialized library snapshot. */
@@ -72,7 +70,6 @@ export interface EditorAttribute {
   readonly type: AttributeTypeName;
 }
 
-/** A complete authored graph, render or behavior. */
 export interface EditorGraph {
   readonly nodes: Readonly<Record<string, GraphNode>>;
   readonly connections: readonly GraphConnection[];
@@ -83,7 +80,6 @@ export interface EditorGraph {
   readonly comments: readonly GraphComment[];
 }
 
-/** The starting point for a fresh document. */
 export function createEmptyGraph(): EditorGraph {
   return { nodes: {}, connections: [], outputBindings: [], attributes: [], comments: [] };
 }

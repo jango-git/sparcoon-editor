@@ -1,11 +1,6 @@
 /**
- * Add-node dialog - a floating popover opened on right-click. It has a fixed width, a search box
- * pinned to the top, its catalog items sorted by name, and a list that scrolls in whole-row steps
- * (scroll snap) so a partial row is never left showing. The list's height is a whole number of
- * rows, so the dialog itself is rounded to the row rhythm.
- *
- * Picking an item invokes the callback. It closes on pick, outside click, or Escape; typing filters
- * the list, and Enter commits the first match. Appears instantly (no animation).
+ * Add-node popover. Fixed width, search box on top, items sorted by name, whole-row scroll steps.
+ * Closes on pick, outside click or Escape. Enter picks the first match.
  */
 
 import { t } from "../../i18n";
@@ -104,8 +99,8 @@ export class AddNodeMenu {
     this.highlight = 0;
     this.renderList();
 
-    // openPopover appends to the body, positions at the click point and clamps within the viewport
-    // (its 8px margin matches the old inline clamp). No scroll-dismiss: the list owns the wheel for
+    // openPopover appends to the body, positions at the click point and clamps within the viewport.
+    // No scroll-dismiss: the list owns the wheel for
     // its stepped scrolling, which a window wheel-dismiss would read as "view moved" and close on.
     this.handle = openPopover(this.element, {
       anchor: { x: clientX, y: clientY },
@@ -119,7 +114,6 @@ export class AddNodeMenu {
   }
 
   public close(): void {
-    // Closing the popover fires onDismiss -> handleDismiss, which does the state teardown.
     this.handle?.close();
   }
 
@@ -135,8 +129,8 @@ export class AddNodeMenu {
   }
 
   /**
-   * Ranks the catalog against the query. A substring hit always wins (prefix highest),
-   * so exact typing behaves as before; everything else falls back to a Sorensen-Dice
+   * Ranks the catalog against the query. A substring hit always wins (prefix highest);
+   * everything else falls back to a Sorensen-Dice
    * bigram similarity, so a fuzzy or slightly-misspelled query ("multipy", "veloc")
    * still surfaces the intended node, best match first.
    */
@@ -173,7 +167,6 @@ export class AddNodeMenu {
       return;
     }
 
-    // Round the visible area to a whole number of rows so no partial row shows.
     this.list.style.maxHeight = `${Math.min(items.length, MAX_VISIBLE_ITEMS) * ITEM_HEIGHT}px`;
     items.forEach((item, index) => {
       const option = createElement("button", {
@@ -181,7 +174,6 @@ export class AddNodeMenu {
         textContent: item.label,
       });
       option.addEventListener("click", () => this.pick(item.type));
-      // Hovering a row makes it the highlighted one (so mouse and keyboard share one cursor).
       option.addEventListener("mouseenter", () => this.setHighlight(index, false));
       this.buttons.push(option);
       this.list.append(option);
@@ -230,11 +222,8 @@ export class AddNodeMenu {
 const FUZZY_THRESHOLD = 0.34;
 
 /**
- * A ranking score for a catalog item against `query`. Visible-label substring hits dominate
- * (a prefix beats a mid-string hit); an exact/substring hit on an invisible {@link tags} alias
- * ranks just below those (so a typed synonym like "swirl" or "+" surfaces its node without
- * outranking a real label match); the Dice bigram similarity is the last resort, kept only when
- * it clears {@link FUZZY_THRESHOLD}. `0` means "not a match".
+ * Score of an item for `query`: label substring (prefix highest), then tag alias, then Dice bigram
+ * similarity above {@link FUZZY_THRESHOLD}. 0 means no match.
  */
 function matchScore(query: string, label: string, tags: readonly string[] = []): number {
   if (label.startsWith(query)) {

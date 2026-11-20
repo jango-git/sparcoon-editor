@@ -1,7 +1,4 @@
-/**
- * Emitter-level edits: add/remove/select commit `"structural"` (scene + graph-editor target
- * change); rename commits `"view"` (a name never recompiles) - mirrors {@link renameVfxMesh}.
- */
+/** Emitter edits. Add, remove and select are structural, rename is a view edit. */
 
 import type { EditorGraph, GraphNode } from "../../domain/graphModel";
 import { isSink } from "../../domain/sinks";
@@ -49,7 +46,6 @@ export function withFreshIds(graph: EditorGraph): EditorGraph {
   };
 }
 
-/** Commits `scene` as the source's new scene, leaving the rest of the document untouched. */
 function commitScene(store: Store, scene: SceneModel, kind: "structural" | "view"): void {
   store.commit({ ...store.getSource(), scene }, kind);
 }
@@ -185,7 +181,7 @@ export function setEmitterStrip(
   );
 }
 
-/** Targets emitter `id` for graph editing and preview focus (makes it - not a mesh - the active graph owner). No-op if already active or unknown. */
+/** Makes emitter `id` the active graph owner. No-op if already active or unknown. */
 export function selectEmitter(store: Store, id: string): void {
   const scene = store.getSource().scene;
   const alreadyActive = scene.activeEmitterId === id && scene.activeGraphKind === "emitter";
@@ -195,7 +191,7 @@ export function selectEmitter(store: Store, id: string): void {
   commitScene(store, { ...scene, activeEmitterId: id, activeGraphKind: "emitter" }, "structural");
 }
 
-/** Renames emitter `id` (blank rejected, no-op). Commits `"view"` - a name never recompiles, like {@link renameVfxMesh}. */
+/** Renames emitter `id`. A blank name is a no-op. */
 export function renameEmitter(store: Store, id: string, name: string): void {
   const trimmed = name.trim();
   const scene = store.getSource().scene;
@@ -214,7 +210,6 @@ export function renameEmitter(store: Store, id: string, name: string): void {
   );
 }
 
-/** A default name that doesn't clash with an existing emitter (`Emitter`, `Emitter 2`, ...). */
 function uniqueName(emitters: readonly EmitterDoc[]): string {
   const taken = new Set(emitters.map((emitter) => emitter.name));
   if (!taken.has("Emitter")) {

@@ -1,10 +1,9 @@
 /**
- * The single state object, split exactly along the source / derived boundary.
+ * State is split into `source` and `derived`.
  *
- * - `source` is everything the user authored: it is saved, and only it enters the
- *   undo history.
- * - `derived` is everything computed from `source`: never saved, never in history,
- *   recomputed by the pipeline on every structural edit.
+ * - `source` is what the user authored. It is saved and is the only part in the undo history.
+ * - `derived` is computed from `source`, never saved, never in history, and recomputed by the
+ * pipeline on every structural edit.
  */
 
 import type { FXEmissionBasis, FXKeyEase, FXParticleEventKind, FXSpawnAction } from "sparcoon";
@@ -53,11 +52,9 @@ export interface AnimationTrack {
 }
 
 /**
- * What makes an emitter spawn, whatever triggers it: the runtime's own `FXSpawnAction` - `burst`
- * spawns `count` particles at once; `play` emits `rate` particles per second, or per world unit the
- * emitter travels (`over: "distance"`, timeline events only), for `duration` seconds (`0` = without
- * end - timeline events only). `over` is omitted when it is `"time"`, so a document saved before it
- * existed round-trips unchanged.
+ * The runtime's `FXSpawnAction`. `burst` spawns `count` particles at once. `play` emits `rate`
+ * particles per second, or per world unit the emitter travels with `over: "distance"` (timeline
+ * events only), for `duration` seconds (`0` means no end, timeline events only).
  */
 export type SpawnAction = FXSpawnAction;
 
@@ -117,11 +114,7 @@ export interface EmitterDoc {
   readonly name: string;
   readonly renderGraph: EditorGraph;
   readonly behaviorGraph: EditorGraph;
-  /**
-   * The emitter's trail graph - a ribbon behind every particle, drawn from its recorded path. A
-   * render-kind graph compiled against the trail target. Omitted when the emitter has no trail
-   * (the default), so a document saved before trails existed round-trips unchanged.
-   */
+  /** Trail graph, compiled against the trail target. Omitted when the emitter has no trail. */
   readonly trailGraph?: EditorGraph;
   /**
    * The emitter's ribbon graph - a band through its particles in the order they were born. A
@@ -153,9 +146,8 @@ export interface EmitterDoc {
    * `setMeshParam` instead. See {@link liveChannels} - independent of `tracks`. */
   readonly liveParams: readonly string[];
   /**
-   * The spawn events play in the editor only: the export ships none, and the host code spawns
-   * through the exported effect's `getEmitter(name).burst`/`play` instead. Omitted (not `false`)
-   * when off, like {@link hidden}, so a document saved before it existed round-trips unchanged.
+   * Spawn events are played in the editor only. The export ships none, and host code spawns through
+   * `getEmitter(name).burst` or `play`. Omitted (not `false`) when off.
    */
   readonly liveEvents?: true;
   /** Hidden in the preview + outline. Editor-only - never affects the TS export. */
@@ -176,20 +168,12 @@ export function meshGraphs(mesh: VfxMeshDoc): readonly EditorGraph[] {
 }
 
 /**
- * The **VFX** entity: the single group that owns every emitter in the scene. It carries
- * its own transform + transform tracks so the whole effect can be posed and animated as one unit,
- * and appears in the timeline as the top entity above the emitters.
+ * The single group that owns every emitter in the scene, with a transform and transform tracks so
+ * the whole effect can be posed and animated as one unit.
  *
- * Unlike an emitter/mesh, the VFX group has no `liveChannels` field: all three of its transform
- * channels are unconditionally live (`entity.kind === "vfx"` is special-cased wherever that
- * matters - transformCommands.ts's `setLiveChannel`, exportTypeScript.ts's root specification literal) -
- * the root transform is exclusively the TypeScript export's consumer to place in their scene, and
- * that can never be toggled off, so there is nothing to store.
- *
- * No `name` field either: the root has no identity of its own to name - it displays and edits the
- * project's own name (`SourceState.name`, via `projectDisplayName`) everywhere it would otherwise
- * show one (the outliner, the viewport Item tab), so there is exactly one name to keep in sync
- * instead of two.
+ * It has no `liveChannels` because all three transform channels are always live (`entity.kind ===
+ * "vfx"` is special-cased in `setLiveChannel` and in the exporter's root specification). It has no
+ * `name` either, because it shows the project name (`SourceState.name`, via `projectDisplayName`).
  */
 export interface VfxDoc {
   readonly id: string;
@@ -198,11 +182,9 @@ export interface VfxDoc {
 }
 
 /**
- * One **VFX mesh** in the scene: a single, non-instanced mesh with a render graph (its material) but
- * NO simulation - no behavior graph, no per-particle attributes, no spawn settings, no spawn events.
- * It renders one primitive (chosen by the surface sink's Geometry param, unified with emitters), is
- * posed/animated by its transform like an emitter, and may animate its render-graph params through
- * `tracks`. A distinct scene object, not an emitter.
+ * A mesh with a render graph and no simulation: no behavior graph, attributes, spawn settings or
+ * spawn events. It renders one primitive (chosen by the surface sink's Geometry param) and is posed
+ * by its transform. It can animate render-graph params through `tracks`.
  */
 export interface VfxMeshDoc {
   readonly id: string;
@@ -292,10 +274,9 @@ export interface TimelineState {
 }
 
 /**
- * One raster-image asset in the library. `name` is a valid param identifier
- * (`^[a-z][A-Za-z0-9]*`, unique) - it is what a Texture node references and what
- * derives its uniform slot `u_param_<name>`. `label` keeps the original file name for
- * display, and `dataUrl` is the base64-encoded image (persisted with the document).
+ * A raster image. `name` is a unique param identifier (`^[a-z][A-Za-z0-9]*`) that a Texture node
+ * references and that gives the uniform `u_param_<name>`. `label` is the original file name and
+ * `dataUrl` the base64 image.
  */
 export interface TextureAsset {
   readonly name: string;
@@ -306,10 +287,8 @@ export interface TextureAsset {
 }
 
 /**
- * One HDRI environment asset (hdr) in the content library, selectable in the Lighting tab as the
- * viewport's active background and light source (ADR-0004). `name` is only a unique key (not a
- * param identifier - no node references it). `label` keeps the original file name for display and
- * download, `dataUrl` is the base64-encoded file, and `byteSize` is its decoded size.
+ * An HDRI environment, usable as viewport background and light. `name` is a unique key. `label` is
+ * the file name, `dataUrl` the base64 file, `byteSize` its decoded size.
  */
 export interface EnvironmentAsset {
   readonly name: string;
@@ -319,13 +298,8 @@ export interface EnvironmentAsset {
 }
 
 /**
- * One user-saved color: a project-wide quick-pick swatch offered by every {@link ColorPicker}'s
- * palette panel, not read by any node - a pure authoring convenience, like an
- * {@link EnvironmentAsset}. `name` is a unique key (minted via `nextIdentifier("swatch")`, not
- * derived from anything user-facing); `label` is a display name (its hex string at save time - not
- * user-editable, unlike the other content-library kinds' upload-derived label). `color` is linear
- * RGBA (each channel `0..1`), the same shape as `Rgba` in `ui/components/color.ts` - this layer
- * stays free of that UI-facing type name.
+ * A saved color swatch. `name` is a unique key from `nextIdentifier("swatch")`, `label` is its hex
+ * at save time, `color` is linear RGBA with channels 0..1.
  */
 export interface PaletteSwatch {
   readonly name: string;
@@ -334,11 +308,10 @@ export interface PaletteSwatch {
 }
 
 /**
- * One mesh's baked geometry (see ADR-0001): flat per-vertex `position`/`normal` (vec3) and `uv`
- * (vec2) arrays plus a triangle `index` array - the same subset {@link buildPrimitiveGeometry}
- * produces for the built-in primitives (no tangents/vertex-colors/extra UV sets/skinning). Plain
- * number arrays, not a base64 blob: this data is already the semantic source of truth (the
- * uploaded GLB's bytes are not retained), so there is nothing left to encode.
+ * Baked geometry: flat `position` and `normal` (vec3) and `uv` (vec2) arrays plus a triangle
+ * `index` array, the same subset {@link buildPrimitiveGeometry} produces. No tangents, vertex
+ * colors, extra UV sets or skinning. Plain number arrays because the uploaded GLB's bytes are not
+ * kept, so this data is the source.
  */
 export interface BakedMeshGeometry {
   readonly position: readonly number[];
@@ -348,12 +321,10 @@ export interface BakedMeshGeometry {
 }
 
 /**
- * One mesh asset in the content library, baked from an uploaded GLB at upload time (ADR-0001). A
- * multi-mesh GLB decomposes into several independent entries, one per mesh (ADR-0003). `name` is a
- * unique key referenced by a `{ kind: "custom", meshAssetName }` geometry source; `label` is the
- * original file/mesh name for display; `byteSize` is the original upload's size, kept only for the
- * content sheet's row display (not a round-trip guarantee - see ADR-0001 on the download regenerating
- * a GLB from `geometry`, not returning the original bytes).
+ * A mesh asset baked from an uploaded GLB. A multi-mesh GLB gives one entry per mesh. `name` is the
+ * key a `{ kind: "custom", meshAssetName }` geometry source references, `label` the original file
+ * or mesh name, `byteSize` the upload size, shown in the content sheet only. A download regenerates
+ * a GLB from `geometry`, not the original bytes.
  */
 export interface MeshAsset {
   readonly name: string;
@@ -412,12 +383,7 @@ export interface SourceState {
   readonly timeline: TimelineState;
 }
 
-/**
- * `SourceState.name`, falling back to "Effect" when unset (blank/whitespace) - the single display
- * name shown everywhere the project's identity appears (the outliner's root row, the viewport
- * Item tab, the exported class name before `exportTypeScript.ts`'s `classNameFor` PascalCases it),
- * so a fresh, never-renamed project still reads as something instead of blank.
- */
+/** The project name, or "Effect" when blank. */
 export function projectDisplayName(name: string): string {
   const trimmed = name.trim();
   return trimmed === "" ? "Effect" : trimmed;
@@ -484,10 +450,8 @@ function buildGraph(
 }
 
 /**
- * A starter emitter with a minimal **visible** effect: a lifetime + a sphere spawn
- * volume feed the behavior sink (particles that live and fill a cloud), and a constant
- * color feeds the render sink's albedo. So a newly added emitter already shows something in
- * the preview, demonstrating that each emitter's graphs drive its own runtime emitter.
+ * A starter emitter with a visible effect: a lifetime and a sphere spawn volume on the behavior
+ * sink, a constant color on albedo.
  */
 export function createDefaultEmitter(id: string, name: string): EmitterDoc {
   const renderGraph = buildGraph(
@@ -612,9 +576,7 @@ export function createDefaultVfx(id: string): VfxDoc {
   return { id, transform: IDENTITY_TRANSFORM, transformTracks: [] };
 }
 
-/** A genuinely blank emitter: only the mandatory sink nodes `buildGraph` adds, nothing wired to
- *  them, no events - the "Empty" preset's basis, distinct from {@link createDefaultEmitter}'s
- *  visible starter (still used by "Add Emitter"). */
+/** An emitter with only the sink nodes, nothing wired and no events. */
 export function createEmptyEmitter(id: string, name: string): EmitterDoc {
   return {
     id,
@@ -631,11 +593,7 @@ export function createEmptyEmitter(id: string, name: string): EmitterDoc {
   };
 }
 
-/**
- * A starter VFX mesh: a plane rendered with a minimal visible material (a constant color feeding the
- * render sink's albedo). No behavior graph, no events - a mesh is a plain, un-simulated object posed
- * by its transform.
- */
+/** A starter mesh: a plane with a constant color on albedo, no behavior graph and no events. */
 export function createDefaultVfxMesh(id: string, name: string): VfxMeshDoc {
   // A mesh material projects from the graph's transform outputs, never from the object's own
   // matrix, so the world matrix is wired in from the start: the mesh then follows its transform,

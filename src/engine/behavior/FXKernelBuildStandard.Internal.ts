@@ -41,17 +41,15 @@ import {
 } from "./FXParticleBehaviorKernelStandard.Internal";
 
 /**
- * The `new Function`-assembly layer's standard-tier sibling: turns a {@link FXCompiledKernelStandard}
- * into one complete, linkable WebGL2 transform-feedback vertex-shader program (plus a minimal
- * pass-through fragment shader, required to link but never rasterized). Fuses spawn and update
- * into ONE program with a per-invocation birth branch (`gl_VertexID` against a uniform-supplied
- * this-tick spawn range), chosen over two separate draws because transform feedback cannot read
- * and write the same buffer, and splitting `update`'s range around a wrapping spawn cursor
- * compounds badly.
+ * Builds one WebGL2 transform-feedback program from the compiled phases, plus a pass-through
+ * fragment shader that only has to link. Spawn and update share one program with a birth branch
+ * (`gl_VertexID` against the pass's spawn range): transform feedback cannot read and write one
+ * buffer, and splitting update's range around a wrapping spawn cursor is worse.
  */
 
-/** A minimal, valid fragment shader - WebGL2 requires one to link any program, even a
- *  transform-feedback-only one never actually rasterized (`RASTERIZER_DISCARD` at draw time). */
+/**
+ * Minimal fragment shader: WebGL2 needs one to link, `RASTERIZER_DISCARD` skips it at draw time.
+ */
 export const FX_TRANSFORM_FEEDBACK_FRAGMENT_SOURCE = `#version 300 es
 precision highp float;
 out vec4 fx_unused_fragColor;
@@ -90,17 +88,14 @@ export interface FXFusedProgramStandard extends FXKernelResourceFields {
   readonly sceneDepth?: true;
 }
 
-/** A line of a kernel's vertex shader, or one of the helpers it links. */
 export type FXKernelSourceLine = string | { readonly helper: FXGLSLHelperName };
 
-/** The vertex shader of `program`, each helper in its source. */
 export function fusedVertexSource(program: FXFusedProgramStandard): string {
   return program.vertexLines
     .map((line) => (typeof line === "string" ? line : glslHelperSource(line.helper)))
     .join("\n");
 }
 
-/** Deterministic `out` (transform-feedback) varying name for a state buffer. */
 function glslOutVaryingName(bufferName: string): string {
   return `out_${bufferName}`;
 }
@@ -109,10 +104,7 @@ function glslTypeForBuffer(buffer: FXKernelBufferLayout): string {
   return floatGLSLType(buffer.stride, `assembleTransformFeedbackProgram: buffer "${buffer.name}"`);
 }
 
-/** Merges the two phases' graph-authored uniforms by name (two phases sharing a forced-name param
- *  declare it twice, alike); a same-name different-type collision is a real authoring conflict and
- *  throws, the same way `compileToArtifacts.ts`'s `collectPhaseBindings` throws on a cross-phase
- *  binding value conflict for the JS backend. */
+/** Merges both phases' uniforms by name. Same name with a different type throws. */
 function mergeUniforms(
   spawn: readonly FXKernelUniform[],
   update: readonly FXKernelUniform[],
@@ -132,9 +124,10 @@ function mergeUniforms(
   return [...byName.values()];
 }
 
-/** Merges the two phases' live binding handles by name, verifying a shared name (a param node
- *  used in both phases) started with the same value - the fused program has one uniform per name,
- *  so it needs one canonical handle, not two independently-drifting ones. */
+/**
+ * Merges both phases' binding handles by name. A shared name needs one handle with the same
+ * starting value, since the program has one uniform per name.
+ */
 function mergeBindings(
   spawn: Readonly<Record<string, FXKernelBindingHandle>>,
   update: Readonly<Record<string, FXKernelBindingHandle>>,
@@ -154,7 +147,6 @@ function mergeBindings(
   return merged;
 }
 
-/** One buffer's default-then-graph-writes assignment for one branch (spawn or update). */
 function assignBuffer(
   buffer: FXKernelBufferLayout,
   writes: readonly FXKernelWrite[],
@@ -172,15 +164,12 @@ function assignBuffer(
     lines.push(componentAssign(write.offset, write.expr));
   }
   for (const [offset, expr] of epilogueOverrides) {
-    // Host-owned (age increment): always wins over a graph write, since the graph has no write
-    // slot for age at all (FXParticleBehaviorTarget.ts's scalarWriteSlots never lists it) - this
-    // never actually overrides a real graph write, just documents the ordering explicitly.
+    // Age is host-owned: it always advances, the graph has no write slot for it.
     lines.push(componentAssign(offset, expr));
   }
   return lines;
 }
 
-/** Assembles the fused spawn+update program from the two independently-compiled phases. */
 export function assembleTransformFeedbackProgram(
   compiled: FXCompiledKernelStandard,
 ): FXFusedProgramStandard {
@@ -192,14 +181,10 @@ export function assembleTransformFeedbackProgram(
     );
   }
   const update = compiled.update;
-  // The one ordered list every index below follows - input locations, varyings and the returned
-  // `buffers` (which the artifact and the exported literal copy as they are): the target's own,
-  // already in slot order (`buildParticleBehaviorTargets`), so the JS kernel's slot is the same.
+  // Buffer order: attribute locations, varyings and `buffers` all follow the target's slot order.
   const buffers = update.buffers;
 
-  // `layout(location = N)` binds each attribute to its buffer's own index in `buffers` - the
-  // runtime binds by that index directly (`vertexAttribPointer(N, ...)`), never by looking an
-  // attribute up by name, so no naming scheme needs to be shared with sparcoon for this part.
+  // `location` is the buffer's index in `buffers`, and the runtime binds by index, not by name.
   const inDeclarations = buffers.map(
     (buffer, index) =>
       `layout(location = ${index.toString()}) in ${glslTypeForBuffer(buffer)} ${glslBufferAttributeName(buffer.name)};`,
@@ -223,9 +208,6 @@ export function assembleTransformFeedbackProgram(
       ),
     ],
   ]);
-  // A newborn's age and id, host-owned like age above: no write slot exists for either
-  // (FXParticleBehaviorTarget.ts's scalarWriteSlots never lists them), so this never collides
-  // with a graph write. The age is the one the birth prologue read from the pass's birth ages.
   const lifecycleBirthOverride = new Map([
     [FX_AGE, BIRTH_AGE_LOCAL],
     // Modulo the id range, as the runtime wraps the base (see FX_PARTICLE_ID_RANGE).
@@ -236,9 +218,8 @@ export function assembleTransformFeedbackProgram(
   ]);
 
   const spawnAssignments = buffers.flatMap((buffer) =>
-    // A freshly (over)written slot holds a previous, unrelated occupant's state - default every
-    // component to zero, never to the stale `in_<buffer>` value (mirrors FXInstancedParticle.
-    // createInstances's array.fill(0, ...) before the spawn kernel runs on the JS side).
+    // A reused slot holds another particle's state: zero every component instead of reading
+    // `in_<buffer>`.
     assignBuffer(
       buffer,
       spawn.writes,
@@ -247,9 +228,7 @@ export function assembleTransformFeedbackProgram(
     ),
   );
   const updateAssignments = buffers.flatMap((buffer) =>
-    // In place, every component not explicitly written stays what it already was (mirrors the
-    // JS backend mutating one persistent array in place) - except age, which is host-owned and
-    // always advances, the GLSL analog of FXEmitter.tick()'s own age-increment loop.
+    // Update keeps unwritten components as they are. Age always advances.
     assignBuffer(
       buffer,
       update.writes,
@@ -258,11 +237,8 @@ export function assembleTransformFeedbackProgram(
     ),
   );
 
-  // A dead slot (age >= lifetime - the same test the render material culls by and the trail
-  // history skips by) passes through untouched: the draw covers the whole capacity every tick, so
-  // without this a mostly-empty burst emitter would run its full update (noise, collisions) over
-  // every dead and never-spawned slot. Freezing age keeps the slot dead, and a never-spawned slot's
-  // zeroed lifecycle (0 >= 0) counts as dead too.
+  // A dead slot (age >= lifetime, which a zeroed never-spawned slot also satisfies) passes through,
+  // so a mostly empty burst does not run the full update over every slot.
   const lifecycleIn = glslBufferAttributeName(FX_CORE_LIFECYCLE);
   const deadCondition = deadSlotGLSL(lifecycleIn);
   const passThroughAssignments = buffers.map(
@@ -317,9 +293,8 @@ ${[...update.body.map((line) => `    ${line}`), ...updateAssignments].join("\n")
 }
 
 /**
- * The phases' draw stages as one: each computed every pass (a spawn-only pass reads the spawn
- * half's, the cost of the update half's is a handful of operations), each phase's statements in a
- * block of its own - the phases name their locals apart from each other only within themselves.
+ * Both phases' draw stages as one compute. Each phase's statements get their own block, since
+ * locals are only named apart within a phase.
  */
 function fuseDrawStages(
   stages: readonly (FXCompiledKernelDrawStage | undefined)[],

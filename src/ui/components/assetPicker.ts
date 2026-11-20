@@ -1,15 +1,6 @@
 /**
- * A project-styled asset picker: chooses among a project asset library (textures, meshes, HDRI
- * environments, ...) by preview thumbnail rather than by label text alone. The trigger reads like a
- * `.param__input` field (same 20px collapsed height and caret as {@link Dropdown} and the other
- * node controls); what it opens is a search-filterable list of preview rows, not a stacked text menu.
- *
- * Selection is by the option's stable `name`, matching how the model already keys texture / mesh /
- * environment references - never by array position, which would silently drift if the library is
- * reordered or an asset renamed.
- *
- * `setValue` re-syncs the shown option from an external change (undo / redo), matching the
- * paramSyncer contract the node view uses for its other widgets.
+ * Picker over an asset library with preview rows and search. Selection is by stable `name`, never
+ * by index. `setValue` re-syncs from undo and redo.
  */
 
 import { t } from "../../i18n";
@@ -58,7 +49,6 @@ export class AssetPicker implements ValueComponent<string> {
   private popover: PopoverHandle | undefined;
   private current: string;
 
-  // Live only while the popup is open; torn down (set back to undefined) on dismiss.
   private search: HTMLInputElement | undefined;
   private list: HTMLElement | undefined;
   private visible: readonly AssetPickerOption[] = [];
@@ -87,7 +77,7 @@ export class AssetPicker implements ValueComponent<string> {
             event.stopPropagation();
             this.toggle();
           },
-          // Keep a press on the trigger from starting a node drag / marquee.
+          // Do not start a node drag or marquee.
           pointerdown: (event) => event.stopPropagation(),
         },
       },
@@ -109,11 +99,8 @@ export class AssetPicker implements ValueComponent<string> {
   }
 
   /**
-   * Re-paints the trigger (and, if it's currently open, the popup's own rows) from the current
-   * option list even if the selected value itself hasn't changed - `setValue`'s no-op-when-
-   * unchanged guard would otherwise miss an option's own thumbnail/label arriving or changing in
-   * place (e.g. an HDRI's async decode landing after this picker already shows that asset, or is
-   * already open showing it, as selected).
+   * Repaints the trigger and open popup from the current options, even when the selected value is
+   * unchanged (a thumbnail or label may arrive later).
    */
   public refresh(): void {
     this.sync();
@@ -185,7 +172,7 @@ export class AssetPicker implements ValueComponent<string> {
         }
       }
     });
-    // Keep a press anywhere in the popup (the search box included) from starting a node drag.
+    // Do not start a node drag or marquee.
     menu.addEventListener("pointerdown", (event) => event.stopPropagation());
 
     this.renderList();
@@ -265,7 +252,6 @@ export class AssetPicker implements ValueComponent<string> {
               event.stopPropagation();
               this.choose(option.name);
             },
-            // Hovering a row makes it the highlighted one (so mouse and keyboard share one cursor).
             mouseenter: () => this.setHighlight(index, false),
           },
         },

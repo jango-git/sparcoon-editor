@@ -20,7 +20,6 @@ export interface FXAttributeRequest {
  */
 export const FX_ATTRIBUTE_NAME_PATTERN = /^[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*$/;
 
-/** Whether `name` is a legal attribute name. */
 export function isValidAttributeName(name: string): boolean {
   // Explicit type guard: a missing key reaches here as `undefined`, which `RegExp.test`
   // coerces to "undefined" - which matches the pattern, minting a bogus fx_undefined buffer.

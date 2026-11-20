@@ -38,14 +38,13 @@ export interface OverdrawStats {
   readonly max: number;
 }
 
-/** What the overdraw view counts: the previewed effects. */
 export interface OverdrawSource {
   /** The effects' root; everything else in the scene only hides what is behind it. */
   readonly effects: Object3D;
 }
 
-// `onBeforeRender` on a material: three calls it before every draw (r157 included), and
-// `@types/three` 0.157 leaves it out. The runtime's Depth Fade binds the camera depth through it.
+// Material `onBeforeRender` is called by three but missing from `@types/three` 0.157. The runtime's
+// Depth Fade binds camera depth through it.
 type DrawHooked = Material & { onBeforeRender?: unknown };
 
 export class OverdrawPass {
@@ -74,7 +73,6 @@ export class OverdrawPass {
     this.studio = new StudioDepth(renderer, scene);
   }
 
-  /** Draws `camera`'s overdraw into the current target (the canvas): {@link countLayers}, then the ramp. */
   public render(camera: Camera, count: OverdrawCount): void {
     this.ramp.draw(this.renderer, camera, this.countLayers(camera, count).texture);
   }
@@ -133,7 +131,6 @@ export class OverdrawPass {
     return this.pixel[0];
   }
 
-  /** Counts `camera`'s layers as {@link countLayers} does and sums them over the whole frame. */
   public measure(camera: Camera, count: OverdrawCount): OverdrawStats {
     const target = this.countLayers(camera, count);
     const { width, height } = target;
@@ -153,7 +150,6 @@ export class OverdrawPass {
     return { width, height, fragments, covered, max };
   }
 
-  /** Frees the counts target while the view is off; the material variants stay for the next use. */
   public release(): void {
     this.target?.dispose();
     this.target = undefined;

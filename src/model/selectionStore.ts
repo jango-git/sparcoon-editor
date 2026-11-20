@@ -1,7 +1,4 @@
-/**
- * The transform selection: which scene entity (VFX group or one emitter/mesh) the preview gizmo
- * and hotkeys target. Transient like the transport - editor focus, never in the model/history/saved doc.
- */
+/** The entity the gizmo and hotkeys act on. Not part of the document or history. */
 
 import { Ferrsign0 } from "ferrsign";
 
@@ -18,17 +15,14 @@ export class SelectionStore {
     return this.current;
   }
 
-  /** Targets the VFX group. */
   public selectVfx(): void {
     this.set(VFX_ENTITY);
   }
 
-  /** Targets emitter `id`. */
   public selectEmitter(id: string): void {
     this.set(emitterEntity(id));
   }
 
-  /** Targets VFX mesh `id`. */
   public selectVfxMesh(id: string): void {
     this.set(vfxMeshEntity(id));
   }
@@ -41,7 +35,6 @@ export class SelectionStore {
     this.notify();
   }
 
-  /** Subscribes to selection changes; returns an unsubscribe. */
   public subscribe(listener: SelectionListener): () => void {
     return this.changed.on(listener);
   }

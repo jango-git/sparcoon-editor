@@ -1,10 +1,6 @@
 /**
- * Pure 2D geometry kernel. These were inlined as module-private helpers in graphCanvas
- * (wire hit-testing, knife-cut segment crossing, marquee AABB) and re-derived again for the
- * preview pick / transform tool (client-pixel -> NDC). No DOM, no framework - just math.
- *
- * `Point2` is structural (`{ x, y }`), so graph-space `GraphPoint`s and three.js `Vector2`s
- * pass straight in without conversion.
+ * Pure 2D geometry. `Point2` is structural, so `GraphPoint` and three.js `Vector2` pass in
+ * directly.
  */
 
 import { clamp01 } from "./math";

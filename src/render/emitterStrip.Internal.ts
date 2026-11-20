@@ -1,8 +1,5 @@
 /**
- * An emitter's trail or ribbon graph in the live preview: its own live compile against the strip's
- * target, the runtime options assembled from it, its GPU budget, and what the running emitter's
- * strip was built from - so {@link EmitterView} only decides when to build, swap or drop a strip,
- * not how.
+ * Live compile, runtime options, GPU budget and built state of an emitter's trail or ribbon graph.
  */
 
 import type { FXBufferLayout, FXRenderArtifact } from "sparcoon";
@@ -84,12 +81,10 @@ export class EmitterStrip<K extends StripName = StripName> {
     this.live = live;
   }
 
-  /** Whether a valid apply has installed IR to assemble from. */
   public get compiled(): boolean {
     return this.shader !== undefined;
   }
 
-  /** Reconciles and compiles the strip's graph; never throws (see {@link FXLiveGraph.apply}). */
   public apply(snapshot: FXGraphSnapshotData): FXLiveResult<FXRenderNode> {
     this.snapshot = snapshot;
     return this.live.apply(snapshot);
@@ -131,7 +126,6 @@ export class EmitterStrip<K extends StripName = StripName> {
     return unwrittenAttributeWarnings(this.live.graphView, written, declared);
   }
 
-  /** The runtime options from the installed IR and `config`; throws before a valid apply. */
   public assemble(config: StripSinkConfigs[K]): AssembledStrip<K> {
     if (this.shader === undefined) {
       throw new Error(`EmitterStrip: no compiled ${this.strip} IR`);
@@ -185,7 +179,6 @@ export class EmitterStrip<K extends StripName = StripName> {
     );
   }
 
-  /** Records that the running emitter's strip was just built from the installed IR and `assembled`. */
   public markBuilt(assembled: AssembledStrip): void {
     this.builtShader = this.shader;
     this.builtKey = configKey(assembled.config);
@@ -195,7 +188,6 @@ export class EmitterStrip<K extends StripName = StripName> {
     this.live.destroy();
   }
 
-  /** `assembled`'s artifact (the preview tier's) beside the other tier's of the same graph. */
   private everyTier(assembled: AssembledStrip): FXRenderArtifactsByTier {
     const render = assembled.options.render;
     const shader = this.shader;

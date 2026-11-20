@@ -30,7 +30,6 @@ export function atlasLayout(size: VolumeSize): {
   return { columns, rows, width: columns * width, height: rows * height };
 }
 
-/** The atlas image of `volume`. */
 export function volumeToAtlas(volume: VolumeTexels): GrayImage {
   const [width, height, depth] = volume.size;
   const layout = atlasLayout(volume.size);
@@ -73,7 +72,6 @@ export function atlasToVolume(image: GrayImage, size: VolumeSize): Uint8Array<Ar
 
 const PNG_DATA_URL_PREFIX = "data:image/png;base64,";
 
-/** The PNG atlas of `volume`, as a data URL. */
 export async function volumeAtlasDataUrl(volume: VolumeTexels): Promise<string> {
   return PNG_DATA_URL_PREFIX + bytesToBase64(await encodeGrayPng(volumeToAtlas(volume)));
 }

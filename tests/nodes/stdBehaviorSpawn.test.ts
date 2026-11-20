@@ -11,8 +11,8 @@ import { behaviorRegistry } from "../helpers/stdRegistry";
 // Only position (stride 3) and lifecycle (stride 2, `[age, lifetime]`) are core buffers.
 // velocity/scale/seed are user attributes written through a `store-attribute` node
 // (SPAWN phase) bound to `attr:<name>`; the kernel then writes their own named buffers.
-// Spawn randomness is inline `Math.random()` (nondeterministic), so per-channel draws
-// are asserted by RANGE/shape, not by an exact seeded value.
+// Spawn draws hash the particle's id, so a run over many particles samples a shape; draws are
+// asserted by range and shape, not by exact values.
 const FLOAT = FX_VALUE_TYPES.float;
 const VEC3 = FX_VALUE_TYPES.vec3;
 const reg = behaviorRegistry();
@@ -28,15 +28,16 @@ function spawnOnce(
 
 type Vec3 = readonly [number, number, number];
 
-/** Draws `count` spawn positions (one particle each) from a single position-emitting shape node. */
+/** The spawn positions of `count` particles from a single position-emitting shape node. */
 function positionsOf(type: string, params: Readonly<Record<string, unknown>>, count = 400): Vec3[] {
   const graph = graphOf(
     { shape: reg.create(type, params) },
     [],
     [bind("position", "shape", "position")],
   );
-  return Array.from({ length: count }, () => {
-    const [x, y, z] = runKernel(graph, { phase: "spawn" }).position;
+  const { position } = runKernel(graph, { phase: "spawn", count });
+  return Array.from({ length: count }, (_, i) => {
+    const [x, y, z] = position.subarray(i * 3, i * 3 + 3);
     return [x, y, z] as const;
   });
 }
@@ -204,15 +205,12 @@ describe("birth-state nodes", () => {
       [edge("rng", "out", "store", "value")],
       [bind(attributeSlot("seed"), "store", "value")],
     );
-    const seen = new Set<number>();
-    for (let i = 0; i < 200; i++) {
-      const seed = runKernel(graph, { phase: "spawn" }).seed[0];
+    const seeds = runKernel(graph, { phase: "spawn", count: 200 }).seed;
+    for (const seed of seeds) {
       expect(seed).toBeGreaterThanOrEqual(0);
       expect(seed).toBeLessThan(1);
-      seen.add(seed);
     }
-    // Inline Math.random() -> a fresh draw each call (not a constant, not a seeded channel).
-    expect(seen.size).toBeGreaterThan(1);
+    expect(new Set(seeds).size).toBeGreaterThan(190);
   });
 
   it("random of a vector type draws each component independently within [min, max)", () => {
@@ -222,8 +220,9 @@ describe("birth-state nodes", () => {
       [bind("position", "rng", "out")],
     );
     const spread = new Set<string>();
+    const { position } = runKernel(graph, { phase: "spawn", count: 200 });
     for (let i = 0; i < 200; i++) {
-      const [x, y, z] = runKernel(graph, { phase: "spawn" }).position;
+      const [x, y, z] = position.subarray(i * 3, i * 3 + 3);
       expect(x).toBeGreaterThanOrEqual(-1);
       expect(x).toBeLessThan(1);
       expect(y).toBeGreaterThanOrEqual(2);

@@ -29,12 +29,11 @@ import { behaviorRegistry, renderRegistry } from "./stdRegistry";
 const VEC3 = FX_VALUE_TYPES.vec3;
 const COUNT = 3;
 const DT = 0.016;
+const SEED = 0;
 
 /**
  * The plume as two `FXGraph`s, in the executor model: velocity is a user attribute
  * (`store-attribute`/`custom-attribute`) and motion is an explicit `integrate-motion` node.
- * Degenerate ranges (`[2,2]`, `[1,1]`) keep spawn deterministic despite the inline
- * `Math.random()` draws, so the equivalence checks are exact.
  */
 export function plumeGraphs(): {
   render: FXGraph<FXRenderNode>;
@@ -144,15 +143,24 @@ export function expectPlumeSimulatesLikeDirectCompile(
     direct,
     0,
     COUNT,
+    SEED,
     kernel.spawn?.bindings ?? {},
     IDENTITY_TRANSFORM,
     NOTHING_INHERITED,
   );
-  buildParticleUpdateKernel(kernel)(direct, COUNT, DT, kernel.update.bindings);
+  buildParticleUpdateKernel(kernel)(direct, COUNT, DT, SEED, kernel.update.bindings);
 
   const viaArtifact = new Float32Array(slot.stride * COUNT);
-  artifact.spawn?.(viaArtifact, 0, COUNT, artifact.bindings, IDENTITY_TRANSFORM, NOTHING_INHERITED);
-  artifact.update(viaArtifact, COUNT, DT, artifact.bindings);
+  artifact.spawn?.(
+    viaArtifact,
+    0,
+    COUNT,
+    SEED,
+    artifact.bindings,
+    IDENTITY_TRANSFORM,
+    NOTHING_INHERITED,
+  );
+  artifact.update(viaArtifact, COUNT, DT, SEED, artifact.bindings);
 
   expect([...viaArtifact]).toEqual([...direct]);
   const fields: FieldBuffers = {};

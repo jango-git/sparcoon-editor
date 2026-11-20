@@ -68,7 +68,6 @@ export class TransformTool {
   // Grab only: the drag-plane point that reads as zero delta, recaptured whenever the constraint
   // (and therefore the drag plane) changes, so switching axis/plane mid-drag never jumps the object.
   private dragReference = new Vector3();
-  // Whether Ctrl is currently held - temporarily inverts each mode's snap (Blender-style).
   private ctrlHeld = false;
   private readonly store: Store;
   private readonly selection: SelectionStore;
@@ -190,11 +189,10 @@ export class TransformTool {
     } else if (axis !== undefined) {
       this.setConstraint(event.shiftKey ? { kind: "plane", axis } : { kind: "axis", axis });
     } else if (event.code === "KeyG" || event.code === "KeyR" || event.code === "KeyS") {
-      // Swallow another mode key so it can't re-enter the router mid-op; the current op continues.
+      // Swallowed, so another mode key cannot start a new transform in the middle of this one.
     } else {
       return; // let other keys through
     }
-    // Handled keys never reach the hotkey router (which also listens on window).
     event.preventDefault();
     event.stopImmediatePropagation();
   }
@@ -273,7 +271,6 @@ export class TransformTool {
   }
 
   private setConstraint(next: Constraint): void {
-    // Pressing the same axis/plane again clears it (back to free), mirroring Blender's toggle.
     this.constraint = sameConstraint(this.constraint, next) ? FREE : next;
     // The drag plane depends on the constraint; recapture so switching mid-drag doesn't jump.
     if (this.start?.mode === "grab") {
@@ -313,7 +310,6 @@ export class TransformTool {
     }
     const world = start.startWorldPosition.clone().add(delta);
     const local = start.object.parent ? start.object.parent.worldToLocal(world) : world;
-    // Snap the local offset from the start pose to the move increment (per axis).
     const snap = this.snapFor("move");
     if (snap.on) {
       local.x =

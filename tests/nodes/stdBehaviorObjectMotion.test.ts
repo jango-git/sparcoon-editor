@@ -1,14 +1,14 @@
+import type { FXEmitterTransform } from "sparcoon";
 import { describe, expect, it } from "vitest";
 
-import type { FXEmitterTransform } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
 import { bind, edge, graphOf, runKernel } from "../helpers/graphBuild";
 import { behaviorRegistry } from "../helpers/stdRegistry";
 
 // `object-velocity` / `object-angular-velocity` are shared nodes: in behavior they read the
 // emitter's world-space linear/angular velocity, which the runtime pushes as the `emitter`
 // argument's `velocity`/`angularVelocity` fields each spawn/update call (see
-// FXParticleBehaviorTarget's EMITTER_HOST_INPUTS/FX_EMITTER_INPUT_FIELD) - the same synthesized-
-// input mechanism `worldMatrix` uses (stdBehaviorWorldMatrix.test.ts).
+// FXParticleBehaviorTarget's EMITTER_HOST_INPUTS) - the same host-value
+// mechanism `worldMatrix` uses (stdBehaviorWorldMatrix.test.ts).
 
 const IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 const reg = behaviorRegistry();

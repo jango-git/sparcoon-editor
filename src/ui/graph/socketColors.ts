@@ -1,11 +1,6 @@
 /**
- * Type-based color coding for socket dots and the wires between them. Each GLSL data
- * type a socket can carry gets one hue so an input, an output and the edge joining them
- * read as the same "kind" of data at a glance.
- *
- * Red is deliberately absent from the palette - it is reserved for error/invalid states
- * (an unsatisfied required input, an incompatible drop), so nothing in the normal, valid
- * graph is ever tinted red.
+ * Hue per socket type, shared by dots and wires. Red is reserved for error states and is not in the
+ * palette.
  */
 
 /** Hue per GLSL socket type; the generic `"T"` and any unknown type share a neutral grey. */

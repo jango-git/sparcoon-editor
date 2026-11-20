@@ -60,12 +60,8 @@ export interface FXTargetOutput {
 }
 
 /**
- * The contract between a compiled graph and a concrete host material. This is the
- * key abstraction that lets one graph/compiler serve both the particle materials
- * and external VFX meshes: each host is just a different {@link FXTarget}.
- *
- * The compiler validates a graph against a target and produces an
- * {@link FXCompiledShader}; the target's inputs/outputs define what is legal.
+ * What a host material offers a graph (inputs) and expects from it (outputs). The compiler
+ * validates against it and produces an FXCompiledShader.
  */
 export interface FXTarget {
   readonly name: string;
@@ -79,7 +75,6 @@ export interface FXTarget {
   readonly shadow?: readonly FXShadowOutput[];
 }
 
-/** One output of a target's {@link FXTarget.shadow} program. */
 export interface FXShadowOutput {
   /** The shadow program's slot. */
   readonly slot: string;

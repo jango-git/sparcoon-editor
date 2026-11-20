@@ -44,7 +44,6 @@ export function beginMarquee(down: PointerEvent, ctx: MarqueeContext): void {
     onEnd: (up, dragged) => {
       box.remove();
       if (!dragged) {
-        // A click on empty lane clears the selection and seeks the caret to that frame.
         ctx.selection.clear();
         ctx.refresh();
         ctx.onEmptyClick?.(up.clientX);

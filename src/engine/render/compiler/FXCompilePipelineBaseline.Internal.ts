@@ -44,25 +44,15 @@ import {
 import type { FXRenderContext } from "./FXRenderContext";
 
 /**
- * The baseline (WebGL1 / GLSL-ES-1.00) render compiler pipeline: deliberately independent of the
- * standard tier's `FXCompilePipelineStandard.Internal.ts` all the way down to the
- * compile-state/context/placement layer, not just the printer or the build-method selection. Per
- * the project's tier-axis decision, the baseline and standard tiers share nothing below the IR
- * (`core/ir/`) and the shading-language-neutral compilation core
- * (`core/compiler/`) - the same degree of separation the future advanced (WebGPU/WGSL) tier would
- * have from either. Duplication with `FXCompilePipelineStandard.Internal.ts` is intentional: this
- * tier's declaration strategy, placement rules, and optimizations are free to diverge without ever
- * touching that file. What is shading-language neutral - placement (`FXRenderStagePlacement`), the
- * uniform table and the finishing of the placed stages (`FXRenderCompileShared`) - is called, not
- * copied, while both tiers agree on it.
+ * Render compiler pipeline of the WebGL1 tier (GLSL ES 1.00). It is a separate copy of the standard
+ * tier's pipeline, so the tiers can diverge. Shading-language-neutral steps (placement, uniform
+ * table, stage finishing) are called from FXRenderStagePlacement and FXRenderCompileShared.
  */
 
 /** This tier's bound builders - baseline signatures only (`standardOnly` functions excluded, so
  *  `fn.call` throws for one reached with no `baselineBuild`). */
 const BASELINE_BUILDERS: FXExprBuilderApi = createBuilders(baselineSignaturesFrom(FX_FUNCTIONS));
 
-/** Whether a value produced in `producer` can reach a consumer in `consumer`: same-stage is
- *  always fine, and vertex->fragment promotes through a varying, but not the reverse. */
 function isReachableStage(producer: FXShaderStage, consumer: FXShaderStage): boolean {
   return (
     producer === consumer ||
@@ -70,10 +60,10 @@ function isReachableStage(producer: FXShaderStage, consumer: FXShaderStage): boo
   );
 }
 
-/** Infers the effective stage of every reachable node. Fixed-stage nodes keep their declared
- *  stage; a placement-flexible node (e.g. `constant`) is placed `vertex` if any consumer or bound
- *  output slot needs it there (vertex promotes to fragment, so that's the safe choice), else
- *  `fragment`. */
+/**
+ * Infers each node's stage. A flexible node goes to `vertex` if any consumer needs it there (vertex
+ * promotes to fragment), else `fragment`.
+ */
 export function resolvePlacementStages(
   graph: FXGraph<FXRenderNode>,
   target: FXTarget,
@@ -94,9 +84,7 @@ export function resolvePlacementStages(
   });
 }
 
-/** Structural-hash tag for a node's inferred placement; only flexible nodes contribute (a fixed
- *  node's stage is implied by its already-hashed `type`), so a rewiring that moves one between
- *  stages recompiles rather than rebinds. */
+/** Hash tag of a flexible node's placement, so moving it between stages recompiles. */
 function stageTag(
   stages: ReadonlyMap<string, FXShaderStage>,
   id: string,
@@ -105,9 +93,6 @@ function stageTag(
   return node.stageFlexible ? `@${stages.get(id) ?? ""}` : "";
 }
 
-/** The per-node structural-hash key for this backend: resolved generic type tag plus the
- *  inferred-stage tag, folded into `structuralHash` by both `compileGraphBaseline` and
- *  `FXCompilerBaseline.previewHash`. */
 export function renderNodeKey(
   types: ReadonlyMap<string, FXValueType>,
   stages: ReadonlyMap<string, FXShaderStage>,
@@ -115,9 +100,10 @@ export function renderNodeKey(
   return (id, node) => genericTypeTag(types, id) + stageTag(stages, id, node);
 }
 
-/** Validates that every reachable value flows in a compilable stage direction, using each node's
- *  effective (inferred) stage - the half `validateGraph` leaves open. Kept out of the
- *  backend-agnostic core validator since vertex->fragment promotion is GLSL-specific. */
+/**
+ * Checks that reachable values flow vertex to fragment only. Vertex-to-fragment promotion is
+ * GLSL-specific, so this is not in the core validator.
+ */
 export function validateStageDirection(
   graph: FXGraph<FXRenderNode>,
   target: FXTarget,
@@ -193,15 +179,11 @@ export function validateStageDirection(
   return errors;
 }
 
-/** One SSA local as its node emitted it: kept as IR until {@link FXCompileState.finalize} decides
- *  its final stage and prints it. `owner` is the emitting node, whose helpers follow the local. */
 interface FXStageLocal extends FXRatedLocal {
   readonly type: FXValueType;
   readonly owner: string | undefined;
 }
 
-/** Mutable accumulator for one compilation (identifiers, uniforms, varyings, helpers, per-stage
- *  locals). Nodes never see this directly - only through {@link FXNodeCompilerContext}. */
 class FXCompileState {
   private readonly names = new FXGLSLNames();
 
@@ -215,7 +197,6 @@ class FXCompileState {
   /** The helpers each node links: they go wherever its locals end up. */
   private readonly ownerHelpers = new Map<string, FXGLSLHelperName[]>();
 
-  /** Allocates a collision-free, compact GLSL identifier (see {@link FXGLSLNames}). */
   public uniqueName(): string {
     return this.names.next();
   }
@@ -234,7 +215,6 @@ class FXCompileState {
     return this.uniforms.allocate(descriptor);
   }
 
-  /** Declares a vertex->fragment varying and returns its name. */
   public allocateVarying(
     type: FXValueType,
     interpolation: FXVarying["interpolation"] = "smooth",
@@ -303,9 +283,7 @@ class FXCompileState {
   }
 }
 
-/** {@link FXRenderContext} bound to one node for the duration of its `build`/`baselineBuild`;
- *  forwards emissions to the shared {@link FXCompileState}. This backend's builders and GLSL
- *  printer are hardcoded module constants, never injected. */
+/** FXRenderContext bound to one node, forwarding emissions to FXCompileState. */
 class FXNodeCompilerContext
   extends FXCompileContextBase<FXRenderNode, string>
   implements FXRenderContext
@@ -382,8 +360,7 @@ class FXNodeCompilerContext
   }
 
   public readTargetInput(name: string): FXExpr {
-    // Typed throws so a live apply repackages a third-party node's bad target read
-    // with its code/nodeId intact, instead of a bare Error folded to compile-failed.
+    // Throw a typed error so the live apply keeps the code and nodeId.
     const input = this.target.inputs.find((candidate) => candidate.name === name);
     if (input === undefined) {
       throw new FXCompilerErrorException({
@@ -494,18 +471,11 @@ function coerceSlotOutput(
   return name;
 }
 
-/**
- * Compiles a validated graph into an {@link FXCompiledShader}. Assumes the graph
- * already passed {@link validateGraph}; it walks nodes in dependency order,
- * builds each through a context, binds target output slots, and computes the hash.
- */
 export function compileGraphBaseline(
   graph: FXGraph<FXRenderNode>,
   target: FXTarget,
 ): FXCompiledShader {
   const { order, resolution } = prepareCompile(graph);
-  // Effective stage per node: fixed nodes keep their declared stage; flexible
-  // (param/shared) nodes are placed by their consumers (sec. placement inference).
   const stages = resolvePlacementStages(graph, target, order);
   const stageOf = (id: string): FXShaderStage =>
     stages.get(id) ?? graph.getNode(id)?.stage ?? FXShaderStage.FRAGMENT;

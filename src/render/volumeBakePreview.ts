@@ -32,12 +32,10 @@ import { DEFAULT_PREVIEW_SETTINGS } from "../settings/previewSettings";
 import { buildGeometryFromArrays } from "./meshGeometryBaking";
 
 const MESH_COLOR = 0x9aa4b2;
-// The editor accent: it reads on the light and the dark well alike.
 const BOX_COLOR = 0xf08c2e;
 const SURFACE_COLOR = 0x4fd1c5;
 const FIELD_OF_VIEW = 35;
 
-/** The renderer and what drives it, made for a session and released after it. */
 interface View {
   readonly renderer: WebGLRenderer;
   readonly controls: OrbitControls;
@@ -66,7 +64,6 @@ export class VolumeBakePreview {
   private shownMesh: VolumeBakeState["mesh"] | undefined;
   private shownSurface: { baked: VolumeBakeState["baked"]; level: number } | undefined;
 
-  /** @param host Holds the view's canvas, which fills it. */
   constructor(
     private readonly host: HTMLElement,
     private readonly session: VolumeBakeSession,
@@ -111,7 +108,6 @@ export class VolumeBakePreview {
     this.draw();
   }
 
-  /** Aims the camera at the box from the front and above, far enough back to see all of it. */
   private frame(): void {
     const radius = Math.max(this.box.scale.length() / 2, 0.01);
     const distance = radius / Math.sin(((FIELD_OF_VIEW / 2) * Math.PI) / 180);
@@ -125,7 +121,6 @@ export class VolumeBakePreview {
     controls.update();
   }
 
-  /** Draws a frame at the host's size; nothing while no session runs. */
   private draw(): void {
     if (this.session.get() === undefined) {
       return;
@@ -154,7 +149,7 @@ export class VolumeBakePreview {
     return this.view;
   }
 
-  /** Gives the renderer's context back - a page holds only a few. */
+  /** Releases the WebGL context. A page can hold only a few. */
   private release(): void {
     if (this.view !== undefined) {
       this.view.controls.dispose();

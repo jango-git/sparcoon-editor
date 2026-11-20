@@ -1,14 +1,6 @@
 /**
- * A project-styled dropdown - the flat, sharp-cornered replacement for a native `<select>` on a
- * node (flat, monochrome, accent on hover/active).
- *
- * The trigger reads like a `.param__input` field; clicking it opens a floating menu of options
- * via the shared popover (positioned in screen space, so it is unaffected by the graph canvas's
- * pan / zoom, mirroring the add-node menu). Picking an option fires `onChange` and closes; the menu
- * also closes on an outside press, Escape, or any scroll / resize.
- *
- * `setValue` re-syncs the shown label from an external change (undo / redo), matching the
- * paramSyncer contract the node view uses for its other widgets.
+ * Dropdown replacing a native `<select>`. Opens a screen-space popover, so graph pan and zoom do
+ * not move it. `setValue` re-syncs without firing `onChange`.
  */
 
 import { createElement } from "../dom";
@@ -71,7 +63,7 @@ export class Dropdown implements ValueComponent<string> {
             event.stopPropagation();
             this.toggle();
           },
-          // Keep a press on the trigger from starting a node drag / marquee.
+          // Do not start a node drag or marquee.
           pointerdown: (event) => event.stopPropagation(),
         },
       },
@@ -159,10 +151,9 @@ export class Dropdown implements ValueComponent<string> {
     this.element.classList.add("dropdown--open");
     this.popover = openPopover(menu, {
       anchor: { rectangle: this.element.getBoundingClientRect() },
-      // A single-column menu tracks the trigger width; a multi-column grid sizes to its content.
       matchAnchorWidth: !grid,
-      // A single-column node menu hugs the trigger's edge (no clamp, as before); a wider grid menu
-      // (the language switch, near the right edge) clamps so it never runs off-screen.
+      // A node menu hugs the trigger's edge without a clamp. A grid menu (the language switch, near
+      // the right edge) clamps so it never runs off-screen.
       clampToViewport: grid,
       scale: this.config.scale?.(),
       ignore: this.element,

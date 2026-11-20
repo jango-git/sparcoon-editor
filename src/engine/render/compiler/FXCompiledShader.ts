@@ -3,24 +3,22 @@ import type { FXRenderCapabilities } from "../../core/compiler/collectRenderCapa
 import type { FXGLSLHelperName } from "../../core/ir/FXHelpers.Internal";
 import type { FXValueType } from "../../core/socket/FXValueType";
 
-/** Describes a uniform a node wants to declare. The `value` is kept `unknown` so the IR stays
- *  three-independent; the material adapter turns it into an actual `THREE.IUniform`. */
+/** A uniform a node declares. `value` is `unknown` to keep the IR independent of three. */
 export interface FXUniformDescriptor {
   readonly type: FXValueType;
   /** Initial value (number, texture, color, ...). Interpreted by the adapter. */
   value: unknown;
-  /** Forces a **stable, verbatim** uniform name (a param node's user-chosen slot) instead of a
-   *  generated one; two allocations with the same `name` share one uniform (a type clash
-   *  between them is a compile error). Survives structural edits, unlike a generated name, so a timeline
-   *  can drive it by name through {@link FXEmitter.applyValues}. */
+  /**
+   * Fixed uniform name (a param node's slot). Allocations sharing a name share one uniform, a type
+   * clash is a compile error. The name survives edits, so a timeline can drive it through
+   * `applyValues`.
+   */
   readonly name?: string;
   /** Marks an **external** sampler (a Texture): declared but carrying no baked value - the host
    *  supplies the texture by slot name at load / via `applyValues`. */
   readonly external?: boolean;
 }
 
-/** Live handle returned when a uniform is allocated; node instances keep this to push runtime
- *  updates (editor scrubbing) into the compiled material. */
 export interface FXUniformHandle {
   /** Final, collision-free uniform name emitted into the shader. */
   readonly name: string;
@@ -32,7 +30,6 @@ export interface FXUniformHandle {
   readonly external?: string;
 }
 
-/** A vertex-to-fragment varying allocated during compilation. */
 export interface FXVarying {
   readonly name: string;
   readonly type: FXValueType;
@@ -41,7 +38,6 @@ export interface FXVarying {
   readonly interpolation: "smooth" | "flat";
 }
 
-/** Per-stage accumulation of generated GLSL. */
 export interface FXCompiledStage {
   /** `uniform <type> <name>;` of each uniform this stage's code reads (see
    *  `stageUniformDeclarations`). */
@@ -66,8 +62,6 @@ export interface FXCompiledProgram {
   readonly outputs: Readonly<Record<string, string>>;
 }
 
-/** The compiler's Three-independent intermediate representation; a material adapter consumes
- *  this and assembles it into the host's own `ShaderMaterial` source. */
 export interface FXCompiledShader {
   /** Final uniform map keyed by generated name, shared by both programs. */
   readonly uniforms: Readonly<Record<string, FXUniformHandle>>;
@@ -85,7 +79,6 @@ export interface FXCompiledShader {
   readonly hash: string;
 }
 
-/** A uniform's value before anything writes it: zero in every component. */
 export function zeroValue(type: FXValueType): number | number[] {
   return type.components === 1 ? 0 : new Array<number>(type.components).fill(0);
 }

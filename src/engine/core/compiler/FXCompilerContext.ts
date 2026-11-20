@@ -32,7 +32,6 @@ export interface FXCompilerContext {
    */
   readonly allocateAsset?: (kind: FXAssetKind, name: string) => FXExpr;
 
-  /** Whether the given input socket has a connected source. */
   hasInput(socketKey: string): boolean;
 
   /**

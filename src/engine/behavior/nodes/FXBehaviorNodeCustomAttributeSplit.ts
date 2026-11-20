@@ -67,7 +67,6 @@ export class FXBehaviorNodeCustomAttributeSplit extends FXBehaviorNode {
     return BEHAVIOR_CUSTOM_ATTRIBUTE_SPLIT_META;
   }
 
-  /** A buffer read plus a re-index (no arithmetic), like `custom-attribute` and `split`. */
   public override estimateCost(): number {
     return 0;
   }

@@ -156,11 +156,9 @@ export function createPreviewSettingsGroups(
     (value) => settings.update({ background: value }),
     paletteAccess,
   );
-  // An active environment (ADR-0004) fully replaces the manual fallback fields (hidden, not
-  // greyed), and keeps resyncing Sun's value controls since main.ts overwrites sun* once the HDRI
-  // derivation finishes - Sun itself is never hidden or blocked, the user can still edit it. Every
-  // other row resyncs unconditionally, so a store reset (preset apply / project load) redraws the
-  // whole Lighting/Scene tab from the restored defaults, not just Sun.
+  // An active environment hides the manual fallback fields. Sun stays editable and keeps resyncing,
+  // because main.ts overwrites sun* when the HDRI derivation finishes. Every other row resyncs
+  // unconditionally, so a store reset redraws the whole tab.
   const applyPreviewState = (): void => {
     const latest = settings.get();
     const active = store.getSource().activeEnvironmentName !== undefined;
@@ -238,7 +236,6 @@ export function createPreviewSettingsGroups(
       ],
     },
     {
-      // Gizmo: the modal transform tool's axis space (Local/Global) and per-mode snap increments.
       label: t("preview.gizmo"),
       glyph: viewportIcons.gizmo,
       rows: [
@@ -352,10 +349,8 @@ function colorRow(
 }
 
 /**
- * The active-environment picker (ADR-0004), labelled "Preset" inside the Environment section: an
- * {@link AssetPicker} over the content library's HDRI assets (by thumbnail) plus "None". `options`
- * is mutated in place (not replaced) so AssetPicker, which reads it fresh each time its popup opens,
- * always sees the current library without its own resync API.
+ * The active-environment picker over the HDRI library plus "None". `options` is mutated in place
+ * because AssetPicker reads it on each open.
  */
 function presetRow(store: Store): HTMLElement {
   const NONE_VALUE = "";

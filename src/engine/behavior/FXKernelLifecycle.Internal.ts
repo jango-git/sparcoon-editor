@@ -6,20 +6,16 @@ import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
 import { bufferAccess } from "./FXKernelShared.Internal";
 
 /**
- * The update's lifecycle epilogue for both tiers, kept in one place so JS and GLSL cannot drift.
- * The graph never writes `age`; it only binds the kill slot, and a kill sets
- * `age = max(age, lifetime)` - the dead state aging reaches, so everything that tells live from
- * dead treats it as an ordinary death. Aging by `dt` follows: in this epilogue on the GPU, in the
- * runtime (`advanceAges`) on JS.
+ * The update's lifecycle epilogue for both tiers. A kill sets `age = max(age, lifetime)`, so it
+ * reads as an ordinary death. The graph never writes `age`. Aging by `dt` follows in this epilogue
+ * on the GPU and in the runtime (`advanceAges`) on JS.
  */
 
-/** The update target's kill slot - the update sink's `kill` socket. */
 export const FX_KILL_SLOT = "kill";
 
 /** A kill value above this kills (the slot takes a 0/1 mask, like a collider's `contact`). */
 export const FX_KILL_THRESHOLD = 0.5;
 
-/** The kill slot as the binding validators see it: an optional float. */
 export function killSlotOutput(slot: string): FXValidatableOutput {
   return { slot, type: FX_VALUE_TYPES.float, required: false };
 }

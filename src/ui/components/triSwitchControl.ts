@@ -1,9 +1,5 @@
 /**
- * A three-position variant of the on/off switch ({@link createSwitchControl}): the same track+thumb
- * language, but each zone carries its own icon (so every mode is visible, not just the active one)
- * and a thumb slides behind the active zone's icon to pick it out. Selectable either by clicking a
- * zone or by dragging across the track - the thumb only ever occupies one whole zone at a time (no
- * eased/continuous position), so a drag snaps between modes exactly like a click would.
+ * Three-position switch. Each zone has its own icon. Click or drag snaps the thumb to whole zones.
  */
 
 import { createElement } from "../dom";

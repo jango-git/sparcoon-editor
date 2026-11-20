@@ -1,10 +1,10 @@
 import type { FXFunctionDef } from "../core/ir/FXFunctions.Internal";
 
+export const FX_SEEDED_RANDOM = "seededRandom";
+
 /**
- * JS-only helper functions (LUT sampling) with no GLSL form, merged over the core
- * {@link FX_FUNCTIONS} registry for the behavior/JS printer only (see {@link FX_BEHAVIOR_ALL_FUNCTIONS}).
- * `noise` itself lives in the core registry now (both a GLSL and a JS form), not here.
- * @internal
+ * JS-only helpers (LUT sampling, the CPU random draw) with no GLSL form, merged over FX_FUNCTIONS
+ * for the JS printer.
  */
 export const FX_BEHAVIOR_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = new Map<
   string,
@@ -19,6 +19,15 @@ export const FX_BEHAVIOR_FUNCTIONS: ReadonlyMap<string, FXFunctionDef> = new Map
       signatures: [{ args: ["float", "float"], result: "float" }],
       js: (args) => `fxSampleLut(${args[0]}, ${args[1]})`,
       jsHelper: ["fxSampleLut"],
+    },
+  ],
+  [
+    FX_SEEDED_RANDOM,
+    {
+      name: FX_SEEDED_RANDOM,
+      signatures: [{ args: ["float", "int", "int"], result: "float" }],
+      js: (args) => `fxRandom(${args[0]}, ${args[1]}, ${args[2]})`,
+      jsHelper: ["fxRandom"],
     },
   ],
 ]);

@@ -70,7 +70,6 @@ export class FXBehaviorNodeInheritedAttribute extends FXBehaviorNode {
     return this.valueType.id;
   }
 
-  /** A value shared by the whole spawn call, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

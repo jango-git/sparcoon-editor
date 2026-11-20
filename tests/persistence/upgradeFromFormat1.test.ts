@@ -7,7 +7,7 @@ import type {
   GraphOutputBinding,
 } from "../../src/domain/graphModel";
 import { createEmptyGraph } from "../../src/domain/graphModel";
-import { RENDER_SINK_ID } from "../../src/domain/nodePalette";
+import { GraphKind, metaFor, RENDER_SINK_ID } from "../../src/domain/nodePalette";
 import { FX_STANDARD_NODES } from "../../src/engine/nodes-std/index";
 import {
   migrateRenamedNodes,
@@ -274,6 +274,54 @@ describe("upgradeFromFormat1", () => {
         meshes: [{ id: "m", renderGraph: graph }],
       },
     });
+  });
+
+  it("splits read-attribute into builtin-attribute and custom-attribute", () => {
+    const graph = graphOf(
+      [
+        node("pos", "read-attribute", { type: "vec3", phase: "update", name: "position" }),
+        node("vel", "read-attribute", { type: "vec3", phase: "update", name: "velocity" }),
+        node("parts", "read-attribute-components", {
+          type: "vec3",
+          phase: "update",
+          name: "velocity",
+        }),
+        node("add", "add-scaled-vector"),
+      ],
+      [
+        wire("w1", ["pos", "value"], ["add", "a"]),
+        wire("w2", ["vel", "value"], ["add", "b"]),
+        wire("w3", ["parts", "x"], ["add", "scale"]),
+      ],
+      [{ slot: "position", from: { nodeId: "pos", socketKey: "value" } }],
+    );
+    const body = { scene: { emitters: [{ id: "e", behaviorGraph: graph }] } };
+    const upgraded = upgradeFromFormat1(body) as {
+      scene: { emitters: [{ behaviorGraph: EditorGraph }] };
+    };
+    const result = upgraded.scene.emitters[0].behaviorGraph;
+    expect(result.nodes["pos"]).toEqual(node("pos", "builtin-attribute"));
+    expect(result.nodes["vel"]).toEqual(
+      node("vel", "custom-attribute", { type: "vec3", name: "velocity" }),
+    );
+    expect(result.nodes["parts"]).toEqual(
+      node("parts", "custom-attribute-split", { type: "vec3", phase: "update", name: "velocity" }),
+    );
+    expect(result.connections).toEqual([
+      wire("w1", ["pos", "position"], ["add", "a"]),
+      wire("w2", ["vel", "value"], ["add", "b"]),
+      wire("w3", ["parts", "x"], ["add", "scale"]),
+    ]);
+    expect(result.outputBindings).toEqual([
+      { slot: "position", from: { nodeId: "pos", socketKey: "position" } },
+    ]);
+    for (const type of ["builtin-attribute", "custom-attribute", "custom-attribute-split"]) {
+      expect(metaFor(GraphKind.Behavior, type)).toBeDefined();
+      expect(metaFor(GraphKind.Render, type)).toBeDefined();
+    }
+    expect(
+      metaFor(GraphKind.Behavior, "builtin-attribute")?.outputs.map((socket) => socket.key),
+    ).toEqual(expect.arrayContaining(["position", "age", "lifetime", "id"]));
   });
 
   it("adds nothing a format-1 body lacks", () => {

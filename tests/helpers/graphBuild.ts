@@ -1,12 +1,9 @@
-import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE, FX_LIFETIME } from "sparcoon";
+import type { FXEmitterTransform } from "sparcoon";
+import { FX_CORE_LIFECYCLE, FX_CORE_LIFECYCLE_STRIDE, FX_ID, FX_LIFETIME } from "sparcoon";
 
 import type { FXBehaviorNode } from "../../src/engine/behavior/FXBehaviorNode";
 import type { FXCompiledKernel } from "../../src/engine/behavior/FXCompiledKernel";
-import type {
-  FXEmitterTransform,
-  FXParticleSpawnKernel,
-  FXParticleUpdateKernel,
-} from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
+import type { FXKernelBindingHandle } from "../../src/engine/behavior/FXCompiledKernel";
 import {
   buildParticleSpawnKernel,
   buildParticleUpdateKernel,
@@ -17,7 +14,7 @@ import type { FXBehaviorTargets } from "../../src/engine/behavior/FXParticleBeha
 import type { FXConnection, FXOutputBinding } from "../../src/engine/core/FXGraph";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXGraphNode } from "../../src/engine/core/FXGraphNode";
-import { type FieldBuffers, type FieldKernel, fieldsFor, overFields } from "./slots";
+import { type FieldBuffers, fieldsFor, overFields } from "./slots";
 
 /**
  * Graph-building and CPU-kernel helpers shared by the node and behavior tests: the
@@ -61,13 +58,14 @@ export function graphOf<N extends FXGraphNode>(
 }
 
 /**
- * The core lifecycle of `count` live particles, at age 0 of a 1 second life: the update skips a
- * particle whose age is not below its lifetime.
+ * The core lifecycle of `count` live particles, at age 0 of a 1 second life (the update skips a
+ * particle whose age is not below its lifetime), each with its own id.
  */
 export function liveLifecycle(count = 1): Float32Array {
   const lifecycle = new Float32Array(FX_CORE_LIFECYCLE_STRIDE * count);
   for (let i = 0; i < count; i++) {
     lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_LIFETIME] = 1;
+    lifecycle[i * FX_CORE_LIFECYCLE_STRIDE + FX_ID] = i;
   }
   return lifecycle;
 }
@@ -91,25 +89,39 @@ const IDENTITY_EMITTER: FXEmitterTransform = {
   angularVelocity: [0, 0, 0],
 };
 
-/** A spawn kernel over per-field arrays, born at rest at the origin and inheriting the compiled
- *  defaults unless told otherwise. */
+type Bindings = Readonly<Record<string, FXKernelBindingHandle>>;
+
+/** A spawn kernel over per-field arrays, born at rest at the origin, inheriting the compiled
+ *  defaults and drawing its randoms from seed 0 unless told otherwise. */
 export type FieldSpawnKernel = (
   fields: FieldBuffers,
   start: number,
   count: number,
-  bindings: Parameters<FieldKernel<FXParticleSpawnKernel>>[3],
+  bindings: Bindings,
   emitter?: FXEmitterTransform,
   inherited?: Float32Array,
+  seed?: number,
+) => void;
+
+/** An update kernel over per-field arrays, drawing its randoms from seed 0 unless told otherwise. */
+export type FieldUpdateKernel = (
+  fields: FieldBuffers,
+  count: number,
+  dt: number,
+  bindings: Bindings,
+  emitter?: FXEmitterTransform,
+  seed?: number,
 ) => void;
 
 /** The compiled spawn kernel, called on per-field arrays (see `overFields`). */
 export function fieldSpawnKernel(compiled: FXCompiledKernel): FieldSpawnKernel {
   const run = overFields(compiled.update.buffers, buildParticleSpawnKernel(compiled));
-  return (fields, start, count, bindings, emitter, inherited): void => {
+  return (fields, start, count, bindings, emitter, inherited, seed = 0): void => {
     run(
       fields,
       start,
       count,
+      seed,
       bindings,
       emitter ?? IDENTITY_EMITTER,
       inherited ?? Float32Array.from(compiled.inherit?.layout.defaults ?? []),
@@ -118,8 +130,11 @@ export function fieldSpawnKernel(compiled: FXCompiledKernel): FieldSpawnKernel {
 }
 
 /** The compiled update kernel, called on per-field arrays (see `overFields`). */
-export function fieldUpdateKernel(compiled: FXCompiledKernel): FieldKernel<FXParticleUpdateKernel> {
-  return overFields(compiled.update.buffers, buildParticleUpdateKernel(compiled));
+export function fieldUpdateKernel(compiled: FXCompiledKernel): FieldUpdateKernel {
+  const run = overFields(compiled.update.buffers, buildParticleUpdateKernel(compiled));
+  return (fields, count, dt, bindings, emitter, seed = 0): void => {
+    run(fields, count, dt, seed, bindings, emitter);
+  };
 }
 
 /** Options for {@link runKernel}. */
@@ -140,6 +155,8 @@ export interface RunKernelOptions {
   readonly state?: Readonly<Record<string, readonly number[]>>;
   /** Emitter transform handed to the kernel. */
   readonly emitter?: FXEmitterTransform;
+  /** The seed the kernel's randoms hash (default 0). */
+  readonly seed?: number;
 }
 
 /**
@@ -150,7 +167,7 @@ export function runKernel(
   graph: FXGraph<FXBehaviorNode>,
   options: RunKernelOptions = {},
 ): FieldBuffers {
-  const { phase = "update", targets, count = 1, dt = 0.016, state = {}, emitter } = options;
+  const { phase = "update", targets, count = 1, dt = 0.016, state = {}, emitter, seed } = options;
   const compiled =
     targets !== undefined ? compileBehavior(graph, targets) : compileParticleBehavior(graph);
   const buffers = buffersFor(compiled, count);
@@ -158,9 +175,17 @@ export function runKernel(
     buffers[name].set(values);
   }
   if (phase === "spawn") {
-    fieldSpawnKernel(compiled)(buffers, 0, count, compiled.spawn!.bindings, emitter);
+    fieldSpawnKernel(compiled)(
+      buffers,
+      0,
+      count,
+      compiled.spawn!.bindings,
+      emitter,
+      undefined,
+      seed,
+    );
   } else {
-    fieldUpdateKernel(compiled)(buffers, count, dt, compiled.update.bindings, emitter);
+    fieldUpdateKernel(compiled)(buffers, count, dt, compiled.update.bindings, emitter, seed);
   }
   return buffers;
 }

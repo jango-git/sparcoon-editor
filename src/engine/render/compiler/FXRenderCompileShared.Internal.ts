@@ -22,12 +22,6 @@ import type { FXGLSLRenderTier } from "./FXRenderCompilers";
 import type { FXPlacedProgram } from "./FXRenderStagePlacement.Internal";
 import { placeRenderStages } from "./FXRenderStagePlacement.Internal";
 
-/**
- * The shading-language-neutral parts both GLSL tiers' compile pipelines share - each pipeline
- * stays its own (see `FXCompilePipelineStandard.Internal.ts`), and calls these where they agree.
- */
-
-/** What a target output slot reads: a local's name (or an opaque value's code), in its stage. */
 export interface FXSlotValue {
   readonly stage: FXShaderStage;
   readonly value: string;
@@ -256,7 +250,6 @@ export interface FXPlacedStages {
   readonly varyingWrites: readonly string[];
   /** The varying each crossing local is read through in the fragment stage, by the local. */
   readonly carried: ReadonlyMap<string, string>;
-  /** The draw uniform a slot now reads, by the lifted local it read (see `liftDrawStage`). */
   readonly renamed: ReadonlyMap<string, string>;
 }
 

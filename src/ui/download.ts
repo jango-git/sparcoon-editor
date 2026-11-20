@@ -1,6 +1,3 @@
-/** Hands a file to the browser's download. */
-
-/** Downloads `contents` as `fileName`. */
 export function downloadFile(fileName: string, contents: BlobPart, type = ""): void {
   const url = URL.createObjectURL(new Blob([contents], { type }));
   const link = document.createElement("a");

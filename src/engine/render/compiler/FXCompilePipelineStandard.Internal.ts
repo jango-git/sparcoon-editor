@@ -45,17 +45,9 @@ import {
 import type { FXRenderContext } from "./FXRenderContext";
 
 /**
- * The standard (WebGL2 / GLSL-ES-3.00) render compiler pipeline: deliberately independent of the
- * baseline tier's `FXCompilePipelineBaseline.Internal.ts` all the way down to the
- * compile-state/context/placement layer, not just the printer or the build-method selection. Per
- * the project's tier-axis decision, the baseline and standard tiers share nothing below the IR
- * (`core/ir/`) and the shading-language-neutral compilation core
- * (`core/compiler/`) - the same degree of separation the future advanced (WebGPU/WGSL) tier would
- * have from either. Duplication with `FXCompilePipelineBaseline.Internal.ts` is intentional: this
- * tier's declaration strategy, placement rules, and optimizations are free to diverge without ever
- * touching that file. What is shading-language neutral - placement (`FXRenderStagePlacement`), the
- * uniform table and the finishing of the placed stages (`FXRenderCompileShared`) - is called, not
- * copied, while both tiers agree on it.
+ * Render compiler pipeline of the standard tier (GLSL ES 3.00). A separate copy of the baseline
+ * pipeline, so the tiers can diverge. Neutral steps live in FXRenderStagePlacement and
+ * FXRenderCompileShared.
  */
 
 /** This tier's bound builders - the full, unfiltered signature set (including `standardOnly`
@@ -495,11 +487,7 @@ function coerceSlotOutput(
   return name;
 }
 
-/**
- * Compiles a validated graph into an {@link FXCompiledShader} for the standard (WebGL2) tier.
- * Mirrors `FXCompilePipelineBaseline.Internal.ts`'s `compileGraphBaseline` in shape only - see the
- * module doc comment for why the implementation itself is a separate copy, not a shared helper.
- */
+/** Compiles a validated graph into an FXCompiledShader for the standard tier. */
 export function compileGraphStandard(
   graph: FXGraph<FXRenderNode>,
   target: FXTarget,

@@ -6,6 +6,7 @@ import type {
   FXBehaviorTargets,
   FXKernelTarget,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FX_DT_INPUT } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import { FXGraph } from "../../src/engine/core/FXGraph";
 import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
@@ -54,7 +55,7 @@ const kernelTarget = (offset: number): FXBehaviorTargets => ({
   update: {
     name: "shared-name",
     buffers: [{ name: "values", stride: 2 }],
-    inputs: [{ name: "dt", type: FLOAT }],
+    inputs: [FX_DT_INPUT],
     outputs: [{ slot: "v", type: FLOAT, required: false, buffer: "values", offsets: [offset] }],
   },
 });
@@ -99,7 +100,7 @@ describe("structural hash folds the target shape, not just its name", () => {
     const shell = (name: string): FXKernelTarget => ({
       name,
       buffers: [{ name: "values", stride: 2 }],
-      inputs: [{ name: "dt", type: FLOAT }],
+      inputs: [FX_DT_INPUT],
       outputs: [{ slot: "v", type: FLOAT, required: false, buffer: "values", offsets: [0] }],
     });
     // Old name-join "spawn|update" would collapse both pairs to "a|b|c".

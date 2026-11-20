@@ -1,3 +1,4 @@
+import type { FXEmitterTransform } from "sparcoon";
 import {
   FX_AGE,
   FX_CORE_BUFFERS,
@@ -24,10 +25,24 @@ import { collectInheritRequests, planInherits } from "./FXInherit";
 import type { FXInheritPlan, FXInheritRequest } from "./FXInheritPlan";
 import { FX_KILL_SLOT } from "./FXKernelLifecycle.Internal";
 
+export type FXEmitterTransformField = keyof FXEmitterTransform;
+
+/** A parameter of the kernel function an input may read. Which phase takes which is the phase's
+ *  parameter list (`SPAWN_KERNEL_PARAMETERS`, `UPDATE_KERNEL_PARAMETERS`). */
+export type FXKernelHostParameter = "dt" | "seed";
+
+/** A value the kernel gets from its caller rather than from the particle's slot. */
+export type FXKernelHostValue =
+  /** The same for every particle of a call. */
+  | { readonly kind: "parameter"; readonly parameter: FXKernelHostParameter }
+  /** The particle's own index into the slots, different for every particle. */
+  | { readonly kind: "particleIndex" }
+  | { readonly kind: "emitter"; readonly field: FXEmitterTransformField };
+
 /**
- * A builtin a behavior node may read. `offsets` are the float indices within the named
- * `buffer` (1 for a scalar, N for a vector); a synthesized input not backed by a buffer
- * (e.g. `dt`) omits them and is resolved by the kernel context specially.
+ * A value a node may read. It comes from exactly one place: the particle's slot (`offsets`, the
+ * float indices within `buffer`, one per component), what the newborns of a spawn call inherit
+ * (`inheritOffset`) or the kernel's caller (`host`).
  */
 export interface FXKernelTargetInput {
   readonly name: string;
@@ -50,6 +65,7 @@ export interface FXKernelTargetInput {
    * Offset-less like the emitter transform, so hoisted; spawn targets only.
    */
   readonly inheritOffset?: number;
+  readonly host?: FXKernelHostValue;
 }
 
 /**
@@ -68,13 +84,9 @@ export interface FXKernelTargetOutput {
 }
 
 /**
- * Contract between one phase of a behavior graph and the CPU kernel - the phase-based analog
- * of a render `FXTarget`. A behavior graph is authored once but compiled against *two* of
- * these, one per phase; the compiler routes each node to its phase target by its declared
- * phase. Described as data (not code) so a host can define its own target without touching
- * the kernel context/builder. `integration` (structured epilogue writes) is unused by the
- * default particle targets - motion is an explicit `integrate-motion` graph node instead - but
- * stays available for a custom target.
+ * What one phase of a behavior graph may read and write. A graph compiles against two (spawn and
+ * update), each node routed by its phase. Plain data, so a host can define its own. `integration`
+ * (epilogue writes) is unused by the particle targets, where motion is an `integrate-motion` node.
  */
 export interface FXKernelTarget {
   readonly name: string;
@@ -103,17 +115,13 @@ export interface FXKernelTarget {
 export interface FXBehaviorTargets {
   readonly spawn?: FXKernelTarget;
   readonly update: FXKernelTarget;
-  /** Whether the orchestration layer (FXCompiledBehaviorBundle.ts) should also attempt any
-   *  optional simulation family. Opaque data at this layer - the target shape itself does not
-   *  know what a "family" is, it only carries the bit so the structural hash can fold it in. */
+  /**
+   * Opts the target in to the optional simulation families (see FXCompiledBehaviorBundle). Only
+   * folded into the structural hash here.
+   */
   readonly tryGpuSimulation?: boolean;
 }
 
-/**
- * Builds the phase targets for a set of requested attributes and the graph requesting them.
- * Injected into the live compile backend so the particle default
- * ({@link particleBehaviorTargetsFor}) can be swapped for a host's own target scheme.
- */
 export type FXBehaviorTargetFactory = (
   attributes: readonly FXAttributeRequest[],
   graph: FXGraph<FXBehaviorNode>,
@@ -126,55 +134,55 @@ const INT = FX_VALUE_TYPES.int;
 
 /**
  * The emitter's world (model) matrix, readable in both phases as `modelMatrix` - the same name
- * the render backend exposes, so one shared `world-matrix` node reads it on either side. A
- * synthesized input with no backing buffer (like `dt`); resolves to a field of the runtime
- * `emitter` argument (see `resolveKernelTargetInputRef`) - in the spawn phase, as it stood at each
- * particle's birth (`FXKernelTargetInput.atBirth`).
+ * the render backend exposes, so one shared `world-matrix` node reads it on either side. In the
+ * spawn phase it is read as it stood at each particle's birth (`FXKernelTargetInput.atBirth`).
  */
 export const FX_MODEL_MATRIX_INPUT = "modelMatrix";
 
 /**
- * The emitter's world-space linear/angular velocity, readable in both phases via the same
- * synthesized-input mechanism as {@link FX_MODEL_MATRIX_INPUT}. Never derived from
+ * The emitter's world-space linear/angular velocity, readable in both phases. Never derived from
  * `PARTICLE_POSITION`, which declares no space - a graph that keeps positions relative to the
  * emitter must convert this velocity itself.
  */
 export const FX_OBJECT_VELOCITY_INPUT = "objectVelocity";
 export const FX_OBJECT_ANGULAR_VELOCITY_INPUT = "objectAngularVelocity";
 
-/** Kernel-argument field each host-matrix/motion input resolves to (`emitter.<field>[component]`). */
-export const FX_EMITTER_INPUT_FIELD: Readonly<
-  Record<string, "worldMatrix" | "velocity" | "angularVelocity">
-> = {
-  [FX_MODEL_MATRIX_INPUT]: "worldMatrix",
-  [FX_OBJECT_VELOCITY_INPUT]: "velocity",
-  [FX_OBJECT_ANGULAR_VELOCITY_INPUT]: "angularVelocity",
-};
-
 const EMITTER_HOST_INPUTS: readonly FXKernelTargetInput[] = [
-  { name: FX_MODEL_MATRIX_INPUT, type: MAT4 },
-  { name: FX_OBJECT_VELOCITY_INPUT, type: VEC3 },
-  { name: FX_OBJECT_ANGULAR_VELOCITY_INPUT, type: VEC3 },
+  { name: FX_MODEL_MATRIX_INPUT, type: MAT4, host: { kind: "emitter", field: "worldMatrix" } },
+  { name: FX_OBJECT_VELOCITY_INPUT, type: VEC3, host: { kind: "emitter", field: "velocity" } },
+  {
+    name: FX_OBJECT_ANGULAR_VELOCITY_INPUT,
+    type: VEC3,
+    host: { kind: "emitter", field: "angularVelocity" },
+  },
 ];
 
-/** The spawn phase's: a particle spawns from the emitter as it stood at its birth. */
+/** Spawn-phase emitter inputs: the model matrix is read as at the particle birth. */
 const SPAWN_EMITTER_HOST_INPUTS: readonly FXKernelTargetInput[] = EMITTER_HOST_INPUTS.map(
   (input) => (input.name === FX_MODEL_MATRIX_INPUT ? { ...input, atBirth: true } : input),
 );
 
-/**
- * The current particle's own index into the state buffers (the JS loop variable `i`; the
- * standard-tier GLSL assembler synthesizes it as `gl_VertexID`). A synthesized input like
- * {@link FX_MODEL_MATRIX_INPUT}, but resolved and classified separately
- * (`resolveKernelTargetInputRef`/`isInvariantKernelRef`): unlike the emitter-transform inputs,
- * which are the same value for every particle in one tick, this one is different for every
- * particle and must never be loop-hoisted.
- */
+export const FX_DT_INPUT: FXKernelTargetInput = {
+  name: "dt",
+  type: FX_VALUE_TYPES.float,
+  host: { kind: "parameter", parameter: "dt" },
+};
+
+/** The seed of the update a CPU kernel runs in, its `seed` parameter: what its random draws hash
+ *  with the particle's id (see `FXKernelRandom.Internal.ts`). */
+export const FX_SEED_INPUT: FXKernelTargetInput = {
+  name: "SIMULATION_SEED",
+  type: FX_VALUE_TYPES.int,
+  host: { kind: "parameter", parameter: "seed" },
+};
+
 export const FX_PARTICLE_INDEX_INPUT = "PARTICLE_INDEX";
 
 const PARTICLE_INDEX_INPUTS: readonly FXKernelTargetInput[] = [
-  { name: FX_PARTICLE_INDEX_INPUT, type: INT },
+  { name: FX_PARTICLE_INDEX_INPUT, type: INT, host: { kind: "particleIndex" } },
 ];
+
+export const FX_PARTICLE_ID_INPUT = "PARTICLE_ID";
 
 /** The two fixed core buffers: position vec3, lifecycle vec3 `[age, lifetime, id]`. */
 const POSITION_BUFFER = FX_CORE_POSITION;
@@ -191,7 +199,7 @@ const scalarReadInputs: readonly FXKernelTargetInput[] = [
   { name: "PARTICLE_POSITION_Z", type: FLOAT, offsets: [FX_POSITION_Z], buffer: POSITION_BUFFER },
   { name: "PARTICLE_AGE", type: FLOAT, offsets: [FX_AGE], buffer: LIFECYCLE_BUFFER },
   { name: "PARTICLE_LIFETIME", type: FLOAT, offsets: [FX_LIFETIME], buffer: LIFECYCLE_BUFFER },
-  { name: "PARTICLE_ID", type: FLOAT, offsets: [FX_ID], buffer: LIFECYCLE_BUFFER },
+  { name: FX_PARTICLE_ID_INPUT, type: FLOAT, offsets: [FX_ID], buffer: LIFECYCLE_BUFFER },
   // What a random seeds from by default: the particle's id, as on the render side.
   { name: FX_RANDOM_SEED_INPUT, type: FLOAT, offsets: [FX_ID], buffer: LIFECYCLE_BUFFER },
 ];
@@ -255,12 +263,10 @@ function writeOutputs(includeSpawnOnly: boolean): readonly FXKernelTargetOutput[
   return [...scalars, ...vec3s];
 }
 
-/** Behavior target-input name exposing an attribute buffer for reads (both phases). */
 export function attributeInputName(name: string): string {
   return `ATTR_${name}`;
 }
 
-/** Behavior output-slot name a `store-attribute` node binds to write an attribute. */
 export function attributeSlot(name: string): string {
   return `attr:${name}`;
 }
@@ -283,7 +289,6 @@ function attributeOffsets(components: number): number[] {
   return [...Array(components).keys()];
 }
 
-/** Attribute buffer + input + slot fragments shared by both phases. */
 /**
  * The particle slot's buffers in the order both kernels lay it out - the JS one's literal offsets
  * and the GPU one's attribute locations follow it, and the runtime never reorders it: sparcoon's
@@ -362,6 +367,7 @@ export function buildParticleBehaviorTargets(
       ...readInputs,
       ...SPAWN_EMITTER_HOST_INPUTS,
       ...PARTICLE_INDEX_INPUTS,
+      FX_SEED_INPUT,
       ...attributeInputEntries,
       ...inheritInputs(inheritPlan),
     ],
@@ -373,13 +379,14 @@ export function buildParticleBehaviorTargets(
     buffers,
     inputs: [
       ...readInputs,
-      { name: "dt", type: FLOAT },
+      FX_DT_INPUT,
       ...EMITTER_HOST_INPUTS,
       ...PARTICLE_INDEX_INPUTS,
+      FX_SEED_INPUT,
       ...attributeInputEntries,
     ],
     outputs: [...writeOutputs(false), ...attributeSlotEntries],
-    // No built-in integration: motion is an explicit `integrate-motion` node now.
+    // No integration: motion is an `integrate-motion` node.
     killSlot: FX_KILL_SLOT,
   };
   return { spawn, update, tryGpuSimulation };

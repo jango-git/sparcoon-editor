@@ -35,8 +35,7 @@ export function valueTypeError(
 
 /** Whether `value` is a plain object (usable for property access). */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  // `typeof null === "object"` too; every other "object" value is truthy, so this excludes
-  // exactly the null case without writing the literal (banned - see naming-convention rules).
+  // A null is also `typeof "object"`; the truthiness check excludes it.
   return typeof value === "object" && Boolean(value);
 }
 

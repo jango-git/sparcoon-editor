@@ -70,10 +70,8 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
 
   const stats = createGraphStats();
   graph.append(stats.element);
-  // Nodes/Cost: every graph the active owner authors, summed - an emitter's render + behavior
-  // pair (and its trail), or a VFX mesh's lone render graph. The Behavior/Render switch no longer changes this
-  // total (each graph's own number now lives on its sink's header instead; see graphCanvas.ts's
-  // `sinkCosts`). Only moves on a structural edit (a different active owner counts as one).
+  // Nodes and cost summed over every graph the active owner authors. Changes only on a structural
+  // edit.
   const updateStats = (): void => {
     const totals = authoredGraphs(selectActiveGraphOwner(store)).map(({ name, graph: authored }) =>
       computeGraphStats(GRAPH_SLOTS[name].kind, authored),
@@ -182,7 +180,6 @@ function createStripSwitch(
     graphView.setMode(labels.mode);
   });
 
-  // A trash button guarded like every other delete (countdownConfirm.ts): a whole graph goes with it.
   const remove = createElement("button", {
     className: "graph-switch__remove confirm-danger",
     type: "button",
@@ -196,7 +193,6 @@ function createStripSwitch(
     }
   });
 
-  // Whether the button currently shows as the plain switch (`undefined` before the first refresh).
   let isSwitch: boolean | undefined;
   const refresh = (owner: ActiveGraphOwner): void => {
     const has = owner[slot] !== undefined;
@@ -268,12 +264,8 @@ function createGraphSwitch(graphView: GraphViewState, store: Store): HTMLElement
 }
 
 /**
- * Toggles the invalid state on the region and (re)builds the error frame from `status`. A message
- * traceable to one node (`status.errors[index].nodeId` - see `render/emitterView.ts`'s
- * `invalidFromErrors`) renders as a button that calls `onFocusNode`, jumping the canvas to it; a
- * message with no such node (a cross-graph conflict, a blocked-by-the-other-graph notice, a caught
- * exception - none of which carry `errors` at all) stays plain, unclickable text. A valid graph's
- * `warnings` take the same frame in the warning color instead, without the region's red outline.
+ * Rebuilds the error frame from `status`. A message with `nodeId` is a button that jumps to the
+ * node, other messages are plain text. Warnings use the warning color without the red outline.
  */
 function renderErrors(
   graph: HTMLElement,

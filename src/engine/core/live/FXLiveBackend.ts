@@ -17,7 +17,6 @@ export interface FXLiveBackend<N extends FXGraphNode, A> {
    */
   previewHash(graph: FXGraph<N>): string;
 
-  /** Full compile of the current graph into an installable artifact. */
   compile(graph: FXGraph<N>): A;
 
   /** Hot-swaps the artifact into the live runtime (mesh material / kernels). */

@@ -1,8 +1,7 @@
 /**
- * The longest lifetime a particle of an emitter can be born with, which the runtime settles an
+ * The longest lifetime an emitter's particle can be born with, which the runtime settles the
  * emitter by (`FXEmitterOptions.maxLifetime`). Lifetime is written at birth only and Kill only
- * shortens it, so a bound read off the spawn binding holds for the particle's whole life. Shared by
- * the live preview's warning and the export, so the two agree on which emitters have one.
+ * shortens it, so a bound read off the spawn binding holds for the particle's whole life.
  */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
@@ -40,7 +39,6 @@ export function lifetimeUpperBound(behavior: FXGraphSnapshotData): number | unde
   return Math.max(min, max);
 }
 
-/** A warning when an emitter has no bound: its exported effect never dispatches `"drained"`. */
 export function unboundedLifetimeWarnings(behavior: FXGraphSnapshotData): FXCompilerError[] {
   return lifetimeUpperBound(behavior) === undefined
     ? [

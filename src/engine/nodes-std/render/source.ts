@@ -3,10 +3,8 @@ import { defineNode } from "../../core/nodes/defineNode";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
- * Standard-library render source nodes: scalar/coordinate producers that read a host-provided
- * builtin (UV, clock, camera distance, normalized life). `stage: "param"` on the stage-agnostic
- * ones lets placement infer into a vertex-stage chain as well as fragment. A plain constant comes
- * from the shared `constant` node instead; a per-particle builtin from `builtin-attribute`.
+ * Render source nodes that read a host builtin (UV, clock, camera distance, normalized life).
+ * `stage: "param"` lets placement put the stage-agnostic ones in a vertex chain.
  */
 
 /** The global clock (`u_time`, seconds since start) as a float source. */
@@ -129,10 +127,7 @@ export const fxFrontFacing = defineNode({
   }),
 });
 
-/**
- * All standard render source node definitions. A constant RGBA color is not a dedicated node -
- * use a `constant` with its `color` type instead (a `vec4` edited via a color picker).
- */
+/** All render source node definitions. */
 export const FX_RENDER_SOURCE_NODES: readonly FXNodeDefinition[] = [
   fxTime,
   fxDeltaTime,

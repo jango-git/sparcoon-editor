@@ -17,8 +17,6 @@ function attributeType(
   return resolveValueType((params?.["type"] as FXGLSLTypeName | undefined) ?? "vec4");
 }
 
-/** Registers the hand-written render manual nodes into `registry`. None owns a `three` texture
- *  resource directly, so all register unconditionally, needing no resolver. */
 export function registerManualRenderNodes(registry: FXNodeRegistry<FXRenderNode>): void {
   registry.register(
     "custom-attribute",

@@ -53,8 +53,7 @@ export const fxBlend = defineNode({
   build: ({ inputs, params: parameters, emitHelper, fn }) => {
     const base = inputs["base"];
     const blend = inputs["blend"];
-    // Exhaustive over BLEND_MODES: a new option added to the enum without a case here
-    // is a compile-time `never` error, not a mode silently rendered as "normal" (M4).
+    // Exhaustive over BLEND_MODES: a missing case is a `never` compile error.
     const mode = parameters.mode as FXBlendMode;
     switch (mode) {
       case "normal":
@@ -69,9 +68,7 @@ export const fxBlend = defineNode({
         return { color: fn.sub(one, fn.mul(fn.sub(one, base), fn.sub(one, blend))) };
       }
       default: {
-        // Unreachable for a valid enum value (coerce rejects others); the `never`
-        // binding makes an unhandled future mode a compile-time type error instead of a
-        // silent fallback to "normal" - the throw only guards against that invariant breaking.
+        // Unreachable: coerce rejects other values.
         const unreachable: never = mode;
         throw new FXCompilerErrorException({
           code: "unhandled-blend-mode",
@@ -235,7 +232,6 @@ export const fxSurfaceNormal = defineNode({
   inputs: {},
   outputs: { normal: { type: "vec3" } },
   params: {},
-  // A builtin read, no arithmetic.
   cost: 0,
   reads: ["geometryNormal"],
   build: ({ target }) => ({ normal: target.read("geometryNormal") }),

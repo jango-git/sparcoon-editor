@@ -14,22 +14,15 @@ import { FXShaderStage } from "../FXShaderStage";
 import { attributeVaryingName } from "../target/FXParticleRenderTarget";
 
 /**
- * Render node: reads a named per-particle attribute as its `value` output - a user attribute
- * is read through the `p_fx_<name>` varying (filled by the runtime from its packed attribute),
- * reserved through {@link attributeRequest}.
- * A core builtin (position/age/lifetime/id) reads through the separate `builtin-attribute`
- * node instead, never this one. Stage-flexible: both varyings are exposed in both stages, so
- * the compiler places this by its consumers (fragment tint vs. vertex billboard driver).
+ * Reads a user attribute through its `p_fx_<name>` varying, reserved by `attributeRequest`. A core
+ * builtin uses `builtin-attribute`. Stage-flexible, so placement follows consumers.
  */
 export class FXRenderNodeCustomAttribute extends FXRenderNode {
   public readonly type = "custom-attribute";
-  /** No intrinsic stage; the compiler infers placement from the consumers. The declared
-   *  {@link stage} is only a nominal fallback. */
   public override readonly stageFlexible = true;
   public override readonly attributeRequest: FXAttributeRequest;
   public readonly inputs: readonly FXSocketDescriptor[] = [];
   public readonly outputs: readonly FXSocketDescriptor[];
-  /** The declared attribute name this node reads. */
   private readonly sourceName: string;
   /** Target input this node reads: the attribute's `p_fx_<name>` varying. */
   private readonly targetInput: string;
@@ -37,12 +30,6 @@ export class FXRenderNodeCustomAttribute extends FXRenderNode {
 
   private readonly stageValue: FXShaderStage;
 
-  /**
-   * @param name - A user-declared attribute name (checked by {@link resolveAttributeSource})
-   * @param type - Element type of the attribute
-   * @param stage - Nominal fallback stage; the effective stage is inferred (see
-   *   {@link stageFlexible}). Defaults to FRAGMENT.
-   */
   constructor(name: string, type: FXValueType, stage: FXShaderStage = FXShaderStage.FRAGMENT) {
     super();
     // The runtime fills the `p_fx_<name>` varying this reads from its packed attribute.
@@ -55,7 +42,6 @@ export class FXRenderNodeCustomAttribute extends FXRenderNode {
     this.outputs = [{ key: "value", type: this.valueType }];
   }
 
-  /** Nominal fallback stage; the effective stage is inferred by the compiler (see {@link stageFlexible}). */
   public get stage(): FXShaderStage {
     return this.stageValue;
   }
@@ -64,12 +50,10 @@ export class FXRenderNodeCustomAttribute extends FXRenderNode {
     return [this.targetInput];
   }
 
-  /** Palette metadata (the read set is `dynamic` - it depends on the attribute name). */
   public static describe(): FXNodeMeta {
     return CUSTOM_ATTRIBUTE_META;
   }
 
-  /** A varying/buffer read, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }

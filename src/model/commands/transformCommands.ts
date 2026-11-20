@@ -45,9 +45,8 @@ interface EntityTransform {
 }
 
 /**
- * Applies `update` to whichever entity `entity` names, committing the result as a view edit.
- * `live: true` (an intermediate step of a scrub/drag control) commits through `Store.commitLive`
- * instead, so a whole drag gesture costs undo history exactly one entry, not one per step.
+ * Applies `update` to the entity and commits a view edit. `live: true` commits through
+ * `Store.commitLive`, without an undo entry.
  */
 function updateEntity(
   store: Store,
@@ -208,7 +207,6 @@ export function setTransformKeyframe(
   return key.id;
 }
 
-/** Removes transform keyframe `keyId` from `entity` (dropping a channel track left with no keys). */
 export function removeTransformKeyframe(store: Store, entity: SceneEntity, keyId: string): void {
   updateEntity(store, entity, (current) => ({
     ...current,

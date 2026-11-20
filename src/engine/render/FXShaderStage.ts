@@ -1,5 +1,4 @@
-/** Shader stage a node, input, output or emitted statement belongs to. The compiler is
- *  stage-aware so one graph can drive both programs, promoting crossing values to varyings. */
+/** Shader stage a node, input, output or statement belongs to. */
 export enum FXShaderStage {
   VERTEX = "vertex",
   FRAGMENT = "fragment",

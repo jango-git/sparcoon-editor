@@ -16,7 +16,6 @@ export function importProject(store: Store, source: SourceState): void {
   store.commit(source, "structural");
 }
 
-/** Renames the project. View-only: the name is metadata, it feeds no node or derived slot. */
 export function setProjectName(store: Store, name: string): void {
   const source = store.getSource();
   if (source.name === name) {

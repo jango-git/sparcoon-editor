@@ -77,8 +77,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   const store = new Store(initialState);
 
   const previewSettings = new PreviewSettingsStore();
-  // The timeline transport is transient (playhead + play state); it loops over the authored
-  // length in `source.timeline`, read live so the length command takes effect immediately.
+  // Transient transport state. Loops over the length in `source.timeline`, read live.
   const transport = new TransportStore(
     () => store.getSource().timeline.duration,
     () => hasInfinitePlay(store),
@@ -107,10 +106,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       timelineSelection.selectEmitter(owner.id);
     }
   }
-  // Gizmo preferences: axis space (Local/Global) + per-mode snap increments.
   const gizmoSettings = new GizmoSettingsStore();
-  // How the editor is navigated (mouse vs trackpad) - one global state read by the graph and the
-  // viewport, set from the middlebar toggle.
   const inputMode = new InputModeState();
   const viewMode = new PreviewViewModeState();
   const context: EditorContext = {
@@ -138,8 +134,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     () => transport.isPlaying(),
     shell.reportStats,
   );
-  // Viewport navigation follows the global input mode: touchpad pans on two-finger
-  // scroll and pinch-zooms; mouse keeps the wheel-zoom.
   const applyInputMode = (): void => coordinator.setTouchpad(inputMode.mode === InputMode.Touchpad);
   inputMode.onChange(applyInputMode);
   applyInputMode();
@@ -148,8 +142,8 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   // The texture registry turns the asset library's data-URL images into live GPU textures
   // the preview binds into its Texture slots. A finished async decode rebinds.
   const textures = new TextureRegistry(() => pipeline.scheduleRecompute());
-  // ADR-0004: HDRI decode drives the viewport background + light probe. `derivedSunFor` re-derives
-  // Sun only once per (re)activation, so a manual Sun edit under HDRI isn't silently overwritten again.
+  // HDRI decode drives the viewport background and light probe. `derivedSunFor` re-derives the Sun
+  // once per activation, so a manual Sun edit under an HDRI is not overwritten.
   let derivedSunFor: DecodedEnvironment | undefined;
   function applyActiveEnvironment(): void {
     const decoded = environments.resolve(store.getSource().activeEnvironmentName);
@@ -168,8 +162,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     coordinator.setActiveEnvironment(decoded);
   }
   const environments = new EnvironmentTextureRegistry(applyActiveEnvironment);
-  // Mesh-geometry registry turns baked mesh assets into live BufferGeometry for "custom" geometry
-  // sources; fully synchronous (no decode), so unlike TextureRegistry it needs no load-callback.
+  // Synchronous, unlike TextureRegistry: no load callback.
   const meshGeometries = new MeshGeometryRegistry();
   const volumes = new VolumeTextureRegistry(() => pipeline.scheduleRecompute());
   const sceneEmitters = new SceneEmitters(
@@ -200,7 +193,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
       pipeline.recomputeNow();
     }
   });
-  // The timeline drives spawning: crossing a burst/play event fires it on the owning emitter.
   new TimelineDispatcher(
     store,
     transport,
@@ -265,8 +257,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   // since the router's modifier match keeps the two chords distinct.
   router.registerGlobal([{ code: "Space", modifier: true, run: (): void => shell.openAssets() }]);
 
-  // The Blender-style modal transform tool (grab/rotate/scale) for the selected entity. G/R/S
-  // start it while the Viewport is the active panel; the tool then owns the pointer + keys.
   const transformGuides = new TransformGuides(coordinator.scene);
   const transformTool = new TransformTool(
     coordinator.getCamera(),
@@ -276,7 +266,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     sceneEmitters,
     context,
   );
-  // Frames an entity (or, when it has no live object, the whole VFX scene) in the viewport.
   const focusEntity = (entity: SceneEntity): void => {
     const object = sceneEmitters.entityObject(entity) ?? sceneEmitters.entityObject(VFX_ENTITY);
     if (object !== undefined) {
@@ -284,14 +273,11 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     }
   };
   router.registerPanel(EditorPanel.Viewport, [
-    // Blender-style overlay toggle while the viewport is active: N collapses/expands the N-panel's
-    // active tab (the side tab strip stays visible).
     { code: "KeyN", run: (): void => shell.toggleTransformPanel() },
     { code: "KeyG", shift: false, run: (): void => transformTool.begin("grab") },
     { code: "KeyR", shift: false, run: (): void => transformTool.begin("rotate") },
     { code: "KeyS", shift: false, run: (): void => transformTool.begin("scale") },
     { code: "KeyF", shift: false, run: (): void => focusEntity(timelineSelection.get()) },
-    // I bakes a keyframe for every transform channel of the selected object at the playhead.
     {
       code: "KeyI",
       run: (): void =>
@@ -339,14 +325,12 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     });
   }
 
-  // Right-click (no drag) in the preview => insert a position / rotation / scale key separately.
   installPreviewContextMenu(shell.previewContainer, store, timelineSelection, transport, () =>
     transformTool.isActive(),
   );
 
   coordinator.start();
 
-  // The programmatic API for agents driving this page (window.sparcoon, see src/agent/index.ts).
   installAgentApi({
     store,
     transport,
@@ -358,7 +342,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     arrangeGraph: shell.arrangeGraph,
   });
 
-  // Initial derive: seed the texture, mesh and volume caches, then run the source through the library once.
   textures.sync(store.getSource().assets);
   meshGeometries.sync(store.getSource().meshAssets);
   volumes.sync(store.getSource().volumeAssets);

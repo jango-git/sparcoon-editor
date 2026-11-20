@@ -17,7 +17,6 @@ import {
 } from "./artifactLiterals";
 import { FXRenderModuleWriter } from "./FXRenderModuleWriter";
 
-/** Options for {@link emitEffectModule}. */
 export interface FXEmitModuleOptions {
   /** The geometry to instance per particle: a built-in primitive or a custom mesh asset, named.
    *  @defaultValue `{ type: "primitive", primitive: "plane" }` */
@@ -28,15 +27,11 @@ export interface FXEmitModuleOptions {
   readonly importSpecifier?: string;
 }
 
-/** The module's export name for each tier's render artifact, in tier order. */
 const RENDER_EXPORT_NAMES = { baseline: "renderBaseline", standard: "renderStandard" } as const;
 
 /**
- * Turns a render + behavior graph into a ready-to-import ESM effect module (text). The runtime
- * only executes the result (`FXEmitter.fromArtifacts`) - no graph, compiler, or `eval` at runtime.
- *
- * The emitted `spawn`/`update` are real authored functions carrying the exact per-particle source
- * the preview's kernel builder runs, calling the helpers the module imports.
+ * Emits an ESM effect module for the graphs. `spawn`/`update` are the same per-particle source the
+ * preview builds.
  */
 export function emitEffectModule(
   renderGraph: FXGraph<FXRenderNode>,
@@ -49,8 +44,7 @@ export function emitEffectModule(
 
   const renderAttributes = collectAttributeRequests(renderGraph).requests;
   const renderTarget = buildParticleTarget(renderAttributes);
-  // Every registered GLSL-family render compiler (today baseline/standard), so the module
-  // exports both tiers the runtime can pick between by render capability.
+  // One artifact per registered GLSL tier, so the runtime can pick by render capability.
   const shaders = Object.fromEntries(
     Object.entries(FX_GLSL_RENDER_COMPILERS).map(
       ([id, compiler]) => [id, compiler.compile(renderGraph, renderTarget)] as const,

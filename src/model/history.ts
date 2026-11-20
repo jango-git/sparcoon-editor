@@ -1,6 +1,6 @@
 /**
- * Undo/redo over the *source* only. A snapshot is a whole `SourceState`, cheap since source is
- * immutable (structural sharing, no deep clone); each entry keeps its {@link ChangeKind} so undo/redo re-announces the original kind (see {@link Store.undo}).
+ * Undo and redo over the source. A snapshot is a whole `SourceState`, shared structurally. Each
+ * entry keeps its {@link ChangeKind} so undo and redo re-announce it (see {@link Store.undo}).
  */
 
 import type { SourceState } from "./editorState";

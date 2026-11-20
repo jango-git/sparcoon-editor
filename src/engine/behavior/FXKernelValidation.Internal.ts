@@ -20,13 +20,8 @@ import type {
 } from "./FXParticleBehaviorTarget";
 
 /**
- * Phase placement inference and the behavior-graph validators, plus the whole-graph
- * `validateBehavior`. The render analog is duplicated per tier in `FXCompilePipelineBaseline.Internal`
- * (baseline) and `FXCompilePipelineStandard.Internal` (standard); this module stays shared across
- * behavior's JS and standard-tier (GLSL/transform-feedback) backends instead, because what it
- * decides - a node's phase, a graph's structural well-formedness - does not depend on which
- * language a phase eventually prints to. Split out of `FXParticleBehaviorKernel.Internal`, which
- * imports these back.
+ * Phase inference and the behavior-graph validators. Shared by the JS and standard-tier backends
+ * because phase and graph validity do not depend on the output language.
  */
 
 /**
@@ -75,8 +70,8 @@ export function resolvePlacementPhases(
 }
 
 /**
- * Structural-hash tag for a node's inferred phase. Folded into the behavior hash so a
- * rewiring that moves a flexible node between phases recompiles rather than rebinds.
+ * Hash tag of a node's inferred phase, so moving a flexible node between phases recompiles instead
+ * of rebinding.
  */
 export function phaseTag(
   phases: ReadonlyMap<string, FXBehaviorPhase>,
@@ -86,10 +81,7 @@ export function phaseTag(
   return node.phaseFlexible ? (phases.get(id) ?? node.phase) : node.phase;
 }
 
-/**
- * Builds a single-phase view of a behavior graph (nodes/connections/bindings restricted to
- * `phase`), a legit {@link FXGraph} the shared validation/traversal machinery consumes unchanged.
- */
+/** Restricts the graph to one phase, as a plain FXGraph for the shared validation. */
 export function buildPhaseView(
   graph: FXGraph<FXBehaviorNode>,
   phase: FXBehaviorPhase,
@@ -107,8 +99,7 @@ export function buildPhaseView(
   // `binding.phase` is the plain-string ABI representation, not the FXBehaviorPhase enum -
   // compare against its string form rather than the enum value directly.
   const phaseName = phase === FXBehaviorPhase.SPAWN ? "spawn" : "update";
-  // A phase-tagged binding belongs to its own phase; an untagged one (render / legacy)
-  // falls back to its producer's placement, which inference already put in this view.
+  // A phase-tagged binding belongs to its phase, an untagged one follows its producer's placement.
   const outputBindings = graph.outputBindings.filter(
     (binding) =>
       nodes.has(binding.from.nodeId) &&
@@ -257,16 +248,12 @@ function bindableSlots(target: FXKernelTarget): readonly FXValidatableOutput[] {
     : [...target.outputs, killSlotOutput(target.killSlot)];
 }
 
-/** Validates a behavior graph against both phase targets. Collects every error, never throws. */
 export function validateBehavior(
   graph: FXGraph<FXBehaviorNode>,
   targets: FXBehaviorTargets,
 ): FXValidationResult {
-  // A structurally malformed target literal fails fast here - the validators below
-  // dereference the targets and would TypeError on it. `typeof null === "object"` too;
-  // the tag check below excludes exactly that case without writing the banned null literal
-  // (a plain truthy check collapses back to `!targets` under nearby autofixes, which
-  // strict-boolean-expressions then rejects since `targets` is cast from `unknown`).
+  // A malformed target literal fails here, before the validators dereference it. The tag check also
+  // excludes `null`.
   if (
     typeof (targets as unknown) !== "object" ||
     Object.prototype.toString.call(targets) === "[object Null]"
@@ -311,8 +298,7 @@ export function validateBehavior(
       ...detectPhasePairErrors(targets.spawn, targets.update),
     );
   } else {
-    // A reachable SPAWN node on an update-only target can never run - report it rather
-    // than silently dropping the subgraph (the old "green status, no effect" trap).
+    // A reachable SPAWN node on an update-only target never runs, so report it.
     errors.push(...detectUnsupportedSpawnPhase(graph, reachable));
   }
   return { ok: errors.length === 0, errors };

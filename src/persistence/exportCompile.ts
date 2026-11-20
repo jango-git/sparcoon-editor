@@ -85,10 +85,8 @@ const PARAM_SLOT_PREFIX = paramUniformName("");
 const renderRegistry = createRenderRegistry();
 const behaviorRegistry = createBehaviorRegistry();
 
-/** A render graph compiled through every registered {@link FX_GLSL_RENDER_COMPILERS} backend, by
- *  tier - the export's `render: { baseline, standard }` artifact map mirrors this 1:1. Scoped to
- *  the GLSL family; a future non-GLSL family (the advanced tier) would get its own sibling type,
- *  not a third key here. */
+/** A render graph compiled through every registered GLSL render compiler, by tier. The export's
+ *  `render: { baseline, standard }` map mirrors it. */
 export type CompiledShadersByGLSLTier = Readonly<
   Record<keyof typeof FX_GLSL_RENDER_COMPILERS, FXCompiledShader>
 >;
@@ -122,10 +120,9 @@ export interface EmitterIR {
   readonly kernel: FXCompiledKernel;
   readonly behaviorAttributes: readonly FXAttributeRequest[];
   /**
-   * The "standard" (GLSL/transform-feedback) family's fused program - present only when the spawn
-   * sink's "Try GPU simulation" flag is on and the graph compiled to that family. `kernel` above
-   * always compiles regardless (the mandatory JS fallback), so a skipped attempt never blocks
-   * export - it just omits this field for this one emitter.
+   * The Standard tier's fused GPU program. Present only when the spawn sink's "Try GPU
+   * simulation" flag is on and the graph compiled to it. `kernel` always compiles as the JS
+   * fallback.
    */
   readonly gpuProgram?: FXFusedProgramStandard | undefined;
   readonly geometry: FXGeometrySource;

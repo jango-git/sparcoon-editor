@@ -1,20 +1,6 @@
 /**
- * Visual type resolution for the polymorphic (`generic`) nodes. The engine unifies a node's `"T"`
- * sockets to a concrete GLSL type at compile time; the editor mirrors that *for display* so a
- * generic node's sockets are colored by the type actually flowing through them, and the
- * width-driven nodes show the right number of ports:
- *
- * - Constant - `T` comes from its `type` param; the output dot takes that color.
- * - Binary Op / Clamp / Mix / ... - `T` is inferred from whatever is wired into a generic input,
- *   so `out` (and the still-generic inputs) recolor to match.
- * - Combine / Split - family facades (see `nodeFamilies`): the variant is chosen by combine's
- *   `type` param or by the type wired into split's input, and it dictates the component sockets
- *   (a `vecN` is N floats; a `matN` is N `vecN` columns).
- *
- * Purely cosmetic + port-count: the serialized snapshot still carries only params and connections,
- * and the engine re-infers types on its own (the recursive resolver itself lives in
- * `domain/graphTypeResolution`, shared with serialize). {@link resolveNodeMeta} returns metadata with
- * `"T"` replaced by the resolved type (left as `"T"` when it cannot be determined).
+ * Display-only mirror of the engine's generic type unification. Colors sockets by the type actually
+ * flowing through them and sets the port count of width-driven nodes.
  */
 
 import { ROUTE_OUTPUT_KEY } from "../../domain/fakeNodes";
@@ -84,11 +70,8 @@ export function resolveNodeMeta(
 }
 
 /**
- * The concrete type flowing through a route, resolved from whatever feeds its `in` socket
- * (recursively, so a chain of routes reports its ultimate source type). `undefined` when the
- * route is unconnected or the source type cannot be determined. A route's own metadata is a
- * generic pass-through (see {@link routeMeta}), so resolving its output socket walks straight
- * back through its input to the producer.
+ * Concrete type of a route's input source, followed through chained routes. `undefined` if
+ * unconnected or unknown.
  */
 export function resolveRouteType(
   kind: GraphKind,

@@ -174,7 +174,6 @@ function scalarizeCall(expression: Extract<FXExpr, { kind: "call" }>): readonly 
       if (def?.crossComponent === true) {
         throw new Error(`sparcoon IR: "${expression.fn}" mixes components and has no expansion`);
       }
-      // Every other registered function is element-wise.
       const argComponents = expression.args.map(scalarize);
       return indices(expression.type.components).map((i) => ({
         kind: "call",

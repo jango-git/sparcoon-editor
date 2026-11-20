@@ -1,8 +1,6 @@
 /**
- * `{name}`-placeholder substitution, shared by every runtime-key text resolver in this directory
- * (`index.ts`'s own `t()`, `compilerErrors.ts`) - split out of `index.ts` so neither resolver
- * needs to import the other (a resolver that needed `index.ts`'s own dictionary state would be a
- * real circular import; this file has none).
+ * `{name}`-placeholder substitution shared by the text resolvers. Kept out of `index.ts` to avoid
+ * a circular import.
  */
 
 /** Named values a template's `{name}` placeholders substitute to. */

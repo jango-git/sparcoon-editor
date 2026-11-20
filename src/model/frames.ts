@@ -1,6 +1,6 @@
 /**
- * Frame <-> time helpers: seconds <-> the frame grid set by `TimelineState.fps`. Delegates to
- * sparcoon's `FXEffectSampling.Internal.ts` so the editor and the exported runtime never drift.
+ * Conversions between seconds and the frame grid set by `TimelineState.fps`, delegating to the
+ * runtime's sampling code so the editor and the export agree.
  */
 
 import { frameOfTime, timeOfFrame as sharedTimeOfFrame } from "sparcoon/editor";

@@ -21,13 +21,10 @@ export interface FXPreviewCompile {
 }
 
 /**
- * The preview's graph compiled by every GLSL tier, as the export ships it: the preview's own
- * shader for its tier, a fresh compile for the other - each tier lifts what it can afford, so its
- * budget is counted on its own shader. The other compile builds nodes of its own from the
- * snapshot: a node keeps the handles its last compile gave it, so compiling the live graph again
- * would leave its value edits writing into that compile instead of the preview's. Where the other
- * tier cannot compile the graph, the preview's shader stands for both: the preview runs, and the
- * export reports the failure.
+ * Compiles the graph for every GLSL tier as the export does. The preview's own tier reuses its
+ * shader. The other tier compiles from the snapshot with its own nodes, because a node keeps the
+ * handles of its last compile and recompiling the live graph would redirect value edits away from
+ * the preview. If the other tier cannot compile, the preview's shader stands for both.
  */
 export function everyTierShaders(
   preview: FXPreviewCompile,

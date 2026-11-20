@@ -19,18 +19,10 @@ import {
 } from "./FXCompilePipelineStandard.Internal";
 
 /**
- * Standard-tier (WebGL2 / GLSL-ES-3.00) twin of {@link FXCompilerBaseline}: turns an
- * {@link FXGraph} into a Three-independent {@link FXCompiledShader}, using the primary `build` of
- * every node (never `baselineBuild`) and the full, unfiltered function registry (including
- * `standardOnly` entries). Independent implementation of the same `validate`/`previewHash`/
- * `compile` contract; nothing here differs from `FXCompilerBaseline` except which compile
- * pipeline `compile` delegates to (validation/hashing have no tier-specific concern today).
+ * Standard-tier compiler. Uses each node's primary `build` and the unfiltered function registry
+ * (including `standardOnly`).
  */
 export class FXCompilerStandard {
-  /**
-   * Runs validation only, collecting every problem. Never throws - intended for
-   * the editor to surface errors as the user edits.
-   */
   public validate(graph: FXGraph<FXRenderNode>, target: FXTarget): FXValidationResult {
     const shapeErrors = renderTargetShapeErrors(target);
     if (shapeErrors.length > 0) {

@@ -1,13 +1,7 @@
 /**
- * Builds the workspace frame: a top region (preview and graph, above the bottom band) over a bottom
- * band (timeline; also the object outline). The dividers between them are draggable (see
- * {@link createWorkspace}). Assets is a bottom modal sheet appended outside the frame. Returns the
- * preview canvas and its container for the render layer.
- *
- * Each panel is registered with the {@link PanelFocusTracker} so hovering it makes it the active
- * panel, and the active one wears a thin accent ring (`is-active-panel`). Panels that own editing
- * shortcuts (graph, timeline) receive the {@link HotkeyRouter} (via `context`) to register their
- * keymap.
+ * Builds the workspace: preview and graph over the timeline band, with the Assets sheet outside the
+ * frame. Registers each panel with {@link PanelFocusTracker}. Returns the preview canvas and
+ * container.
  */
 
 import type { GraphName } from "../model/graphSlots";
@@ -88,7 +82,6 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
   panelFocusTracker.register(timeline, EditorPanel.Timeline);
   panelFocusTracker.register(assets.element, EditorPanel.Assets);
 
-  // The active framed panel wears the accent ring; Assets is deliberately absent (see above).
   const ringElements = new Map<EditorPanel, HTMLElement>([
     [EditorPanel.Viewport, preview.element],
     [EditorPanel.Graph, graph],

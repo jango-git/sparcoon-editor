@@ -1,8 +1,4 @@
-/**
- * What the preview's offscreen passes (the scene depth, the overdraw view) share:
- * the studio drawn into depth alone, the editor's furniture left out of a draw, and a target kept
- * at the size of the frame it serves.
- */
+/** Helpers shared by the scene depth and overdraw passes. */
 
 import {
   type Camera,
@@ -16,7 +12,6 @@ import {
 
 import { EDITOR_GIZMO_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
 
-/** Runs `draw` with the grid, player figure and gizmos off `camera`'s layers; the ground stays. */
 export function withoutFurniture(camera: Camera, draw: () => void): void {
   const layers = camera.layers.mask;
   camera.layers.disable(EDITOR_OVERLAY_LAYER);
@@ -28,9 +23,7 @@ export function withoutFurniture(camera: Camera, draw: () => void): void {
   }
 }
 
-/** The studio, effects left out, drawn into the current target's depth alone. */
 export class StudioDepth {
-  // Depth only: the studio's shading would be thrown away.
   private readonly material = new MeshBasicMaterial({ colorWrite: false });
 
   constructor(
@@ -64,7 +57,6 @@ export class StudioDepth {
   }
 }
 
-/** Writes into `out` the size of what `renderer` draws into now: its target, or the canvas. */
 export function drawnSize(renderer: WebGLRenderer, out: Vector2): Vector2 {
   const drawn = renderer.getRenderTarget();
   return drawn instanceof WebGLRenderTarget
@@ -72,10 +64,7 @@ export function drawnSize(renderer: WebGLRenderer, out: Vector2): Vector2 {
     : renderer.getDrawingBufferSize(out);
 }
 
-/**
- * `target` when it is already `size`, else a new one from `create` with `target` disposed. Remade,
- * not resized: a size change is rare, and a new target is plainly the right size.
- */
+/** Returns `target` if it already has `size`, else a new target (the old one is disposed). */
 export function sizedTarget(
   target: WebGLRenderTarget | undefined,
   size: Vector2,

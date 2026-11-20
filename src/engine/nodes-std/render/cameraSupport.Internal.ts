@@ -4,11 +4,8 @@ import type { FXParamSpec } from "../../core/nodes/FXParamSpec";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
 
 /**
- * Shared render-only support for nodes that build a camera-facing rotation basis
- * (`align-to-velocity`, `look-at-camera`'s locked-axis branches): the two camera-direction
- * models, and the numerically robust "turn an axis toward a target direction while staying
- * orthogonal to a fixed axis" primitive both nodes need. Render-only - the behavior target has
- * no camera.
+ * Camera-direction models and `orthogonalTowardTarget`, shared by `align-to-velocity` and
+ * `look-at-camera`. Render-only, the behavior target has no camera.
  */
 
 const MAT3 = FX_VALUE_TYPES.mat3;
@@ -32,18 +29,11 @@ export function cameraModelReads(model: unknown): readonly string[] {
 }
 
 /**
- * Below this `sin(theta)` (theta = angle between a fixed axis and its target direction),
- * {@link orthogonalTowardTarget} blends toward its degeneracy-safe fallback instead of trusting
- * the direct construction - see that function's doc comment for why. Deliberately tiny (~0.06
- * degrees of `theta`, not the few degrees a first guess might reach for): the fallback direction
- * is an arbitrary, sweep-independent choice, so blending toward it can swing the result by up to
- * ~180 degrees over the transition (unavoidable - no continuous choice of this axis exists over
- * every possible approach direction, the same obstruction as the hairy ball theorem). Making the
- * transition this narrow does not remove that swing, it compresses it into a band of camera
- * movement far smaller than one rendered frame typically covers - imperceptible - while staying
- * roughly 1000x above float32's cross-product noise floor (~1e-6 for unit-vector operands),
- * comfortably clear of the numerical instability this whole primitive exists to avoid. Exported
- * so tests can sweep the exact boundary this constant defines.
+ * Below this `sin(theta)` (theta is the angle between the fixed axis and the target direction),
+ * orthogonalTowardTarget blends toward a fallback axis. About 0.06 degrees, roughly 1000x the
+ * float32 cross-product noise (~1e-6). The fallback is arbitrary, so the result can swing up to 180
+ * degrees across the band, which is kept far narrower than one frame of camera movement. Exported
+ * for tests.
  */
 export const CAMERA_AXIS_DEGENERACY_THRESHOLD = 0.001;
 
@@ -64,15 +54,10 @@ function parallelCameraDirection(
 }
 
 /**
- * `normalize(cameraPosition - position)` - the true per-particle camera direction, accurate under
- * perspective unlike {@link parallelCameraDirection}'s parallel approximation. `position` is the
- * consuming node's own optional `position` input - `undefined` when left unwired, in which case
- * this falls back to reading `PARTICLE_POSITION` directly (kept a build-time fallback, not an
- * input-socket `targetInput` default, so a node placed on a target without `PARTICLE_POSITION`,
- * e.g. a VFX mesh, stays legal as long as it never resolves to the "point" model - see
- * `cameraModelReads`). Override it when the graph renders a particle somewhere other than its raw
- * simulated position (e.g. attached to the emitter via `fxTransformPoint(fxWorldMatrix, ...)`),
- * or this direction is computed from the wrong point.
+ * `normalize(cameraPosition - position)`, exact under perspective. `position` defaults to
+ * `PARTICLE_POSITION`, read at build time (not as a socket default) so a node on a target without
+ * it, such as a VFX mesh, stays legal unless it resolves to "point". Pass it when the particle is
+ * drawn away from its simulated position.
  */
 function pointCameraDirection(
   position: FXExpr | undefined,
@@ -113,26 +98,11 @@ function stableHelperAxis(fixedAxis: FXExpr, fn: FXExprBuilderApi): FXExpr {
 }
 
 /**
- * Turns an axis orthogonal to `fixedAxis` (a unit vector) as close to `targetDirection` as
- * possible - the shared primitive behind `align-to-velocity`'s camera-facing axis and
- * `look-at-camera`'s locked-axis branches (`axis: "all"` has no fixed axis and does not use this).
- *
- * No formula makes "targetDirection exactly parallel to fixedAxis" well-defined - no unique
- * orthogonal answer exists there, the same singularity as an up-vector parallel to a `lookAt`
- * camera's forward axis (and, deeper down, the same obstruction as the hairy ball theorem: no
- * choice of this axis can vary continuously over every possible approach direction at once). This
- * does not remove that singularity - nothing can - it replaces float-noise-dominated garbage
- * right at it with a deterministic, always-finite, always-orthogonal answer, compressed into a
- * band of `targetDirection` narrow enough that the transition itself is imperceptible (see
- * {@link CAMERA_AXIS_DEGENERACY_THRESHOLD}):
- *
- * - Built cross-then-cross (`derived = cross(fixedAxis, targetDirection)`, then
- *   `normalize(cross(derived, fixedAxis))`), not subtract-then-normalize Gram-Schmidt - one lossy
- *   step instead of a subtract-then-cross chain.
- * - `length(derived)` is `sin(theta)` - a legitimate degeneracy signal, not noise - `smoothstep`-
- *   blended against {@link stableHelperAxis}'s always-safe cross product (guaranteed >= ~0.045 in
- *   magnitude by construction) rather than gated by a hard branch, so nearby particles/frames
- *   agree with each other instead of a chaotic, per-particle-noise-dependent answer.
+ * Axis orthogonal to unit `fixedAxis`, as close to `targetDirection` as possible. `derived =
+ * cross(fixedAxis, targetDirection)`, result `normalize(cross(derived, fixedAxis))`.
+ * `length(derived)` is `sin(theta)`. It `smoothstep`-blends toward `stableHelperAxis` x
+ * `fixedAxis`, so nearby frames agree near the singularity (target parallel to the axis, where no
+ * unique answer exists).
  */
 export function orthogonalTowardTarget(
   fixedAxis: FXExpr,

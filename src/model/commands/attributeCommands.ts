@@ -33,8 +33,7 @@ export function addAttribute(
   name: string,
   type: AttributeTypeName,
 ): boolean {
-  // Attributes are a simulation->render channel a render-only VFX mesh has no runtime for, so
-  // declaring one is meaningless while a mesh owns the graph - reject it honestly, not silently.
+  // A render-only mesh has no simulation to feed an attribute, so declaring one is rejected.
   if (!activeOwnerHasBehaviorGraph(store.getSource())) {
     return false;
   }
@@ -56,15 +55,11 @@ export function addAttribute(
 }
 
 /**
- * Renames a declared attribute: retargets its `attr:<name>` output-binding slot and re-mints
- * every custom-attribute node reading it - both {@link CUSTOM_ATTRIBUTE_TYPES}, in
- * both the behavior and render graphs (the attribute is a simulation->render channel) - under a
- * fresh id with the new name, all in one
- * commit. A fresh id is required, not cosmetic: {@link FXGraphReconciler} reuses a same-id
- * instance by calling its `applyParams`, which throws on a structural param like `name` -
- * re-minting is how every other structural edit in this codebase (e.g. `replaceNodeParams`)
- * avoids that throw. Returns `false` for an invalid/duplicate new name or an undeclared
- * `oldName` - a no-op the caller surfaces; renaming to the same name is a no-op success.
+ * Renames a declared attribute: retargets its `attr:<name>` binding slot and re-mints every reading
+ * custom-attribute node under a fresh id, in one commit. A fresh id is required because {@link
+ * FXGraphReconciler} reuses a same-id instance by calling `applyParams`, which throws on a
+ * structural param like `name`. Returns false for an invalid or duplicate new name or an undeclared
+ * `oldName`. Renaming to the same name succeeds as a no-op.
  */
 export function renameAttribute(
   store: Store,

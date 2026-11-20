@@ -1,7 +1,4 @@
-/**
- * The timeline transport: playhead position + play/pause state. Transient like the preview
- * settings/camera - playback chrome, never in the model/history/saved doc; `TimelineDispatcher` reads `time` each tick to drive spawns and values into the running emitter.
- */
+/** Playhead position and play state. Not part of the document or history. */
 
 import { Ferrsign0 } from "ferrsign";
 
@@ -17,21 +14,18 @@ export class TransportStore {
   private readonly changed = new Ferrsign0();
 
   /**
-   * @param duration Accessor for the authored timeline length (seconds); read every tick.
-   * @param infinite Accessor for whether the timeline is infinite (an infinite play event exists):
-   *   playback then parks the caret at the last frame instead of looping.
-   * @param loops Accessor for whether the timeline loops; one that plays once parks the caret at
-   *   the last frame too.
+   * @param duration Timeline length in seconds, read every tick.
+   * @param infinite True while an infinite play event exists, which parks the caret at the last
+   * frame.
+   * @param loops False plays once and parks the caret at the last frame.
    */
   constructor(
     private readonly duration: () => number,
     private readonly infinite: () => boolean = () => false,
     private readonly loops: () => boolean = () => true,
   ) {
-    // A backgrounded tab still fires (throttled) rAF callbacks, so without this the tick after
-    // the tab regains visibility sees a huge raw timestamp gap and jumps/wraps the playhead in
-    // one step. Halting ticking while hidden and resuming with a fresh timestamp anchor avoids
-    // that and keeps the playhead frozen (not silently advancing) while the tab is unseen.
+    // A hidden tab throttles rAF, so the next tick would see a huge gap and jump the playhead.
+    // Ticking halts while hidden and restarts with a fresh timestamp.
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
   }
 
@@ -66,7 +60,6 @@ export class TransportStore {
     return this.laps;
   }
 
-  /** Starts (or resumes) playback from the current playhead. No-op while already playing. */
   public play(): void {
     if (this.playing) {
       return;
@@ -77,7 +70,6 @@ export class TransportStore {
     this.notify();
   }
 
-  /** Freezes the playhead where it is. */
   public pause(): void {
     if (!this.playing) {
       return;
@@ -86,7 +78,6 @@ export class TransportStore {
     this.notify();
   }
 
-  /** Stops and rewinds the playhead to the start. */
   public stop(): void {
     const wasPlaying = this.playing;
     this.stopTicking();
@@ -126,8 +117,6 @@ export class TransportStore {
     return this.changed.on(listener);
   }
 
-  /** Halts ticking while the tab is hidden, resuming with a fresh timestamp anchor once it is
-   *  visible again - see the constructor's `visibilitychange` registration for why. */
   private readonly handleVisibilityChange = (): void => {
     if (document.hidden) {
       if (this.frameHandle !== undefined) {

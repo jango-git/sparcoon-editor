@@ -1,17 +1,12 @@
+import type { FXBehaviorArtifact } from "sparcoon";
+
 import { FX_FUNCTIONS } from "../core/ir/FXFunctions.Internal";
 import type { FXAssetKind } from "../core/nodes/FXAssetKind";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
 import { FX_BEHAVIOR_FUNCTIONS } from "./FXBehaviorFunctions.Internal";
-import type { FXKernelBindingHandle, FXKernelResourceFields } from "./FXCompiledKernel";
+import type { FXKernelResourceFields } from "./FXCompiledKernel";
 
-/**
- * Primitives shared across the behavior-kernel compile family (validation, the compile driver,
- * the `new Function` builders): buffer name/access helpers, the resolved function map, and the
- * kernel-execution types. Kept here so those files can share them without an import cycle.
- */
-
-/** The packed `mat4 builtin` state buffer name - always present, always integrated. */
 export const BUILTIN_BUFFER = "builtin";
 
 /**
@@ -20,75 +15,41 @@ export const BUILTIN_BUFFER = "builtin";
  */
 export const SLOTS_PARAMETER = "slots";
 
-/**
- * The emitter's world transform, supplied by the runtime each spawn/update call so a graph
- * can simulate in world space (`worldMatrix`/`velocity`/`angularVelocity`, read through the
- * `world-matrix`/`object-velocity`/`object-angular-velocity` nodes). Optional - a graph
- * reading none of these never touches it.
- */
-export interface FXEmitterTransform {
-  readonly worldMatrix: readonly number[];
-  readonly velocity: readonly number[];
-  readonly angularVelocity: readonly number[];
-}
-
-/** Core + behavior-only functions, the map the JS printer resolves `call` against. */
 export const FX_BEHAVIOR_ALL_FUNCTIONS = new Map([...FX_FUNCTIONS, ...FX_BEHAVIOR_FUNCTIONS]);
 
-/** Compiled update kernel: mutates every live particle in `[0, count)` each frame. */
-export type FXParticleUpdateKernel = (
-  slots: Float32Array,
-  count: number,
-  dt: number,
-  bindings: Readonly<Record<string, FXKernelBindingHandle>>,
-  emitter?: FXEmitterTransform,
-) => void;
+export type FXParticleUpdateKernel = FXBehaviorArtifact["update"];
 
-/** Compiled spawn kernel: initializes the freshly born particles in `[start, start + count)`,
- *  every one of them inheriting `inherited` (the target's inherit layout). */
-export type FXParticleSpawnKernel = (
-  slots: Float32Array,
-  start: number,
-  count: number,
-  bindings: Readonly<Record<string, FXKernelBindingHandle>>,
-  emitter: FXEmitterTransform,
-  inherited: Float32Array,
-) => void;
+export type FXParticleSpawnKernel = NonNullable<FXBehaviorArtifact["spawn"]>;
 
-/** The spawn kernel's inherited values (see `FXKernelTargetInput.inheritOffset`). */
 export const INHERITED_PARAMETER = "inherited";
 
-/** The update kernel's parameters, in order - one list for every builder printing one. */
 export const UPDATE_KERNEL_PARAMETERS: readonly string[] = [
   SLOTS_PARAMETER,
   "count",
   "dt",
+  "seed",
   "bindings",
   "emitter",
 ];
 
-/** The spawn kernel's parameters, in order - one list for every builder printing one. */
 export const SPAWN_KERNEL_PARAMETERS: readonly string[] = [
   SLOTS_PARAMETER,
   "start",
   "count",
+  "seed",
   "bindings",
   "emitter",
   INHERITED_PARAMETER,
 ];
 
-/** Per-particle offset local of a buffer's field in the slots (`const b_<name> = i * stride +
- *  field offset`). */
 export function bufferBaseName(name: string): string {
   return `b_${name}`;
 }
 
-/** A buffer element accessor: `slots[b_<name> + offset]`. */
 export function bufferAccess(name: string, offset: number): string {
   return `${SLOTS_PARAMETER}[${bufferBaseName(name)} + ${offset.toString()}]`;
 }
 
-/** The field listing the resources of each asset kind. */
 const RESOURCE_FIELDS: Readonly<Record<FXAssetKind, keyof FXKernelResourceFields>> = {
   mesh: "meshSurfaces",
   volume: "volumes",
@@ -165,7 +126,6 @@ export function kernelResourceFields(kernel: {
   return fields;
 }
 
-/** Just the resource fields of `fields` (a phase or a GPU program), each copied: an artifact's. */
 export function resourceFieldsOf(fields: FXKernelResourceFields): FXKernelResourceFields {
   return {
     ...(fields.meshSurfaces === undefined ? {} : { meshSurfaces: { ...fields.meshSurfaces } }),
@@ -173,7 +133,6 @@ export function resourceFieldsOf(fields: FXKernelResourceFields): FXKernelResour
   };
 }
 
-/** The names a phase reads its resources under. */
 export function resourceNames(fields: FXKernelResourceFields): readonly string[] {
   return [...Object.keys(fields.meshSurfaces ?? {}), ...Object.keys(fields.volumes ?? {})];
 }

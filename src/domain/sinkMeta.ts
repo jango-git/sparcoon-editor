@@ -25,10 +25,8 @@ import type { FXTarget } from "../engine/render/target/FXTarget";
 import type { EditorAttribute, EditorGraph } from "./graphModel";
 
 /**
- * The reserved output **sink** nodes: permanent, non-addable, non-deletable terminus nodes.
- * Wiring into a sink's input authors an {@link EditorGraph.outputBindings} entry; `serialize.ts`
- * drops the sinks since the target's output slots *are* the inputs. Behavior carries two (`spawn`/
- * `update`, so the write phase is chosen by wiring); render carries one, the surface `$out`.
+ * Reserved sink nodes. Wiring into a sink input authors an {@link EditorGraph.outputBindings}
+ * entry. Behavior has two (`spawn` and `update`), render has one, the surface `$out`.
  */
 export const SPAWN_SINK_TYPE = "$spawn";
 export const UPDATE_SINK_TYPE = "$update";
@@ -134,8 +132,10 @@ export function coerceGeometrySource(value: unknown): GeometrySource {
   return { kind: "primitive", primitive: coerceGeometry(value) };
 }
 
-/** Translates a {@link GeometrySource} into the runtime artifact's external-slot shape (ADR-0002):
- *  a custom mesh asset crosses the compile boundary named, not embedded. */
+/**
+ * Translates a GeometrySource into the artifact's external slot. A custom mesh asset is referenced
+ * by name, not embedded.
+ */
 export function toArtifactGeometrySource(source: GeometrySource): FXGeometrySource {
   return source.kind === "primitive"
     ? { type: "primitive", primitive: source.primitive }
@@ -197,10 +197,6 @@ function showsSurfaceSlot(slot: string, renderMode: RenderMode): boolean {
   return true;
 }
 
-/** The surface (`$out`) input sockets for a render mode and host - the host's target output
- *  slots gated by the mode: a `"mesh"` host draws from {@link FX_MESH_TARGET}, a `"trail"` from
- *  {@link FX_TRAIL_TARGET}, a `"particle"` from the particle target. */
-/** The target each render host's surface sink draws its slots from. */
 const HOST_TARGETS: Readonly<Record<RenderHost, FXTarget>> = {
   particle: buildParticleTarget(),
   mesh: FX_MESH_TARGET,
@@ -208,6 +204,10 @@ const HOST_TARGETS: Readonly<Record<RenderHost, FXTarget>> = {
   ribbon: FX_RIBBON_TARGET,
 };
 
+/**
+ * Surface sink input sockets for a render mode and host: the host's target outputs gated by the
+ * mode.
+ */
 function renderSinkInputsFor(renderMode: RenderMode, host: RenderHost): readonly FXSocketMeta[] {
   return HOST_TARGETS[host].outputs
     .filter((output) => showsSurfaceSlot(output.slot, renderMode))
@@ -241,7 +241,6 @@ const RENDER_MODE_PARAM: FXParamMeta = {
   default: DEFAULT_RENDER_MODE,
 };
 
-/** The surface sink parameter key carrying the render mode (read into the compile options). */
 export const RENDER_MODE_PARAM_KEY = "renderMode";
 
 /** The render sink's camera depth-sort interval (frames, `0` = off). A runtime emitter setting,
@@ -254,7 +253,6 @@ const SORT_INTERVAL_PARAM: FXParamMeta = {
   step: 1,
 };
 
-/** The render sink parameter key carrying the camera depth-sort interval (frames; 0 = off). */
 export const RENDER_SORT_INTERVAL_PARAM = "sortInterval";
 
 /** The render sink's sort interval as a non-negative whole number of frames (0 = no sorting). */
@@ -272,7 +270,6 @@ const CAST_SHADOW_PARAM: FXParamMeta = {
   default: false,
 };
 
-/** The surface sink parameter key carrying the cast-shadow flag. */
 export const RENDER_CAST_SHADOW_PARAM = "castShadow";
 
 /** The render sink's receive-shadow flag: lets scene lights shadow this surface (visible only on a
@@ -283,7 +280,6 @@ const RECEIVE_SHADOW_PARAM: FXParamMeta = {
   default: false,
 };
 
-/** The surface sink parameter key carrying the receive-shadow flag. */
 export const RENDER_RECEIVE_SHADOW_PARAM = "receiveShadow";
 
 /** An emitter's render sink's Draw Particles flag: off, the particles are simulated but not drawn,
@@ -294,15 +290,11 @@ const DRAW_PARTICLES_PARAM: FXParamMeta = {
   default: true,
 };
 
-/** The surface sink parameter key carrying the Draw Particles flag. */
 export const RENDER_DRAW_PARTICLES_PARAM = "drawParticles";
 
 /**
- * The spawn sink's "Try GPU simulation" flag: a best-effort request to also compile this
- * emitter's behavior graph to the standard-tier (WebGL2, transform-feedback) GLSL kernel. Named
- * "try" since it is never a guarantee - a JS-only construct silently degrades that emitter to
- * JS-only, and even a compiled GPU artifact only runs on a "standard" live tier. Defaults on (see
- * {@link readSpawnSinkConfig}'s `!== false` read).
+ * Request to also compile the behavior graph to the GPU kernel. A JS-only construct falls back to
+ * JS silently, and the GPU artifact runs only on the Standard tier. On unless explicitly false.
  */
 const TRY_GPU_SIMULATION_PARAM: FXParamMeta = {
   kind: "structural",
@@ -310,21 +302,15 @@ const TRY_GPU_SIMULATION_PARAM: FXParamMeta = {
   default: true,
 };
 
-/** The spawn sink parameter key carrying the "Try GPU simulation" flag. */
 export const SPAWN_TRY_GPU_SIMULATION_PARAM = "tryGpuSimulation";
 
-/** The default expected-particle-count every new emitter starts with (see {@link
- *  EXPECTED_CAPACITY_PARAM}); matches the runtime's own historical author-facing default. */
+/** Default expected particle count of a new emitter. */
 const DEFAULT_EXPECTED_CAPACITY = 256;
 
 /**
- * The spawn sink's expected-particle-count: the emitter's fixed ring capacity, a hard ceiling on
- * both the JS and the GPU backend (see {@link TRY_GPU_SIMULATION_PARAM}) - neither grows, and a
- * birth into a full ring overwrites the particle at the cursor.
- *
- * `kind: "value"` only because {@link FXParamSpec} has no structural numeric variant; sink params
- * never reach the engine's structural-hash gate anyway, so EmitterView's own rebuild tracking is
- * what actually forces a rebuild here, the same way it does for castShadow/receiveShadow.
+ * Fixed ring capacity of the emitter on both backends. A birth into a full ring overwrites the
+ * particle at the cursor. Declared with kind "value" because FXParamSpec has no structural numeric
+ * variant, so EmitterView tracks rebuilds itself.
  */
 const EXPECTED_CAPACITY_PARAM: FXParamMeta = {
   kind: "value",
@@ -334,7 +320,6 @@ const EXPECTED_CAPACITY_PARAM: FXParamMeta = {
   step: 1,
 };
 
-/** The spawn sink parameter key carrying the expected-particle-count. */
 export const SPAWN_EXPECTED_CAPACITY_PARAM = "expectedCapacity";
 
 /** A positive whole particle count, defaulting on anything else (missing, fractional, <= 0). */
@@ -349,10 +334,10 @@ export interface SpawnSinkConfig {
   readonly expectedCapacity: number;
 }
 
-/** Reads a behavior graph's spawn-sink parameters into a {@link SpawnSinkConfig}; a missing/blank
- *  node falls back to each parameter's default. `tryGpuSimulation` defaults on - reserved sinks
- *  are created with an empty `parameters` bag (`sinks.ts`'s `makeSink`), so `!== false` (not
- *  `=== true`) is what actually encodes that default; only an explicit `false` turns it off. */
+/**
+ * Reads the spawn sink parameters. Sinks start with empty parameters, so only an explicit `false`
+ * turns the GPU flag off.
+ */
 export function readSpawnSinkConfig(behaviorGraph: EditorGraph): SpawnSinkConfig {
   const spawn = behaviorGraph.nodes[SPAWN_SINK_ID]?.parameters;
   return {
@@ -404,7 +389,6 @@ const TRAIL_FRAMES_PARAM: FXParamMeta = {
   step: 1,
 };
 
-/** The trail sink parameter key carrying the history length. */
 export const TRAIL_FRAMES_PARAM_KEY = "trailFrames";
 
 /** The trail sink's seconds between two recorded points - with the length, how long the trail is. */
@@ -416,7 +400,6 @@ const TRAIL_INTERVAL_PARAM: FXParamMeta = {
   step: 0.005,
 };
 
-/** The trail sink parameter key carrying the sample interval. */
 export const TRAIL_INTERVAL_PARAM_KEY = "trailInterval";
 
 /** A whole history length in `[2, FX_TRAIL_MAX_FRAMES]`, defaulting on anything unreadable. */
@@ -467,7 +450,6 @@ const RIBBON_UV_PARAM: FXParamMeta = {
   default: DEFAULT_RIBBON_UV,
 };
 
-/** The ribbon sink parameter key carrying the UV mode. */
 export const RIBBON_UV_PARAM_KEY = "ribbonUV";
 
 /** The ribbon sink's particles per repeat of `p_uv.x`, in the tile mode. */
@@ -479,7 +461,6 @@ const RIBBON_TILE_PARAM: FXParamMeta = {
   step: 1,
 };
 
-/** The ribbon sink parameter key carrying the particles per repeat. */
 export const RIBBON_TILE_PARAM_KEY = "ribbonTile";
 
 /**
@@ -492,7 +473,6 @@ const RIBBON_HEAD_PARAM: FXParamMeta = {
   default: false,
 };
 
-/** The ribbon sink parameter key carrying the Head flag. */
 export const RIBBON_HEAD_PARAM_KEY = "ribbonHead";
 
 /** A whole particle count of at least 1, defaulting on anything unreadable. */

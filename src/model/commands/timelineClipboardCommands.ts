@@ -1,8 +1,4 @@
-/**
- * Timeline copy/paste: a copied item is a plain value snapshot (entity + time + payload), not a
- * reference, so paste re-mints ids and never aliases the originals - the same "detached fragment"
- * shape as the graph's node-paste command, just keyed by time instead of graph position.
- */
+/** Timeline copy and paste. A copied item is a value snapshot, so paste mints new ids. */
 
 import type { EmitterDoc, Keyframe, TimelineEvent, VfxDoc, VfxMeshDoc } from "../editorState";
 import type { SceneEntity } from "../entity";
@@ -41,8 +37,7 @@ export function clipboardItemTime(item: ClipboardTimelineItem): number {
   return item.type === "event" ? item.event.time : item.time;
 }
 
-/** One item as freshly pasted, enough to select it (mirrors {@link ItemRef} without importing it -
- *  model/commands stays UI-agnostic; the shapes are structurally compatible). */
+/** A pasted item, enough to select it. Mirrors ItemRef without importing UI code. */
 export interface PastedTimelineItem {
   readonly entity: SceneEntity;
   readonly kind: "transformKey" | "key" | "event";

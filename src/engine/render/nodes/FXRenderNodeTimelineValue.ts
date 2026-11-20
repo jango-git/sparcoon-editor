@@ -14,9 +14,10 @@ import type { FXRenderContext } from "../compiler/FXRenderContext";
 import { FXRenderNode } from "../FXRenderNode";
 import { FXShaderStage } from "../FXShaderStage";
 
-/** Render node: a named, runtime-tunable value exposed as a shader uniform. Unlike `constant`
- *  (which bakes an inline literal), this allocates a uniform under a stable slot derived from
- *  the user name, so a timeline can drive it by name through {@link FXEmitter.applyValues}. */
+/**
+ * A named uniform a timeline drives by name through `FXEmitter.applyValues`. Unlike `constant` it
+ * takes a slot.
+ */
 export class FXRenderNodeTimelineValue extends FXRenderNode {
   public readonly type = "timeline-value";
   public readonly stage = FXShaderStage.FRAGMENT;
@@ -34,7 +35,6 @@ export class FXRenderNodeTimelineValue extends FXRenderNode {
     this.parameter = new FXTimelineValueState(name, type, value);
   }
 
-  /** Reads no target input: its value is a live binding, not a builtin. */
   public override get targetReads(): readonly string[] {
     return [];
   }
@@ -49,7 +49,6 @@ export class FXRenderNodeTimelineValue extends FXRenderNode {
     return this.parameter.valueType.id;
   }
 
-  /** A live uniform read, no arithmetic (like `constant`). */
   public override estimateCost(): number {
     return 0;
   }

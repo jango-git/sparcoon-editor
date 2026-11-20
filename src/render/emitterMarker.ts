@@ -1,7 +1,6 @@
 /**
- * Persistent preview gizmo: a wireframe outline parented under each object, shaped by kind and
- * tinted (matching the timeline row accents) when selected. Carries an invisible pick-target box
- * since the outline's line geometry is too thin to raycast reliably.
+ * Wireframe gizmo under each object, with an invisible box for picking because the thin outline
+ * lines are hard to raycast.
  */
 
 import {
@@ -26,17 +25,18 @@ import {
 } from "../theme/entityAccent";
 import { markEditorGizmo } from "./editorOverlay";
 
-/** The kind of object a marker stands for - picks its outline shape. */
 export type MarkerKind = "vfx" | "emitter" | "vfxMesh";
 
-/** Empty cube for the VFX group (0.25 units); a gem (octahedron) for an emitter; a tetra for a mesh. */
+/**
+ * Marker sizes in world units: a cube for the VFX group, an octahedron for an emitter, a
+ * tetrahedron for a mesh.
+ */
 const VFX_CUBE = 0.25;
 const EMITTER_GEM_RADIUS = 0.12;
 const MESH_GEM_RADIUS = 0.15;
 
 const COLOR_IDLE = new Color(0x8894a6);
 
-/** The selected-outline tint for `kind` - its shared accent hue, as an sRGB color. */
 function selectedColor(kind: MarkerKind): Color {
   return new Color().setHSL(
     ENTITY_ACCENT_HUE[kind] / 360,
@@ -47,13 +47,10 @@ function selectedColor(kind: MarkerKind): Color {
 }
 
 export interface GizmoMarker {
-  /** The Object3D to add under the tracked object - moves/rotates/scales with it. */
+  /** Added under the tracked object. */
   readonly object: Object3D;
-  /** Invisible mesh sized to the gizmo, raycast to pick this object in the viewport. */
   readonly pickTarget: Object3D;
-  /** Tints the outline to show whether this object is the selected one. */
   setSelected(selected: boolean): void;
-  /** Frees the marker's geometry/material (called when the owner is destroyed). */
   dispose(): void;
 }
 

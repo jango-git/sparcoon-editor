@@ -115,7 +115,6 @@ export function eventMarkers(
         marker.classList.add("timeline-event--infinite");
         marker.style.width = `${(1 - timeFraction) * 100}%`;
       } else {
-        // A finite play is clipped to the timeline end, not the padded lane edge.
         const windowEnd = fraction(total, total);
         const span = clamp(spanFraction(event.duration, total), 0, windowEnd - timeFraction);
         marker.style.width = `${span * 100}%`;

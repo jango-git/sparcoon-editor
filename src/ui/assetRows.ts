@@ -82,10 +82,9 @@ export function textureRows(store: Store, usage: ReadonlyMap<string, number>): r
 }
 
 /**
- * `users` is unlike a texture's node-reference count: an HDRI's "usage" is just whether it is the
- * document's one active environment (ADR-0004), so it's always 0 or 1.
- * @param onThumbnailReady A still-decoding HDRI has no thumbnail yet (RGBE decode is async); called
- * once one lands so the caller can re-list and pick it up from the cache.
+ * `users` is 1 when the HDRI is the document's active environment, otherwise 0.
+ * @param onThumbnailReady Called once a still-decoding HDRI's thumbnail lands, so the caller can
+ *   re-list and pick it up from the cache.
  */
 export function environmentRows(store: Store, onThumbnailReady: () => void): readonly AssetRow[] {
   const assets = selectEnvironmentAssets(store);

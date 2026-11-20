@@ -1,7 +1,6 @@
 /**
- * The editor's live HDRI environment cache (ADR-0004): decodes uploaded `.hdr` files into the GPU
- * textures (full-res for the SH bake, a small fixed resize for `scene.background`) and derived Sun
- * the active-environment preview needs. Mirrors {@link TextureRegistry}'s cache/dispose shape.
+ * Decodes uploaded `.hdr` files into a full-resolution texture for the SH bake and a small
+ * fixed-size texture for `scene.background`, plus the derived Sun.
  */
 
 import {
@@ -19,16 +18,13 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import type { EnvironmentAsset } from "../model/editorState";
 import { type DerivedSun, deriveSunFromEquirect } from "./sunFromEnvironment";
 
-/** Fixed background resolution (ADR-0004: "a small fixed resolution", not a tunable blur amount). */
+/** Fixed background resolution. */
 const BACKGROUND_WIDTH = 128;
 const BACKGROUND_HEIGHT = 64;
 
 export interface DecodedEnvironment {
-  /** Full-resolution decode - the sky dome's material for the SH bake. */
   readonly full: DataTexture;
-  /** Small fixed-resolution resize - assigned directly to `scene.background`. */
   readonly background: DataTexture;
-  /** Sun auto-derived from the brightest pixel in `background`'s upper hemisphere. */
   readonly sun: DerivedSun;
 }
 
@@ -41,10 +37,8 @@ export class EnvironmentTextureRegistry {
   private readonly loader = new RGBELoader().setDataType(FloatType);
   private readonly entries = new Map<string, CacheEntry>();
 
-  /** @param onLoaded Called once an environment finishes decoding, so the preview can re-apply. */
   constructor(private readonly onLoaded: () => void) {}
 
-  /** Reconciles the cache with the current library: add new, replace changed, drop gone. */
   public sync(assets: readonly EnvironmentAsset[]): void {
     const live = new Set(assets.map((asset) => asset.name));
     for (const [name, entry] of this.entries) {
@@ -63,7 +57,6 @@ export class EnvironmentTextureRegistry {
     }
   }
 
-  /** The decoded textures for an active environment name, or `undefined` while absent/decoding. */
   public resolve(name: string | undefined): DecodedEnvironment | undefined {
     return name === undefined ? undefined : this.entries.get(name)?.decoded;
   }
@@ -79,7 +72,6 @@ export class EnvironmentTextureRegistry {
     this.loader.load(
       dataUrl,
       (full) => {
-        // The entry may have been evicted or replaced while this decode was in flight.
         const current = this.entries.get(name);
         if (current?.dataUrl !== dataUrl) {
           full.dispose();
@@ -142,8 +134,10 @@ export function wrapBackgroundTexture(data: Float32Array<ArrayBuffer>): DataText
   return texture;
 }
 
-/** Nearest-neighbor resize of an RGBA float equirect image. Point sampling (not a box/gaussian
- * average) is deliberate - ADR-0004 relies on the GPU's own magnification filter instead. */
+/**
+ * Nearest-neighbor resize of an RGBA float equirect image. The GPU magnification filter does the
+ * smoothing.
+ */
 export function downsampleEquirect(
   source: { readonly data: Float32Array; readonly width: number; readonly height: number },
   targetWidth: number,
@@ -171,8 +165,7 @@ export function downsampleEquirect(
   return target;
 }
 
-/** sourceIndex is derived from clamped sourceY/sourceX, so it is in bounds whenever `data`
- * genuinely holds an RGBA equirect (length === width * height * 4); guards a format mismatch. */
+/** Guards a data length that does not match width * height * 4. */
 function readComponent(data: Float32Array, index: number): number {
   const value = data[index];
   if (value === undefined) {

@@ -1,18 +1,7 @@
 /**
- * A color-picker control: a flat swatch button that opens a floating popover with a saturation/value
- * square, a hue slider, an alpha slider and a Hex/RGB/HSL value row (flat, sharp-cornered, accent on
- * interaction). The popover is screen-space (`position: fixed` at the swatch rectangle, appended to
- * `<body>` via the shared popover), so the graph canvas's pan/zoom never displaces it, mirroring
- * {@link Dropdown}. An optional {@link PaletteAccess} adds a full-height palette column on the
- * right: one row per saved color (preview, label, remove) over a full-width save button.
- *
- * Presentational and speaks the engine's color model: it takes and emits linear RGBA
- * (`[r, g, b, a]`, each `0..1`). Internally it holds sRGB HSV + alpha (what the hue wheel reads),
- * converting at the boundary; the Hex/RGB/HSL value row is three independent read/write views onto
- * that same HSV state, chosen by a mode toggle. `setValue` re-syncs from external state (undo /
- * redo) without firing. `onChange` fires exactly once per gesture - a slider drag's release, or a
- * single-shot hex/numeric edit - never per intermediate drag step; the optional `live` fires on
- * every intermediate slider step instead (omit it for no live preview at all during a drag).
+ * Swatch button opening a fixed-position popover (saturation/value square, hue, alpha,
+ * Hex/RGB/HSL). Takes and emits linear RGBA, works in sRGB internally. An optional {@link
+ * PaletteAccess} adds the saved-color column.
  */
 
 import { t } from "../../i18n";
@@ -47,12 +36,7 @@ type ColorMode = "hex" | "rgb" | "hsl";
 const PALETTE_REMOVE_CLICKS = 2;
 
 /**
- * Read/write bridge into the project's saved-color palette (a `SourceState` field like the HDRI
- * library - see `model/editorState.ts`'s {@link PaletteSwatch}), threaded in by whichever caller
- * holds a `Store` (see `paletteAccess.ts`'s factory) so this presentational component never
- * imports one itself. Omitted where nothing wires it up - the popover then shows no palette column.
- * The picker's palette panel is the only place the saved palette is listed or managed - there is no
- * separate library screen for it.
+ * Access to the saved-color palette. Without it the popover shows no palette column.
  */
 export interface PaletteAccess {
   /** Read fresh on every popover open and after a save/remove, not resolved once - a swatch this
@@ -97,7 +81,6 @@ export class ColorPicker implements ValueComponent<Rgba> {
    *  picker's state before this mode toggle existed). */
   private colorMode: ColorMode = "hex";
 
-  // Popover parts, live only while open.
   private saturationValueCursor: HTMLElement | undefined;
   private saturationValueArea: HTMLElement | undefined;
   private hueThumb: HTMLElement | undefined;
@@ -127,7 +110,7 @@ export class ColorPicker implements ValueComponent<Rgba> {
             event.stopPropagation();
             this.toggle();
           },
-          // Keep a press on the swatch from starting a node drag / marquee.
+          // Do not start a node drag or marquee.
           pointerdown: (event) => event.stopPropagation(),
         },
       },
@@ -223,7 +206,6 @@ export class ColorPicker implements ValueComponent<Rgba> {
       this.renderPopover();
     });
 
-    // Hue slider (rainbow).
     this.hueThumb = createElement("div", { className: "color-picker__thumb" });
     const hueTrack = createElement("div", { className: "color-picker__hue" }, [this.hueThumb]);
     this.dragTarget(hueTrack, (x) => {
@@ -246,7 +228,6 @@ export class ColorPicker implements ValueComponent<Rgba> {
       sliders.push(alphaTrack);
     }
 
-    // Preview swatch + Hex/RGB/HSL value row, switched by the mode toggle.
     this.preview = createElement("div", { className: "color-picker__preview" });
     this.valueHost = createElement("div", { className: "color-picker__value" });
     const modeControl = createSegmentedControl<ColorMode>(
@@ -488,7 +469,6 @@ export class ColorPicker implements ValueComponent<Rgba> {
       this.alpha = parsed[3];
     }
     this.renderPopover();
-    // A single-shot edit (no drag involved) - one commit, matching a NumberControl text-edit commit.
     this.commit(true);
   }
 
@@ -508,7 +488,6 @@ export class ColorPicker implements ValueComponent<Rgba> {
         className: "color-picker__palette-label",
         textContent: swatch.label,
       });
-      // Guarded like every other library-row delete (countdownConfirm.ts).
       const removeButton = createElement("button", {
         className: "color-picker__palette-remove confirm-danger",
         type: "button",
@@ -543,9 +522,7 @@ export class ColorPicker implements ValueComponent<Rgba> {
   }
 
   /**
-   * Wires a pointer drag on `track`, reporting the pointer's clamped `x`/`y` fraction (`0..1`)
-   * across the element through `onMove` on the initial press and every move (live), then once
-   * more through the final committing call - mirroring NumberControl's scrub gesture.
+   * Reports the pointer's clamped x and y fraction (0..1) across `track` during a drag.
    */
   private dragTarget(track: HTMLElement, onMove: (x: number, y: number) => void): void {
     const apply = (event: PointerEvent, final: boolean): void => {

@@ -12,7 +12,6 @@ import type { EditSession } from "./transaction.Internal";
 export interface EditApi {
   readonly scene: SceneEdits;
   readonly timeline: TimelineEdits;
-  /** A handle on one owner's `"render"` or `"behavior"` graph. */
   graph(ownerId: string, graph: string): GraphHandle;
 }
 

@@ -37,11 +37,11 @@ import type {
 import { zeroValue } from "../render/compiler/FXCompiledShader";
 import { particleReadsOf, surfaceReadsOf } from "../render/target/FXParticleRenderTarget";
 
-/** Serializes the compiler IR into TypeScript object literals, shared by {@link emitEffectModule}
- *  and {@link emitProjectModule}. Every function returns a bare `{ ... }` body, so the caller
- *  owns the `const <name> = <body>;` naming and can emit many entities per file. */
+/**
+ * Serializes the compiler IR into object literals. Each function returns a bare `{ ... }` body, and the
+ * caller names the constant.
+ */
 
-/** The `{name, components}` decls of the attributes a render reads (`attributeReads`). */
 function attributeDecls(attributes: readonly FXAttributeRequest[]): string {
   return JSON.stringify(
     attributes.map((attribute) => ({
@@ -51,11 +51,7 @@ function attributeDecls(attributes: readonly FXAttributeRequest[]): string {
   );
 }
 
-/**
- * The runtime's {@link FXShaderStageSource} for one compiled stage: its code, and what that code
- * reads of each particle. Shared with {@link assembleArtifacts}'s in-memory assembler, so the
- * exported module and the live preview never part ways on it.
- */
+/** The runtime's stage source, shared with the in-memory assembler. */
 export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
   return {
     uniformDeclarations: [...stage.uniformDeclarations],
@@ -65,8 +61,6 @@ export function stageSource(stage: FXCompiledStage): FXShaderStageSource {
   };
 }
 
-/** The runtime's {@link FXVaryingDecl}s for what a compiled program carries between its stages.
- *  Shared with {@link assembleArtifacts}'s in-memory assembler, like {@link stageSource}. */
 export function varyingDecls(program: FXCompiledProgram): FXVaryingDecl[] {
   return program.varyings.map((varying) => ({
     name: varying.name,
@@ -75,32 +69,25 @@ export function varyingDecls(program: FXCompiledProgram): FXVaryingDecl[] {
   }));
 }
 
-/** {@link stageSource} for the fragment stage, which also records what it reads of the surface frame. */
 export function fragmentStageSource(stage: FXCompiledStage): FXFragmentStageSource {
   return { ...stageSource(stage), surfaceReads: surfaceReadsOf(stage.targetReads) };
 }
 
-/** How a module prints one stage's body: an array literal (expression text). */
 export interface FXStagePrinter {
   body(stage: FXRenderStagePath, body: readonly string[]): string;
 }
 
-/** The programs of a render artifact, by the property that holds each. */
 export type FXRenderProgramKey = "color" | "shadow";
 
-/** One stage of a render artifact: its program's property, and its own within it. */
 export interface FXRenderStagePath {
   readonly program: FXRenderProgramKey;
   readonly stage: "vertex" | "fragment";
 }
 
-/** Every line written out. */
 const PLAIN_STAGES: FXStagePrinter = {
   body: (_stage, body) => JSON.stringify(body),
 };
 
-/** A stage literal: its helpers by the names the module imports them by, its body by `printer`;
- *  a fragment stage's with what it reads of the surface frame. */
 function stageLiteral(
   path: FXRenderStagePath,
   stage: FXCompiledStage,
@@ -118,7 +105,6 @@ function stageLiteral(
   );
 }
 
-/** The `FXRenderProgram` object literal of `program` (the artifact's `key` program). */
 function programLiteral(
   key: FXRenderProgramKey,
   program: FXCompiledProgram,
@@ -157,8 +143,7 @@ function serializeUniformValue(value: unknown, name: string): string {
 
 function uniformsLiteral(shader: FXCompiledShader): string {
   const entries = Object.entries(shader.uniforms).map(([name, handle]) => {
-    // An external sampler carries no baked value: the host binds it by slot name at load time
-    // (via `fromArtifacts({ textures })` / `applyValues`), so emit only the slot, not a value.
+    // External sampler: emit the slot only, the host binds the texture by name.
     if (handle.external !== undefined) {
       return `${JSON.stringify(name)}: { type: "sampler2D", external: ${JSON.stringify(handle.external)} }`;
     }
@@ -168,8 +153,7 @@ function uniformsLiteral(shader: FXCompiledShader): string {
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`;
 }
 
-/** The `FXRenderArtifact` object literal (bare `{ ... }`, for `const <name>: FXRenderArtifact = <body>;`),
- *  its stages printed by `stages` (in full by default). */
+/** The `FXRenderArtifact` literal body. `stages` prints each stage (in full by default). */
 export function renderArtifactBody(
   shader: FXCompiledShader,
   geometry: FXGeometrySource,
@@ -194,8 +178,7 @@ export function renderArtifactBody(
   ].join("\n");
 }
 
-/** The `compute` method of a render artifact: its statements as written source. Its helpers are
- *  module-scope imports (see {@link collectDrawHelpers}), never inlined here. */
+/** The `compute` method source. Its helpers are module imports, never inlined. */
 function drawComputeLiteral(stage: FXCompiledDrawStage): string {
   return [
     `  compute(${DRAW_COMPUTE_PARAMETERS.join(", ")}) {`,
@@ -204,10 +187,6 @@ function drawComputeLiteral(stage: FXCompiledDrawStage): string {
   ].join("\n");
 }
 
-/**
- * The module's import of `helpers` (JS and GLSL alike, each once) from the `helpers` entry of the
- * runtime at `specifier`; none without helpers.
- */
 export function helpersImportLines(
   specifier: string,
   helpers: Iterable<FXJSHelperName | FXGLSLHelperName>,
@@ -222,18 +201,15 @@ export function helpersImportLines(
       ];
 }
 
-/** The JS helpers a render artifact's `compute` calls, which the module imports. */
 export function collectDrawHelpers(shader: FXCompiledShader): readonly FXJSHelperName[] {
   return shader.draw?.helpers ?? [];
 }
 
-/** The GLSL helpers of every stage of a render artifact, which the module imports. */
 export function collectShaderHelpers(shader: FXCompiledShader): readonly FXGLSLHelperName[] {
   const programs = shader.shadow === undefined ? [shader.color] : [shader.color, shader.shadow];
   return programs.flatMap((program) => [...program.vertex.helpers, ...program.fragment.helpers]);
 }
 
-/** The JS helpers of both behavior phases, which the module imports. */
 export function collectBehaviorHelpers(kernel: FXCompiledKernel): readonly FXJSHelperName[] {
   return [...(kernel.spawn?.helpers ?? []), ...kernel.update.helpers];
 }
@@ -274,15 +250,12 @@ function bindingsLiteral(kernel: FXCompiledKernel): string {
   return `{ ${entries.join(", ")} }`;
 }
 
-/** The resource lines (`meshSurfaces`, `volumes`) of an artifact literal at `indent`. None for a
- *  resource kind it does not sample. */
 function resourceLines(fields: FXKernelResourceFields, indent: string): string[] {
   return Object.entries(resourceFieldsOf(fields)).map(
     ([key, resources]) => `${indent}${key}: ${JSON.stringify(resources)},`,
   );
 }
 
-/** Indents each line of a kernel body by `indent`, for the emitted method block. */
 function indentBody(body: string, indent: string): string {
   return body
     .split("\n")
@@ -290,10 +263,7 @@ function indentBody(body: string, indent: string): string {
     .join("\n");
 }
 
-/** The `FXBehaviorArtifact` object literal, with `bindings` inlined and the authored `spawn`/
- *  `update` methods. `baseIndent` is the leading indentation of the `{`, so nested lines align
- *  when embedded at any depth. The module imports the helpers they call (see
- *  {@link collectBehaviorHelpers}). */
+/** The `FXBehaviorArtifact` literal body. `baseIndent` is the indentation of the opening `{`. */
 export function behaviorArtifactBody(kernel: FXCompiledKernel, baseIndent = ""): string {
   const inner = `${baseIndent}  `;
   const methodBody = `${inner}  `;
@@ -335,22 +305,20 @@ function gpuBindingsLiteral(
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`;
 }
 
-/** The element expressions of a kernel's vertex lines: a line written out, a helper by its name. */
 export function kernelLineLiterals(program: FXFusedProgramStandard): string[] {
   return program.vertexLines.map((line) =>
     typeof line === "string" ? JSON.stringify(line) : line.helper,
   );
 }
 
-/** The GLSL helpers a GPU kernel links, which the module imports. */
 export function collectKernelHelpers(program: FXFusedProgramStandard): readonly FXGLSLHelperName[] {
   return program.vertexLines.flatMap((line) => (typeof line === "string" ? [] : [line.helper]));
 }
 
-/** The `FXParticleKernelArtifact` object literal (bare `{ ... }`, for `const <name>:
- *  FXParticleKernelArtifact = <body>;`) - the standard-tier (GPU/transform-feedback) sibling of
- *  {@link behaviorArtifactBody}. `sources` are the two sources' expressions in the module (by
- *  default written out, the helpers by name). */
+/**
+ * The standard-tier (transform-feedback) sibling of behaviorArtifactBody. `sources` are the two
+ * sources' expressions.
+ */
 export function gpuKernelArtifactBody(
   program: FXFusedProgramStandard,
   sources: { readonly vertexSource: string; readonly fragmentSource: string } = {
@@ -372,7 +340,6 @@ export function gpuKernelArtifactBody(
   ].join("\n");
 }
 
-/** The JS helpers a GPU kernel's `compute` calls, which the module imports. */
 export function collectKernelDrawHelpers(
   program: FXFusedProgramStandard,
 ): readonly FXJSHelperName[] {

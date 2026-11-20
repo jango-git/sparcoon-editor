@@ -61,7 +61,7 @@ export interface FXDrawStagePolicy {
 export interface FXDrawStageLift<L extends FXTypedLocal> {
   /** In the order of the stages given. */
   readonly stages: readonly (readonly L[])[];
-  /** The draw uniform an output slot now reads, by the lifted local it read. */
+  /** The draw uniform an output slot reads instead, by the lifted local it read. */
   readonly renamed: ReadonlyMap<string, string>;
   /** Absent when nothing was worth lifting or nothing fits. */
   readonly stage: FXCompiledDrawStage | undefined;

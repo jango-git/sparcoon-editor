@@ -40,6 +40,5 @@ export class PanelFocusTracker {
         return;
       }
     }
-    // Over chrome that belongs to no panel - keep the last active panel (sticky).
   }
 }

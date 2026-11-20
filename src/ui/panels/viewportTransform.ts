@@ -76,14 +76,12 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
     ),
   };
 
-  // The name field is preceded by an icon of the selected object's kind, refreshed in update().
   const nameIcon = createElement("span", { className: "viewport-transform__name-icon" });
   const nameRow = createElement("div", { className: "viewport-transform__name-row" }, [
     nameIcon,
     name,
   ]);
 
-  // The strip sits on the viewport's right edge; each tab's panel opens to its left.
   const tabs = createViewportTabs("right");
   tabs.addTab(t("viewport.item"), viewportIcons.item, t("viewport.itemTransformTip"), [
     nameRow,

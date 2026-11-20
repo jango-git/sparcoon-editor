@@ -1,8 +1,4 @@
-/**
- * Shared substrate every graph command builds on: resolves the active owner's graph for a slot,
- * and replaces it inside a fresh `SourceState`. Not part of `model/commands`'s public barrel -
- * only the sibling graph command modules import it.
- */
+/** Resolves the active owner's graph for a slot and writes it back into a new SourceState. */
 
 import type { EditorGraph, GraphOutputBinding } from "../../domain/graphModel";
 import { createEmptyGraph } from "../../domain/graphModel";

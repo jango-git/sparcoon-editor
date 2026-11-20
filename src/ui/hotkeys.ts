@@ -19,8 +19,6 @@ export function installHotkeys(
 ): void {
   router.registerGlobal(globalKeymap(store));
 
-  // The Viewport and Timeline share one transport keymap: both are places where you watch and
-  // scrub the effect, so Space and the frame-step arrows behave identically in either.
   const transportMap = transportKeymap(store, transport);
   router.registerPanel(EditorPanel.Viewport, transportMap);
   router.registerPanel(EditorPanel.Timeline, transportMap);
@@ -39,8 +37,7 @@ function globalKeymap(store: Store): Keymap {
 function transportKeymap(store: Store, transport: TransportStore): Keymap {
   return [
     {
-      // Space toggles playback (like a video scrubber); preventDefault stops it also activating
-      // a focused button or scrolling the page.
+      // preventDefault stops Space from also activating a focused button or scrolling the page.
       code: "Space",
       run: (): void => {
         if (transport.isPlaying()) {

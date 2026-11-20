@@ -1,10 +1,6 @@
 /**
- * A small icon-only toggle button that replaces the editor's checkboxes: it shows a single glyph,
- * carries no label, and lights up (accent fill) while on. Clicking flips the state and reports it.
- * Defaults to `.toggle-button` / `.toggle-button--active` (the middlebar/settings-panel look), but
- * `baseClassName`/`activeClassName` let a caller with its own bespoke on-state look (e.g. the
- * timeline's dim-when-hidden mute eye, or the violet infinite-play toggle) reuse the same wiring
- * without adopting that look.
+ * Icon toggle button, accent fill while on. `baseClassName` and `activeClassName` override the
+ * default look.
  */
 
 import { createElement } from "../dom";
@@ -44,7 +40,6 @@ export function createToggleButton(options: {
     className: className !== "" ? `${base} ${className}` : base,
   });
   button.type = "button";
-  // Every toggle button shares the editor's hover tooltip (not a native `title`).
   attachTooltip(button, options.title, options.description);
 
   const paint = (): void => {

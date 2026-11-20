@@ -13,11 +13,10 @@ import type {
 } from "./FXInheritPlan";
 
 /**
- * Inheritance: what a newborn takes from the particle whose birth or death spawned it. A spawn
- * graph reads an inherited value through an `inherited-attribute` node, which requests it here; the requests
- * of a graph lay out its emitter's inherit layout (the runtime's `FXInheritLayout`), a flat run of
- * floats every birth of one spawn call shares. Which of the source particle's floats fill it is a
- * reaction's own (see `domain/reactionLinking.ts`): this side knows only what it reads.
+ * What a newborn takes from the particle whose birth or death spawned it. An `inherited-attribute`
+ * node requests a value here. The requests lay out the emitter's inherit layout (FXInheritLayout),
+ * a flat run of floats shared by all births of one spawn call. Which source floats fill it is
+ * decided by the reaction (domain/reactionLinking.ts).
  */
 
 /** Every inheritable core field, in the order a picker offers them. */
@@ -29,10 +28,6 @@ export const FX_INHERIT_BUILTIN_COMPONENT: Readonly<Record<FXInheritBuiltin, num
   lifetime: FX_LIFETIME,
 };
 
-/**
- * What a birth no reaction spawned reads for a core field: an id no particle has, so a graph can
- * tell such a birth apart, and no lifetime.
- */
 export const FX_INHERIT_BUILTIN_DEFAULTS: Readonly<Record<FXInheritBuiltin, number>> = {
   id: -1,
   lifetime: 0,
@@ -60,7 +55,6 @@ export function inheritInputName(request: FXInheritRequest): string {
   return `INHERITED_${sourceKey(request.source)}_${request.type.id}_${defaults}`;
 }
 
-/** The floats one vec4 of the GPU kernel's inherited uniform holds - no value crosses one. */
 export const FX_INHERIT_VECTOR_COMPONENTS = 4;
 
 /**
@@ -97,7 +91,6 @@ export function planInherits(requests: readonly FXInheritRequest[]): FXInheritPl
   return { entries, layout: { stride: cursor, defaults } };
 }
 
-/** The inheritance requests of a graph's reachable nodes, and the conflicts among them. */
 export interface FXInheritCollection {
   readonly requests: readonly FXInheritRequest[];
   /** One per source requested at two types. */
@@ -151,7 +144,6 @@ export function inheritSourceOf(parameters: Readonly<Record<string, unknown>>): 
     : { kind: "attribute", name };
 }
 
-/** A source as a person reads it: an attribute's name, or a core field's. */
 export function inheritSourceLabel(source: FXInheritSource): string {
   return source.kind === "attribute" ? source.name : source.field;
 }

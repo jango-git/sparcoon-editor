@@ -20,14 +20,12 @@ import { FX_RENDER_BUDGET_MINIMUMS, fxPackedShape, packedVectors } from "sparcoo
 
 import { FX_INHERIT_VECTOR_COMPONENTS } from "./FXInherit";
 
-/** One uniform a fused program declares: its name and GLSL type, and its length when an array. */
 export interface FXKernelUniform {
   readonly name: string;
   readonly glslTypeName: string;
   readonly length?: number;
 }
 
-/** `uniform <type> <name>;` of `uniform`, `uniform <type> <name>[<length>];` of an array. */
 export function kernelUniformDeclaration(uniform: FXKernelUniform): string {
   const length = uniform.length === undefined ? "" : `[${uniform.length.toString()}]`;
   return `uniform ${uniform.glslTypeName} ${uniform.name}${length};`;
@@ -57,10 +55,7 @@ export function inheritedUniformRead(offset: number, components: number): string
   return `${FX_TRANSFORM_FEEDBACK_INHERITED_UNIFORM}[${element.toString()}].${swizzle}`;
 }
 
-// Fixed, contract uniform names (sourced from sparcoon's behaviorTransformFeedbackLayout.ts, not
-// re-derived here) every fused program declares unconditionally, regardless of whether this
-// particular graph reads them - mirrors how `u_fxRandSeed` (rand's own contract, core/ir/
-// FXFunctions.Internal.ts) is always declared too.
+// Contract uniforms from the runtime layout. Always declared, even if the graph does not read them.
 export const FIXED_UNIFORMS: readonly FXKernelUniform[] = [
   { glslTypeName: "int", name: FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM },
   { glslTypeName: "int", name: FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM },

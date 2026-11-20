@@ -1,12 +1,9 @@
 /**
- * Reactions across a scene (see `EmitterDoc.reactions`): which emitters are sources, which links
- * may exist, and what being a source does to an emitter's simulation. The one place these rules
- * live - commands, the agent API, the timeline UI, persistence, the preview and the export all ask
- * here.
+ * Which emitters are reaction sources, which reactions may exist, and how being a source changes
+ * simulation.
  *
- * A reaction is an edge from its source to the emitter it sits on, whichever particle event it
- * fires on. The edges never form a cycle (an emitter reacting to itself included): a cycle would
- * keep a scene spawning forever, one frame per round.
+ * A reaction is an edge from its source to the emitter it sits on. The edges never form a cycle, an
+ * emitter reacting to itself included, or the scene would spawn forever.
  */
 
 import type { EmitterDoc, Reaction, SceneModel } from "../model/editorState";
@@ -75,9 +72,8 @@ export function reactionSourceCandidates(
 }
 
 /**
- * `emitter`'s spawn-sink config as it actually runs: a reaction source never asks for the GPU -
- * only the CPU simulation sees its particles be born and die. What the preview builds and the
- * export compiles by.
+ * The emitter's spawn-sink config as it runs. A reaction source never uses the GPU, because only
+ * the CPU simulation sees births and deaths.
  */
 export function effectiveSpawnConfig(emitter: EmitterDoc, scene: SceneModel): SpawnSinkConfig {
   const config = readSpawnSinkConfig(emitter.behaviorGraph);

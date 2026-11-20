@@ -1,17 +1,14 @@
-// Comments annotate a region of the graph and never compile, so every edit on them (create, move,
-// resize, rename, delete) commits `"view"`: saved and undoable, but never reaches the library.
+/** Comments never compile, so every edit commits "view". */
 
 import type { EditorGraph, GraphComment, GraphPosition, GraphSize } from "../../domain/graphModel";
 import type { Store } from "../store";
 import { type GraphSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
 
-/** The current graph's comment list (loadState normalizes an older document's missing field). */
 export function comments(graph: EditorGraph): readonly GraphComment[] {
   return graph.comments;
 }
 
-/** Adds a comment box, returning its new id. */
 export function addComment(
   store: Store,
   slot: GraphSlot,
@@ -82,7 +79,6 @@ export function resizeComment(
   store.commit(next, "view");
 }
 
-/** Renames a comment's header text (multi-line allowed). */
 export function renameComment(store: Store, slot: GraphSlot, id: string, text: string): void {
   const next = withGraph(store.getSource(), slot, (graph) => ({
     ...graph,

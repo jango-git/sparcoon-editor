@@ -90,10 +90,7 @@ const UNARY_OPERATIONS: readonly FXUnaryOperation[] = [
 
 const COMPONENTS = ["x", "y", "z", "w"] as const;
 
-/**
- * Cost weights for the math nodes below, in a rough "one scalar float ALU op" unit - so a
- * `binary-op` "add" on a `vec3` costs 3. `cross` is a fixed 9, not per-component.
- */
+/** Cost weights in scalar float ALU ops (`add` on a vec3 is 3, `cross` is a fixed 9). */
 const BINARY_OPERATION_COST_PER_COMPONENT: Readonly<Record<FXBinaryOperation, number>> = {
   add: 1,
   subtract: 1,
@@ -497,7 +494,6 @@ export const fxCombine = defineNode({
       default: "vec3",
     },
   },
-  // `construct` assembles a vector from parts - a data reshuffle, not arithmetic.
   cost: 0,
   build: ({ inputs, resolvedT, fn }) => {
     const parts: FXExpr[] = [];

@@ -36,7 +36,6 @@ export class DisposerBag {
   }
 
   public dispose(): void {
-    // Splice first so a disposer that re-enters dispose() can't run the list twice.
     for (const disposer of this.disposers.splice(0)) {
       disposer();
     }

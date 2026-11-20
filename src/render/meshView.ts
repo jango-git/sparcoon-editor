@@ -1,7 +1,6 @@
 /**
- * The render-only sibling of {@link EmitterView} for a VFX mesh: no behavior graph, no simulation,
- * no spawn. Drives a single `THREE.Mesh` from one {@link FXLiveGraph}, same structural-vs-rebind
- * gate and geometry/render-mode rebuild tracking as an emitter's.
+ * Preview of a VFX mesh, one `THREE.Mesh` driven by one {@link FXLiveGraph}. No behavior graph,
+ * simulation or spawn.
  */
 
 import type { FXRenderArtifact } from "sparcoon";
@@ -57,31 +56,27 @@ export class MeshView {
   private readonly renderRegistry: FXNodeRegistry<FXRenderNode>;
   private readonly renderBackend: FXGLSLRenderTier;
   private shader: FXCompiledShader | undefined = undefined;
-  // The last assembled artifact, kept so a timeline value-drive can find each param's uniform slot
-  // and its baked baseline (to revert a param that stops being driven).
+  // The last assembled artifact. Value drive reads each param's uniform slot and baked baseline
+  // from it.
   private artifact: FXRenderArtifact | undefined = undefined;
 
   private mesh: FXMesh | undefined = undefined;
 
-  // The exact IR + runtime shape the current mesh was built from: geometry / renderMode reshape the
-  // mesh+material but not the IR hash, so a change to either is invisible to the live gate.
+  // What the mesh was built from. Geometry and render mode reshape the mesh but not the IR hash, so
+  // only this detects their change.
   private builtShader: FXCompiledShader | undefined = undefined;
   private builtGeometryKey: string | undefined = undefined;
-  // Only meaningful when the geometry source is "custom" - see EmitterView's field of the same name.
   private builtCustomGeometryReference: BufferGeometry | undefined = undefined;
   private builtRenderMode: RenderMode | undefined = undefined;
-  // Surface-sink shadow flags (readRenderSinkConfig), invisible to the live gate's IR hash - track the
-  // built values so a flip forces installMesh (which attaches/detaches the customDepthMaterial).
+  // Shadow flags as built. Not in the IR hash, so a flip must force `installMesh`.
   private builtCastShadow = false;
-  // The current apply()'s cast-shadow flag, read by the render target-builder closure: the shadow
-  // program is compiled only for a mesh that casts a shadow.
+  // Cast-shadow flag of the current apply. The shadow program compiles only when it is set.
   private currentCastShadow = false;
   private builtReceiveShadow = false;
 
   private readonly drivenParams = new Set<string>();
   private lastTransform: Transform | undefined = undefined;
-  // See EmitterView.lastVisible: re-asserted onto a freshly (re)built mesh so a rebuild never
-  // flashes a muted mesh visible again.
+  // Reapplied to a rebuilt mesh so a muted mesh stays hidden.
   private lastVisible = true;
   private readonly marker: GizmoMarker = createGizmoMarker("vfxMesh");
 
@@ -89,18 +84,15 @@ export class MeshView {
     private readonly parent: Object3D,
     private readonly resolveTexture: TextureResolver,
     renderRegistry: FXNodeRegistry<FXRenderNode>,
-    // Which GLSL tier this view's live render graph compiles with - see EmitterView's constructor.
     renderBackend: FXGLSLRenderTier,
-    // The content library's live mesh geometries, by name - see EmitterView's constructor.
     private readonly resolveMeshGeometries: () => Readonly<
       Record<string, BufferGeometry>
     > = () => ({}),
   ) {
     this.renderLive = new FXLiveGraph(
       new FXGraphReconciler(renderRegistry),
-      // Always the attribute-free mesh target: a `custom-attribute` (or any particle-only
-      // node) then fails validation against it - the palette restriction enforced by the
-      // compiler itself.
+      // Attribute-free mesh target, so particle-only nodes such as `custom-attribute` fail
+      // validation.
       new FXRenderLiveBackend(
         renderBackend,
         () => buildMeshTarget(this.currentCastShadow),
@@ -113,28 +105,23 @@ export class MeshView {
     this.renderBackend = renderBackend;
   }
 
-  /** The runtime mesh's Object3D (its transform is the mesh's pose), or `undefined` before build. */
   public get object3D(): Object3D | undefined {
     return this.mesh;
   }
 
-  /** Whether the mesh is shown (not muted). */
   public get visible(): boolean {
     return this.lastVisible;
   }
 
-  /** Whether the running mesh draws a material that reads the scene depth (a Depth Fade). */
   public get readsSceneDepth(): boolean {
     return this.mesh !== undefined && this.artifact?.sceneDepth === true;
   }
 
-  /** The gizmo's invisible pick proxy, raycast to select this mesh in the viewport. */
   public get pickTarget(): Object3D {
     return this.marker.pickTarget;
   }
 
-  /** Reconciles the render snapshot and (re)builds or rebinds the mesh. `geometry` is the mesh
-   * doc's own source, not the render sink's particle geometry. */
+  /** `geometry` is the mesh document's source, not the render sink's particle geometry. */
   public apply(
     renderSnapshot: FXGraphSnapshotData,
     geometry: GeometrySource,
@@ -167,12 +154,10 @@ export class MeshView {
       return invalid([describeError(error)]);
     }
 
-    // Held before it replaces anything, like the emitter's (see EmitterView.apply).
     let budget: RenderBudgetFindings;
     try {
       const shader = this.shader;
       budget = this.budget.get([shader, renderMode, castShadow], () => {
-        // The other tier's artifact of the same graph beside this one: each counted on its own.
         const shaders = everyTierShaders({
           tier: this.renderBackend,
           shader,
@@ -204,10 +189,8 @@ export class MeshView {
       result.status === "recompiled" ||
       this.mesh === undefined ||
       geometryKey !== this.builtGeometryKey ||
-      // A "custom" reference whose bound mesh asset was deleted or re-uploaded - see EmitterView.
       currentCustomGeometryReference !== this.builtCustomGeometryReference ||
       renderMode !== this.builtRenderMode ||
-      // Shadow flags reshape the runtime mesh (attach/detach the depth material), not the IR.
       castShadow !== this.builtCastShadow ||
       receiveShadow !== this.builtReceiveShadow ||
       this.shader !== this.builtShader;
@@ -218,7 +201,6 @@ export class MeshView {
       } catch (error) {
         return invalid([describeError(error)]);
       }
-      // Only once the mesh has taken it: a failed install leaves the last good one running.
       this.artifact = artifact;
       this.builtShader = this.shader;
       this.builtGeometryKey = geometryKey;
@@ -229,15 +211,14 @@ export class MeshView {
       return withWarnings(RECOMPILED, warnings);
     }
 
-    // Value-only edit: scrub the fresh uniform values into the running material's slots by name.
     this.mesh?.applyValues(this.uniformValues(artifact));
     this.artifact = artifact;
     return withWarnings(REBOUND, warnings);
   }
 
   /**
-   * Scrubs the timeline's sampled render-param values into the running material for this frame. A
-   * param dropped since last frame reverts to its baked baseline. No-op until a mesh exists.
+   * Writes sampled timeline values into the material. A param no longer driven reverts to its baked
+   * baseline.
    */
   public driveParamValues(values: ReadonlyMap<string, number | readonly number[]>): void {
     if (this.mesh === undefined || this.artifact === undefined) {
@@ -266,12 +247,10 @@ export class MeshView {
     }
   }
 
-  /** Highlights this mesh's preview gizmo as the selected one (accent tint), or not. */
   public setSelected(selected: boolean): void {
     this.marker.setSelected(selected);
   }
 
-  /** Poses the running mesh's Object3D. Cached so a later rebuild keeps the pose. */
   public applyTransform(transform: Transform): void {
     this.lastTransform = transform;
     if (this.mesh !== undefined) {
@@ -279,7 +258,6 @@ export class MeshView {
     }
   }
 
-  /** Shows/hides the mesh in the preview (the outline's mute toggle). Cached like the pose. */
   public setVisible(visible: boolean): void {
     this.lastVisible = visible;
     if (this.mesh !== undefined) {
@@ -287,7 +265,6 @@ export class MeshView {
     }
   }
 
-  /** The programs of the running mesh the renderer could not link; all of them the render graph's. */
   public programLinkFailures(renderer: WebGLRenderer): ProgramLinkFailures {
     return this.mesh === undefined
       ? {}
@@ -303,7 +280,6 @@ export class MeshView {
     this.renderLive.destroy();
   }
 
-  /** Replaces the running mesh with a fresh one for the new artifact. May throw (see caller). */
   private installMesh(
     artifact: FXRenderArtifact,
     castShadow: boolean,
@@ -313,10 +289,8 @@ export class MeshView {
     for (const slot of externalSlots(artifact)) {
       textures[paramUniformName(slot.paramName)] = this.resolveTexture(slot.paramName);
     }
-    // Build the new mesh BEFORE dropping the old one, so a throw leaves the last good preview up.
-    // FXMesh resolves its own geometry from artifact.geometry, self-registers with the default
-    // FXWorld, and is ticked from there (clock + object velocity/angular velocity for a render graph
-    // reading those builtins) - no manual setClock, no manual geometry resolution.
+    // Build the new mesh before dropping the old one, so a throw keeps the last good preview.
+    // FXMesh resolves its geometry and registers with the default FXWorld itself.
     const next = FXMesh.fromArtifact(artifact, {
       textures,
       geometries: this.resolveMeshGeometries(),
@@ -333,7 +307,6 @@ export class MeshView {
     next.visible = this.lastVisible;
   }
 
-  /** The live uniform values (numbers + external textures) to scrub into the running material. */
   private uniformValues(
     artifact: FXRenderArtifact,
   ): Record<string, number | readonly number[] | Texture> {

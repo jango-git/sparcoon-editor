@@ -1,13 +1,6 @@
 /**
- * One node rendered as a DOM card: a title, its input/output socket rows, and inline
- * parameter widgets driven by the node's `describe().params` metadata (parameters are edited on the
- * node, always visible - no inspector panel).
- *
- * Each widget dispatches an `onParamChange(key, value)` on edit; the graph canvas wires
- * that to the `updateNodeParam` command. Widget pointer events are stopped from bubbling
- * so editing a field never starts a node drag or selection. On an external change (undo /
- * redo) {@link update} re-syncs each widget from the node's params, skipping a field the
- * user is actively editing.
+ * DOM card for one node: title, socket rows and parameter widgets from `describe().params`.
+ * `update` re-syncs widgets from the model and skips a field being edited.
  */
 
 import type { AttributeTypeName, GraphNode } from "../../domain/graphModel";
@@ -124,10 +117,8 @@ export interface NodeViewOptions {
    */
   readonly cost?: number | undefined;
   /**
-   * A sink's own graph reachable-cost total (domain/graphStats.ts's `computeSinkCost`), shown in
-   * the same badge in place of `cost` - a sink has no per-node engine cost of its own, but its
-   * header is where that graph's total now lives (moved off the Stats panel, which sums the
-   * whole effect instead). `undefined` for every non-sink node.
+   * Total cost of the sink's own graph, shown in the same badge in place of `cost`. `undefined` for
+   * non-sink nodes.
    */
   readonly sinkCost?: number | undefined;
   /** Forwarded to every color-flagged field's picker/ramp (see NodeWidgets' matching param). */
@@ -225,7 +216,6 @@ export class NodeView {
       attachTooltip(this.costValue, t("stats.graphCost"), t("stats.graphCostTip"));
       titleChildren.push(this.costValue);
     }
-    // A help "?" at the far right of the header shows the node's documentation in the shared hover
     // tooltip. Skipped when the node has no description.
     const description = nodeDescription(this.nodeType, { domain: metadata?.domain })?.trim() ?? "";
     if (description !== "") {
@@ -373,18 +363,13 @@ export class NodeView {
     }
   }
 
-  /** Releases every child widget (closing any open popover) when this view is dropped. */
   public dispose(): void {
     this.widgets.dispose();
   }
 
   /**
-   * Re-syncs the card from the current model. `cost` is this node's freshly recomputed live
-   * price (see `domain/graphStats.ts`'s `computeNodeCosts`, called once per canvas render and
-   * threaded in per node); `sinkCost` is the same thing for a sink's own graph total
-   * (`computeSinkCost`). Both are `undefined` when they don't apply to this node, matching the
-   * constructor's badge-presence check (a node either always shows a badge or never does; only
-   * its number moves).
+   * Re-syncs the card from the model. `cost` and `sinkCost` are `undefined` when the node has no
+   * badge.
    */
   public update(node: GraphNode, selected: boolean, cost?: number, sinkCost?: number): void {
     this.setPosition(node.position.x, node.position.y);
@@ -476,7 +461,6 @@ export class NodeView {
     dot.dataset["socket"] = socket.key;
     dot.dataset["side"] = side;
     dot.dataset["type"] = socket.type;
-    // Tint the dot (and, via the wire layer, its edges) by the data type it carries.
     dot.style.setProperty("--socket-color", socketTypeColor(socket.type));
     if (onSocketPointerDown !== undefined) {
       dot.addEventListener("pointerdown", (event) => onSocketPointerDown(event, ref));
@@ -485,7 +469,6 @@ export class NodeView {
     return dot;
   }
 
-  /** A socket's name label - its own grid cell (right-aligned for outputs). */
   private buildLabel(socket: FXSocketMeta, side: SocketSide): HTMLElement {
     const socketSide = side === "output" ? "outputs" : "inputs";
     const text =
@@ -532,7 +515,6 @@ export class NodeView {
     };
   }
 
-  /** The free-text Name field for a parameter node - its stable uniform/binding slot. */
   private paramNameRow(node: GraphNode, key: string): NodeRow {
     const label = createElement("span", {
       className: "param__label",

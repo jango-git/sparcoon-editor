@@ -1,7 +1,4 @@
-/**
- * The {@link LiveApplyStatus} values the emitter and mesh views answer an apply with - one place
- * for both, so a status means the same whichever object produced it.
- */
+/** Apply statuses shared by the emitter and mesh views. */
 
 import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import { t } from "../i18n";
@@ -24,7 +21,6 @@ export function invalidFromErrors(errors: readonly FXCompilerError[]): LiveApply
   };
 }
 
-/** `status` with `warnings` (as messages) attached - unless there are none, or it already failed. */
 export function withWarnings(
   status: LiveApplyStatus,
   warnings: readonly FXCompilerError[],

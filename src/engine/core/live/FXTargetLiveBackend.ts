@@ -19,7 +19,6 @@ export interface FXTargetLiveBackendConfig<N extends FXGraphNode, A, T> {
   validate(graph: FXGraph<N>, target: T): FXValidationResult;
   /** Cheap structural hash of the graph (no codegen), matching {@link compile}'s hash. */
   previewHash(graph: FXGraph<N>, target: T): string;
-  /** Full compile of the graph into an installable artifact. */
   compile(graph: FXGraph<N>, target: T): A;
   /** Hot-swaps the artifact into the live runtime. */
   install(artifact: A): void;

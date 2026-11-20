@@ -6,7 +6,6 @@ import type { FXNodeRegistry } from "./FXNodeRegistry";
 import type { FXGraphSnapshotData } from "./FXSnapshotData";
 import { FX_SNAPSHOT_VERSION } from "./FXSnapshotData";
 
-/** Result of {@link FXGraphReconciler.reconcile}. */
 export interface FXReconcileResult<N extends FXGraphNode = FXGraphNode> {
   readonly diff: FXGraphDiff<N>;
   /**
@@ -47,10 +46,8 @@ export class FXGraphReconciler<N extends FXGraphNode = FXGraphNode> {
   public reconcile(graph: FXGraph<N>, data: FXGraphSnapshotData): FXReconcileResult<N> {
     const emptyDiff: FXGraphDiff<N> = { addedNodeIds: [], removedNodes: [] };
 
-    // Version-locked to this build: no back-compat migration (the editor is unreleased, so no
-    // snapshot predates the current wire format). A snapshot of any other version is rejected as
-    // an error result - nothing mutated or minted - and the host resets (drop-and-restart) rather
-    // than migrating. `version` arrives from JSON at runtime, so it may not match the literal type.
+    // Any other version is rejected as an error result, nothing mutated or minted, and the host
+    // resets. `version` comes from JSON, so it may not match the literal type.
     const version = (data as { readonly version?: unknown }).version;
     if (version !== FX_SNAPSHOT_VERSION) {
       return {

@@ -64,10 +64,8 @@ export abstract class FXGraphNode<TContext extends FXCompilerContext = FXCompile
   public abstract build(context: TContext): void;
 
   /**
-   * Render-only: the baseline (WebGL1) compiler prefers this over {@link build} when present -
-   * an alternate build for a node whose primary `build` reaches for a WebGL2-only capability
-   * (see `FXNodeDescriptor.baselineBuild`). `FXCompilerStandard` never calls this; most nodes
-   * never define it.
+   * Render-only: the baseline (WebGL1) compiler uses this instead of {@link build} when present
+   * (see `FXNodeDescriptor.baselineBuild`).
    */
   public baselineBuild?(context: TContext): void;
 
@@ -105,6 +103,5 @@ export abstract class FXGraphNode<TContext extends FXCompilerContext = FXCompile
   /** Optional one-time setup before the first compile. */
   public prepare?(): void;
 
-  /** Optional resource release (textures, buffers, ...). */
   public destroy?(): void;
 }

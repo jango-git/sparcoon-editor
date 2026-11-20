@@ -1,6 +1,6 @@
 /**
- * Stable id generation, reused across snapshots so the library can reconcile instances by id.
- * The counter starts at 0/session, so it MUST be seeded from any loaded document (see {@link seedIdentifierCounter}) or a re-mint silently overwrites a restored node.
+ * Id generation. The counter restarts each session, so it must be seeded from a loaded document
+ * with {@link seedIdentifierCounter}, or a new id can overwrite a restored node.
  */
 
 let counter = 0;

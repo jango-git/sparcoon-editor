@@ -13,6 +13,7 @@ import {
   assembleTransformFeedbackProgram,
   fusedVertexSource,
 } from "../../src/engine/behavior/FXKernelBuildStandard.Internal";
+import { SPAWN_KERNEL_PARAMETERS } from "../../src/engine/behavior/FXKernelShared.Internal";
 import { validateKernelTarget } from "../../src/engine/behavior/FXKernelTargetValidation.Internal";
 import { validateBehavior } from "../../src/engine/behavior/FXKernelValidation.Internal";
 import { compileBehavior } from "../../src/engine/behavior/FXParticleBehaviorKernel.Internal";
@@ -129,7 +130,7 @@ describe("inheriting kernels", () => {
     const graph = inheritingGraph();
     const body = behaviorArtifactBody(compileBehavior(graph, particleBehaviorTargetsFor(graph)));
     expect(body).toContain('inherit: {"stride":4,"defaults":[1,2,3,3]},');
-    expect(body).toContain("spawn(slots, start, count, bindings, emitter, inherited) {");
+    expect(body).toContain(`spawn(${SPAWN_KERNEL_PARAMETERS.join(", ")}) {`);
   });
 
   it("read the inherited uniform on the GPU, declared as many vec4s as the layout takes", () => {

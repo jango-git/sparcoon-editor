@@ -1,18 +1,7 @@
 /**
- * The interactive node editor mounted into the graph region. It renders the active graph's nodes
- * from source and turns input into commands:
- *
- * - right-click -> add-node menu -> `addCatalogNode`
- * - drag empty space -> pan; wheel -> zoom
- * - drag a node -> `moveNodes` on release (the whole gesture is one history step)
- * - click -> select; Delete -> `removeNode`
- * - drag a socket dot -> a connection (node->node) or output binding (node->sink);
- *   grabbing a connected input detaches its edge to re-route or delete it
- *
- * Nodes are reconciled by id (not rebuilt) on every source change, so an unrelated edit or an undo
- * never destroys the node you are dragging. Edges are drawn on a canvas-sized SVG surface
- * ({@link redrawWires}) stacked between the comment and node layers; all three carry the same
- * camera, handed to them by {@link GraphViewport}.
+ * Node editor for the active graph. Reconciles views by id on each source change, so an unrelated
+ * edit or undo never destroys a node being dragged. Wires are drawn on one SVG surface in graph
+ * coordinates.
  */
 
 import { bindingSinkId, findIncomingEdge } from "../../domain/graphEdges";
@@ -152,7 +141,6 @@ const DRAG_THRESHOLD = 3;
  */
 const PAN_DEADZONE = 8;
 
-/** How near (screen px) a click/knife-stroke must pass a wire to count as touching it. */
 const WIRE_HIT_TOLERANCE = 6;
 
 /**
@@ -173,11 +161,9 @@ function connectedInputKeys(fill: ReadonlySet<string> | undefined): ReadonlySet<
 }
 
 export class GraphCanvas {
-  /** The layer (graph coordinates) holding every node and route card, in front of the wires. */
   private readonly nodeLayer: HTMLElement;
   /** The camera group of the wire surface; every edge is drawn into it in graph coordinates. */
   private readonly wireLayer: SVGGElement;
-  /** Screen-space rubber-band rectangle shown while marquee-selecting (left-drag). */
   private readonly marquee: HTMLElement;
   /** Screen-space SVG overlay drawing the knife stroke while Alt-dragging to cut wires. */
   private readonly knife: SVGSVGElement;
@@ -215,11 +201,8 @@ export class GraphCanvas {
   private readonly wireRenderer: WireRenderer;
   /** Per-graph camera memory (pan/zoom per emitter+mode) and deferred frame-to-fit. */
   private readonly camera: GraphCamera;
-  /** The Alt-drag knife / route-insert gesture (owns the knife overlay). */
   private readonly knifeGesture: GraphKnife;
-  /** The left-drag rubber-band selection gesture (owns the marquee overlay). */
   private readonly marqueeGesture: GraphMarquee;
-  /** The comment-box header-drag / resize / create gestures. */
   private readonly commentGestures: CommentGestures;
   /** Guards mouse-wheel zoom against a spurious single-notch direction flip (mouse mode only). */
   private readonly wheelDirection = new WheelDirectionLock();
@@ -347,11 +330,8 @@ export class GraphCanvas {
   }
 
   /**
-   * Selects and frames a single node by id - the graph error strip's "jump to this node" click
-   * (graphPanel.ts). Reuses {@link boundsOf}, the same lookup `frameGraph`'s "f" hotkey frames a
-   * selection with, so a stale/unknown id (a since-deleted node, or one that belongs to the other
-   * graph) is a silent no-op rather than a thrown error - a compiler message can outlive the node
-   * it named across an intervening edit.
+   * Selects and frames the node. An unknown id is a no-op, since an error message can outlive its
+   * node.
    */
   public focusNode(nodeId: string): void {
     const rectangle = this.boundsOf([nodeId], []);
@@ -567,7 +547,6 @@ export class GraphCanvas {
           this.onNodePointerDown(event, node.id),
         );
         this.nodeLayer.append(view.element);
-        // Now that the card is in the DOM, size its width to content and snap to the grid.
         view.finalizeSize();
         this.nodeViews.set(node.id, view);
         this.shapeKeys.set(node.id, this.shapeKeyFor(node, graph));
@@ -670,7 +649,6 @@ export class GraphCanvas {
     }
   }
 
-  /** Opens the add-node menu at a screen point, dropping the picked node grid-snapped there. */
   private openAddMenu(clientX: number, clientY: number): void {
     const snapped = this.snappedGraphPoint(clientX, clientY);
     // Only real (compiled) nodes are listed; routes and comments are created by hotkey.
@@ -747,7 +725,6 @@ export class GraphCanvas {
     return { x: snapToGrid(graphPoint.x), y: snapToGrid(graphPoint.y) };
   }
 
-  /** Spawns a catalog node at `position`, makes it the sole selection, and returns its id. */
   private spawnAndSelect(type: string, position: GraphPosition): string | undefined {
     const id = addCatalogNode(this.store, this.activeSlot(), type, position);
     if (id !== undefined) {
@@ -822,8 +799,6 @@ export class GraphCanvas {
       },
     });
   }
-
-  // Alt wire editing (insert route / knife-cut).
 
   /** Every drawn edge with its wire polyline (graph coords) and how to address it for removal. */
   private collectEdges(): GraphEdge[] {
@@ -957,23 +932,19 @@ export class GraphCanvas {
     return [
       { code: "KeyC", modifier: true, run: () => this.copySelection(), preventDefault: false },
       { code: "KeyV", modifier: true, run: () => this.pasteClipboard() },
-      // Delete / dissolve-aware delete of the selection.
       { code: "Delete", run: () => this.deleteSelected() },
       { code: "Backspace", run: () => this.deleteSelected() },
       { code: "KeyX", run: () => this.deleteSelected() },
       {
-        // "a" opens the add-node menu at the cursor - the keyboard twin of the right-click menu.
         code: "KeyA",
         run: (): void => {
           const at = this.pointerScreenPoint();
           this.openAddMenu(at.x, at.y);
         },
       },
-      // "c" is the only way to make a comment: wraps the selection, or drops a box at the cursor.
+      // Only way to create a comment.
       { code: "KeyC", run: () => this.commentGestures.create(this.pointerGraphPoint()) },
-      // "f" frames the selection, or the whole graph when nothing is selected.
       { code: "KeyF", run: () => this.frameGraph() },
-      // "i" bakes a timeline keyframe for each selected Timeline Value node at the playhead.
       { code: "KeyI", run: () => this.keyframeSelection() },
     ];
   }
@@ -1087,7 +1058,6 @@ export class GraphCanvas {
       this.clipboard,
       offset,
     );
-    // The commit above already re-rendered the views; now retarget the selection onto the paste.
     this.selected.clear();
     this.selectedComments.clear();
     for (const id of nodeIds) {
@@ -1098,8 +1068,6 @@ export class GraphCanvas {
     }
     this.refreshSelection();
   }
-
-  // Wiring.
 
   /**
    * The types a placed node's generic (`"T"`) input accepts: `"any"` for a route (it forwards
@@ -1139,17 +1107,14 @@ export class GraphCanvas {
   }
 
   /**
-   * Starts a wire drag from a socket dot: press an **output** to drag toward an input, an
-   * unconnected **input** to drag toward an output, or a *connected* input to detach its edge
-   * and re-drag from the source output. On release: a compatible opposite-side socket commits
-   * the wire; dropping an output-anchored drag on empty space opens the add-node menu instead
-   * (see {@link openAddMenuFromOutput}); anything else discards the drag.
+   * Starts a wire drag from a socket dot. A connected input detaches its edge and drags from the
+   * source output. Dropping an output drag on empty space opens the add-node menu.
    */
   private onSocketPointerDown(event: PointerEvent, socket: SocketRef): void {
     if (event.button !== 0) {
       return;
     }
-    // The dot is inside a node card; stop the press from starting a node drag / selection.
+    // Do not start a node drag or selection.
     event.stopPropagation();
 
     // Alt+Click on a pin breaks its link(s) outright (Unreal-style), no drag: an input drops
@@ -1220,7 +1185,6 @@ export class GraphCanvas {
           this.redrawWires();
           this.openAddMenuFromOutput(anchor, up.clientX, up.clientY);
         } else {
-          // Nothing committed (missed / incompatible / detached-and-dropped): clear the ghost.
           this.pending = undefined;
           this.redrawWires();
         }
@@ -1283,7 +1247,6 @@ export class GraphCanvas {
     return this.viewport.screenToGraph(clientX, clientY, this.root.getBoundingClientRect());
   }
 
-  /** The last pointer screen position, or the canvas centre if none is known. */
   private pointerScreenPoint(): { x: number; y: number } {
     const bounds = this.root.getBoundingClientRect();
     return (
@@ -1294,7 +1257,6 @@ export class GraphCanvas {
     );
   }
 
-  /** The graph point under the last pointer position, or the canvas centre if none is known. */
   private pointerGraphPoint(): GraphPoint {
     const client = this.pointerScreenPoint();
     return this.viewport.screenToGraph(client.x, client.y, this.root.getBoundingClientRect());

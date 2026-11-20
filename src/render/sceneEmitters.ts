@@ -1,6 +1,6 @@
 /**
  * Owns one {@link EmitterView} per emitter and one {@link MeshView} per VFX mesh, synced to the
- * scene model each recompute. Surfaces the active graph owner's snapshot/status to the pipeline.
+ * scene on each recompute. Reports the active graph owner's result.
  */
 
 import { connectReaction, fireSpawnAction } from "sparcoon/editor";
@@ -64,8 +64,7 @@ import { NO_PREVIEW_ASSETS, type PreviewAssets } from "./previewAssets";
 import { type ProgramLinkFailures, sameProgramLinkFailures } from "./programLinkFailures";
 
 const IDLE: LiveApplyStatus = { status: "invalid", messages: [] };
-// The placeholder snapshot for a graph half that doesn't apply (no emitters yet, or a mesh's
-// nonexistent behavior graph) - computed once, not per fallback (see emptyResult/meshSceneResult).
+// Placeholder snapshot for a graph half that does not apply, computed once.
 const EMPTY_SNAPSHOT = serializeGraph({
   nodes: {},
   connections: [],
@@ -76,37 +75,29 @@ const EMPTY_SNAPSHOT = serializeGraph({
 
 export class SceneEmitters implements SceneApplier {
   private readonly views = new Map<string, EmitterView>();
-  // One MeshView per VFX mesh, kept in sync alongside the emitter views. A mesh is render-only
-  // (no simulation), so its views never take part in spawn/particle-count/sorting.
+  // Mesh views take no part in spawn, particle count or sorting.
   private readonly meshViews = new Map<string, MeshView>();
-  // The two node registries every view shares: stateless factory maps populated once here rather
-  // than re-registering the standard node set per emitter (each view keeps only its reconcilers).
+  // Node registries shared by all views. They are stateless factory maps.
   private readonly renderRegistry = createRenderRegistry();
   private readonly behaviorRegistry = createBehaviorRegistry();
   /**
-   * The single group every emitter is parented under: the **VFX** object. Its own transform
-   * poses the whole effect at once, and each emitter's transform is local to it.
+   * The VFX object. Every emitter is parented under it, and its transform poses the whole effect.
    */
   private readonly vfxGroup = new Group();
-  // The VFX group's own preview gizmo, a permanent child of the group.
   private readonly vfxMarker: GizmoMarker = createGizmoMarker("vfx");
-  // Reused for viewport click-picking, so a pick allocates nothing.
   private readonly raycaster = new Raycaster();
-  // The entity currently selected for the gizmo - its marker is highlighted. Re-applied after
-  // every sync so a freshly (re)built emitter view adopts the current highlight.
+  // Selected entity. Reapplied after every sync so rebuilt views pick up the highlight.
   private selected: SceneEntity = VFX_ENTITY;
-  // Set while the modal transform tool drives an Object3D directly, so the timeline drive and
-  // view-commit re-pose don't fight the drag; the tool clears it (and commits) on confirm/cancel.
+  // Set while the modal transform tool moves an Object3D, so the timeline drive does not fight the
+  // drag.
   private transformsLocked = false;
-  // Entities hand-posed while the caret is parked; applySceneTransforms holds these at base
-  // (ignoring tracks) until the dispatcher clears the set on the next frame entry. Keyed by entityKey.
+  // Entities hand-posed while the caret is parked. Held at base until the dispatcher clears them on
+  // the next frame entry.
   private readonly manualPoses = new Set<string>();
   // The death reactions as wired between views, re-made on every sync (cheap: a listener each),
   // and what each leaves its births at defaults for, by reaction id.
   private reactionLinks: (() => void)[] = [];
   private inheritIssuesByReaction: ReadonlyMap<string, readonly InheritIssue[]> = new Map();
-  // See readsSceneDepth: what the views' materials, kernels and visibility last said, refreshed when
-  // any can change - a sync (new artifacts) or a visibility flip.
   private sceneDepthRead = false;
   // The link failures of every view as last checked, by view id, to tell when they change.
   private programLinkFailuresSeen = new Map<string, ProgramLinkFailures>();
@@ -115,17 +106,10 @@ export class SceneEmitters implements SceneApplier {
     scene: Scene,
     private readonly resolveTexture: TextureResolver,
     private readonly camera: Camera,
-    // The live renderer, threaded into every emitter view so it can attempt a GPU (transform-
-    // feedback) behavior driver when the spawn sink opts in.
     private readonly renderer: WebGLRenderer,
-    // Which GLSL tier every emitter/mesh view's live render graph compiles with
-    // (settings/renderBackend.ts) - shared across every view the same way the registries are.
     private readonly renderBackend: FXGLSLRenderTier,
-    // The playhead time a rebuild re-poses at: the caret's frame when parked, the caret itself while
-    // playing (see TimelineDispatcher.driveFrame).
+    // Time a rebuild re-poses at, the caret frame when parked and the caret time while playing.
     private readonly currentTime: () => number = () => 0,
-    // The content library's live assets, by name - threaded into every emitter/mesh view so a
-    // "custom" geometry source and a sampled asset resolve the same way an external texture does.
     private readonly resolveAssets: () => PreviewAssets = () => NO_PREVIEW_ASSETS,
   ) {
     this.vfxGroup.name = "VFX";
@@ -133,19 +117,16 @@ export class SceneEmitters implements SceneApplier {
     scene.add(this.vfxGroup);
   }
 
-  /** What each reaction, by id, leaves its births at defaults for, as last wired. */
   public get inheritIssues(): ReadonlyMap<string, readonly InheritIssue[]> {
     return this.inheritIssuesByReaction;
   }
-  /** The effects' root: everything the scene depth pre-pass leaves out (see `SceneDepthSource`). */
   public get effects(): Object3D {
     return this.vfxGroup;
   }
 
   /**
-   * Whether a sync is due for the programs of the views: the ones the renderer or the driver could
-   * not link changed, or the GPU kernel a rebuild waits for has built. Called after a frame, once
-   * it compiled the materials of every view it drew and ran their simulations.
+   * Whether a sync is due because a link failure changed or the awaited GPU kernel finished
+   * building. Called after a frame has compiled and run every view.
    */
   public checkPrograms(): boolean {
     let kernelBuilt = false;
@@ -156,8 +137,8 @@ export class SceneEmitters implements SceneApplier {
   }
 
   public sync(scene: SceneModel): SceneApplyResult {
-    // A removed emitter/mesh is a genuine rebuild; a value edit that only rebinds is not (see the
-    // `recompiled` flag - it gates the timeline restart-on-rebuild so a rebind never rewinds).
+    // A removal counts as a rebuild and a rebind does not. `recompiled` gates the timeline restart,
+    // so a rebind never rewinds.
     let recompiled = this.pruneRemoved(scene);
 
     let active: SceneApplyResult | undefined = undefined;
@@ -172,8 +153,7 @@ export class SceneEmitters implements SceneApplier {
         recompiled = true;
       }
     }
-    // Every mesh still (re)builds its own material + mesh here regardless of which one (if any) is
-    // the active graph owner; only the owner's result is surfaced below (see `resolveGraphOwner`).
+    // Every mesh rebuilds here. Only the graph owner's result is surfaced below.
     const meshResults = new Map<string, MeshApplyResult>();
     for (const mesh of scene.meshes) {
       const result = this.applyMesh(mesh);
@@ -184,12 +164,10 @@ export class SceneEmitters implements SceneApplier {
     }
     this.wireReactions(scene);
     active = active === undefined ? undefined : this.withInheritWarnings(active, scene);
-    // Re-assert every entity's pose after the (re)build so a structural edit never resets it.
     this.applySceneTransforms(scene, this.currentTime());
     this.refreshSceneDepthRead();
     this.highlightSelected();
-    // Surface whichever entity the graph editor actually targets (same resolution as
-    // `selectActiveGraphOwner`), so a VFX mesh's errors reach the graph panel like an emitter's.
+    // Surfaces the entity the graph editor targets, so mesh errors reach the graph panel too.
     const owner = resolveGraphOwner(scene);
     const ownerMeshResult = owner?.kind === "vfxMesh" ? meshResults.get(owner.id) : undefined;
     const ownerResult =
@@ -211,14 +189,14 @@ export class SceneEmitters implements SceneApplier {
     this.vfxGroup.removeFromParent();
   }
 
-  /** Poses the VFX group and every emitter/mesh Object3D at `time` and syncs mute visibility.
-   * Callers pass the caret's frame time while it is parked, and the caret time itself while playing. */
+  /**
+   * Poses the VFX group and every emitter and mesh at `time`, and syncs mute visibility. `time` is
+   * the caret frame when parked, else the caret time.
+   */
   public applySceneTransforms(scene: SceneModel, time: number): void {
     if (this.transformsLocked) {
       return;
     }
-    // A manually posed entity (see markManualPose) holds its base until the next frame entry
-    // clears the flag, so a parked gizmo drag is not overwritten by the timeline sample.
     const pose = (base: Transform, tracks: readonly TransformTrack[], key: string): Transform =>
       this.manualPoses.has(key) ? base : sampleTransform(base, tracks, time);
     applyTransform(
@@ -249,29 +227,23 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
-  /** Records a hand-posed `entity` (gizmo base commit); {@link applySceneTransforms} holds it at
-   * base, ignoring tracks, until {@link clearManualPoses} runs on the next frame entry. */
   public markManualPose(entity: SceneEntity): void {
     this.manualPoses.add(entityKey(entity));
   }
 
-  /** Drops every manual pose so the timeline reasserts (called by the dispatcher on frame entry). */
   public clearManualPoses(): void {
     this.manualPoses.clear();
   }
 
-  /** Locks/unlocks the transform drive while the modal gizmo owns the Object3D directly. */
   public setTransformLock(locked: boolean): void {
     this.transformsLocked = locked;
   }
 
-  /** Marks `entity` as selected, highlighting its emitter's preview gizmo. */
   public setSelected(entity: SceneEntity): void {
     this.selected = entity;
     this.highlightSelected();
   }
 
-  /** The Object3D a timeline entity manipulates (the VFX group, an emitter, or a mesh), if built. */
   public entityObject(entity: SceneEntity): Object3D | undefined {
     switch (entity.kind) {
       case "vfx":
@@ -283,8 +255,7 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
-  /** Applies a live-preview local transform to an entity's Object3D on intent from the modal
-   * transform tool. Only the given channels are set; `transformsLocked` keeps the drive off it. */
+  /** Applies a local transform to an entity's Object3D. Only the given channels are set. */
   public applyEntityLocalTransform(
     entity: SceneEntity,
     patch: { position?: Vector3; quaternion?: Quaternion; scale?: Vector3 },
@@ -304,8 +275,10 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
-  /** Picks the scene entity under viewport point `ndc` by raycasting the gizmo pick proxies;
-   * nearest wins, with a more specific object (emitter/mesh) preferred over the VFX cube on a near-tie. */
+  /**
+   * Raycasts the gizmo pick proxies at `ndc`. Nearest wins, but an emitter or mesh beats the VFX
+   * cube on a near-tie.
+   */
   public pick(ndc: Vector2, camera: Camera): SceneEntity | undefined {
     this.vfxGroup.updateWorldMatrix(true, true);
     this.raycaster.setFromCamera(ndc, camera);
@@ -326,9 +299,7 @@ export class SceneEmitters implements SceneApplier {
       if (hit === undefined) {
         continue;
       }
-      // An emitter gem or a mesh tetra is more specific than the enclosing VFX group cube.
       const specific = target.entity.kind !== "vfx";
-      // Nearest wins; on a near-tie, prefer the more specific object over the group cube.
       if (
         best === undefined ||
         hit.distance < best.distance - 1e-4 ||
@@ -340,8 +311,6 @@ export class SceneEmitters implements SceneApplier {
     return best?.entity;
   }
 
-  /** Fires `action` on emitter `id`'s view (a timeline event crossing the playhead), the way the
-   *  runtime's `FXEffect` does. No-op if absent. */
   public spawn(id: string, action: SpawnAction): void {
     const view = this.views.get(id);
     if (view !== undefined) {
@@ -350,11 +319,9 @@ export class SceneEmitters implements SceneApplier {
   }
 
   /**
-   * Links every reaction of `scene` between the views, as the runtime's `FXEffect` does
-   * between its emitters, with what its births inherit of the running source's particles (see
-   * `reactionLinking.ts`). Part of every sync - after every rebuild, so a link always copies within
-   * the layouts it was made for; also on its own after a view edit, which changes a reaction's
-   * numbers without a rebuild.
+   * Links every reaction of `scene` between the views, with what births inherit from the source's
+   * particles (see `reactionLinking.ts`). Runs on every sync after rebuilds, and alone after a view
+   * edit that changes reaction numbers without a rebuild.
    */
   public wireReactions(scene: SceneModel): void {
     this.unwireReactions();
@@ -377,15 +344,18 @@ export class SceneEmitters implements SceneApplier {
     this.inheritIssuesByReaction = issues;
   }
 
-  /** Whether any shown emitter or mesh reads the scene depth - the pre-pass is paid only then.
-   *  Kept, not polled: the pre-pass asks every frame. */
+  /**
+   * Whether any shown emitter or mesh reads scene depth. Cached because the pre-pass asks every
+   * frame.
+   */
   public readsSceneDepth(): boolean {
     return this.sceneDepthRead;
   }
 
-  /** Total alive particle count across every unmuted emitter in the scene (for the viewport
-   * stats) - a muted emitter keeps simulating (see `applySceneTransforms`) but contributes
-   * nothing here, matching the fact that it renders nothing. */
+  /**
+   * Alive particles across unmuted emitters. A muted emitter keeps simulating but renders nothing,
+   * so it is not counted.
+   */
   public totalParticleCount(): number {
     let total = 0;
     for (const view of this.views.values()) {
@@ -397,10 +367,9 @@ export class SceneEmitters implements SceneApplier {
   }
 
   /**
-   * Births lost to a full ring since the last reset (stop/rewind) or rebuild, across every unmuted
-   * emitter that can report it (see {@link EmitterView.particleOverflowCount}) - nonzero means some
-   * emitter's Expected Capacity is too small. `undefined` when no visible emitter can report it
-   * (all GPU-driven, or none); `partial` when some visible emitter cannot.
+   * Births lost to a full ring since the last reset or rebuild, over unmuted emitters that can
+   * report it. Nonzero means Expected Capacity is too small. `undefined` when none can report,
+   * `partial` when some cannot.
    */
   public totalParticleOverflowCount(): ParticleOverflow | undefined {
     let count: number | undefined;
@@ -419,21 +388,18 @@ export class SceneEmitters implements SceneApplier {
     return count === undefined ? undefined : { count, partial };
   }
 
-  /** Clears live particles and cancels emission on every emitter - used on stop / rewind. */
   public resetAll(): void {
     for (const view of this.views.values()) {
       view.reset();
     }
   }
 
-  /** Playback looped: cancels emission on every emitter, keeping its live particles. */
   public loopAll(): void {
     for (const view of this.views.values()) {
       view.loopTimeline();
     }
   }
 
-  /** Scrubs the timeline's sampled param values into emitter `id`'s view. No-op if absent. */
   public driveParamValues(
     id: string,
     values: ReadonlyMap<string, number | readonly number[]>,
@@ -441,7 +407,6 @@ export class SceneEmitters implements SceneApplier {
     this.views.get(id)?.driveParamValues(values);
   }
 
-  /** Scrubs the timeline's sampled render-param values into mesh `id`'s view. No-op if absent. */
   public driveMeshParamValues(
     id: string,
     values: ReadonlyMap<string, number | readonly number[]>,
@@ -449,9 +414,7 @@ export class SceneEmitters implements SceneApplier {
     this.meshViews.get(id)?.driveParamValues(values);
   }
 
-  /** `result` (the active emitter's) with what its reactions cannot hand over among its behavior
-   *  warnings. */
-  /** Whether the programs the renderer or the driver could not link changed since the last check. */
+  /** Whether the programs the renderer or driver could not link changed since the last check. */
   private linkFailuresChanged(): boolean {
     const seen = new Map<string, ProgramLinkFailures>();
     for (const [id, view] of [...this.views, ...this.meshViews]) {
@@ -499,7 +462,6 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
-  /** Recomputes {@link readsSceneDepth} from every view's material and visibility. */
   private refreshSceneDepthRead(): void {
     this.sceneDepthRead = false;
     for (const view of this.views.values()) {
@@ -510,7 +472,6 @@ export class SceneEmitters implements SceneApplier {
     }
   }
 
-  /** Destroys and forgets views whose emitter / mesh is no longer in the scene; true if any went. */
   private pruneRemoved(scene: SceneModel): boolean {
     let removed = false;
     const liveEmitters = new Set(scene.emitters.map((emitter) => emitter.id));
@@ -539,7 +500,6 @@ export class SceneEmitters implements SceneApplier {
     this.reactionLinks = [];
   }
 
-  /** Serializes one emitter's graphs and drives its view, creating it on first sight. */
   private applyEmitter(emitter: EmitterDoc, scene: SceneModel): SceneApplyResult {
     let view = this.views.get(emitter.id);
     if (view === undefined) {
@@ -635,8 +595,7 @@ export class SceneEmitters implements SceneApplier {
     };
   }
 
-  /** Serializes one mesh's render graph and drives its view, creating it on first sight. A fresh
-   * mesh view is a structural add, not a rebind, so `recompiled` is forced true for it too. */
+  /** A fresh mesh view counts as a structural add, so `recompiled` is true. */
   private applyMesh(mesh: VfxMeshDoc): MeshApplyResult {
     let view = this.meshViews.get(mesh.id);
     const created = view === undefined;
@@ -651,8 +610,7 @@ export class SceneEmitters implements SceneApplier {
       this.meshViews.set(mesh.id, view);
     }
     const renderSnapshot = serializeGraph(mesh.renderGraph, GraphKind.Render);
-    // Geometry + compositing both come from the surface sink (unified with emitters); a mesh has no
-    // separate primitive field. Sort is emitter-only, so it is read but unused here.
+    // Geometry and compositing come from the surface sink. Sort is emitter-only.
     const config = readRenderSinkConfig(mesh.renderGraph);
     const applied = view.apply(
       renderSnapshot,
@@ -670,29 +628,26 @@ export class SceneEmitters implements SceneApplier {
   }
 }
 
-/** Particles lost to full emitters, as the viewport stats report it. */
 export interface ParticleOverflow {
   readonly count: number;
   /** Some visible emitter cannot report its overflow (GPU-driven), so `count` leaves it out. */
   readonly partial: boolean;
 }
 
-/** Whether an emitter apply actually tore down and rebuilt the runtime emitter (a real rebuild) -
- *  NOT whether either graph's own artifact recompiled: a render-only edit can recompile the
- *  render half yet apply it as an in-place swap, never resetting the running emitter. */
+/**
+ * Whether the apply rebuilt the runtime emitter. A render-only edit can recompile the render graph
+ * yet swap it in place without a rebuild.
+ */
 function isRecompiled(result: SceneApplyResult): boolean {
   return result.emitterRebuilt === true;
 }
 
-/** One mesh's apply outcome - a mesh has no behavior graph, so this carries only the render half. */
 interface MeshApplyResult {
   readonly renderSnapshot: FXGraphSnapshotData;
   readonly renderStatus: LiveApplyStatus;
   readonly recompiled: boolean;
 }
 
-/** Widens a mesh's apply outcome to the shared `SceneApplyResult` shape, padding the behavior half
- * with the empty placeholder - a mesh has no behavior graph. */
 function meshSceneResult(result: MeshApplyResult): SceneApplyResult {
   return {
     renderSnapshot: result.renderSnapshot,

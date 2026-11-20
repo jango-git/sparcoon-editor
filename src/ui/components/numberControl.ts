@@ -1,27 +1,10 @@
 /**
- * A single scrubbable numeric field (parameters are edited inline on the node). Adapted from the
- * EXAMPLES/ENumberControl reference to the editor's design tokens: flat, sharp-cornered, no
- * transitions or flash animation.
+ * Scrubbable numeric field. States: view, hover, scrubbing (horizontal drag), edit (click without
+ * drag, commit on Enter or blur). `compact` drops the chevrons for vector components.
  *
- * A small state machine drives it:
- *   view -> hover (pointer over) -> scrubbing (drag horizontally) -> back
- *   hover -> edit (a click without a drag) -> commit on Enter/blur -> back
- * Increment/decrement chevrons overlay the display and never affect layout. In `compact` mode
- * (vector components, where several controls share one row) the chevrons are dropped and horizontal
- * padding shrinks so the value still reads inside a narrow box.
- *
- * The control is presentational: it emits `onChange` with the committed value and exposes `setValue`
- * the owner uses to re-sync from model state; `setValue` never emits and is ignored while the user
- * is actively scrubbing or editing (so an external redraw can't yank the field out from under the
- * pointer). `value` reads the current number back.
- *
- * `onChange` fires exactly once per gesture - at the true end of a scrub drag, or immediately for a
- * single-shot edit (a chevron click, an Enter/blur text commit) - never per intermediate scrub step,
- * so a caller wiring it to undo history gets one entry per gesture, not one per pixel dragged. The
- * optional `live` fires on every intermediate scrub step instead (never for a single-shot edit,
- * which has no "intermediate"), for a caller that wants a continuous preview without touching
- * history; omitting it means a scrub drag reports nothing until release (the shown number still
- * scrubs smoothly regardless - `refreshDisplay` runs on every step either way).
+ * `onChange` fires once per gesture, at the end of a scrub or on a single-shot edit. The optional
+ * `live` fires on every intermediate scrub step. `setValue` never emits and is ignored while
+ * scrubbing or editing.
  */
 
 import { glyphIcons, icon } from "../icons";
@@ -185,8 +168,8 @@ export class NumberControl implements ValueComponent<number> {
     }
     event.preventDefault();
     this.scrubStartValue = this.currentValue;
-    // The shared drag helper's threshold is Chebyshev (max of |dx|,|dy|), not the old field's
-    // |dx|-only gate - close enough for a horizontal scrubber.
+    // The shared drag helper's threshold is Chebyshev (max of |dx|, |dy|), close enough for a
+    // horizontal scrubber.
     this.cancelDrag = beginPointerDrag(this.element, event, {
       threshold: SCRUB_THRESHOLD,
       capture: false,

@@ -83,7 +83,6 @@ export class OverdrawRamp {
     this.mesh.frustumCulled = false;
   }
 
-  /** `camera` only satisfies three's draw call: the quad covers the target whatever the view. */
   public draw(renderer: WebGLRenderer, camera: Camera, counts: Texture): void {
     this.counts.value = counts;
     renderer.render(this.mesh, camera);

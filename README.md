@@ -41,8 +41,8 @@ The editor targets effects for mobile ads and playables, where the build size is
 are old and code generation at runtime is forbidden. Graphs compile into shaders and simulation code
 as you work, and only the result goes into the game.
 
-It is not a fit if you need a 3D scene editor, effects assembled from data at runtime, or another
-engine (Babylon.js, PlayCanvas, PixiJS).
+It is not a fit if you need a 3D scene editor, effects assembled from data at runtime, WebGPU or
+another engine (Babylon.js, PlayCanvas, PixiJS).
 
 ## Quick start
 
@@ -130,6 +130,10 @@ frame time.
 Every graph compiles for two tiers, **Standard** (WebGL2) and **Baseline** (WebGL1). The preview
 switches between them, and the export carries both. The node set is the same, but the quality of
 some nodes depends on the tier.
+
+There is no WebGPU tier, and effects play only with three's `WebGLRenderer`. WebGPU support will be
+added if users of the editor ask for it, or once mobile playables no longer target WebGL1 devices.
+To ask for it, open an [issue](https://github.com/jango-git/sparcoon/issues).
 
 An emitter simulates on the GPU if that is enabled (the default), the graph allows it and the device
 supports it, and on the CPU otherwise.

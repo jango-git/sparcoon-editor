@@ -4,8 +4,8 @@ import type {
   FXKernelTargetInput,
   FXKernelTargetOutput,
 } from "../../src/engine/behavior/FXParticleBehaviorTarget";
+import { FX_DT_INPUT } from "../../src/engine/behavior/FXParticleBehaviorTarget";
 import type { FXValueType } from "../../src/engine/core/socket/FXValueType";
-import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
 
 /**
  * A worked example of a non-particle behavior target, kept as a test helper (NOT
@@ -30,8 +30,6 @@ import { FX_VALUE_TYPES } from "../../src/engine/core/socket/FXValueType";
  * without the particle vocabulary - the point being that no library change is
  * needed to define it, only `FXKernelTarget` data + the optional spawn phase.
  */
-
-const FLOAT = FX_VALUE_TYPES.float;
 
 /** One named value the target animates: a name and its element type. */
 export interface FXValueSlot {
@@ -85,7 +83,7 @@ export function buildValueBehaviorTarget(slots: readonly FXValueSlot[]): FXBehav
     buffers: [{ name: VALUES_BUFFER, stride: offset }],
     // `dt` lets a graph advance a value over time; the VALUE_* inputs let it read
     // the current (persisted) value. No integration, no preamble - plain writes.
-    inputs: [...inputs, { name: "dt", type: FLOAT }],
+    inputs: [...inputs, FX_DT_INPUT],
     outputs,
   };
   // No spawn phase: an update-only target (the P3.1 seam).

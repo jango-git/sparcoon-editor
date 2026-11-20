@@ -58,8 +58,7 @@ export function pasteFragment(
   // Old id => fresh id, so the copied edges can be rewired onto the pasted nodes.
   const idMap = new Map<string, string>();
   const nodes: GraphNode[] = fragment.nodes
-    // A sink must never be pasted: it would mint a non-reserved id carrying a sink type - an
-    // undeletable phantom sink. The copy side excludes sinks; this is the paste-side guard.
+    // A pasted sink would get a non-reserved id and become an undeletable phantom sink.
     .filter((node) => !isSink(node) && eligible(node))
     .map((node) => {
       const id = nextIdentifier(node.type === ROUTE_TYPE ? "route" : "node");

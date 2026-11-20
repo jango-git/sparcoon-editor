@@ -1,10 +1,6 @@
 /**
- * Segmented control - the editor's "tabs". Adjacent segments overlap borders by 1px to read as one
- * strip; the active segment raises its own accent border above its neighbours.
- *
- * A {@link ValueComponent} like the other value editors: `setValue` re-syncs the active segment from
- * external state without firing `onChange`. `dispose` is a no-op (listeners sit on the strip's own
- * buttons and GC with it) but honours the contract so owners can tear every control down uniformly.
+ * Segmented control. Adjacent segments overlap borders by 1px. `setValue` re-syncs without firing
+ * `onChange`. `dispose` is a no-op.
  */
 
 import { createElement } from "../dom";

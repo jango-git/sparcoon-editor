@@ -5,10 +5,8 @@ import type { FXValueType } from "../core/socket/FXValueType";
 import { NUMERIC_VALUE_TYPES } from "../core/socket/FXValueType";
 
 /**
- * Shared support for the `custom-attribute` twins (render/GPU, behavior/CPU): name
- * resolution and the `name`/`type` structural checks are identical, so they live here instead
- * of hand-syncing both. A core builtin (position/age/lifetime/id) has its own dedicated
- * `builtin-attribute` node and never reaches this path.
+ * Name resolution and `name`/`type` checks shared by both `custom-attribute` twins. A core builtin
+ * uses `builtin-attribute` instead.
  */
 
 /** The resolved source of a custom-attribute node: always a reserved user attribute. */

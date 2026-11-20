@@ -7,13 +7,9 @@
 import { Ferrsign0, type FerrsignView0 } from "ferrsign";
 
 export interface EditorEvents {
-  /** Source changed structurally; the derived pipeline must recompute. */
   readonly sourceStructureChanged: FerrsignView0;
-  /** Source changed in a view-only way (e.g. node moved); no recompute needed. */
   readonly sourceViewChanged: FerrsignView0;
-  /** Derived render/behavior snapshots were recomputed and applied. */
   readonly derivedChanged: FerrsignView0;
-  /** Undo/redo availability changed. */
   readonly historyChanged: FerrsignView0;
 }
 

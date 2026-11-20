@@ -15,7 +15,7 @@ export class FXDescriptorAssets {
     }
   }
 
-  /** Takes each pick from `parameters`; an absent one (a project saved before it) is none. */
+  /** Takes each pick from `parameters`; an absent one is none. */
   public apply(parameters: Readonly<Record<string, unknown>>): void {
     for (const key of this.picks.keys()) {
       const raw = parameters[key];
@@ -23,7 +23,6 @@ export class FXDescriptorAssets {
     }
   }
 
-  /** Each pick by its key. */
   public names(): Record<string, string> {
     return Object.fromEntries(this.picks);
   }
@@ -33,7 +32,6 @@ export class FXDescriptorAssets {
     return [...this.picks].map(([key, name]) => ["a", key, name] as const);
   }
 
-  /** The assets picked. */
   public reads(): FXAssetRead[] {
     return [...this.picks].flatMap(([key, name]) =>
       name === "" ? [] : [{ kind: this.kinds[key] as FXAssetKind, name }],

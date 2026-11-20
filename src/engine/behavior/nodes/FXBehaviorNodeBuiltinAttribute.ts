@@ -33,7 +33,6 @@ export class FXBehaviorNodeBuiltinAttribute extends FXBehaviorNode {
     return BEHAVIOR_BUILTIN_ATTRIBUTE_META;
   }
 
-  /** Four buffer-free reads, no arithmetic. */
   public override estimateCost(): number {
     return 0;
   }
