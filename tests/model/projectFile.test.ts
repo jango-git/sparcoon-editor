@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createInitialState, type SourceState } from "../../src/model/editorState";
+import { plainPayload } from "../../src/persistence/payloadCodec";
 import { wrapProject } from "../../src/persistence/projectEnvelope";
 import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
 import { loadedProject } from "../helpers/loadedProject";
@@ -8,6 +9,9 @@ import { loadedProject } from "../helpers/loadedProject";
 /** A tiny opaque data URL - stands in for a base64 asset that must survive the round-trip. */
 const PIXEL_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+/** Three bytes standing in for a file's payload. */
+const BYTES = Uint8Array.from([1, 2, 3]);
 
 /** `source` as a format-1 project file, the format the renames were made in. */
 /** A Timeline Value node declaring `name`, so the tracks of that name survive the load. */
@@ -34,61 +38,63 @@ function sourceWithAsset(): SourceState {
 }
 
 describe("projectFile: serialize/deserialize round-trip", () => {
-  it("round-trips the whole document unchanged, its base64 assets included", () => {
+  it("round-trips the whole document unchanged, its base64 assets included", async () => {
     const source = sourceWithAsset();
-    const restored = loadedProject(serializeProject(source));
+    const restored = await loadedProject(await serializeProject(source));
     expect(restored).toEqual(source);
     expect(restored?.assets[0]?.dataUrl).toBe(PIXEL_DATA_URL);
   });
 
-  it("loads a project saved before the loop setting existed as looping, and keeps an explicit off", () => {
+  it("loads a project saved before the loop setting existed as looping, and keeps an explicit off", async () => {
     const source = createInitialState().source;
-    const legacy = JSON.parse(serializeProject(source)) as {
+    const legacy = JSON.parse(await serializeProject(source)) as {
       source: { timeline: Record<string, unknown> };
     };
     delete legacy.source.timeline["loop"];
-    expect(loadedProject(JSON.stringify(legacy))?.timeline.loop).toBe(true);
+    expect((await loadedProject(JSON.stringify(legacy)))?.timeline.loop).toBe(true);
 
     const once = { ...source, timeline: { ...source.timeline, loop: false } };
-    expect(loadedProject(serializeProject(once))?.timeline.loop).toBe(false);
+    expect((await loadedProject(await serializeProject(once)))?.timeline.loop).toBe(false);
   });
 
-  it("keeps an emitter's editor-only events flag, and leaves it off when absent", () => {
+  it("keeps an emitter's editor-only events flag, and leaves it off when absent", async () => {
     const base = createInitialState().source;
     const [emitter, ...rest] = base.scene.emitters;
     const live: SourceState = {
       ...base,
       scene: { ...base.scene, emitters: [{ ...emitter, liveEvents: true }, ...rest] },
     };
-    expect(loadedProject(serializeProject(live))?.scene.emitters[0]?.liveEvents).toBe(true);
-    const restored = loadedProject(serializeProject(base))?.scene.emitters[0];
+    expect((await loadedProject(await serializeProject(live)))?.scene.emitters[0]?.liveEvents).toBe(
+      true,
+    );
+    const restored = (await loadedProject(await serializeProject(base)))?.scene.emitters[0];
     expect(restored !== undefined && "liveEvents" in restored).toBe(false);
   });
 
-  it("rejects unreadable or non-project text", () => {
-    expect(loadedProject("not json {{")).toBeUndefined();
-    expect(loadedProject(JSON.stringify({ hello: "world" }))).toBeUndefined();
+  it("rejects unreadable or non-project text", async () => {
+    expect(await loadedProject("not json {{")).toBeUndefined();
+    expect(await loadedProject(JSON.stringify({ hello: "world" }))).toBeUndefined();
     expect(
-      loadedProject(JSON.stringify({ format: "sparcoon-project", version: 1 })),
+      await loadedProject(JSON.stringify({ format: "sparcoon-project", version: 1 })),
     ).toBeUndefined();
   });
 
-  it("preserves saved palette swatches", () => {
+  it("preserves saved palette swatches", async () => {
     const base = createInitialState().source;
     const source: SourceState = {
       ...base,
       palette: [{ name: "swatch_1", label: "Accent", color: [1, 0.4, 0, 1] }],
     };
-    const restored = loadedProject(serializeProject(source));
+    const restored = await loadedProject(await serializeProject(source));
     expect(restored?.palette).toEqual(source.palette);
   });
 
-  it("tolerates a bare source with no envelope", () => {
+  it("tolerates a bare source with no envelope", async () => {
     const source = sourceWithAsset();
-    expect(loadedProject(JSON.stringify(source))?.name).toBe("my-effect");
+    expect((await loadedProject(JSON.stringify(source)))?.name).toBe("my-effect");
   });
 
-  it("seeds the id counter from the raw document before backfilling a missing keyframe id", () => {
+  it("seeds the id counter from the raw document before backfilling a missing keyframe id", async () => {
     // A legacy/malformed keyframe with no `id` sits alongside one already named "key_1" - the
     // lowest id a fresh session's counter would mint. If normalization backfills the missing id
     // before the counter has seen "key_1" (seeding only after normalizeSource returns), the
@@ -113,7 +119,7 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       },
     };
 
-    const restored = loadedProject(JSON.stringify(raw));
+    const restored = await loadedProject(JSON.stringify(raw));
     const keys = restored?.scene.emitters[0]?.tracks[0]?.keys;
     expect(keys).toHaveLength(2);
     const ids = keys?.map((key) => key.id) ?? [];
@@ -123,34 +129,36 @@ describe("projectFile: serialize/deserialize round-trip", () => {
 });
 
 describe("projectFile: format", () => {
-  it("names the format's number and the editor that saved it", () => {
-    const file = JSON.parse(serializeProject(createInitialState().source)) as Record<
+  it("names the format's number and the editor that saved it", async () => {
+    const file = JSON.parse(await serializeProject(createInitialState().source)) as Record<
       string,
       unknown
     >;
     expect(file["format"]).toBe("sparcoon-project");
-    expect(file["version"]).toBe(2);
+    expect(file["version"]).toBe(3);
     expect(file["editor"]).toBe(SPARCOON_EDITOR_VERSION);
   });
 
-  it("refuses a project in a later format, naming the editor that saved it", () => {
-    const file = JSON.parse(serializeProject(createInitialState().source)) as object;
-    expect(deserializeProject(JSON.stringify({ ...file, version: 3, editor: "9.0.0" }))).toEqual({
+  it("refuses a project in a later format, naming the editor that saved it", async () => {
+    const file = JSON.parse(await serializeProject(createInitialState().source)) as object;
+    expect(
+      await deserializeProject(JSON.stringify({ ...file, version: 4, editor: "9.0.0" })),
+    ).toEqual({
       kind: "newer",
       editor: "9.0.0",
     });
   });
 
-  it("reads a project without a number, or with one that is not a positive integer, as format 1", () => {
-    const file = JSON.parse(serializeProject(createInitialState().source)) as object;
+  it("reads a project without a number, or with one that is not a positive integer, as format 1", async () => {
+    const file = JSON.parse(await serializeProject(createInitialState().source)) as object;
     for (const version of [undefined, "2", 1.5, 0, -3]) {
-      expect(deserializeProject(JSON.stringify({ ...file, version })).kind).toBe("loaded");
+      expect((await deserializeProject(JSON.stringify({ ...file, version }))).kind).toBe("loaded");
     }
   });
 });
 
 describe("projectFile: renamed nodes and inputs", () => {
-  it("loads a spawn-cylinder saved with `length` as a random-cylinder-point with `height`, value and wire alike", () => {
+  it("loads a spawn-cylinder saved with `length` as a random-cylinder-point with `height`, value and wire alike", async () => {
     const base = createInitialState().source;
     const [emitter] = base.scene.emitters;
     const graph = emitter.behaviorGraph;
@@ -193,7 +201,7 @@ describe("projectFile: renamed nodes and inputs", () => {
       },
     };
 
-    const loaded = loadedProject(formatOne(saved))?.scene.emitters[0].behaviorGraph;
+    const loaded = (await loadedProject(formatOne(saved)))?.scene.emitters[0].behaviorGraph;
 
     expect(loaded?.nodes["cyl"]?.type).toBe("random-cylinder-point");
     expect(loaded?.nodes["cyl"]?.parameters).toEqual({ radius: 2, height: 3 });
@@ -207,7 +215,7 @@ describe("projectFile: renamed nodes and inputs", () => {
 });
 
 describe("projectFile: renamed node outputs", () => {
-  it("loads an animated-texture's old uvPrevious / uvCurrent wires as uvFrame / uvNext", () => {
+  it("loads an animated-texture's old uvPrevious / uvCurrent wires as uvFrame / uvNext", async () => {
     const base = createInitialState().source;
     const [emitter] = base.scene.emitters;
     const graph = emitter.renderGraph;
@@ -255,7 +263,7 @@ describe("projectFile: renamed node outputs", () => {
         ],
       },
     };
-    const loaded = loadedProject(formatOne(saved))?.scene.emitters[0].renderGraph;
+    const loaded = (await loadedProject(formatOne(saved)))?.scene.emitters[0].renderGraph;
 
     const fromOf = (id: string) => loaded?.connections.find((c) => c.id === id)?.from;
     expect(fromOf("wire")).toEqual({ nodeId: "flip", socketKey: "uvNext" });
@@ -268,7 +276,7 @@ describe("projectFile: renamed node outputs", () => {
 });
 
 describe("projectFile: key curves", () => {
-  it("keeps a key's curve, and drops one it does not know (the key then reads linear)", () => {
+  it("keeps a key's curve, and drops one it does not know (the key then reads linear)", async () => {
     const base = createInitialState().source;
     const [emitter] = base.scene.emitters;
     const source: SourceState = {
@@ -296,7 +304,8 @@ describe("projectFile: key curves", () => {
         ],
       },
     };
-    const keys = loadedProject(serializeProject(source))?.scene.emitters[0].tracks[0]?.keys;
+    const keys = (await loadedProject(await serializeProject(source)))?.scene.emitters[0].tracks[0]
+      ?.keys;
     expect(keys?.[0]).toEqual({ id: "k1", time: 0, value: 0, ease: "inOut" });
     expect(keys?.[1]).toEqual({ id: "k2", time: 1, value: 1 });
   });
@@ -304,13 +313,15 @@ describe("projectFile: key curves", () => {
 
 describe("projectFile: corrupt library entries", () => {
   /** `sourceWithAsset()` serialized, then its libraries replaced by `libraries` as raw JSON. */
-  function loadWithLibraries(libraries: Record<string, unknown>): SourceState | undefined {
-    const file = JSON.parse(serializeProject(sourceWithAsset())) as { source: object };
+  async function loadWithLibraries(
+    libraries: Record<string, unknown>,
+  ): Promise<SourceState | undefined> {
+    const file = JSON.parse(await serializeProject(sourceWithAsset())) as { source: object };
     return loadedProject(JSON.stringify({ ...file, source: { ...file.source, ...libraries } }));
   }
 
-  it("keeps a texture with its bytes and size, labelled by its name when unlabelled", () => {
-    const restored = loadWithLibraries({
+  it("keeps a texture with its bytes and size, labelled by its name when unlabelled", async () => {
+    const restored = await loadWithLibraries({
       assets: [
         { name: "spark", dataUrl: PIXEL_DATA_URL, width: 1, height: 1 },
         { name: "noSize", dataUrl: PIXEL_DATA_URL },
@@ -323,44 +334,119 @@ describe("projectFile: corrupt library entries", () => {
     ]);
   });
 
-  it("keeps an environment with its bytes and byte size", () => {
-    const restored = loadWithLibraries({
+  it("keeps an environment with its bytes and byte size, and drops a payload that does not decode", async () => {
+    const restored = await loadWithLibraries({
       environments: [
-        { name: "studio", label: "studio.hdr", dataUrl: "data:,", byteSize: 3 },
-        { name: "unsized", dataUrl: "data:," },
+        { name: "sky", label: "sky.hdr", bytes: plainPayload(BYTES), byteSize: 3 },
+        { name: "unsized", bytes: plainPayload(BYTES) },
+        { name: "broken", bytes: { encoding: "gzip", data: "AAAA" }, byteSize: 3 },
+        { name: "legacy", dataUrl: "data:,", byteSize: 3 },
         7,
       ],
     });
     expect(restored?.environments).toEqual([
-      { name: "studio", label: "studio.hdr", dataUrl: "data:,", byteSize: 3 },
+      { name: "sky", label: "sky.hdr", bytes: BYTES, byteSize: 3 },
     ]);
   });
 
-  it("keeps a mesh asset with baked geometry, zeroing what is not a finite number", () => {
-    const restored = loadWithLibraries({
+  it("keeps a scene, and makes a stale active scene the studio", async () => {
+    const scene = { name: "arena", label: "arena.glb", bytes: plainPayload(BYTES), byteSize: 3 };
+    const kept = await loadWithLibraries({
+      scenes: [scene, { ...scene, name: "void" }],
+      activeSceneName: "arena",
+    });
+    expect(kept?.scenes).toEqual([{ ...scene, bytes: BYTES }]);
+    expect(kept?.activeSceneName).toBe("arena");
+    const stale = await loadWithLibraries({ scenes: [], activeSceneName: "arena" });
+    expect(stale?.activeSceneName).toBe("studio");
+    expect((await loadWithLibraries({ activeSceneName: "void" }))?.activeSceneName).toBe("void");
+  });
+
+  it("keeps a mesh asset with whole geometry, zeroing what is not a finite number", async () => {
+    const floats = (values: readonly number[]) =>
+      plainPayload(new Uint8Array(Float32Array.from(values).buffer));
+    const restored = await loadWithLibraries({
       meshAssets: [
         {
           name: "rock",
-          geometry: { position: [1, "x", true, 2], normal: [0, 1, 0], uv: "junk", index: [0] },
+          geometry: {
+            position: floats([1, Number.NaN, 2]),
+            normal: floats([0, 1, 0]),
+            uv: floats([]),
+            index: plainPayload(new Uint8Array(Uint32Array.from([0]).buffer)),
+          },
+        },
+        {
+          name: "torn",
+          geometry: {
+            position: plainPayload(new Uint8Array(3)),
+            normal: floats([]),
+            uv: floats([]),
+            index: floats([]),
+          },
         },
         { name: "noGeometry", byteSize: 4 },
-        { geometry: { position: [] } },
       ],
     });
     expect(restored?.meshAssets).toEqual([
       {
         name: "rock",
         label: "rock",
-        geometry: { position: [1, 0, 0, 2], normal: [0, 1, 0], uv: [], index: [0] },
+        geometry: {
+          position: Float32Array.from([1, 0, 2]),
+          normal: Float32Array.from([0, 1, 0]),
+          uv: new Float32Array(),
+          index: Uint32Array.from([0]),
+        },
         byteSize: 0,
       },
     ]);
   });
 
-  it("reads a library that is not a list as empty", () => {
-    const restored = loadWithLibraries({ assets: {}, environments: "x", meshAssets: 3 });
+  it("reads a library that is not a list as empty", async () => {
+    const restored = await loadWithLibraries({
+      assets: {},
+      environments: "x",
+      scenes: 5,
+      meshAssets: 3,
+    });
     expect(restored?.assets).toEqual([]);
     expect(restored?.environments).toEqual([]);
+    expect(restored?.scenes).toEqual([]);
     expect(restored?.meshAssets).toEqual([]);
+  });
+});
+
+describe("projectFile: payloads", () => {
+  it("gzips HDRI, scene and mesh payloads and reads them back as they were", async () => {
+    const base = createInitialState().source;
+    const repeated = new Uint8Array(4096).fill(7);
+    const source: SourceState = {
+      ...base,
+      environments: [{ name: "sky", label: "sky.hdr", bytes: repeated, byteSize: 4096 }],
+      scenes: [{ name: "arena", label: "arena.glb", bytes: repeated, byteSize: 4096 }],
+      activeSceneName: "arena",
+      meshAssets: [
+        {
+          name: "tri",
+          label: "tri",
+          geometry: {
+            position: Float32Array.from([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+            normal: Float32Array.from([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+            uv: Float32Array.from([0, 0, 1, 0, 0, 1]),
+            index: Uint32Array.from([0, 1, 2]),
+          },
+          byteSize: 108,
+        },
+      ],
+    };
+    const text = await serializeProject(source);
+    const file = JSON.parse(text) as {
+      source: { environments: { bytes: { encoding: string; data: string } }[] };
+    };
+    const stored = file.source.environments[0].bytes;
+    expect(stored.encoding).toBe("gzip");
+    expect(stored.data.length).toBeLessThan(200);
+    expect(await loadedProject(text)).toEqual(source);
   });
 });

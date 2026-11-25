@@ -16,7 +16,12 @@ const { libraryZip } = await import("../../src/ui/assetFiles");
 const PNG = "data:image/png;base64,iVBORw0KGgo=";
 const pngBytes = Uint8Array.from(atob("iVBORw0KGgo="), (character) => character.charCodeAt(0));
 
-const geometry: BakedMeshGeometry = { position: [0, 1, 2], normal: [], uv: [], index: [] };
+const geometry: BakedMeshGeometry = {
+  position: Float32Array.from([0, 1, 2]),
+  normal: new Float32Array(),
+  uv: new Float32Array(),
+  index: new Uint32Array(),
+};
 
 function library(): SourceState {
   const base = createInitialState().source;
@@ -26,7 +31,8 @@ function library(): SourceState {
       { name: "spark", label: "spark.png", dataUrl: PNG, width: 1, height: 1 },
       { name: "spark_2", label: "Spark.png", dataUrl: PNG, width: 1, height: 1 },
     ],
-    environments: [{ name: "sky", label: "sky.hdr", dataUrl: PNG, byteSize: 8 }],
+    environments: [{ name: "sky", label: "sky.hdr", bytes: pngBytes, byteSize: 8 }],
+    scenes: [{ name: "arena", label: "arena.glb", bytes: pngBytes, byteSize: 8 }],
     meshAssets: [{ name: "rock", label: "Rock", geometry, byteSize: 12 }],
     volumeAssets: [
       {
@@ -44,7 +50,7 @@ function library(): SourceState {
 }
 
 describe("libraryZip", () => {
-  it("holds the images, meshes and volumes under their labels, without HDRIs", async () => {
+  it("holds the images, meshes and volumes under their labels, without HDRIs or scenes", async () => {
     const entries = readZip(await libraryZip(library()));
     expect(entries.map((entry) => entry.name)).toEqual([
       "spark.png",

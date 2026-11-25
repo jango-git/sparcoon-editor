@@ -79,18 +79,18 @@ describe("agent preview captures", () => {
     const [request] = requests;
     expect(request.size).toEqual({ width: 64, height: 32 });
     expect(request.overlays).toBe(false);
-    expect(request.ground).toBe(false);
+    expect(request.scene).toBe(false);
     expect(request.background).toBeInstanceOf(Color);
     // The hex is sRGB; three keeps it linear, so pure red stays pure red.
     expect((request.background as Color).getHexString()).toBe("ff0000");
   });
 
-  it("keeps the ground in a clean frame when asked, for shadows and depth fade", async () => {
+  it("keeps the scene in a clean frame when asked, for shadows and depth fade", async () => {
     const { preview, requests } = previewWithRecorder();
-    await preview.capture({ clean: true, ground: true });
-    expect(requests[0]).toMatchObject({ overlays: false, ground: true });
-    await expect(preview.capture({ clean: true, ground: "yes" } as never)).rejects.toThrow(
-      /ground must be a boolean/,
+    await preview.capture({ clean: true, scene: true });
+    expect(requests[0]).toMatchObject({ overlays: false, scene: true });
+    await expect(preview.capture({ clean: true, scene: "yes" } as never)).rejects.toThrow(
+      /scene must be a boolean/,
     );
   });
 

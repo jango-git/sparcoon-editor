@@ -27,11 +27,12 @@ import type { PreviewSettings, PreviewSettingsStore } from "../settings/previewS
 import { resetRenderBackend } from "../settings/renderBackend";
 import type { PreviewViewMode } from "../ui/previewViewMode";
 import { WheelDirectionLock } from "../ui/primitives/wheelDirectionLock";
-import { EDITOR_GIZMO_LAYER, EDITOR_GROUND_LAYER, EDITOR_OVERLAY_LAYER } from "./editorOverlay";
+import { EDITOR_GIZMO_LAYER, EDITOR_OVERLAY_LAYER, EDITOR_SCENE_LAYER } from "./editorOverlay";
 import { SceneEnvironment } from "./environment";
 import type { DecodedEnvironment } from "./environmentTexture";
 import { OverdrawPass, type OverdrawStats } from "./overdrawPass";
 import type { OverdrawCount } from "./overdrawShader";
+import { PreviewScene, type PreviewSceneContent } from "./previewScene";
 import { SceneDepthPass, type SceneDepthSource } from "./sceneDepthPass";
 import type { ParticleOverflow } from "./sceneEmitters";
 
@@ -78,12 +79,12 @@ export interface OverdrawMeasure {
 export interface FrameCaptureOptions extends CaptureShot {
   readonly overlays?: boolean;
   /**
-   * Whether the studio ground is drawn - what shadows fall on and a Depth Fade fades against.
-   * Default: as the viewport shows it, and off without the {@link overlays}. Drawn without the
-   * overlays, it fades into a solid {@link background} past the point the frame is aimed at, so no
-   * edge of the plane shows.
+   * Whether the scene around the effect is drawn - what shadows fall on and a Depth Fade fades
+   * against. Default: on with the {@link overlays}, off without them. The studio ground drawn
+   * without the overlays fades into a solid {@link background} past the point the frame is aimed
+   * at, so no edge of the plane shows.
    */
-  readonly ground?: boolean;
+  readonly scene?: boolean;
   /** Replaces the background for this frame (an active HDRI's included); lighting is untouched. */
   readonly background?: Color | "transparent";
 }
@@ -108,6 +109,7 @@ export class SceneCoordinator {
   private readonly camera: PerspectiveCamera;
   private readonly controls: OrbitControls;
   private readonly environment: SceneEnvironment;
+  private readonly previewScene: PreviewScene;
   private readonly depthPass: SceneDepthPass;
   private readonly overdrawPass: OverdrawPass;
   private viewMode: PreviewViewMode = "shaded";
@@ -152,6 +154,7 @@ export class SceneCoordinator {
     this.camera.position.set(0, 2, 7);
     // A clean capture switches the furniture layer off.
     this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
+    this.camera.layers.enable(EDITOR_SCENE_LAYER);
 
     // Damping off, so the camera stops with the pointer. Polar clamp keeps it above the floor.
     // Bound to the container so drags over overlays still orbit.
@@ -171,6 +174,7 @@ export class SceneCoordinator {
     });
 
     this.settings = settings;
+    this.previewScene = new PreviewScene(this.scene);
     this.environment = new SceneEnvironment(
       this.scene,
       settings.get(),
@@ -237,6 +241,11 @@ export class SceneCoordinator {
   public setActiveEnvironment(environment: DecodedEnvironment | undefined): void {
     this.activeEnvironment = environment;
     this.environment.apply(this.settings.get(), environment);
+  }
+
+  /** Sets what the scene around the effect shows. */
+  public setPreviewScene(content: PreviewSceneContent): void {
+    this.previewScene.show(content);
   }
 
   public setControlsEnabled(enabled: boolean): void {
@@ -332,6 +341,7 @@ export class SceneCoordinator {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.environment.destroy();
+    this.previewScene.destroy();
     this.depthPass.dispose();
     this.overdrawPass.dispose();
     this.renderer.dispose();
@@ -344,15 +354,10 @@ export class SceneCoordinator {
   private afterRender: () => void = () => undefined;
 
   private applyViewLayers(settings: PreviewSettings): void {
-    for (const [layer, shown] of [
-      [EDITOR_GIZMO_LAYER, settings.gizmos],
-      [EDITOR_GROUND_LAYER, settings.ground],
-    ] as const) {
-      if (shown) {
-        this.camera.layers.enable(layer);
-      } else {
-        this.camera.layers.disable(layer);
-      }
+    if (settings.gizmos) {
+      this.camera.layers.enable(EDITOR_GIZMO_LAYER);
+    } else {
+      this.camera.layers.disable(EDITOR_GIZMO_LAYER);
     }
   }
 
@@ -483,7 +488,7 @@ export class SceneCoordinator {
     options: FrameCaptureOptions,
   ): HTMLCanvasElement {
     const { overlays = true, background } = options;
-    const ground = options.ground ?? (overlays && this.settings.get().ground);
+    const drawScene = options.scene ?? overlays;
     const viewportBackground = this.scene.background;
     const viewportFog = this.scene.fog;
     try {
@@ -491,10 +496,10 @@ export class SceneCoordinator {
         camera.layers.disable(EDITOR_OVERLAY_LAYER);
         camera.layers.disable(EDITOR_GIZMO_LAYER);
       }
-      if (ground) {
-        camera.layers.enable(EDITOR_GROUND_LAYER);
+      if (drawScene) {
+        camera.layers.enable(EDITOR_SCENE_LAYER);
       } else {
-        camera.layers.disable(EDITOR_GROUND_LAYER);
+        camera.layers.disable(EDITOR_SCENE_LAYER);
       }
       if (background === "transparent") {
         return this.renderTransparent(camera);
@@ -502,7 +507,7 @@ export class SceneCoordinator {
       if (background !== undefined) {
         this.scene.background = background;
       }
-      if (ground && !overlays && background instanceof Color) {
+      if (drawScene && this.previewScene.showsStudio && !overlays && background instanceof Color) {
         // Clear of the effect round the target, gone into the background well before the edge.
         const distance = camera.position.distanceTo(target);
         this.scene.fog = new Fog(

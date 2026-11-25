@@ -93,7 +93,9 @@ describe("bakeVolume", () => {
   });
 
   it("refuses a mesh without triangles and settings with a problem", async () => {
-    await expect(bakeVolume({ ...box(), index: [] }, SETTINGS)).rejects.toThrow(/no triangles/);
+    await expect(bakeVolume({ ...box(), index: new Uint32Array() }, SETTINGS)).rejects.toThrow(
+      /no triangles/,
+    );
     await expect(bakeVolume(box(), { ...SETTINGS, band: 0 })).rejects.toThrow(/band/);
   });
 });

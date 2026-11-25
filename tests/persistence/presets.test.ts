@@ -35,17 +35,17 @@ describe("bundled project presets", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("every bundled preset's JSON parses to a document with something in it", () => {
+  it("every bundled preset's JSON parses to a document with something in it", async () => {
     for (const preset of PROJECT_PRESETS) {
-      const source = loadedProject(readBundledPreset(preset.fileName));
+      const source = await loadedProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
       expect(source!.scene.emitters.length, preset.fileName).toBeGreaterThan(0);
     }
   });
 
-  it("every bundled preset's emitters and meshes actually compile, not just parse", () => {
+  it("every bundled preset's emitters and meshes actually compile, not just parse", async () => {
     for (const preset of PROJECT_PRESETS) {
-      const source = loadedProject(readBundledPreset(preset.fileName));
+      const source = await loadedProject(readBundledPreset(preset.fileName));
       expect(source, preset.fileName).toBeDefined();
       // As the export compiles them: against the preset's content library.
       const library = libraryAssetNames(source!);

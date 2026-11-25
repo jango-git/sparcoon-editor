@@ -181,13 +181,13 @@ describe("an effect of meshes only", () => {
     expect(store.getSource().scene.meshes).toHaveLength(1);
   });
 
-  it("loads and exports a project of meshes only, rather than resetting it", () => {
+  it("loads and exports a project of meshes only, rather than resetting it", async () => {
     const store = freshStore();
     const emitterId = selectActiveEmitterId(store)!;
     addVfxMesh(store);
     removeEmitter(store, emitterId);
 
-    const loaded = loadedProject(serializeProject(store.getSource()));
+    const loaded = await loadedProject(await serializeProject(store.getSource()));
     expect(loaded?.scene.emitters).toEqual([]);
     expect(loaded?.scene.meshes).toHaveLength(1);
     expect(loaded?.scene.activeGraphKind).toBe("vfxMesh");

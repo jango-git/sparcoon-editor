@@ -154,6 +154,12 @@ export interface AssetsView {
     readonly label: string;
     readonly byteSize: number;
   }[];
+  /** The uploaded scenes; the built-in `studio` and `void` are not listed. */
+  readonly scenes: readonly {
+    readonly name: string;
+    readonly label: string;
+    readonly byteSize: number;
+  }[];
   /** Each texel's byte `b` holds the distance `b / 255 * scale + bias`, over the box. */
   readonly volumes: readonly {
     readonly name: string;
@@ -165,6 +171,8 @@ export interface AssetsView {
     readonly bias: number;
   }[];
   readonly activeEnvironment: string | undefined;
+  /** `"studio"`, `"void"` or the name of an uploaded scene. */
+  readonly activeScene: string;
 }
 
 export interface GraphStatusView {
@@ -318,6 +326,11 @@ export function assetsView(source: SourceState): AssetsView {
       label: asset.label,
       byteSize: asset.byteSize,
     })),
+    scenes: source.scenes.map((asset) => ({
+      name: asset.name,
+      label: asset.label,
+      byteSize: asset.byteSize,
+    })),
     volumes: source.volumeAssets.map(({ name, label, size, boxMin, boxMax, scale, bias }) => ({
       name,
       label,
@@ -328,6 +341,7 @@ export function assetsView(source: SourceState): AssetsView {
       bias,
     })),
     activeEnvironment: source.activeEnvironmentName,
+    activeScene: source.activeSceneName,
   };
 }
 

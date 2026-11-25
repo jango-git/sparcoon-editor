@@ -1,12 +1,13 @@
 /**
  * Lighting / Scene / Gizmo view-settings groups, hosted as tabs by the viewport's transform panel
- * (see {@link createViewportTransform}). View state only - never touches the model, commands or
- * undo; the environment picker only reads the content library, like any other selector.
+ * (see {@link createViewportTransform}). View settings, except the environment and scene pickers,
+ * which set the document's active environment and scene from its content library.
  */
 
 import { t } from "../../i18n";
-import { setActiveEnvironment } from "../../model/commands";
-import { selectEnvironmentAssets } from "../../model/selectors";
+import { setActiveEnvironment, setActiveScene } from "../../model/commands";
+import { STUDIO_SCENE_NAME, VOID_SCENE_NAME } from "../../model/editorState";
+import { selectEnvironmentAssets, selectSceneAssets } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import { environmentThumbnails } from "../../render/assetThumbnails";
 import type { GizmoSettingsStore, SnapSetting } from "../../settings/gizmoSettings";
@@ -126,12 +127,7 @@ export function createPreviewSettingsGroups(
     hemisphereIntensityRow,
   ];
   const presetPickerRow = presetRow(store);
-  const groundRow = toggleRow(
-    t("preview.ground"),
-    current.ground,
-    (on) => settings.update({ ground: on }),
-    t("preview.groundTip"),
-  );
+  const scenePickerRow = sceneRow(store);
   const gridRow = toggleRow(
     t("preview.grid"),
     current.grid,
@@ -177,7 +173,6 @@ export function createPreviewSettingsGroups(
     hemisphereSkyRow.setValue(latest.hemisphereSky);
     hemisphereGroundRow.setValue(latest.hemisphereGround);
     hemisphereIntensityRow.setValue(latest.hemisphereIntensity);
-    groundRow.setValue(latest.ground);
     gridRow.setValue(latest.grid);
     playerFigureRow.setValue(latest.playerFigure);
     gizmosRow.setValue(latest.gizmos);
@@ -228,7 +223,7 @@ export function createPreviewSettingsGroups(
       label: t("preview.scene"),
       glyph: viewportIcons.scene,
       rows: [
-        groundRow.element,
+        scenePickerRow,
         gridRow.element,
         playerFigureRow.element,
         gizmosRow.element,
@@ -406,4 +401,41 @@ function presetRow(store: Store): HTMLElement {
   store.events.sourceStructureChanged.on(refresh);
 
   return field(t("preview.preset"), picker.element, SETTINGS_ROW);
+}
+
+/**
+ * The active-scene picker: the built-in studio and void, then the scene library. `options` is
+ * mutated in place because AssetPicker reads it on each open.
+ */
+function sceneRow(store: Store): HTMLElement {
+  const builtIn: readonly AssetPickerOption[] = [
+    { name: STUDIO_SCENE_NAME, label: t("preview.sceneStudio"), glyph: assetIcons.scene },
+    { name: VOID_SCENE_NAME, label: t("preview.sceneVoid"), glyph: assetIcons.scene },
+  ];
+  const options: AssetPickerOption[] = [];
+  const populateOptions = (): void => {
+    options.length = 0;
+    options.push(
+      ...builtIn,
+      ...selectSceneAssets(store).map((asset) => ({
+        name: asset.name,
+        label: asset.label,
+        glyph: assetIcons.scene,
+      })),
+    );
+  };
+  populateOptions();
+  const picker = new AssetPicker({
+    options,
+    value: store.getSource().activeSceneName,
+    onChange: (name): void => setActiveScene(store, name),
+  });
+  const refresh = (): void => {
+    populateOptions();
+    picker.setValue(store.getSource().activeSceneName);
+    picker.refresh();
+  };
+  store.events.sourceViewChanged.on(refresh);
+  store.events.sourceStructureChanged.on(refresh);
+  return field(t("preview.sceneAsset"), picker.element, SETTINGS_ROW);
 }

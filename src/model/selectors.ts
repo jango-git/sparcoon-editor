@@ -14,6 +14,7 @@ import type {
   LiveApplyStatus,
   MeshAsset,
   PaletteSwatch,
+  SceneAsset,
   SourceState,
   TextureAsset,
   VfxDoc,
@@ -42,6 +43,10 @@ export function selectTextureAssets(store: Store): readonly TextureAsset[] {
 
 export function selectEnvironmentAssets(store: Store): readonly EnvironmentAsset[] {
   return store.getSource().environments;
+}
+
+export function selectSceneAssets(store: Store): readonly SceneAsset[] {
+  return store.getSource().scenes;
 }
 
 export function selectMeshAssets(store: Store): readonly MeshAsset[] {

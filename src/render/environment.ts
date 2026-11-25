@@ -1,5 +1,6 @@
 /**
- * Studio around the emitters: ground, sun, ambient fill, background, gizmos. Ambient fill is either
+ * Studio around the emitters: sun, ambient fill, background, grid, player figure, gizmos. The
+ * ground belongs to the studio scene (`PreviewScene`). Ambient fill is either
  * a live `HemisphereLight` or an SH probe baked from the active HDRI, never both. The sun stays
  * live in both cases.
  */
@@ -22,8 +23,6 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
-  PlaneGeometry,
   Scene,
   SphereGeometry,
   Vector3,
@@ -35,11 +34,9 @@ import { LightProbeGenerator } from "three/addons/lights/LightProbeGenerator.js"
 import type { PreviewSettings } from "../settings/previewSettings";
 import type { Rgba } from "../ui/components/color";
 import { AXIS_COLORS } from "./axisColors";
-import { markEditorGizmo, markEditorGround, markEditorOverlay } from "./editorOverlay";
+import { markEditorGizmo, markEditorOverlay } from "./editorOverlay";
 import type { DecodedEnvironment } from "./environmentTexture";
-
-/** Ground plane Y, level with the emitter origin. */
-const GROUND_Y = 0;
+import { GROUND_SIZE, GROUND_Y } from "./previewScene";
 
 /** Distance the sun sits from the origin; its azimuth/elevation place it on this sphere. */
 const SUN_DISTANCE = 14;
@@ -60,9 +57,6 @@ const SUN_GIZMO_COLOR = 0xffd24a;
 /** Half-extent of the sun's orthographic shadow frustum (the shadow box). */
 const SHADOW_BOX_HALF = 30;
 
-/** Side length of the ground plane and grid. */
-const GROUND_SIZE = 60;
-
 /** Player-figure box dimensions (width x height x depth) - a standing scale reference. */
 const PLAYER_SIZE: readonly [number, number, number] = [0.5, 2, 0.75];
 
@@ -74,9 +68,6 @@ const GRID_MINOR_COLOR = 0x565b66;
 
 export class SceneEnvironment {
   private readonly background = new Color();
-  private readonly ground: Mesh;
-  private readonly groundGeometry: PlaneGeometry;
-  private readonly groundMaterial: MeshStandardMaterial;
   private readonly sun: DirectionalLight;
   private readonly hemisphereLight: HemisphereLight;
   // The active-environment fill: an SH light probe baked from a texture-mapped dome.
@@ -111,20 +102,6 @@ export class SceneEnvironment {
     this.bakeTarget.texture.colorSpace = LinearSRGBColorSpace;
     this.bakeScene.add(new Mesh(this.domeGeometry, this.domeMaterial));
     scene.add(this.probe);
-
-    // Dark neutral grey, so the lighter grid lines read over it.
-    this.groundGeometry = new PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
-    this.groundMaterial = new MeshStandardMaterial({
-      color: 0x2c2f36,
-      roughness: 1,
-      metalness: 0,
-    });
-    this.ground = new Mesh(this.groundGeometry, this.groundMaterial);
-    this.ground.rotation.x = -Math.PI / 2;
-    this.ground.position.y = GROUND_Y - 0.025;
-    this.ground.receiveShadow = true;
-    markEditorGround(this.ground);
-    scene.add(this.ground);
 
     // Position comes from azimuth and elevation in `apply`.
     this.sun = new DirectionalLight(0xffffff, 2.2);
@@ -205,7 +182,6 @@ export class SceneEnvironment {
 
   public destroy(): void {
     this.scene.remove(
-      this.ground,
       this.sun,
       this.sun.target,
       this.hemisphereLight,
@@ -214,8 +190,6 @@ export class SceneEnvironment {
       this.player,
       this.sunGizmo,
     );
-    this.groundGeometry.dispose();
-    this.groundMaterial.dispose();
     this.sun.dispose();
     this.bakeTarget.dispose();
     this.domeGeometry.dispose();

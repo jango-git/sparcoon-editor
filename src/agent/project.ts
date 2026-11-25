@@ -15,7 +15,7 @@ import { type SceneView, sceneView } from "./views";
 
 export interface ProjectApi {
   /** The project file (`.json`) text, assets inlined. */
-  get(): string;
+  get(): Promise<string>;
   /**
    * Replaces the document with a project file's text (one undo step) and returns the loaded scene,
    * as `scene.get()` would. Damaged parts of a readable file are repaired or dropped silently, the
@@ -42,22 +42,19 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
   return {
     get: () => serializeProject(target.store.getSource()),
 
-    // Loading is synchronous; the agent API still returns a promise, rejecting rather than throwing.
-    load: (json): Promise<SceneView> => {
-      const read = deserializeProject(json);
+    load: async (json): Promise<SceneView> => {
+      const read = await deserializeProject(json);
       if (read.kind === "newer") {
-        return Promise.reject(
-          new AgentError(
-            "invalid_argument",
-            `The project was saved by Sparcoon Editor ${read.editor ?? "?"} in a later format.`,
-          ),
+        throw new AgentError(
+          "invalid_argument",
+          `The project was saved by Sparcoon Editor ${read.editor ?? "?"} in a later format.`,
         );
       }
       if (read.kind === "unreadable") {
-        return Promise.reject(new AgentError("invalid_argument", "Not a readable project file."));
+        throw new AgentError("invalid_argument", "Not a readable project file.");
       }
       replaceDocument(target, read.source);
-      return Promise.resolve(sceneView(target.store.getSource()));
+      return sceneView(target.store.getSource());
     },
 
     presets: () => PROJECT_PRESETS.map((preset) => preset.id),

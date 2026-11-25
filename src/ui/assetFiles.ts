@@ -6,6 +6,7 @@
 import type {
   EnvironmentAsset,
   MeshAsset,
+  SceneAsset,
   SourceState,
   TextureAsset,
   VolumeAsset,
@@ -20,9 +21,14 @@ export interface AssetFile {
   readonly bytes: Uint8Array<ArrayBuffer>;
 }
 
-/** An image or an HDRI: the uploaded file, under its own name. */
-export function uploadedFile(asset: TextureAsset | EnvironmentAsset): AssetFile {
+/** An image: the uploaded file, under its own name. */
+export function imageFile(asset: TextureAsset): AssetFile {
   return { fileName: asset.label, bytes: dataUrlBytes(asset.dataUrl) };
+}
+
+/** An HDRI or a scene: the uploaded file, under its own name. */
+export function uploadedFile(asset: EnvironmentAsset | SceneAsset): AssetFile {
+  return { fileName: asset.label, bytes: asset.bytes };
 }
 
 export async function meshFile(asset: MeshAsset): Promise<AssetFile> {
@@ -56,13 +62,13 @@ function uniqueFileName(fileName: string, taken: ReadonlySet<string>): string {
 }
 
 /**
- * A zip of the images, meshes and volumes of the library, side by side. HDRIs only light the
- * preview, so they stay out. Two assets with one label get files told apart by a number.
+ * A zip of the images, meshes and volumes of the library, side by side, without HDRIs and scenes.
+ * Two assets with one label get files told apart by a number.
  */
 export async function libraryZip(source: SourceState): Promise<Uint8Array<ArrayBuffer>> {
   // An image is compressed already, a GLB is not.
   const files = [
-    ...source.assets.map((asset) => ({ file: uploadedFile(asset), deflate: false })),
+    ...source.assets.map((asset) => ({ file: imageFile(asset), deflate: false })),
     ...(await Promise.all(
       source.meshAssets.map(async (asset) => ({ file: await meshFile(asset), deflate: true })),
     )),

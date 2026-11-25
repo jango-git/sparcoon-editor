@@ -139,8 +139,9 @@ To ask for it, open an [issue](https://github.com/jango-git/sparcoon/issues).
 An emitter simulates on the GPU if that is enabled (the default), the graph allows it and the device
 supports it, and on the CPU otherwise.
 
-Depth Fade and Depth Sample read the depth of the opaque scene. In the preview that is the studio
-ground as the viewport camera sees it. In a game it is the depth the game gives the camera, as the
+Depth Fade and Depth Sample read the depth of the opaque scene. In the preview that is the preview
+scene (the studio ground or an uploaded scene) as the viewport camera sees it. In a game it is the
+depth the game gives the camera, as the
 [runtime's README](https://github.com/jango-git/sparcoon#scene-depth) shows. Depth Sample collides
 only in the GPU simulation. On the CPU it finds no surface, and the node is marked with a warning.
 
@@ -158,6 +159,13 @@ only in the GPU simulation. On the CPU it finds no surface, and the node is mark
   [runtime's README](https://github.com/jango-git/sparcoon#signed-distance-fields) shows.
 - The preview is lit manually (Sun, Hemisphere) or by an HDRI environment. Preview lighting is not
   exported, and in the game the effect is lit by the lights of its scene.
+- A `.glb` dropped on the **Scenes** section, or a `.gltf` with its buffers and images embedded,
+  becomes a preview scene. It is kept whole, with its materials and textures. The viewport's Scene
+  tab draws one scene around the effect: **Studio** (the ground), **Void** (nothing) or an uploaded
+  one. Shadows fall on it, and Depth Fade and Depth Sample read its depth. Animations in the file
+  do not play. A scene is saved in the project and is not exported.
+- Meshes and scenes may be meshopt-compressed. A file with Draco geometry or KTX2 textures does not
+  load.
 
 ## Export
 
@@ -165,7 +173,7 @@ only in the GPU simulation. On the CPU it finds no surface, and the node is mark
 - **TypeScript** - an effect module ready for the build. Assets are not included - the game's code
   passes them in.
 - **Zip** - the library's images, meshes as `.glb` and volumes as PNGs of their slices, in one
-  archive. Files are named as in the library. HDRIs are not included.
+  archive. Files are named as in the library. HDRIs and scenes are not included.
 
 Using the effect in a game is described in the
 [runtime's README](https://github.com/jango-git/sparcoon#readme).

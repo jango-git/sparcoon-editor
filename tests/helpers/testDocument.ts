@@ -3,6 +3,7 @@ import {
   createDefaultVfx,
   DEFAULT_TIMELINE,
   type EditorState,
+  STUDIO_SCENE_NAME,
 } from "../../src/model/editorState";
 
 /**
@@ -27,6 +28,8 @@ export function createTestState(): EditorState {
       assets: [],
       environments: [],
       activeEnvironmentName: undefined,
+      scenes: [],
+      activeSceneName: STUDIO_SCENE_NAME,
       meshAssets: [],
       volumeAssets: [],
       palette: [],

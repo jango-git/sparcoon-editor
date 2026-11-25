@@ -17,7 +17,7 @@ import {
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 import type { EnvironmentAsset, MeshAsset } from "../model/editorState";
-import { downsampleEquirect } from "./environmentTexture";
+import { downsampleEquirect, loadHdrTexture } from "./environmentTexture";
 import { buildGeometryFromArrays } from "./meshGeometryBaking";
 
 const HDRI_THUMBNAIL_WIDTH = 64;
@@ -28,7 +28,7 @@ const MESH_FRAME_MARGIN = 1.35;
 const MESH_CAMERA_FOV_DEGREES = 35;
 
 interface EnvironmentThumbnailEntry {
-  readonly dataUrl: string;
+  readonly bytes: Uint8Array<ArrayBuffer>;
   thumbnailUrl?: string;
 }
 
@@ -49,13 +49,13 @@ export function environmentThumbnails(
   const resolved = new Map<string, string>();
   for (const asset of assets) {
     const existing = environmentThumbnailCache.get(asset.name);
-    if (existing?.dataUrl === asset.dataUrl) {
+    if (existing?.bytes === asset.bytes) {
       if (existing.thumbnailUrl !== undefined) {
         resolved.set(asset.name, existing.thumbnailUrl);
       }
       continue;
     }
-    const entry: EnvironmentThumbnailEntry = { dataUrl: asset.dataUrl };
+    const entry: EnvironmentThumbnailEntry = { bytes: asset.bytes };
     environmentThumbnailCache.set(asset.name, entry);
     decodeEnvironmentThumbnail(asset.name, entry, onReady);
   }
@@ -67,8 +67,7 @@ function decodeEnvironmentThumbnail(
   entry: EnvironmentThumbnailEntry,
   onReady: () => void,
 ): void {
-  hdriLoader.load(
-    entry.dataUrl,
+  void loadHdrTexture(hdriLoader, entry.bytes).then(
     (texture) => {
       if (environmentThumbnailCache.get(name) !== entry) {
         texture.dispose();
@@ -88,8 +87,7 @@ function decodeEnvironmentThumbnail(
       );
       onReady();
     },
-    undefined,
-    (error) => console.warn(`Failed to decode HDRI thumbnail "${name}"`, error),
+    (error: unknown) => console.warn(`Failed to decode HDRI thumbnail "${name}"`, error),
   );
 }
 

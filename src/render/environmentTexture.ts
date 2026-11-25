@@ -16,6 +16,7 @@ import {
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 import type { EnvironmentAsset } from "../model/editorState";
+import { AsyncLibraryCache } from "./libraryCache";
 import { type DerivedSun, deriveSunFromEquirect } from "./sunFromEnvironment";
 
 /** Fixed background resolution. */
@@ -28,79 +29,74 @@ export interface DecodedEnvironment {
   readonly sun: DerivedSun;
 }
 
-interface CacheEntry {
-  readonly dataUrl: string;
-  readonly decoded?: DecodedEnvironment;
+/** Decodes an `.hdr` file with `loader` into a texture, as `loader.load` builds it from a URL. */
+export async function loadHdrTexture(
+  loader: RGBELoader,
+  bytes: Uint8Array<ArrayBuffer>,
+): Promise<DataTexture> {
+  const url = URL.createObjectURL(new Blob([bytes]));
+  try {
+    return await loader.loadAsync(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export class EnvironmentTextureRegistry {
   private readonly loader = new RGBELoader().setDataType(FloatType);
-  private readonly entries = new Map<string, CacheEntry>();
+  private readonly cache: AsyncLibraryCache<EnvironmentAsset, DecodedEnvironment>;
 
-  constructor(private readonly onLoaded: () => void) {}
+  constructor(onLoaded: () => void) {
+    this.cache = new AsyncLibraryCache(
+      (asset) => this.decode(asset),
+      disposeDecoded,
+      (previous, next) => previous.bytes !== next.bytes,
+      onLoaded,
+    );
+  }
 
   public sync(assets: readonly EnvironmentAsset[]): void {
-    const live = new Set(assets.map((asset) => asset.name));
-    for (const [name, entry] of this.entries) {
-      if (!live.has(name)) {
-        disposeDecoded(entry.decoded);
-        this.entries.delete(name);
-      }
-    }
-    for (const asset of assets) {
-      const existing = this.entries.get(asset.name);
-      if (existing?.dataUrl !== asset.dataUrl) {
-        disposeDecoded(existing?.decoded);
-        this.entries.set(asset.name, { dataUrl: asset.dataUrl });
-        this.load(asset.name, asset.dataUrl);
-      }
-    }
+    this.cache.sync(assets);
   }
 
   public resolve(name: string | undefined): DecodedEnvironment | undefined {
-    return name === undefined ? undefined : this.entries.get(name)?.decoded;
+    return name === undefined ? undefined : this.cache.get(name);
   }
 
   public destroy(): void {
-    for (const entry of this.entries.values()) {
-      disposeDecoded(entry.decoded);
-    }
-    this.entries.clear();
+    this.cache.destroy();
   }
 
-  private load(name: string, dataUrl: string): void {
-    this.loader.load(
-      dataUrl,
-      (full) => {
-        const current = this.entries.get(name);
-        if (current?.dataUrl !== dataUrl) {
-          full.dispose();
-          return;
-        }
-        configureFull(full);
-        const downsampled = downsampleEquirect(
-          sourceFromFull(full),
-          BACKGROUND_WIDTH,
-          BACKGROUND_HEIGHT,
-        );
-        const background = wrapBackgroundTexture(downsampled);
-        const sun = deriveSunFromEquirect({
-          data: downsampled,
-          width: BACKGROUND_WIDTH,
-          height: BACKGROUND_HEIGHT,
-        });
-        this.entries.set(name, { dataUrl, decoded: { full, background, sun } });
-        this.onLoaded();
-      },
-      undefined,
-      (error) => console.warn(`Failed to decode environment "${name}"`, error),
+  private async decode(asset: EnvironmentAsset): Promise<DecodedEnvironment | undefined> {
+    if (asset.bytes.length === 0) {
+      return undefined;
+    }
+    let full: DataTexture;
+    try {
+      full = await loadHdrTexture(this.loader, asset.bytes);
+    } catch (error) {
+      console.warn(`Failed to decode environment "${asset.name}"`, error);
+      return undefined;
+    }
+    configureFull(full);
+    const downsampled = downsampleEquirect(
+      sourceFromFull(full),
+      BACKGROUND_WIDTH,
+      BACKGROUND_HEIGHT,
     );
+    const background = wrapBackgroundTexture(downsampled);
+    const sun = deriveSunFromEquirect({
+      data: downsampled,
+      width: BACKGROUND_WIDTH,
+      height: BACKGROUND_HEIGHT,
+    });
+    return { full, background, sun };
   }
 }
 
-function disposeDecoded(decoded: DecodedEnvironment | undefined): void {
-  decoded?.full.dispose();
-  decoded?.background.dispose();
+function disposeDecoded(decoded: DecodedEnvironment): void {
+  decoded.full.dispose();
+  decoded.background.dispose();
 }
 
 /** Float HDR data has no reliable cross-device mipmap path, so filtering stays a plain bilinear sample. */

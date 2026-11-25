@@ -1,8 +1,9 @@
 /**
  * The content library for the agent. An added file goes through the same ingestion a drop onto
- * the Content screen does (images to textures, `.hdr` to environments, `.glb`/`.gltf` to meshes),
- * so the agent hands over bytes and a file name, and nothing is decoded twice. A volume is baked
- * from a mesh asset, as the Content screen's SDF baker does.
+ * the Content screen does (images to textures, `.hdr` to environments, `.glb`/`.gltf` to meshes,
+ * or to scenes through the Scenes section), so the agent hands over bytes and a file name, and
+ * nothing is decoded twice. A volume is baked from a mesh asset, as the Content screen's SDF baker
+ * does.
  */
 
 import {
@@ -16,20 +17,22 @@ import {
   addVolumeAsset,
   removeEnvironmentAsset,
   removeMeshAsset,
+  removeSceneAsset,
   removeTextureAsset,
   removeVolumeAsset,
   setActiveEnvironment,
+  setActiveScene,
 } from "../model/commands";
-import type { SourceState } from "../model/editorState";
+import { isSceneName, type SourceState } from "../model/editorState";
 import { libraryAssetNames } from "../model/selectors";
 import type { Store } from "../model/store";
 import { volumeAssetOf } from "../model/volumeAssets";
-import { ingestFiles } from "../ui/assetIngestion";
+import { ingestFiles, ingestSceneFiles } from "../ui/assetIngestion";
 import { base64ToBytes } from "../util/bytes";
 import { AgentError } from "./errors";
 import { type AssetsView, assetsView } from "./views";
 
-export type AssetKind = "texture" | "mesh" | "environment" | "volume";
+export type AssetKind = "texture" | "mesh" | "environment" | "scene" | "volume";
 
 /** A file's bytes: a `data:` URL, bare base64 text, or the raw bytes themselves. */
 export type AssetData = string | Blob | ArrayBuffer | Uint8Array;
@@ -52,6 +55,12 @@ export interface AssetsApi {
    */
   add(fileName: string, data: AssetData): Promise<readonly AssetReference[]>;
   /**
+   * Adds a `.glb`, or a `.gltf` with its buffers and images embedded, to the scene library as it
+   * is, and returns it. Its name is made from `fileName` as a texture's is, and never takes a
+   * built-in scene's (`studio`, `void`).
+   */
+  addScene(fileName: string, data: AssetData): Promise<AssetReference>;
+  /**
    * Bakes mesh asset `mesh` into a volume asset (an SDF) and returns it. `settings` override the
    * baker's defaults for the mesh - its bounds padded by the band, `resolution` 64 texels along the
    * longest side (4 to 128), a `band` of a tenth of its longest side, `"solid"` when it is closed
@@ -62,6 +71,8 @@ export interface AssetsApi {
   remove(kind: AssetKind, name: string): void;
   /** Lights the viewport with an environment asset; `undefined` restores the manual sun + sky. */
   setEnvironment(name: string | undefined): void;
+  /** Draws a scene around the effect: `"studio"` (the ground), `"void"` or a scene asset. */
+  setScene(name: string): void;
 }
 
 /** Raster MIME types by extension; ingestion only routes `image/*` files to the texture library. */
@@ -77,16 +88,18 @@ function libraryNames(source: SourceState): Readonly<Record<AssetKind, readonly 
   return {
     texture: source.assets.map((asset) => asset.name),
     environment: source.environments.map((asset) => asset.name),
+    scene: source.scenes.map((asset) => asset.name),
     ...libraryAssetNames(source),
   };
 }
 
-const ASSET_KINDS: readonly AssetKind[] = ["texture", "mesh", "environment", "volume"];
+const ASSET_KINDS: readonly AssetKind[] = ["texture", "mesh", "environment", "scene", "volume"];
 
 const REMOVE: Readonly<Record<AssetKind, (store: Store, name: string) => void>> = {
   texture: removeTextureAsset,
   mesh: removeMeshAsset,
   environment: removeEnvironmentAsset,
+  scene: removeSceneAsset,
   volume: removeVolumeAsset,
 };
 
@@ -142,22 +155,41 @@ async function fileFrom(fileName: string, data: unknown): Promise<File> {
 }
 
 export function createAssetsApi(store: Store): AssetsApi {
+  const ingest = async (
+    fileName: string,
+    data: AssetData,
+    into: (files: FileList, store: Store) => Promise<void>,
+  ): Promise<readonly AssetReference[]> => {
+    const before = libraryNames(store.getSource());
+    const transfer = new DataTransfer();
+    transfer.items.add(await fileFrom(fileName, data));
+    await into(transfer.files, store);
+    const after = libraryNames(store.getSource());
+    return ASSET_KINDS.flatMap((kind) =>
+      after[kind].filter((name) => !before[kind].includes(name)).map((name) => ({ kind, name })),
+    );
+  };
+
   return {
     list: () => assetsView(store.getSource()),
 
     add: async (fileName, data): Promise<readonly AssetReference[]> => {
-      const before = libraryNames(store.getSource());
-      const transfer = new DataTransfer();
-      transfer.items.add(await fileFrom(fileName, data));
-      await ingestFiles(transfer.files, store);
-      const after = libraryNames(store.getSource());
-      const added = ASSET_KINDS.flatMap((kind) =>
-        after[kind].filter((name) => !before[kind].includes(name)).map((name) => ({ kind, name })),
-      );
+      const added = await ingest(fileName, data, ingestFiles);
       if (added.length === 0) {
         throw new AgentError(
           "rejected",
           `"${fileName}" produced no asset (unsupported type, undecodable, or a name collision).`,
+        );
+      }
+      return added;
+    },
+
+    addScene: async (fileName, data): Promise<AssetReference> => {
+      const [added] = await ingest(fileName, data, ingestSceneFiles);
+      if (added === undefined) {
+        throw new AgentError(
+          "rejected",
+          `"${fileName}" produced no scene (not a .glb or .gltf, or undecodable).`,
         );
       }
       return added;
@@ -194,6 +226,13 @@ export function createAssetsApi(store: Store): AssetsApi {
         throw new AgentError("not_found", `No environment asset "${name}".`);
       }
       setActiveEnvironment(store, name);
+    },
+
+    setScene: (name): void => {
+      if (!isSceneName(name, store.getSource().scenes)) {
+        throw new AgentError("not_found", `No scene "${name}".`);
+      }
+      setActiveScene(store, name);
     },
   };
 }

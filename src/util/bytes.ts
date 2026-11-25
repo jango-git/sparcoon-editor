@@ -45,16 +45,31 @@ export function base64ToBytes(text: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
 }
 
+/** The base64 text a base64 data URL carries, or `undefined` for any other string. */
+export function dataUrlBase64(dataUrl: string): string | undefined {
+  const comma = dataUrl.indexOf(",");
+  return dataUrl.startsWith("data:") && dataUrl.slice(0, comma).endsWith(";base64")
+    ? dataUrl.slice(comma + 1)
+    : undefined;
+}
+
 /**
- * The bytes of a base64 data URL - what the library stores a file as.
+ * The bytes of a base64 data URL - what the library stores an image as.
  * @throws When `dataUrl` is not a base64 data URL.
  */
 export function dataUrlBytes(dataUrl: string): Uint8Array<ArrayBuffer> {
-  const comma = dataUrl.indexOf(",");
-  if (!dataUrl.startsWith("data:") || !dataUrl.slice(0, comma).endsWith(";base64")) {
+  const base64 = dataUrlBase64(dataUrl);
+  if (base64 === undefined) {
     throw new Error("dataUrlBytes: not a base64 data URL");
   }
-  return base64ToBytes(dataUrl.slice(comma + 1));
+  return base64ToBytes(base64);
+}
+
+/** `raw` when it is bytes on an `ArrayBuffer`, not a `SharedArrayBuffer`. */
+export function arrayBufferBytes(raw: unknown): Uint8Array<ArrayBuffer> | undefined {
+  return raw instanceof Uint8Array && raw.buffer instanceof ArrayBuffer
+    ? (raw as Uint8Array<ArrayBuffer>)
+    : undefined;
 }
 
 /** `bytes` as base64 text. */

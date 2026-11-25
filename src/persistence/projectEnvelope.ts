@@ -15,6 +15,7 @@
 
 import { isRecord } from "../util/guards";
 import { upgradeFromFormat1 } from "./upgrades/fromFormat1";
+import { upgradeFromFormat2 } from "./upgrades/fromFormat2";
 
 const PROJECT_FORMAT = "sparcoon-project";
 
@@ -25,7 +26,7 @@ export type ProjectUpgrade = (body: unknown) => unknown;
  * The steps between formats, in order: step `i` converts format `i + 1` to `i + 2`. A step is
  * never edited or removed once released, since projects saved in its formats still load through it.
  */
-const PROJECT_UPGRADES: readonly ProjectUpgrade[] = [upgradeFromFormat1];
+const PROJECT_UPGRADES: readonly ProjectUpgrade[] = [upgradeFromFormat1, upgradeFromFormat2];
 
 /** The current format: one past the last step. */
 const PROJECT_VERSION = PROJECT_UPGRADES.length + 1;

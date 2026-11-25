@@ -30,7 +30,7 @@ function globalKeymap(store: Store): Keymap {
     { code: "KeyZ", modifier: true, shift: true, run: () => store.redo() },
     // allowInEditable: the browser's own Save Page dialog is never wanted here, including while
     // a param field or the project name input owns focus.
-    { code: "KeyS", modifier: true, allowInEditable: true, run: () => saveProjectJson(store) },
+    { code: "KeyS", modifier: true, allowInEditable: true, run: () => void saveProjectJson(store) },
   ];
 }
 

@@ -168,7 +168,7 @@ describe("emitter trail: document", () => {
     expect(loaded?.scene.emitters[0].trailGraph).toEqual(emitterDoc(store).trailGraph);
   });
 
-  it("load drops trail bindings to the particle transforms and the sink's stale geometry", () => {
+  it("load drops trail bindings to the particle transforms and the sink's stale geometry", async () => {
     const { store, emitterId } = setup();
     setEmitterStrip(store, emitterId, "trail", true);
     const trailGraph = emitterDoc(store).trailGraph;
@@ -194,7 +194,7 @@ describe("emitter trail: document", () => {
       ],
     };
     // A bare source reads as format 1, the format strip sinks were saved with a geometry in.
-    const loaded = readStoredSource(unwrapProject(raw))?.scene.emitters[0].trailGraph;
+    const loaded = (await readStoredSource(unwrapProject(raw)))?.scene.emitters[0].trailGraph;
     expect(loaded?.outputBindings.map((binding) => binding.slot)).toEqual(["albedo"]);
     expect(loaded?.nodes[RENDER_SINK_ID]?.parameters).not.toHaveProperty("geometry");
   });

@@ -1,5 +1,5 @@
 /**
- * Converts a live `BufferGeometry` to and from the plain `position`/`normal`/`uv`/`index` arrays of
+ * Converts a live `BufferGeometry` to and from the flat `position`/`normal`/`uv`/`index` arrays of
  * a {@link MeshAsset}.
  */
 
@@ -13,8 +13,8 @@ import type { BakedMeshGeometry } from "../model/editorState";
  * `InterleavedBufferAttribute` sharing one buffer across position/normal/uv. */
 type VertexAttribute = BufferAttribute | InterleavedBufferAttribute;
 
-function flattenVec2(attribute: VertexAttribute, vertexCount: number): number[] {
-  const values = new Array<number>(vertexCount * 2);
+function flattenVec2(attribute: VertexAttribute, vertexCount: number): Float32Array<ArrayBuffer> {
+  const values = new Float32Array(vertexCount * 2);
   for (let i = 0; i < vertexCount; i++) {
     values[i * 2] = attribute.getX(i);
     values[i * 2 + 1] = attribute.getY(i);
@@ -22,8 +22,8 @@ function flattenVec2(attribute: VertexAttribute, vertexCount: number): number[] 
   return values;
 }
 
-function flattenVec3(attribute: VertexAttribute, vertexCount: number): number[] {
-  const values = new Array<number>(vertexCount * 3);
+function flattenVec3(attribute: VertexAttribute, vertexCount: number): Float32Array<ArrayBuffer> {
+  const values = new Float32Array(vertexCount * 3);
   for (let i = 0; i < vertexCount; i++) {
     values[i * 3] = attribute.getX(i);
     values[i * 3 + 1] = attribute.getY(i);
@@ -54,11 +54,11 @@ export function bakeGeometryArrays(geometry: BufferGeometry): BakedMeshGeometry 
     uv:
       // @types/three types this attribute as always present; a source mesh can genuinely lack it.
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      uv === undefined ? new Array<number>(vertexCount * 2).fill(0) : flattenVec2(uv, vertexCount),
+      uv === undefined ? new Float32Array(vertexCount * 2) : flattenVec2(uv, vertexCount),
     index:
       index === undefined
-        ? Array.from({ length: vertexCount }, (_, vertexIndex) => vertexIndex)
-        : Array.from(index.array),
+        ? Uint32Array.from({ length: vertexCount }, (_, vertexIndex) => vertexIndex)
+        : Uint32Array.from(index.array),
   };
 }
 

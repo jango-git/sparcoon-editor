@@ -3,17 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   EnvironmentAsset,
   MeshAsset,
+  SceneAsset,
   SourceState,
   TextureAsset,
   VolumeAsset,
 } from "../../src/model/editorState";
 import type * as assetBlobStore from "../../src/persistence/assetBlobStore";
+import { decodePayload, type StoredPayload } from "../../src/persistence/payloadCodec";
 
 // The real sync logic over in-memory backends (one per library) that can be switched off. Each
 // library's BlobSync remembers what it stored, so `renew` builds fresh ones for every test.
 const backends = vi.hoisted(() => ({
   texture: new Map<string, unknown>(),
   environment: new Map<string, unknown>(),
+  scene: new Map<string, unknown>(),
   mesh: new Map<string, unknown>(),
   volume: new Map<string, unknown>(),
   available: true,
@@ -37,7 +40,8 @@ vi.mock("../../src/persistence/assetBlobStore", async (importOriginal) => {
   });
   const fresh = () => ({
     textureBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.texture)),
-    environmentBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.environment)),
+    environmentBlobs: new actual.BlobSync(actual.bytesPayload(), memory(backends.environment)),
+    sceneBlobs: new actual.BlobSync(actual.bytesPayload(), memory(backends.scene)),
     meshBlobs: new actual.BlobSync(actual.MESH_GEOMETRY_PAYLOAD, memory(backends.mesh)),
     volumeBlobs: new actual.BlobSync(actual.dataUrlPayload(), memory(backends.volume)),
   });
@@ -58,6 +62,7 @@ vi.mock("../../src/persistence/assetBlobStore", async (importOriginal) => {
     ...actual,
     textureBlobs: delegate("textureBlobs"),
     environmentBlobs: delegate("environmentBlobs"),
+    sceneBlobs: delegate("sceneBlobs"),
     meshBlobs: delegate("meshBlobs"),
     volumeBlobs: delegate("volumeBlobs"),
   };
@@ -76,8 +81,12 @@ function texture(name: string, dataUrl: string): TextureAsset {
   return { name, label: `${name}.png`, dataUrl, width: 4, height: 4 };
 }
 
-function environment(name: string, dataUrl: string): EnvironmentAsset {
-  return { name, label: `${name}.hdr`, dataUrl, byteSize: 3 };
+function environment(name: string, bytes: Uint8Array<ArrayBuffer>): EnvironmentAsset {
+  return { name, label: `${name}.hdr`, bytes, byteSize: 3 };
+}
+
+function scene(name: string, bytes: Uint8Array<ArrayBuffer>): SceneAsset {
+  return { name, label: `${name}.glb`, bytes, byteSize: 3 };
 }
 
 function volume(name: string, dataUrl: string): VolumeAsset {
@@ -98,9 +107,17 @@ function mesh(name: string, position: readonly number[]): MeshAsset {
     name,
     label: `${name}.glb`,
     byteSize: 10,
-    geometry: { position, normal: [0, 1, 0], uv: [0, 0], index: [0] },
+    geometry: {
+      position: Float32Array.from(position),
+      normal: Float32Array.from([0, 1, 0]),
+      uv: Float32Array.from([0, 0]),
+      index: Uint32Array.from([0]),
+    },
   };
 }
+
+const HDR = Uint8Array.from([1, 2, 3]);
+const GLB = Uint8Array.from([4, 5, 6]);
 
 /** Only the fields saveSource touches; the rest of the source is passed through untouched. */
 function sourceWith(
@@ -108,14 +125,22 @@ function sourceWith(
   environments: readonly EnvironmentAsset[] = [],
   meshAssets: readonly MeshAsset[] = [],
   volumeAssets: readonly VolumeAsset[] = [],
+  scenes: readonly SceneAsset[] = [],
 ): SourceState {
-  return { assets, environments, meshAssets, volumeAssets } as unknown as SourceState;
+  return { assets, environments, scenes, meshAssets, volumeAssets } as unknown as SourceState;
+}
+
+interface StoredFileAsset {
+  name: string;
+  bytes: StoredPayload;
+  byteSize: number;
 }
 
 interface SavedDocument {
   assets: TextureAsset[];
-  environments: EnvironmentAsset[];
-  meshAssets: MeshAsset[];
+  environments: StoredFileAsset[];
+  scenes: StoredFileAsset[];
+  meshAssets: { name: string; byteSize: number; geometry: Record<string, StoredPayload> }[];
   volumeAssets: VolumeAsset[];
 }
 
@@ -132,6 +157,7 @@ beforeEach(() => {
   written.clear();
   backends.texture.clear();
   backends.environment.clear();
+  backends.scene.clear();
   backends.mesh.clear();
   backends.volume.clear();
   backends.available = true;
@@ -149,32 +175,52 @@ describe("saveSource", () => {
     saveSource(
       sourceWith(
         [texture("tSmoke", "data:a")],
-        [environment("studio", "data:h")],
+        [environment("sky", HDR)],
         [rock],
         [volume("Rock SDF", "data:v")],
+        [scene("arena", GLB)],
       ),
     );
     expect(writes).toEqual([]);
     await settle();
     expect(backends.texture.get("tSmoke")).toBe("data:a");
-    expect(backends.environment.get("studio")).toBe("data:h");
+    expect(backends.environment.get("sky")).toBe(HDR);
+    expect(backends.scene.get("arena")).toBe(GLB);
     expect(backends.mesh.get("Rock")).toBe(rock.geometry);
     expect(saved().meshAssets[0]).toMatchObject({ name: "Rock", byteSize: 10 });
-    expect(saved().meshAssets[0]?.geometry.position).toEqual([]);
+    expect(saved().meshAssets[0]?.geometry["position"]).toEqual({ encoding: "none", data: "" });
     expect(backends.volume.get("Rock SDF")).toBe("data:v");
     expect(saved().volumeAssets[0]).toMatchObject({ name: "Rock SDF", dataUrl: "", scale: 2 });
     expect(writes).toHaveLength(1);
     expect(writes[0]).not.toContain("data:a");
     expect(saved().assets[0]).toMatchObject({ name: "tSmoke", dataUrl: "", width: 4 });
-    expect(saved().environments[0]).toMatchObject({ name: "studio", dataUrl: "", byteSize: 3 });
+    expect(saved().environments[0]).toMatchObject({
+      name: "sky",
+      bytes: { encoding: "none", data: "" },
+      byteSize: 3,
+    });
+    expect(saved().scenes[0]).toMatchObject({
+      name: "arena",
+      bytes: { encoding: "none", data: "" },
+    });
   });
 
-  it("keeps bytes inline while IndexedDB is unavailable", async () => {
+  it("keeps bytes inline, plain, while IndexedDB is unavailable", async () => {
     backends.available = false;
-    saveSource(sourceWith([texture("tSmoke", "data:a")], [environment("studio", "data:h")]));
+    saveSource(
+      sourceWith(
+        [texture("tSmoke", "data:a")],
+        [environment("sky", HDR)],
+        [],
+        [],
+        [scene("arena", GLB)],
+      ),
+    );
     await settle();
     expect(saved().assets[0]?.dataUrl).toBe("data:a");
-    expect(saved().environments[0]?.dataUrl).toBe("data:h");
+    expect(saved().environments[0]?.bytes.encoding).toBe("none");
+    expect(await decodePayload(saved().environments[0].bytes)).toEqual(HDR);
+    expect(await decodePayload(saved().scenes[0].bytes)).toEqual(GLB);
   });
 
   it("writes only the newest of overlapping saves", async () => {
@@ -205,20 +251,37 @@ describe("saveSource", () => {
 describe("hydrateSource", () => {
   it("fills every library's payloads back in", async () => {
     backends.texture.set("tSmoke", "data:a");
-    backends.environment.set("studio", "data:h");
-    backends.mesh.set("Rock", { position: [1, 2, 3], normal: [0, 1, 0], uv: [0, 0], index: [0] });
+    backends.environment.set("sky", HDR);
+    backends.scene.set("arena", GLB);
+    backends.mesh.set("Rock", mesh("Rock", [1, 2, 3]).geometry);
     backends.volume.set("Rock SDF", "data:v");
     const source = await hydrateSource(
       sourceWith(
         [texture("tSmoke", "")],
-        [environment("studio", "")],
+        [environment("sky", new Uint8Array())],
         [mesh("Rock", [])],
         [volume("Rock SDF", "")],
+        [scene("arena", new Uint8Array())],
       ),
     );
     expect(source.assets[0]?.dataUrl).toBe("data:a");
-    expect(source.environments[0]?.dataUrl).toBe("data:h");
-    expect(source.meshAssets[0]?.geometry.position).toEqual([1, 2, 3]);
+    expect(source.environments[0]?.bytes).toBe(HDR);
+    expect(source.scenes[0]?.bytes).toBe(GLB);
+    expect(source.meshAssets[0]?.geometry.position).toEqual(Float32Array.from([1, 2, 3]));
     expect(source.volumeAssets[0]?.dataUrl).toBe("data:v");
+  });
+
+  it("reads payloads stored in an older form and stores them again in the current one", async () => {
+    backends.environment.set("sky", "data:application/octet-stream;base64,AQID");
+    backends.mesh.set("Rock", { position: [1, 2, 3], normal: [0, 1, 0], uv: [0, 0], index: [0] });
+    const source = await hydrateSource(
+      sourceWith([], [environment("sky", new Uint8Array())], [mesh("Rock", [])]),
+    );
+    expect(source.environments[0]?.bytes).toEqual(HDR);
+    expect(source.meshAssets[0]?.geometry.index).toEqual(Uint32Array.from([0]));
+    saveSource(source);
+    await settle();
+    expect(backends.environment.get("sky")).toEqual(HDR);
+    expect(backends.mesh.get("Rock")).toBe(source.meshAssets[0]?.geometry);
   });
 });

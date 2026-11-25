@@ -11,8 +11,9 @@
  */
 
 const DATABASE_NAME = "sparcoon-editor";
-// Version 1 holds environmentBlobs, 2 adds textureBlobs and meshBlobs, 3 adds volumeBlobs.
-const DATABASE_VERSION = 3;
+// Version 1 holds environmentBlobs, 2 adds textureBlobs and meshBlobs, 3 adds volumeBlobs, 4 adds
+// sceneBlobs.
+const DATABASE_VERSION = 4;
 
 /**
  * How long an open may take before it counts as failed. Some browsers' private modes leave
@@ -21,7 +22,7 @@ const DATABASE_VERSION = 3;
  */
 const OPEN_TIMEOUT_MS = 3000;
 
-/** HDRI `dataUrl`s (see assetBlobStore.ts). */
+/** HDRI files (see assetBlobStore.ts). */
 export const ENVIRONMENT_BLOB_STORE = "environmentBlobs";
 /** Raster texture `dataUrl`s (see assetBlobStore.ts). */
 export const TEXTURE_BLOB_STORE = "textureBlobs";
@@ -31,7 +32,16 @@ export const MESH_BLOB_STORE = "meshBlobs";
 /** Volume assets' PNG atlas `dataUrl`s (see assetBlobStore.ts). */
 export const VOLUME_BLOB_STORE = "volumeBlobs";
 
-const STORES = [ENVIRONMENT_BLOB_STORE, TEXTURE_BLOB_STORE, MESH_BLOB_STORE, VOLUME_BLOB_STORE];
+/** Preview-scene GLB files (see assetBlobStore.ts). */
+export const SCENE_BLOB_STORE = "sceneBlobs";
+
+const STORES = [
+  ENVIRONMENT_BLOB_STORE,
+  TEXTURE_BLOB_STORE,
+  MESH_BLOB_STORE,
+  VOLUME_BLOB_STORE,
+  SCENE_BLOB_STORE,
+];
 
 /** The session's connection while it is usable (or being opened); `undefined` opens a new one. */
 let connection: Promise<IDBDatabase> | undefined;

@@ -1,11 +1,13 @@
 /**
- * The project file (also the presets): a stored project (`projectEnvelope.ts`) as JSON text.
- * Reading one hands its body to the same {@link readStoredSource} that defends the autosaved
- * document, so a file - untrusted like any storage - can never crash the editor.
+ * The project file (also the presets): a stored project (`projectEnvelope.ts`) as JSON text, its
+ * payloads gzipped (`payloadCodec.ts`). Reading one hands its body to the same
+ * {@link readStoredSource} that defends the autosaved document, so a file - untrusted like any
+ * storage - can never crash the editor.
  */
 
 import type { SourceState } from "../model/editorState";
 import { readStoredSource } from "./loadState";
+import { encodeSourceCompressed } from "./payloadCodec";
 import { isNewerProject, unwrapProject, wrapProject } from "./projectEnvelope";
 
 /** What reading a project file gave. */
@@ -15,11 +17,11 @@ export type ProjectRead =
   /** Saved in a later format, by `editor` when the file names it: refused whole. */
   | { readonly kind: "newer"; readonly editor: string | undefined };
 
-export function serializeProject(source: SourceState): string {
-  return JSON.stringify(wrapProject(source), undefined, 2);
+export async function serializeProject(source: SourceState): Promise<string> {
+  return JSON.stringify(wrapProject(await encodeSourceCompressed(source)), undefined, 2);
 }
 
-export function deserializeProject(text: string): ProjectRead {
+export async function deserializeProject(text: string): Promise<ProjectRead> {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -30,6 +32,6 @@ export function deserializeProject(text: string): ProjectRead {
   if (isNewerProject(stored)) {
     return { kind: "newer", editor: stored.editor };
   }
-  const source = readStoredSource(stored);
+  const source = await readStoredSource(stored);
   return source === undefined ? { kind: "unreadable" } : { kind: "loaded", source };
 }

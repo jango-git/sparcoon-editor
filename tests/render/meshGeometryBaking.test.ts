@@ -27,13 +27,13 @@ function planeGeometry(): BufferGeometry {
 describe("bakeGeometryArrays / buildGeometryFromArrays", () => {
   it("round-trips position/normal/uv/index", () => {
     const baked = bakeGeometryArrays(planeGeometry());
-    expect(baked.position).toEqual([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
-    expect(baked.normal).toEqual([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
-    expect(baked.uv).toEqual([0, 0, 1, 0, 1, 1, 0, 1]);
-    expect(baked.index).toEqual([0, 1, 2, 0, 2, 3]);
+    expect(Array.from(baked.position)).toEqual([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
+    expect(Array.from(baked.normal)).toEqual([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
+    expect(Array.from(baked.uv)).toEqual([0, 0, 1, 0, 1, 1, 0, 1]);
+    expect(Array.from(baked.index)).toEqual([0, 1, 2, 0, 2, 3]);
 
     const rebuilt = buildGeometryFromArrays(baked);
-    expect(Array.from(rebuilt.getAttribute("position").array)).toEqual(baked.position);
+    expect(Array.from(rebuilt.getAttribute("position").array)).toEqual(Array.from(baked.position));
     expect(rebuilt.getIndex()?.count).toBe(6);
   });
 
@@ -59,9 +59,9 @@ describe("bakeGeometryArrays / buildGeometryFromArrays", () => {
     geometry.setAttribute("uv", new InterleavedBufferAttribute(interleaved, 2, 6));
 
     const baked = bakeGeometryArrays(geometry);
-    expect(baked.position).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(baked.normal).toEqual([0, 1, 0, 0, 1, 0]);
-    expect(baked.uv).toEqual([0.5, 0.25, 0.75, 1]);
+    expect(Array.from(baked.position)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(Array.from(baked.normal)).toEqual([0, 1, 0, 0, 1, 0]);
+    expect(Array.from(baked.uv)).toEqual([0.5, 0.25, 0.75, 1]);
   });
 
   it("computes normals when the source geometry has none", () => {
@@ -90,7 +90,7 @@ describe("bakeGeometryArrays / buildGeometryFromArrays", () => {
     geometry.setIndex([0, 1, 2]);
 
     const baked = bakeGeometryArrays(geometry);
-    expect(baked.uv).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(Array.from(baked.uv)).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
   it("synthesizes a sequential index for a non-indexed geometry", () => {
@@ -105,6 +105,6 @@ describe("bakeGeometryArrays / buildGeometryFromArrays", () => {
     );
 
     const baked = bakeGeometryArrays(geometry);
-    expect(baked.index).toEqual([0, 1, 2]);
+    expect(Array.from(baked.index)).toEqual([0, 1, 2]);
   });
 });

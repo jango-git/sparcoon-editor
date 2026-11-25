@@ -24,6 +24,7 @@ import {
 import { nextIdentifier } from "../model/commands/identifier";
 import {
   type AnimationTrack,
+  BUILT_IN_SCENE_NAMES,
   createDefaultVfx,
   DEFAULT_TIMELINE,
   type EditorState,
@@ -31,13 +32,16 @@ import {
   type EmitterDoc,
   emitterGraphs,
   type EnvironmentAsset,
+  isSceneName,
   type Keyframe,
   type MeshAsset,
   meshGraphs,
   type PaletteSwatch,
   type Reaction,
+  type SceneAsset,
   type SourceState,
   type SpawnAction,
+  STUDIO_SCENE_NAME,
   type TextureAsset,
   type TimelineEvent,
   type TimelineState,
@@ -55,8 +59,10 @@ import {
   type TransformTrack,
   type Vec3,
 } from "../model/transform";
+import { arrayBufferBytes } from "../util/bytes";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
+import { decodeSourcePayloads } from "./payloadCodec";
 import {
   isNewerProject,
   type StoredProject,
@@ -84,7 +90,7 @@ async function restoreSource(): Promise<SourceState | undefined> {
         `The saved document is from a later editor (${stored.editor ?? "unknown"}); keeping what this one reads`,
       );
     }
-    const normalized = readStoredSource(stored);
+    const normalized = await readStoredSource(stored);
     return normalized === undefined ? undefined : await hydrateSource(normalized);
   } catch (error) {
     // Filling the asset payloads back in can still throw: start fresh rather than brick the editor.
@@ -93,11 +99,12 @@ async function restoreSource(): Promise<SourceState | undefined> {
   }
 }
 
-/** The valid source a stored project holds, upgraded to the current format, or `undefined` - also
- *  when an upgrade step or the normalization throws on a damaged body. */
-export function readStoredSource(stored: StoredProject): SourceState | undefined {
+/** The valid source a stored project holds, upgraded to the current format with its payloads
+ *  decoded, or `undefined` - also when an upgrade step or the normalization throws on a damaged
+ *  body. */
+export async function readStoredSource(stored: StoredProject): Promise<SourceState | undefined> {
   try {
-    const body = upgradeProject(stored);
+    const body = await decodeSourcePayloads(upgradeProject(stored));
     // Seed from the raw body *before* normalizing: normalization can itself backfill a missing id
     // (see seedIdentifierCounterFromRawSource's doc), so seeding only afterward is too late.
     seedIdentifierCounterFromRawSource(body);
@@ -166,6 +173,7 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
     activeMeshId !== undefined && (scene["activeGraphKind"] === "vfxMesh" || emitters.length === 0)
       ? "vfxMesh"
       : "emitter";
+  const scenes = normalizeScenes(raw["scenes"]);
   return {
     name: typeof raw["name"] === "string" ? raw["name"] : "",
     scene: {
@@ -179,8 +187,10 @@ export function normalizeSource(raw: unknown): SourceState | undefined {
       activeGraphKind,
     },
     assets: normalizeAssets(raw["assets"]),
-    environments: normalizeEnvironments(raw["environments"]),
+    environments: normalizeFileAssets(raw["environments"]),
     activeEnvironmentName: asOptionalString(raw["activeEnvironmentName"]),
+    scenes,
+    activeSceneName: normalizeActiveSceneName(raw["activeSceneName"], scenes),
     meshAssets: normalizeMeshAssets(raw["meshAssets"]),
     volumeAssets: normalizeVolumeAssets(raw["volumeAssets"]),
     palette: normalizePalette(raw["palette"]),
@@ -307,22 +317,25 @@ function normalizeVolumeAssets(raw: unknown): readonly VolumeAsset[] {
   return assets;
 }
 
-function normalizeEnvironments(raw: unknown): readonly EnvironmentAsset[] {
+/** Keeps the well-formed file assets (HDRIs, scenes): a name, decoded `bytes` and a byte size. The
+ *  bytes may be empty, filled back in from the blob store. */
+function normalizeFileAssets(raw: unknown): readonly (EnvironmentAsset & SceneAsset)[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  const assets: EnvironmentAsset[] = [];
+  const assets: (EnvironmentAsset & SceneAsset)[] = [];
   for (const value of raw) {
+    const bytes = isRecord(value) ? arrayBufferBytes(value["bytes"]) : undefined;
     if (
       isRecord(value) &&
       typeof value["name"] === "string" &&
-      typeof value["dataUrl"] === "string" &&
+      bytes !== undefined &&
       typeof value["byteSize"] === "number"
     ) {
       assets.push({
         name: value["name"],
         label: typeof value["label"] === "string" ? value["label"] : value["name"],
-        dataUrl: value["dataUrl"],
+        bytes,
         byteSize: value["byteSize"],
       });
     }
@@ -330,29 +343,46 @@ function normalizeEnvironments(raw: unknown): readonly EnvironmentAsset[] {
   return assets;
 }
 
-/** `readonly number[]`, dropping any non-finite element - a corrupt/truncated entry degrades to
- *  0 rather than poisoning the whole mesh with `NaN`. */
-function normalizeNumberArray(raw: unknown): readonly number[] {
-  if (!Array.isArray(raw)) {
-    return [];
+/** Scenes whose name a built-in scene does not take. */
+function normalizeScenes(raw: unknown): readonly SceneAsset[] {
+  return normalizeFileAssets(raw).filter((asset) => !BUILT_IN_SCENE_NAMES.includes(asset.name));
+}
+
+/** The active scene's name when a built-in or an uploaded scene has it, else the studio. */
+function normalizeActiveSceneName(raw: unknown, scenes: readonly SceneAsset[]): string {
+  return typeof raw === "string" && isSceneName(raw, scenes) ? raw : STUDIO_SCENE_NAME;
+}
+
+/** The floats in `bytes`, a non-finite one read as 0; `undefined` when `bytes` is not whole floats. */
+function floatsOf(bytes: unknown): Float32Array<ArrayBuffer> | undefined {
+  if (!(bytes instanceof Uint8Array) || bytes.length % 4 !== 0) {
+    return undefined;
   }
-  return raw.map((value) => (typeof value === "number" && Number.isFinite(value) ? value : 0));
+  const floats = new Float32Array(bytes.slice().buffer);
+  return floats.map((value) => (Number.isFinite(value) ? value : 0));
+}
+
+function indicesOf(bytes: unknown): Uint32Array<ArrayBuffer> | undefined {
+  return bytes instanceof Uint8Array && bytes.length % 4 === 0
+    ? new Uint32Array(bytes.slice().buffer)
+    : undefined;
 }
 
 function normalizeBakedGeometry(raw: unknown): MeshAsset["geometry"] | undefined {
   if (!isRecord(raw)) {
     return undefined;
   }
-  return {
-    position: normalizeNumberArray(raw["position"]),
-    normal: normalizeNumberArray(raw["normal"]),
-    uv: normalizeNumberArray(raw["uv"]),
-    index: normalizeNumberArray(raw["index"]),
-  };
+  const position = floatsOf(raw["position"]);
+  const normal = floatsOf(raw["normal"]);
+  const uv = floatsOf(raw["uv"]);
+  const index = indicesOf(raw["index"]);
+  return position === undefined || normal === undefined || uv === undefined || index === undefined
+    ? undefined
+    : { position, normal, uv, index };
 }
 
-/** Keeps well-formed mesh assets. An entry whose geometry arrays did not survive is dropped, since
- *  the arrays are the source of truth. */
+/** Keeps well-formed mesh assets. An entry whose geometry did not survive is dropped, since the
+ *  geometry is the source of truth. */
 function normalizeMeshAssets(raw: unknown): readonly MeshAsset[] {
   if (!Array.isArray(raw)) {
     return [];

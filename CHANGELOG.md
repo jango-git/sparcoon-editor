@@ -5,10 +5,24 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
-## Unreleased
+## 0.5.0 - 2026-11-25
+
+### Added
+
+- Preview scenes. A `.glb` dropped on the **Scenes** section of the Content screen is drawn around
+  the effect in place of the studio ground, with its own materials, and the viewport's Scene tab
+  picks it, **Studio** or **Void**. Shadows fall on it, and Depth Fade and Depth Sample read its
+  depth. Scenes are saved in the project and never reach the TypeScript export.
+- Meshes and scenes load from meshopt-compressed files.
 
 ### Changed
 
+- The project file stores HDRIs, scenes and mesh geometry gzipped. Mesh geometry takes about an
+  eighth of the space it did. A project saved by this version does not open in an earlier one.
+- The Ground switch of the viewport's Scene tab is gone: the **Void** scene shows no ground.
+- Agent API version 3: `project.get()` returns a promise, a capture keeps the scene with
+  `scene: true` instead of `ground: true`, and `assets` has `addScene(fileName, data)` and
+  `setScene(name)`.
 - The presets draw fewer layers where they used to slow a close camera down. The smoke and dust of
   Lightning Crack, Destruction, Fireworks and Portal are fewer, denser puffs that die once they
   have faded, and soft smoke sorts every 10 frames instead of every 2. Up close the Lightning
@@ -20,6 +34,8 @@ an exported effect needs from the game are in the
   sphere with the lower half cut away. Its shards have no size until they break off.
 - The Campfire smoke holds each frame of its sheet instead of blending two, the Portal horizon's
   swirl takes 6 noise octaves instead of 8, and the Sparks preset casts no shadow.
+- The Lightning Crack lays its crack segments twice as densely along the path, so the crack reads
+  as one split instead of separate pieces.
 
 ## 0.4.0 - 2026-11-20
 

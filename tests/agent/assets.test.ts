@@ -148,6 +148,33 @@ describe("agent assets: remove and environment", () => {
   });
 });
 
+describe("agent assets: scenes", () => {
+  it("adds a scene as it is, named apart from the built-in scenes, and draws it", async () => {
+    const { store, api } = assets();
+    const bytes = new TextEncoder().encode(triangleGltf());
+    expect(await api.addScene("studio.gltf", bytes)).toEqual({ kind: "scene", name: "studio2" });
+    expect(store.getSource().scenes[0]?.bytes).toEqual(bytes);
+    expect(api.list().scenes).toEqual([
+      { name: "studio2", label: "studio.gltf", byteSize: bytes.length },
+    ]);
+    expect(api.list().meshes).toEqual([]);
+    api.setScene("studio2");
+    expect(api.list().activeScene).toBe("studio2");
+    api.remove("scene", "studio2");
+    expect(api.list().activeScene).toBe("studio");
+  });
+
+  it("switches between the built-in scenes and refuses an unknown or undecodable one", async () => {
+    const { api } = assets();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    api.setScene("void");
+    expect(api.list().activeScene).toBe("void");
+    expect(() => api.setScene("missing")).toThrow(/not_found/);
+    await expect(api.addScene("broken.glb", new Uint8Array([1, 2, 3]))).rejects.toThrow(/rejected/);
+    await expect(api.addScene("sky.hdr", "AAEC")).rejects.toThrow(/rejected/);
+  });
+});
+
 describe("agent assets: volumes", () => {
   function withBox(): { store: Store; api: ReturnType<typeof createAssetsApi> } {
     const made = assets();

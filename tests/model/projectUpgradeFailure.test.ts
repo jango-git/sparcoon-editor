@@ -12,9 +12,9 @@ vi.mock("../../src/persistence/projectEnvelope", async (importOriginal) => ({
 }));
 
 describe("a failing upgrade step", () => {
-  it("reads the project file as unreadable instead of throwing", () => {
+  it("reads the project file as unreadable instead of throwing", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const text = serializeProject(createInitialState().source);
-    expect(deserializeProject(text)).toEqual({ kind: "unreadable" });
+    const text = await serializeProject(createInitialState().source);
+    expect(await deserializeProject(text)).toEqual({ kind: "unreadable" });
   });
 });

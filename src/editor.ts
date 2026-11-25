@@ -5,6 +5,7 @@ import { Vector2 } from "three";
 import { installAgentApi } from "./agent";
 import { initGraphText } from "./i18n";
 import { insertTransformKeyframes } from "./model/commands";
+import { STUDIO_SCENE_NAME, VOID_SCENE_NAME } from "./model/editorState";
 import { type SceneEntity, VFX_ENTITY } from "./model/entity";
 import { snapTimeToFrame } from "./model/frames";
 import { Pipeline } from "./model/pipeline";
@@ -19,6 +20,7 @@ import { saveSource } from "./persistence/localStore";
 import { DEFAULT_PROJECT_PRESET, loadPresetSource } from "./persistence/presets";
 import { type DecodedEnvironment, EnvironmentTextureRegistry } from "./render/environmentTexture";
 import { MeshGeometryRegistry } from "./render/meshGeometryRegistry";
+import { SceneAssetRegistry } from "./render/sceneAssetRegistry";
 import { SceneCoordinator } from "./render/sceneCoordinator";
 import { SceneEmitters } from "./render/sceneEmitters";
 import { TextureRegistry } from "./render/textureRegistry";
@@ -162,6 +164,23 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     coordinator.setActiveEnvironment(decoded);
   }
   const environments = new EnvironmentTextureRegistry(applyActiveEnvironment);
+  /** Shows the active scene. An uploaded scene still decoding leaves the one shown before it. */
+  function applyActiveScene(): void {
+    const name = store.getSource().activeSceneName;
+    if (name === STUDIO_SCENE_NAME) {
+      coordinator.setPreviewScene({ kind: "studio" });
+      return;
+    }
+    if (name === VOID_SCENE_NAME) {
+      coordinator.setPreviewScene({ kind: "void" });
+      return;
+    }
+    const root = scenes.resolve(name);
+    if (root !== undefined) {
+      coordinator.setPreviewScene({ kind: "asset", root });
+    }
+  }
+  const scenes = new SceneAssetRegistry(applyActiveScene);
   // Synchronous, unlike TextureRegistry: no load callback.
   const meshGeometries = new MeshGeometryRegistry();
   const volumes = new VolumeTextureRegistry(() => pipeline.scheduleRecompute());
@@ -222,6 +241,10 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   store.events.sourceStructureChanged.on(() => environments.sync(store.getSource().environments));
   store.events.sourceViewChanged.on(applyActiveEnvironment);
   store.events.sourceStructureChanged.on(applyActiveEnvironment);
+  store.events.sourceViewChanged.on(() => scenes.sync(store.getSource().scenes));
+  store.events.sourceStructureChanged.on(() => scenes.sync(store.getSource().scenes));
+  store.events.sourceViewChanged.on(applyActiveScene);
+  store.events.sourceStructureChanged.on(applyActiveScene);
   // A view-only transform edit (gizmo commit / inspector field / transform keyframe) never
   // recompiles, so it doesn't run the pipeline - re-pose the scene directly at the caret.
   // A reaction's numbers are a view edit (no rebuild); its links carry them, so they follow it.
@@ -346,5 +369,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   meshGeometries.sync(store.getSource().meshAssets);
   volumes.sync(store.getSource().volumeAssets);
   environments.sync(store.getSource().environments);
+  scenes.sync(store.getSource().scenes);
+  applyActiveScene();
   pipeline.recomputeNow();
 }

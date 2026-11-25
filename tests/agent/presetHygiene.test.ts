@@ -9,8 +9,8 @@ import { loadedProject } from "../helpers/loadedProject";
 const PRESET_DIRECTORY = "src/persistence/presets";
 
 /** Every parameter a preset's node carries that its node type does not store. */
-function strayParameters(fileName: string): string[] {
-  const source = loadedProject(readFileSync(`${PRESET_DIRECTORY}/${fileName}`, "utf8"));
+async function strayParameters(fileName: string): Promise<string[]> {
+  const source = await loadedProject(readFileSync(`${PRESET_DIRECTORY}/${fileName}`, "utf8"));
   expect(source).toBeDefined();
   const owners = [
     ...source!.scene.emitters.flatMap((emitter) => [
@@ -39,8 +39,8 @@ describe("bundled presets", () => {
   // preset (an agent took Sparks' leftover `material: "unlit"` for a lit/unlit switch).
   it.each(readdirSync(PRESET_DIRECTORY).filter((name) => name.endsWith(".json")))(
     "%s carries only parameters its nodes store",
-    (fileName) => {
-      expect(strayParameters(fileName)).toEqual([]);
+    async (fileName) => {
+      expect(await strayParameters(fileName)).toEqual([]);
     },
   );
 });

@@ -56,14 +56,15 @@ export interface ShotOptions {
 
 /** How each captured frame is drawn - shared by single captures and sequences. */
 export interface FrameOptions extends ShotOptions {
-  /** Draws the effect alone: no ground, grid, player figure or gizmos. */
+  /** Draws the effect alone: no scene, grid, player figure or gizmos. */
   readonly clean?: boolean;
   /**
-   * With `clean`, keeps the studio ground: the surface the effect's shadows fall on, its Depth
-   * Fade fades against and its Depth Sample collides with, so an effect built around the ground
-   * (debris settling, a crack in it) reads on it. Without `clean` the frame shows what the viewport shows.
+   * With `clean`, keeps the active scene (the studio ground or an uploaded scene): what the
+   * effect's shadows fall on, its Depth Fade fades against and its Depth Sample collides with, so
+   * an effect built around it (debris settling, a crack in the ground) reads on it. Without `clean`
+   * the frame shows what the viewport shows.
    */
-  readonly ground?: boolean;
+  readonly scene?: boolean;
   /**
    * `"#rrggbb"` (sRGB, as a game would state it) or `"transparent"`; omitted, the viewport's own
    * background. Transparent loses purely additive light (see `SceneCoordinator.capture`), so a
@@ -153,7 +154,7 @@ const MAX_CAPTURE_SIZE = 4096;
 const TIME_EPSILON = 1e-9;
 
 const SHOT_OPTION_KEYS = ["width", "height", "camera", "frame"] as const;
-const FRAME_OPTION_KEYS = [...SHOT_OPTION_KEYS, "clean", "ground", "background"] as const;
+const FRAME_OPTION_KEYS = [...SHOT_OPTION_KEYS, "clean", "scene", "background"] as const;
 const OVERDRAW_COUNTS: readonly OverdrawCount[] = ["rasterized", "surviving"];
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -218,19 +219,19 @@ function requireShot(options: ShotOptions, view: CaptureView | undefined): Captu
 
 /** The coordinator's view of a frame's options, checked; `view` already resolved. */
 function requireFrame(options: FrameOptions, view: CaptureView | undefined): FrameCaptureOptions {
-  const { clean, ground, background } = options;
+  const { clean, scene, background } = options;
   if (clean !== undefined && typeof clean !== "boolean") {
     throw new AgentError("invalid_argument", "clean must be a boolean.");
   }
-  if (ground !== undefined && typeof ground !== "boolean") {
-    throw new AgentError("invalid_argument", "ground must be a boolean.");
+  if (scene !== undefined && typeof scene !== "boolean") {
+    throw new AgentError("invalid_argument", "scene must be a boolean.");
   }
   if (background !== undefined && background !== "transparent" && !HEX_COLOR.test(background)) {
     throw new AgentError("invalid_argument", 'background must be "#rrggbb" or "transparent".');
   }
   return {
     ...requireShot(options, view),
-    ...(clean === true ? { overlays: false, ground: ground === true } : {}),
+    ...(clean === true ? { overlays: false, scene: scene === true } : {}),
     // three reads a hex string as sRGB and converts it to its linear working space.
     ...(background === undefined
       ? {}

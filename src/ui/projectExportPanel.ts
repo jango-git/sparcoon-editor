@@ -75,7 +75,7 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
   });
 
   const saveButton = exportButton(assetIcons.download, "content.saveJson", "content.saveJsonTip");
-  saveButton.addEventListener("click", () => saveProjectJson(store));
+  saveButton.addEventListener("click", () => void saveProjectJson(store));
   const loadButton = exportButton(assetIcons.upload, "content.loadJson", "content.loadJsonTip");
   loadButton.addEventListener("click", () => fileInput.click());
 
@@ -131,9 +131,10 @@ function exportButton(glyph: string, labelKey: TKey, tipKey: TKey): HTMLButtonEl
 /** Serializes the current document to a JSON file and triggers a download named after the project.
  *  Exported so the Ctrl+S hotkey (installHotkeys in hotkeys.ts) can share this exact save path
  *  with the Import/Export panel's own Save button. */
-export function saveProjectJson(store: Store): void {
+export async function saveProjectJson(store: Store): Promise<void> {
   const source = store.getSource();
-  downloadFile(projectFileName(source.name, "json"), serializeProject(source), "application/json");
+  const text = await serializeProject(source);
+  downloadFile(projectFileName(source.name, "json"), text, "application/json");
 }
 
 /** Emits the project as a self-contained TypeScript effect module and downloads it as `<name>.ts`. */
@@ -172,7 +173,7 @@ async function importFromFile(file: File | undefined, context: EditorContext): P
   if (file === undefined) {
     return;
   }
-  const read = deserializeProject(await file.text());
+  const read = await deserializeProject(await file.text());
   switch (read.kind) {
     case "loaded":
       replaceDocument(context, read.source);

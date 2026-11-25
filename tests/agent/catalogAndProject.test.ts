@@ -66,7 +66,7 @@ describe("agent project", () => {
       name: "Imported",
       scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_9", "Nine")] },
     };
-    const json = serializeProject(state.source);
+    const json = await serializeProject(state.source);
 
     const target = replaceTarget(original);
     const project = createProjectApi(target);
@@ -74,7 +74,7 @@ describe("agent project", () => {
     expect(loaded.name).toBe("Imported");
     expect(loaded.emitters.map((emitter) => emitter.id)).toEqual(["emitter_9"]);
     expect(original.getSource().name).toBe("Imported");
-    expect(JSON.parse(project.get()).source.scene.emitters[0].id).toBe("emitter_9");
+    expect(JSON.parse(await project.get()).source.scene.emitters[0].id).toBe("emitter_9");
     expect(target.resets).toBe(2);
     original.undo();
     expect(original.getSource().name).toBe("");

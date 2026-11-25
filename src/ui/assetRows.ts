@@ -1,23 +1,32 @@
-/** Renders one asset library's rows (image/HDRI/mesh/volume), normalized to a single {@link AssetRow} shape. */
+/** Renders one asset library's rows (image/HDRI/scene/mesh/volume), normalized to a single {@link AssetRow} shape. */
 
 import { t } from "../i18n";
 import {
   removeEnvironmentAsset,
   removeMeshAsset,
+  removeSceneAsset,
   removeTextureAsset,
   removeVolumeAsset,
 } from "../model/commands";
-import type { EnvironmentAsset, MeshAsset, TextureAsset, VolumeAsset } from "../model/editorState";
+import {
+  type EnvironmentAsset,
+  type MeshAsset,
+  STUDIO_SCENE_NAME,
+  type TextureAsset,
+  VOID_SCENE_NAME,
+  type VolumeAsset,
+} from "../model/editorState";
 import {
   selectAssetUsage,
   selectEnvironmentAssets,
   selectMeshAssets,
+  selectSceneAssets,
   selectTextureAssets,
   selectVolumeAssets,
 } from "../model/selectors";
 import type { Store } from "../model/store";
 import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
-import { type AssetFile, meshFile, uploadedFile, volumeFile } from "./assetFiles";
+import { type AssetFile, imageFile, meshFile, uploadedFile, volumeFile } from "./assetFiles";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
@@ -40,8 +49,8 @@ export interface AssetRow {
   readonly name: string;
   readonly label: string;
   readonly users: number;
-  /** Overrides the default "Used by {count} node(s)" tooltip body - an HDRI's count means "is the
-   *  active viewport environment" (0 or 1), not a node-reference tally. */
+  /** Overrides the default "Used by {count} node(s)" tooltip body - an HDRI's or a scene's count
+   *  means "is the active one" (0 or 1), not a node-reference tally. */
   readonly usersTooltip?: string;
   /** A rendered preview image. Present for image assets (the source itself) and mesh assets
    *  (rendered inline) immediately; for HDRI assets only once the async decode lands - absent
@@ -53,8 +62,9 @@ export interface AssetRow {
   readonly detail: string;
   /** Actions of its kind, before the download. */
   readonly actions?: readonly AssetRowAction[];
-  download(): void;
-  remove(): void;
+  /** Absent for a built-in entry, which has no file and cannot be deleted. */
+  readonly download?: () => void;
+  readonly remove?: () => void;
 }
 
 /** Replaces a column's rows, showing the empty hint when the library holds nothing. */
@@ -76,7 +86,7 @@ export function textureRows(store: Store, usage: ReadonlyMap<string, number>): r
     thumbnailUrl: asset.dataUrl,
     glyph: assetIcons.image,
     detail: t("content.imageSize", { width: String(asset.width), height: String(asset.height) }),
-    download: () => save(uploadedFile(asset)),
+    download: () => save(imageFile(asset)),
     remove: () => removeTextureAsset(store, asset.name),
   }));
 }
@@ -107,6 +117,35 @@ export function environmentRows(store: Store, onThumbnailReady: () => void): rea
       remove: (): void => removeEnvironmentAsset(store, asset.name),
     };
   });
+}
+
+/** The built-in scenes, then the uploaded ones. `users` is 1 for the document's active scene. */
+export function sceneRows(store: Store): readonly AssetRow[] {
+  const activeSceneName = store.getSource().activeSceneName;
+  const activity = (name: string): Pick<AssetRow, "users" | "usersTooltip"> =>
+    name === activeSceneName
+      ? { users: 1, usersTooltip: t("content.sceneActiveTip") }
+      : { users: 0, usersTooltip: t("content.sceneInactiveTip") };
+  const builtIn = (name: string, label: string, detail: string): AssetRow => ({
+    name,
+    label,
+    ...activity(name),
+    glyph: assetIcons.scene,
+    detail,
+  });
+  return [
+    builtIn(STUDIO_SCENE_NAME, t("preview.sceneStudio"), t("content.sceneStudioTip")),
+    builtIn(VOID_SCENE_NAME, t("preview.sceneVoid"), t("content.sceneVoidTip")),
+    ...selectSceneAssets(store).map((asset): AssetRow => ({
+      name: asset.name,
+      label: asset.label,
+      ...activity(asset.name),
+      glyph: assetIcons.scene,
+      detail: formatBytes(asset.byteSize),
+      download: () => save(uploadedFile(asset)),
+      remove: () => removeSceneAsset(store, asset.name),
+    })),
+  ];
 }
 
 /** `onBake` opens the SDF baker on a mesh. */
@@ -182,14 +221,19 @@ function assetRowElement(row: AssetRow): HTMLElement {
     row.usersTooltip ?? t("content.usersTip", { count: String(row.users) }),
   );
 
+  const download = row.download;
   const actions = [
     ...(row.actions ?? []),
-    {
-      glyph: assetIcons.download,
-      title: t("content.download"),
-      description: t("content.downloadTip"),
-      run: (): void => row.download(),
-    },
+    ...(download === undefined
+      ? []
+      : [
+          {
+            glyph: assetIcons.download,
+            title: t("content.download"),
+            description: t("content.downloadTip"),
+            run: download,
+          },
+        ]),
   ].map((action) => {
     const button = createElement("button", { className: "asset-row__action", type: "button" });
     button.append(icon(action.glyph));
@@ -198,24 +242,29 @@ function assetRowElement(row: AssetRow): HTMLElement {
     return button;
   });
 
-  // Delete is guarded by the shared countdown-confirm control (four clicks): a stray click never
-  // drops an asset, and the button counts down and reverts to the trash glyph if left idle.
-  const remove = createElement("button", {
-    className: "asset-row__remove confirm-danger",
-    type: "button",
-  });
-  remove.innerHTML = actionIcons.trash;
-  attachTooltip(remove, t("content.deleteAsset"), t("content.deleteAssetTip"));
-  attachCountdownConfirm(remove, actionIcons.trash, DELETE_CLICKS, row.remove);
-
   return createElement("div", { className: "asset-row" }, [
     preview,
     name,
     createElement("div", { className: "asset-row__spacer" }),
     count,
     ...actions,
-    remove,
+    ...(row.remove === undefined ? [] : [removeButton(row.remove)]),
   ]);
+}
+
+/**
+ * The delete button, guarded by the shared countdown-confirm control (four clicks): a stray click
+ * never drops an asset, and the button counts down and reverts to the trash glyph if left idle.
+ */
+function removeButton(remove: () => void): HTMLElement {
+  const button = createElement("button", {
+    className: "asset-row__remove confirm-danger",
+    type: "button",
+  });
+  button.innerHTML = actionIcons.trash;
+  attachTooltip(button, t("content.deleteAsset"), t("content.deleteAssetTip"));
+  attachCountdownConfirm(button, actionIcons.trash, DELETE_CLICKS, remove);
+  return button;
 }
 
 /** Downloads an asset's file - a mesh's once its GLB is written. */

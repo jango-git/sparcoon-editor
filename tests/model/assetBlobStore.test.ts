@@ -152,7 +152,12 @@ function mesh(name: string, position: readonly number[]): MeshAsset {
     name,
     label: `${name}.glb`,
     byteSize: 10,
-    geometry: { position, normal: [0, 1, 0], uv: [0, 0], index: [0] },
+    geometry: {
+      position: Float32Array.from(position),
+      normal: Float32Array.from([0, 1, 0]),
+      uv: Float32Array.from([0, 0]),
+      index: Uint32Array.from([0]),
+    },
   };
 }
 
@@ -166,19 +171,35 @@ describe("BlobSync with mesh geometry", () => {
     expect(backend.data.get("Rock")).toBe(rock.geometry);
     expect(blobs.strip(rock)).toEqual({
       ...rock,
-      geometry: { position: [], normal: [], uv: [], index: [] },
+      geometry: {
+        position: new Float32Array(),
+        normal: new Float32Array(),
+        uv: new Float32Array(),
+        index: new Uint32Array(),
+      },
     });
   });
 
   it("hydrates emptied geometry and ignores a malformed stored value", async () => {
     const backend = new MemoryBackend();
-    backend.data.set("Rock", { position: [1, 2, 3], normal: [0, 1, 0], uv: [0, 0], index: [0] });
+    backend.data.set("Rock", mesh("Rock", [1, 2, 3]).geometry);
     backend.data.set("Broken", { position: "nope" });
     const blobs = new BlobSync(MESH_GEOMETRY_PAYLOAD, backend);
     const empty = mesh("Rock", []);
     const hydrated = await blobs.hydrate([empty, mesh("Broken", [])]);
     // Filled back in, and known as stored (the document leaves it out again).
-    expect(hydrated.map((asset) => asset.geometry.position)).toEqual([[1, 2, 3], []]);
-    expect(hydrated.map((asset) => blobs.strip(asset).geometry.position)).toEqual([[], []]);
+    expect(hydrated.map((asset) => [...asset.geometry.position])).toEqual([[1, 2, 3], []]);
+    expect(hydrated.map((asset) => [...blobs.strip(asset).geometry.position])).toEqual([[], []]);
+  });
+
+  it("hydrates geometry stored as number arrays, and stores it again as typed arrays", async () => {
+    const backend = new MemoryBackend();
+    backend.data.set("Rock", { position: [1, 2, 3], normal: [0, 1, 0], uv: [0, 0], index: [0] });
+    const blobs = new BlobSync(MESH_GEOMETRY_PAYLOAD, backend);
+    const [rock] = await blobs.hydrate([mesh("Rock", [])]);
+    expect(rock.geometry.position).toEqual(Float32Array.from([1, 2, 3]));
+    expect(blobs.strip(rock)).toBe(rock);
+    await blobs.sync([rock]);
+    expect(backend.data.get("Rock")).toBe(rock.geometry);
   });
 });

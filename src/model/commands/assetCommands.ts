@@ -1,15 +1,17 @@
 /**
- * Content-library edits. Texture, mesh and volume edits are structural. Environment and palette
- * edits are view edits, since no compiled graph reads them.
+ * Content-library edits. Texture, mesh and volume edits are structural. Environment, scene and
+ * palette edits are view edits, since no compiled graph reads them.
  */
 
-import type {
-  EnvironmentAsset,
-  MeshAsset,
-  PaletteSwatch,
-  SourceState,
-  TextureAsset,
-  VolumeAsset,
+import {
+  type EnvironmentAsset,
+  type MeshAsset,
+  type PaletteSwatch,
+  type SceneAsset,
+  type SourceState,
+  STUDIO_SCENE_NAME,
+  type TextureAsset,
+  type VolumeAsset,
 } from "../editorState";
 import type { Store } from "../store";
 import { nextIdentifier } from "./identifier";
@@ -61,6 +63,36 @@ export function setActiveEnvironment(store: Store, name: string | undefined): vo
     return;
   }
   store.commit({ ...source, activeEnvironmentName: name }, "view");
+}
+
+/** Adds a preview-scene asset; a duplicate name is a no-op (see {@link addTextureAsset}). */
+export function addSceneAsset(store: Store, asset: SceneAsset): void {
+  const source = store.getSource();
+  if (source.scenes.some((existing) => existing.name === asset.name)) {
+    return;
+  }
+  store.commit({ ...source, scenes: [...source.scenes, asset] }, "view");
+}
+
+/** Removes the named scene. The studio takes the place of a removed active scene. */
+export function removeSceneAsset(store: Store, name: string): void {
+  const source = store.getSource();
+  const scenes = source.scenes.filter((asset) => asset.name !== name);
+  if (scenes.length === source.scenes.length) {
+    return;
+  }
+  const activeSceneName =
+    source.activeSceneName === name ? STUDIO_SCENE_NAME : source.activeSceneName;
+  store.commit({ ...source, scenes, activeSceneName }, "view");
+}
+
+/** Sets the scene drawn around the effect: a built-in scene or an uploaded one, by name. */
+export function setActiveScene(store: Store, name: string): void {
+  const source = store.getSource();
+  if (source.activeSceneName === name) {
+    return;
+  }
+  store.commit({ ...source, activeSceneName: name }, "view");
 }
 
 /** Adds a GLB mesh asset; a duplicate name is a no-op (see {@link addTextureAsset}). */

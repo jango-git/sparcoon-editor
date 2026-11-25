@@ -246,39 +246,41 @@ function layoutProblems(
   return problems;
 }
 
-const presetGraphs = readdirSync(PRESETS)
-  .filter((name) => name.endsWith(".json"))
-  .flatMap((fileName) => {
-    const source = loadedProject(readFileSync(new URL(fileName, PRESETS), "utf8"))!;
-    return [
-      ...source.scene.emitters.flatMap((emitter) => [
-        {
-          name: `${fileName} ${emitter.name} behavior`,
-          graph: emitter.behaviorGraph,
-          kind: GraphKind.Behavior,
-        },
-        {
-          name: `${fileName} ${emitter.name} render`,
-          graph: emitter.renderGraph,
-          kind: GraphKind.Render,
-        },
-        ...(emitter.trailGraph === undefined
-          ? []
-          : [
-              {
-                name: `${fileName} ${emitter.name} trail`,
-                graph: emitter.trailGraph,
-                kind: GraphKind.Render,
-              },
-            ]),
-      ]),
-      ...source.scene.meshes.map((mesh) => ({
-        name: `${fileName} ${mesh.name} render`,
-        graph: mesh.renderGraph,
+const presetFiles = readdirSync(PRESETS).filter((name) => name.endsWith(".json"));
+const presetSources = await Promise.all(
+  presetFiles.map((fileName) => loadedProject(readFileSync(new URL(fileName, PRESETS), "utf8"))),
+);
+const presetGraphs = presetFiles.flatMap((fileName, index) => {
+  const source = presetSources[index]!;
+  return [
+    ...source.scene.emitters.flatMap((emitter) => [
+      {
+        name: `${fileName} ${emitter.name} behavior`,
+        graph: emitter.behaviorGraph,
+        kind: GraphKind.Behavior,
+      },
+      {
+        name: `${fileName} ${emitter.name} render`,
+        graph: emitter.renderGraph,
         kind: GraphKind.Render,
-      })),
-    ];
-  });
+      },
+      ...(emitter.trailGraph === undefined
+        ? []
+        : [
+            {
+              name: `${fileName} ${emitter.name} trail`,
+              graph: emitter.trailGraph,
+              kind: GraphKind.Render,
+            },
+          ]),
+    ]),
+    ...source.scene.meshes.map((mesh) => ({
+      name: `${fileName} ${mesh.name} render`,
+      graph: mesh.renderGraph,
+      kind: GraphKind.Render,
+    })),
+  ];
+});
 
 // The largest preset graphs take seconds to arrange, more on a loaded or small machine.
 const PRESET_ARRANGE_TIMEOUT_MS = 30_000;

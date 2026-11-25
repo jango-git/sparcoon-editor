@@ -52,3 +52,59 @@ export class LibraryCache<A extends { readonly name: string }, R> {
     this.entries.clear();
   }
 }
+
+/**
+ * A {@link LibraryCache} whose resources decode asynchronously. `get` gives `undefined` until an
+ * asset's decode lands and when it gave nothing. A decode that lands after its asset changed or went
+ * is disposed at once. `onLoaded` fires after each decode that is kept.
+ */
+export class AsyncLibraryCache<A extends { readonly name: string }, R> {
+  private readonly cache: LibraryCache<A, { resource: R | undefined; dropped: boolean }>;
+
+  constructor(
+    decode: (asset: A) => Promise<R | undefined>,
+    dispose: (resource: R) => void,
+    changed: (previous: A, next: A) => boolean,
+    onLoaded: () => void,
+  ) {
+    this.cache = new LibraryCache(
+      (asset) => {
+        const slot: { resource: R | undefined; dropped: boolean } = {
+          resource: undefined,
+          dropped: false,
+        };
+        void decode(asset).then((resource) => {
+          if (resource === undefined) {
+            return;
+          }
+          if (slot.dropped) {
+            dispose(resource);
+            return;
+          }
+          slot.resource = resource;
+          onLoaded();
+        });
+        return slot;
+      },
+      (slot) => {
+        slot.dropped = true;
+        if (slot.resource !== undefined) {
+          dispose(slot.resource);
+        }
+      },
+      changed,
+    );
+  }
+
+  public sync(assets: readonly A[]): void {
+    this.cache.sync(assets);
+  }
+
+  public get(name: string): R | undefined {
+    return this.cache.get(name)?.resource;
+  }
+
+  public destroy(): void {
+    this.cache.destroy();
+  }
+}

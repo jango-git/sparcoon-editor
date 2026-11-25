@@ -1,14 +1,25 @@
 /**
- * Reads dropped or picked files and routes each to its library (image, HDRI or mesh).
+ * Reads dropped or picked files and routes each to its library (image, HDRI or mesh). Scene files
+ * come in through {@link ingestSceneFiles}.
  */
 
 import { Mesh } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-import { addEnvironmentAsset, addMeshAsset, addTextureAsset } from "../model/commands";
-import type { MeshAsset } from "../model/editorState";
-import { selectEnvironmentAssets, selectMeshAssets, selectTextureAssets } from "../model/selectors";
+import {
+  addEnvironmentAsset,
+  addMeshAsset,
+  addSceneAsset,
+  addTextureAsset,
+} from "../model/commands";
+import { BUILT_IN_SCENE_NAMES, type MeshAsset } from "../model/editorState";
+import {
+  selectEnvironmentAssets,
+  selectMeshAssets,
+  selectSceneAssets,
+  selectTextureAssets,
+} from "../model/selectors";
 import type { Store } from "../model/store";
+import { createGltfLoader } from "../render/gltfLoader";
 import { bakeGeometryArrays } from "../render/meshGeometryBaking";
 
 /** Loaded image bytes plus intrinsic size - everything a texture asset needs beyond its name. */
@@ -21,6 +32,8 @@ interface LoadedImage {
 /** A file routed to the HDRI library by extension, and to the mesh library likewise. */
 export const HDRI_EXTENSIONS = [".hdr"];
 export const MESH_EXTENSIONS = [".glb", ".gltf"];
+/** A scene is one self-contained file: a GLB, or a glTF with its buffers and images embedded. */
+export const SCENE_EXTENSIONS = MESH_EXTENSIONS;
 
 /**
  * Reads dropped/picked files and routes each to its library. Extension wins over MIME: some browsers
@@ -46,6 +59,31 @@ export async function ingestFiles(files: FileList | undefined, store: Store): Pr
   }
 }
 
+/** Adds each GLB or glTF of `files` that parses to the scene library, its bytes as they are. */
+export async function ingestSceneFiles(files: FileList | undefined, store: Store): Promise<void> {
+  if (files === undefined) {
+    return;
+  }
+  for (const file of Array.from(files)) {
+    if (!hasExtension(file.name, SCENE_EXTENSIONS)) {
+      continue;
+    }
+    try {
+      const buffer = await file.arrayBuffer();
+      await createGltfLoader().parseAsync(buffer, "");
+      const bytes = new Uint8Array(buffer);
+      const existing = [
+        ...BUILT_IN_SCENE_NAMES,
+        ...selectSceneAssets(store).map((asset) => asset.name),
+      ];
+      const name = uniqueAssetName(file.name, existing);
+      addSceneAsset(store, { name, label: file.name, bytes, byteSize: file.size });
+    } catch (error) {
+      console.warn(`Failed to load scene "${file.name}"`, error);
+    }
+  }
+}
+
 async function ingestImage(file: File, store: Store): Promise<void> {
   const image = await loadImage(file);
   const existing = selectTextureAssets(store).map((asset) => asset.name);
@@ -59,10 +97,10 @@ async function ingestImage(file: File, store: Store): Promise<void> {
 }
 
 async function ingestEnvironment(file: File, store: Store): Promise<void> {
-  const dataUrl = await readDataUrl(file);
+  const bytes = new Uint8Array(await file.arrayBuffer());
   const existing = selectEnvironmentAssets(store).map((asset) => asset.name);
   const name = uniqueAssetName(file.name, existing);
-  addEnvironmentAsset(store, { name, label: file.name, dataUrl, byteSize: file.size });
+  addEnvironmentAsset(store, { name, label: file.name, bytes, byteSize: file.size });
 }
 
 /** Four bytes per component (Float32/Uint32) - an honest size for what is actually stored,
@@ -82,7 +120,7 @@ function bakedByteSize(geometry: MeshAsset["geometry"]): number {
  * name, else `<file name> #<N>`. A name collision drops only that mesh.
  */
 async function ingestMesh(file: File, store: Store): Promise<void> {
-  const gltf = await new GLTFLoader().parseAsync(await file.arrayBuffer(), "");
+  const gltf = await createGltfLoader().parseAsync(await file.arrayBuffer(), "");
   const meshes: Mesh[] = [];
   gltf.scene.traverse((object) => {
     if (object instanceof Mesh) {

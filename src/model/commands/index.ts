@@ -3,14 +3,17 @@ export {
   addEnvironmentAsset,
   addMeshAsset,
   addPaletteSwatch,
+  addSceneAsset,
   addTextureAsset,
   addVolumeAsset,
   removeEnvironmentAsset,
   removeMeshAsset,
   removePaletteSwatch,
+  removeSceneAsset,
   removeTextureAsset,
   removeVolumeAsset,
   setActiveEnvironment,
+  setActiveScene,
 } from "./assetCommands";
 export {
   addAttribute,

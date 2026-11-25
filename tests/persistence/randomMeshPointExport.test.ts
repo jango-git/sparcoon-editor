@@ -10,7 +10,12 @@ const MESH = "rock.glb #1";
 const ROCK: MeshAsset = {
   name: MESH,
   label: MESH,
-  geometry: { position: [0, 0, 0, 1, 0, 0, 0, 1, 0], normal: [], uv: [], index: [0, 1, 2] },
+  geometry: {
+    position: Float32Array.from([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+    normal: new Float32Array(),
+    uv: new Float32Array(),
+    index: Uint32Array.from([0, 1, 2]),
+  },
   byteSize: 0,
 };
 

@@ -1,6 +1,6 @@
 /**
- * Content-sheet glyphs: the upload control, the per-row download action, and the three column/kind
- * marks (image, HDRI, mesh) used as row previews where no pixel thumbnail exists. 16x16 line icons,
+ * Content-sheet glyphs: the upload control, the per-row download action, and the kind marks
+ * (image, HDRI, mesh, scene, volume) used as row previews where no pixel thumbnail exists. 16x16 line icons,
  * `stroke="currentColor"`, 1.5 stroke, round caps/joins - matching {@link actionIcons}.
  */
 export const assetIcons = {
@@ -28,6 +28,10 @@ export const assetIcons = {
   mesh: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M8 2 13.5 5v6L8 14 2.5 11V5z"/>
     <path d="M2.5 5 8 8l5.5-3M8 8v6"/>
+  </svg>`,
+
+  scene: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M1.5 13.5h13M4 13.5V8.5h4v5M10 13.5V4h3v9.5"/>
   </svg>`,
 
   volume: `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

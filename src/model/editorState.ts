@@ -288,13 +288,36 @@ export interface TextureAsset {
 
 /**
  * An HDRI environment, usable as viewport background and light. `name` is a unique key. `label` is
- * the file name, `dataUrl` the base64 file, `byteSize` its decoded size.
+ * the file name, `bytes` the uploaded `.hdr` file, `byteSize` its size.
  */
 export interface EnvironmentAsset {
   readonly name: string;
   readonly label: string;
-  readonly dataUrl: string;
+  readonly bytes: Uint8Array<ArrayBuffer>;
   readonly byteSize: number;
+}
+
+/**
+ * A preview scene uploaded as a GLB, drawn around the effect in place of the studio ground. Scene
+ * depth and the sun's shadows include it as they include the ground, and it never reaches the
+ * exported effect. `name` is a unique key, `label` the file name, `bytes` the uploaded file,
+ * `byteSize` its size.
+ */
+export interface SceneAsset {
+  readonly name: string;
+  readonly label: string;
+  readonly bytes: Uint8Array<ArrayBuffer>;
+  readonly byteSize: number;
+}
+
+/** The scenes every project has: the studio ground, and nothing at all. */
+export const STUDIO_SCENE_NAME = "studio";
+export const VOID_SCENE_NAME = "void";
+export const BUILT_IN_SCENE_NAMES: readonly string[] = [STUDIO_SCENE_NAME, VOID_SCENE_NAME];
+
+/** Whether `name` is a built-in scene's or one of `scenes`. */
+export function isSceneName(name: string, scenes: readonly SceneAsset[]): boolean {
+  return BUILT_IN_SCENE_NAMES.includes(name) || scenes.some((asset) => asset.name === name);
 }
 
 /**
@@ -310,14 +333,14 @@ export interface PaletteSwatch {
 /**
  * Baked geometry: flat `position` and `normal` (vec3) and `uv` (vec2) arrays plus a triangle
  * `index` array, the same subset {@link buildPrimitiveGeometry} produces. No tangents, vertex
- * colors, extra UV sets or skinning. Plain number arrays because the uploaded GLB's bytes are not
- * kept, so this data is the source.
+ * colors, extra UV sets or skinning. The uploaded GLB's bytes are not kept, so this data is the
+ * source.
  */
 export interface BakedMeshGeometry {
-  readonly position: readonly number[];
-  readonly normal: readonly number[];
-  readonly uv: readonly number[];
-  readonly index: readonly number[];
+  readonly position: Float32Array<ArrayBuffer>;
+  readonly normal: Float32Array<ArrayBuffer>;
+  readonly uv: Float32Array<ArrayBuffer>;
+  readonly index: Uint32Array<ArrayBuffer>;
 }
 
 /**
@@ -371,6 +394,10 @@ export interface SourceState {
   /** The `name` of the environment currently driving the viewport background/light probe, or
    *  `undefined` for manual Sun + Hemisphere lighting. */
   readonly activeEnvironmentName: string | undefined;
+  /** The preview-scene library (GLB); listed in the content sheet, not node-referenced. */
+  readonly scenes: readonly SceneAsset[];
+  /** The scene drawn around the effect: a {@link BUILT_IN_SCENE_NAMES} entry or a `scenes` name. */
+  readonly activeSceneName: string;
   /** The GLB mesh-asset library - geometries and surfaces nodes sample. */
   readonly meshAssets: readonly MeshAsset[];
   /** The volume-asset library - 3D textures baked from mesh assets, which nodes sample. */
@@ -647,6 +674,8 @@ export function createInitialState(): EditorState {
       assets: [],
       environments: [],
       activeEnvironmentName: undefined,
+      scenes: [],
+      activeSceneName: STUDIO_SCENE_NAME,
       meshAssets: [],
       volumeAssets: [],
       palette: [],

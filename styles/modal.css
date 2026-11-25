@@ -137,6 +137,19 @@
   gap: 6px;
 }
 
+/* The Scenes section's title row: the title, then its own upload button. */
+.content-group__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Scenes section's own drop area, outlined while files are dragged over it. */
+.content-group--dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
 .content-group__rows {
   display: flex;
   flex-direction: column;

@@ -37,7 +37,7 @@ import type { StatusView } from "./views";
 export { AgentError, type AgentErrorCode } from "./errors";
 
 /** Bumped on a breaking change to this surface. */
-const AGENT_API_VERSION = 2;
+const AGENT_API_VERSION = 3;
 
 export interface SparcoonAgentApi extends EditApi {
   readonly version: number;

@@ -1,20 +1,28 @@
 /**
  * The autosaved session: only the source is saved, as JSON in `localStorage`, in the project
  * envelope (`projectEnvelope.ts`). Asset payloads go to IndexedDB (`assetBlobStore.ts`). A save
- * stores the payloads first, then writes the document once without them. {@link hydrateSource}
- * reverses this on load.
+ * stores the payloads first, then writes the document once without them. A payload IndexedDB
+ * did not take stays in the document, plain (`payloadCodec.ts`). {@link hydrateSource} reverses
+ * this on load.
  */
 
 import type { SourceState } from "../model/editorState";
 import { readString, writeJson } from "../util/storage";
 import type { BlobSync } from "./assetBlobStore";
-import { environmentBlobs, meshBlobs, textureBlobs, volumeBlobs } from "./assetBlobStore";
+import {
+  environmentBlobs,
+  meshBlobs,
+  sceneBlobs,
+  textureBlobs,
+  volumeBlobs,
+} from "./assetBlobStore";
+import { encodeSourcePlain } from "./payloadCodec";
 import { wrapProject } from "./projectEnvelope";
 
 const STORAGE_KEY = "sparcoon-editor.document";
 
 /** One asset library of the source, bound to where its payloads are stored. Each one owns a
- *  field of the source of its own, so the three run independently - in parallel on load. */
+ *  field of the source of its own, so they run independently - in parallel on load. */
 interface StoredLibrary {
   /** This library's field of `source`, its stored payloads left out. */
   strip(source: SourceState): Partial<SourceState>;
@@ -46,6 +54,11 @@ const LIBRARIES: readonly StoredLibrary[] = [
     environmentBlobs,
     (source) => source.environments,
     (environments) => ({ environments }),
+  ),
+  storedLibrary(
+    sceneBlobs,
+    (source) => source.scenes,
+    (scenes) => ({ scenes }),
   ),
   storedLibrary(
     meshBlobs,
@@ -106,6 +119,10 @@ export async function hydrateSource(source: SourceState): Promise<SourceState> {
 function writeDocument(source: SourceState): boolean {
   return writeJson(
     STORAGE_KEY,
-    wrapProject(Object.assign({ ...source }, ...LIBRARIES.map((library) => library.strip(source)))),
+    wrapProject(
+      encodeSourcePlain(
+        Object.assign({ ...source }, ...LIBRARIES.map((library) => library.strip(source))),
+      ),
+    ),
   );
 }
