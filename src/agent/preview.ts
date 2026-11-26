@@ -14,6 +14,7 @@ import type { SceneEntity } from "../model/entity";
 import { VFX_ENTITY } from "../model/entity";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
+import { isViewportFov, type ViewportView } from "../model/viewportView";
 import type { OverdrawStats } from "../render/overdrawPass";
 import type { OverdrawCount } from "../render/overdrawShader";
 import type {
@@ -21,7 +22,6 @@ import type {
   CaptureView,
   FrameCaptureOptions,
   SceneCoordinator,
-  ViewportView,
 } from "../render/sceneCoordinator";
 import { resolveEntity } from "./address.Internal";
 import {
@@ -133,7 +133,7 @@ export interface PreviewApi {
   getView(): ViewportView;
   /**
    * Places the viewport camera at `position` looking at `target`, both in world units, held to
-   * the viewport's orbit limits (a distance of 2 to 30 from the target, above the floor). `fov`,
+   * the viewport's orbit limits (a distance of 2 to 50 from the target, above the floor). `fov`,
    * vertical in degrees, is kept when omitted.
    */
   setView(view: {
@@ -211,7 +211,7 @@ function requireView(
 
 function requireFov(name: string, value: unknown): number {
   const fov = requireFiniteNumber(name, value);
-  if (fov <= 0 || fov >= 180) {
+  if (!isViewportFov(fov)) {
     throw new AgentError("invalid_argument", `${name} must be within (0, 180) degrees.`);
   }
   return fov;
@@ -391,8 +391,8 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
     setView: (view): void => {
       requireKnownKeys("view", view, ["position", "target", "fov"]);
       coordinator.setView({
-        position: new Vector3(...requireVector3("view.position", view.position)),
-        target: new Vector3(...requireVector3("view.target", view.target)),
+        position: requireVector3("view.position", view.position),
+        target: requireVector3("view.target", view.target),
         ...(view.fov !== undefined ? { fov: requireFov("view.fov", view.fov) } : {}),
       });
     },

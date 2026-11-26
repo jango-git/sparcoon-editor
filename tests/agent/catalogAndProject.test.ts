@@ -6,8 +6,10 @@ import { readStatus } from "../../src/agent/status.Internal";
 import { GraphKind, isMeshExcludedRenderNode, metaFor } from "../../src/domain/nodePalette";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
+import { DEFAULT_VIEWPORT_VIEW, type ViewportView } from "../../src/model/viewportView";
 import { serializeProject } from "../../src/persistence/projectFile";
 import type { DocumentReplaceTarget } from "../../src/persistence/replaceDocument";
+import { ViewportCamera } from "../../src/ui/viewportCamera";
 import { readZip } from "../helpers/zip";
 
 describe("agent catalog", () => {
@@ -46,14 +48,17 @@ describe("agent catalog", () => {
   });
 });
 
-/** A replace target whose viewport settings only count their resets. */
+/** A replace target whose viewport settings only count their resets and whose camera keeps the
+ *  last view the replace asked for. */
 function replaceTarget(store: Store): DocumentReplaceTarget & { resets: number } {
   const target = {
     store,
     resets: 0,
     previewSettings: { reset: (): void => void (target.resets += 1) },
     gizmoSettings: { reset: (): void => void (target.resets += 1) },
+    camera: new ViewportCamera(DEFAULT_VIEWPORT_VIEW),
   };
+  target.camera.onRequest((view) => target.camera.report(view));
   return target as unknown as DocumentReplaceTarget & { resets: number };
 }
 
@@ -66,7 +71,8 @@ describe("agent project", () => {
       name: "Imported",
       scene: { ...state.source.scene, emitters: [createDefaultEmitter("emitter_9", "Nine")] },
     };
-    const json = await serializeProject(state.source);
+    const camera: ViewportView = { position: [3, 1, 4], target: [0, 1, 0], fov: 30 };
+    const json = await serializeProject(state.source, camera);
 
     const target = replaceTarget(original);
     const project = createProjectApi(target);
@@ -76,6 +82,8 @@ describe("agent project", () => {
     expect(original.getSource().name).toBe("Imported");
     expect(JSON.parse(await project.get()).source.scene.emitters[0].id).toBe("emitter_9");
     expect(target.resets).toBe(2);
+    expect(target.camera.view).toEqual(camera);
+    expect(JSON.parse(await project.get()).camera).toEqual(camera);
     original.undo();
     expect(original.getSource().name).toBe("");
   });

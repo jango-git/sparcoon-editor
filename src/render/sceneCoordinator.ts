@@ -4,6 +4,7 @@
  * shadow-mapped studio.
  */
 
+import { Ferrsign1 } from "ferrsign";
 import { FXWorld } from "sparcoon";
 import {
   type Camera,
@@ -23,6 +24,7 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { FXGLSLRenderTier } from "../engine/render/compiler/FXRenderCompilers";
+import { DEFAULT_VIEWPORT_VIEW, type ViewportView } from "../model/viewportView";
 import type { PreviewSettings, PreviewSettingsStore } from "../settings/previewSettings";
 import { resetRenderBackend } from "../settings/renderBackend";
 import type { PreviewViewMode } from "../ui/previewViewMode";
@@ -61,12 +63,6 @@ function createSceneRenderer(
 }
 
 /** The viewport camera's place: its position, the point it orbits and looks at, its vertical fov. */
-export interface ViewportView {
-  readonly position: [number, number, number];
-  readonly target: [number, number, number];
-  readonly fov: number;
-}
-
 /** Where an offscreen shot is taken from and at what size; the viewport camera is left alone. */
 export interface CaptureShot {
   readonly size?: { readonly width: number; readonly height: number };
@@ -115,6 +111,7 @@ export class SceneCoordinator {
   private readonly renderer: WebGLRenderer;
   private readonly camera: PerspectiveCamera;
   private readonly controls: OrbitControls;
+  private readonly viewChanged = new Ferrsign1<ViewportView>();
   private readonly environment: SceneEnvironment;
   private readonly previewScene: PreviewScene;
   private readonly depthPass: SceneDepthPass;
@@ -157,8 +154,8 @@ export class SceneCoordinator {
     this.depthPass = new SceneDepthPass(this.renderer, this.scene);
     this.overdrawPass = new OverdrawPass(this.renderer, this.scene);
 
-    this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
-    this.camera.position.set(0, 2, 7);
+    this.camera = new PerspectiveCamera(DEFAULT_VIEWPORT_VIEW.fov, 1, 0.1, 100);
+    this.camera.position.set(...DEFAULT_VIEWPORT_VIEW.position);
     // A clean capture switches the furniture layer off.
     this.camera.layers.enable(EDITOR_OVERLAY_LAYER);
     this.camera.layers.enable(EDITOR_SCENE_LAYER);
@@ -166,13 +163,14 @@ export class SceneCoordinator {
     // Damping off, so the camera stops with the pointer. Polar clamp keeps it above the floor.
     // Bound to the container so drags over overlays still orbit.
     this.controls = new OrbitControls(this.camera, container);
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.set(...DEFAULT_VIEWPORT_VIEW.target);
     this.controls.enableDamping = false;
     this.controls.minDistance = 2;
-    this.controls.maxDistance = 30;
+    this.controls.maxDistance = 50;
     this.controls.maxPolarAngle = Math.PI * 0.495;
     this.controls.enableZoom = false;
     this.controls.update();
+    this.controls.addEventListener("change", () => this.viewChanged.emit(this.getView()));
 
     container.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     container.addEventListener("pointermove", (event) => this.trackPointer(event));
@@ -280,18 +278,20 @@ export class SceneCoordinator {
    * Places the viewport camera at `position`, orbiting and looking at `target`, held to the orbit's
    * distance and height limits. The vertical `fov` (degrees) changes only when given.
    */
-  public setView(view: {
-    readonly position: Vector3;
-    readonly target: Vector3;
-    readonly fov?: number;
-  }): void {
-    this.controls.target.copy(view.target);
-    this.camera.position.copy(view.position);
+  public setView(view: Omit<ViewportView, "fov"> & { readonly fov?: number }): void {
+    this.controls.target.set(...view.target);
+    this.camera.position.set(...view.position);
     if (view.fov !== undefined) {
       this.camera.fov = view.fov;
       this.camera.updateProjectionMatrix();
     }
     this.controls.update();
+    this.viewChanged.emit(this.getView());
+  }
+
+  /** Calls `listener` with the view whenever the viewport camera moves or its fov changes. */
+  public onViewChange(listener: (view: ViewportView) => void): () => void {
+    return this.viewChanged.on(listener);
   }
 
   /**

@@ -7,6 +7,7 @@
 import { frameOf, timeOfFrame } from "../model/frames";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
+import type { EditorContext } from "./editorContext";
 import type { HotkeyRouter } from "./focus/hotkeyRouter";
 import type { Keymap } from "./focus/keymap";
 import { EditorPanel } from "./focus/panelFocus";
@@ -14,23 +15,30 @@ import { saveProjectJson } from "./projectExportPanel";
 
 export function installHotkeys(
   router: HotkeyRouter,
-  store: Store,
+  context: Pick<EditorContext, "store" | "camera">,
   transport: TransportStore,
 ): void {
-  router.registerGlobal(globalKeymap(store));
+  const { store } = context;
+  router.registerGlobal(globalKeymap(context));
 
   const transportMap = transportKeymap(store, transport);
   router.registerPanel(EditorPanel.Viewport, transportMap);
   router.registerPanel(EditorPanel.Timeline, transportMap);
 }
 
-function globalKeymap(store: Store): Keymap {
+function globalKeymap(context: Pick<EditorContext, "store" | "camera">): Keymap {
+  const { store } = context;
   return [
     { code: "KeyZ", modifier: true, shift: false, run: () => store.undo() },
     { code: "KeyZ", modifier: true, shift: true, run: () => store.redo() },
     // allowInEditable: the browser's own Save Page dialog is never wanted here, including while
     // a param field or the project name input owns focus.
-    { code: "KeyS", modifier: true, allowInEditable: true, run: () => void saveProjectJson(store) },
+    {
+      code: "KeyS",
+      modifier: true,
+      allowInEditable: true,
+      run: () => void saveProjectJson(context),
+    },
   ];
 }
 

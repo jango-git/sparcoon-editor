@@ -7,8 +7,6 @@ import { createElement } from "../dom";
 import { field } from "../primitives/field";
 import { SETTINGS_ROW } from "./settingsRows";
 
-const AXIS_KEYS = ["axis.x", "axis.y", "axis.z"] as const;
-
 /** One number field per axis. */
 export type AxisTriplet = [NumberControl, NumberControl, NumberControl];
 
@@ -36,16 +34,26 @@ export function setTriplet(controls: AxisTriplet, values: readonly number[]): vo
 
 /** A labelled channel block with its three axis components stacked one per row. */
 export function axisSection(label: string, controls: AxisTriplet): HTMLElement {
-  const componentField = (index: 0 | 1 | 2): HTMLElement =>
-    field(t(AXIS_KEYS[index]), controls[index].element, {
-      rowClassName: "viewport-transform__comp",
-      labelClassName: "viewport-transform__axis",
-    });
+  return fieldSection(label, [
+    [t("axis.x"), controls[0].element],
+    [t("axis.y"), controls[1].element],
+    [t("axis.z"), controls[2].element],
+  ]);
+}
+
+/** A captioned block of fields stacked one per row, each behind its short label. */
+export function fieldSection(
+  label: string,
+  rows: readonly (readonly [string, HTMLElement])[],
+): HTMLElement {
   return createElement("div", { className: "viewport-transform__section" }, [
     createElement("div", { className: "viewport-transform__section-title", textContent: label }),
-    componentField(0),
-    componentField(1),
-    componentField(2),
+    ...rows.map(([rowLabel, element]) =>
+      field(rowLabel, element, {
+        rowClassName: "viewport-transform__comp",
+        labelClassName: "viewport-transform__axis",
+      }),
+    ),
   ]);
 }
 

@@ -40,7 +40,7 @@ export interface ProjectApi {
 
 export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
   return {
-    get: () => serializeProject(target.store.getSource()),
+    get: () => serializeProject(target.store.getSource(), target.camera.view),
 
     load: async (json): Promise<SceneView> => {
       const read = await deserializeProject(json);
@@ -53,7 +53,7 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
       if (read.kind === "unreadable") {
         throw new AgentError("invalid_argument", "Not a readable project file.");
       }
-      replaceDocument(target, read.source);
+      replaceDocument(target, read.source, read.camera);
       return sceneView(target.store.getSource());
     },
 
@@ -64,7 +64,8 @@ export function createProjectApi(target: DocumentReplaceTarget): ProjectApi {
       if (preset === undefined) {
         throw new AgentError("not_found", `No preset "${id}".`);
       }
-      replaceDocument(target, await loadPresetSource(preset));
+      const loaded = await loadPresetSource(preset);
+      replaceDocument(target, loaded.source, loaded.camera);
       return sceneView(target.store.getSource());
     },
 

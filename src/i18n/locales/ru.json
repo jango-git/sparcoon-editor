@@ -154,6 +154,11 @@
   "viewport": {
     "item": "Объект",
     "itemTransformTip": "Трансформировать выбранный объект. (N)",
+    "camera": "Камера",
+    "cameraTip": "Где стоит камера вьюпорта и куда смотрит. Сохраняется в файл проекта.",
+    "cameraTarget": "Цель",
+    "cameraFov": "Угол обзора",
+    "cameraFovAxis": "V",
     "spawnEmitter": "Создать эмиттер",
     "addEmitterTip": "Добавить новый эмиттер в сцену.",
     "addMesh": "Создать меш",

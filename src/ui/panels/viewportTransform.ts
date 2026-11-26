@@ -1,6 +1,6 @@
 /**
- * The viewport's right-hand panel - Blender's N-panel in spirit: a vertical tab strip (Item, plus
- * the Lighting/Scene/Gizmo view-settings) on the preview's top-right; `N` toggles it.
+ * The viewport's right-hand panel - Blender's N-panel in spirit: a vertical tab strip (Item,
+ * Camera, plus the Lighting/Scene/Gizmo view-settings) on the preview's top-right; `N` toggles it.
  *
  * Editing a transform writes the entity's base transform (via {@link setEntityBaseChannel}), never
  * a keyframe - like the gizmo. Fields show the effective transform under the playhead.
@@ -26,10 +26,11 @@ import { icon, viewportIcons } from "../icons";
 import { axisSection, axisTriplet, readTriplet, setTriplet } from "./axisFields";
 import { createPreviewSettingsGroups } from "./previewSettings";
 import { channelFromDisplay, channelToDisplay } from "./transformChannel";
+import { createCameraTabContent } from "./viewportCameraTab";
 
 type Channel = "position" | "rotation" | "scale";
 
-/** The right-hand tabs: Item, then the view settings. The `N` hotkey toggles them. */
+/** The right-hand tabs: Item, Camera, then the view settings. The `N` hotkey toggles them. */
 export function createViewportTransform(context: EditorContext): ViewportTabs {
   const { store, selection, transport, previewSettings: settings, gizmoSettings: gizmo } = context;
   const name = document.createElement("input");
@@ -89,6 +90,12 @@ export function createViewportTransform(context: EditorContext): ViewportTabs {
     axisSection(t("field.rotation"), controls.rotation),
     axisSection(t("field.scale"), controls.scale),
   ]);
+  tabs.addTab(
+    t("viewport.camera"),
+    viewportIcons.camera,
+    t("viewport.cameraTip"),
+    createCameraTabContent(context.camera),
+  );
   for (const settingsGroup of createPreviewSettingsGroups(settings, gizmo, store)) {
     tabs.addTab(settingsGroup.label, settingsGroup.glyph, t("viewport.settingsTip"), [
       createElement("div", { className: "preview-settings" }, settingsGroup.rows),

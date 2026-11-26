@@ -15,6 +15,7 @@ import type { PanelFocus } from "./focus/panelFocus";
 import type { PanelFocusTracker } from "./focus/panelFocusTracker";
 import type { InputModeState } from "./inputMode";
 import type { PreviewViewModeState } from "./previewViewMode";
+import type { ViewportCamera } from "./viewportCamera";
 
 export interface EditorContext {
   readonly store: Store;
@@ -29,4 +30,6 @@ export interface EditorContext {
   /** What the viewport shows: the shaded frame or an overdraw view. */
   readonly viewMode: PreviewViewModeState;
   readonly gizmoSettings: GizmoSettingsStore;
+  /** The viewport camera's view, saved into the project file. */
+  readonly camera: ViewportCamera;
 }

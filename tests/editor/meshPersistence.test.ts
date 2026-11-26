@@ -46,7 +46,7 @@ afterEach(() => {
 describe("VFX mesh persistence normalization", () => {
   it("defaults meshes to an empty list for a document authored before they existed", async () => {
     loadSourceMock.mockReturnValue(persistedScene(undefined));
-    const scene = (await loadInitialState(noFallback)).source.scene;
+    const scene = (await loadInitialState(noFallback)).state.source.scene;
     expect(scene.meshes).toEqual([]);
     expect(scene.activeMeshId).toBeUndefined();
   });
@@ -59,7 +59,7 @@ describe("VFX mesh persistence normalization", () => {
         "vfxMesh",
       ),
     );
-    const scene = (await loadInitialState(noFallback)).source.scene;
+    const scene = (await loadInitialState(noFallback)).state.source.scene;
     expect(scene.meshes).toHaveLength(1);
     expect(scene.meshes[0].id).toBe("mesh_7");
     expect(scene.meshes[0].name).toBe("Shield");
@@ -73,14 +73,14 @@ describe("VFX mesh persistence normalization", () => {
 
   it("drops a dangling vfxMesh graph kind when no mesh survives", async () => {
     loadSourceMock.mockReturnValue(persistedScene(undefined, "gone", "vfxMesh"));
-    const scene = (await loadInitialState(noFallback)).source.scene;
+    const scene = (await loadInitialState(noFallback)).state.source.scene;
     expect(scene.meshes).toEqual([]);
     expect(scene.activeGraphKind).toBe("emitter");
   });
 
   it("drops a corrupt mesh and falls back a stale active id", async () => {
     loadSourceMock.mockReturnValue(persistedScene([{ name: "no id" }, { id: "mesh_1" }], "gone"));
-    const scene = (await loadInitialState(noFallback)).source.scene;
+    const scene = (await loadInitialState(noFallback)).state.source.scene;
     expect(scene.meshes).toHaveLength(1);
     expect(scene.meshes[0].id).toBe("mesh_1");
     // Active id was stale -> falls to the first surviving mesh.
@@ -104,7 +104,7 @@ describe("VFX mesh persistence normalization", () => {
     );
     const slots = (
       await loadInitialState(noFallback)
-    ).source.scene.meshes[0].renderGraph.outputBindings.map((binding) => binding.slot);
+    ).state.source.scene.meshes[0].renderGraph.outputBindings.map((binding) => binding.slot);
     expect(slots).toContain("albedo");
     expect(slots).not.toContain("particleTransform");
   });
@@ -113,13 +113,13 @@ describe("VFX mesh persistence normalization", () => {
 describe("saved document envelope", () => {
   it("reads a document in the project envelope", async () => {
     loadSourceMock.mockReturnValue(wrapProject(persistedScene(undefined)));
-    expect((await loadInitialState(noFallback)).source.scene.emitters).toHaveLength(1);
+    expect((await loadInitialState(noFallback)).state.source.scene.emitters).toHaveLength(1);
   });
 
   it("keeps what it reads of a document from a later editor instead of starting fresh", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     loadSourceMock.mockReturnValue({ ...wrapProject(persistedScene(undefined)), version: 4 });
-    expect((await loadInitialState(noFallback)).source.scene.emitters).toHaveLength(1);
+    expect((await loadInitialState(noFallback)).state.source.scene.emitters).toHaveLength(1);
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
   });

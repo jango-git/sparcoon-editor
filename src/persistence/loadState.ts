@@ -63,6 +63,7 @@ import { arrayBufferBytes } from "../util/bytes";
 import { asOptionalString, isFiniteNumber, isRecord } from "../util/guards";
 import { hydrateSource, loadSource } from "./localStore";
 import { decodeSourcePayloads } from "./payloadCodec";
+import type { LoadedPreset } from "./presets";
 import {
   isNewerProject,
   type StoredProject,
@@ -70,14 +71,29 @@ import {
   upgradeProject,
 } from "./projectEnvelope";
 
-/** `loadFallbackSource` is called (and awaited) only when nothing valid is in storage, so a
- *  returning user with an existing document never pays for it. */
+/** The state the editor starts with, and the preset it was loaded from when nothing valid was in
+ *  storage. */
+export interface InitialState {
+  readonly state: EditorState;
+  readonly preset: LoadedPreset | undefined;
+}
+
+/** `loadFallback` is called (and awaited) only when nothing valid is in storage, so a returning
+ *  user with an existing document never pays for it. */
 export async function loadInitialState(
-  loadFallbackSource: () => Promise<SourceState>,
-): Promise<EditorState> {
-  const source = (await restoreSource()) ?? (await loadFallbackSource());
+  loadFallback: () => Promise<LoadedPreset>,
+): Promise<InitialState> {
+  const restored = await restoreSource();
+  if (restored !== undefined) {
+    return startingWith(restored, undefined);
+  }
+  const preset = await loadFallback();
+  return startingWith(preset.source, preset);
+}
+
+function startingWith(source: SourceState, preset: LoadedPreset | undefined): InitialState {
   seedIdentifierCounterFromSource(source);
-  return { source, derived: {} };
+  return { state: { source, derived: {} }, preset };
 }
 
 /** The persisted document, defended down to a valid source, or `undefined` to start fresh. */

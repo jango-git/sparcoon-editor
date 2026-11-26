@@ -154,6 +154,11 @@
   "viewport": {
     "item": "Item",
     "itemTransformTip": "Transform the selected object. (N)",
+    "camera": "Camera",
+    "cameraTip": "Where the viewport camera is and where it looks. Saved into the project file.",
+    "cameraTarget": "Target",
+    "cameraFov": "Field of view",
+    "cameraFovAxis": "V",
     "spawnEmitter": "Spawn emitter",
     "addEmitterTip": "Add a new emitter to the scene.",
     "addMesh": "Spawn mesh",

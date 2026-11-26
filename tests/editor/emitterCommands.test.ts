@@ -21,6 +21,7 @@ import {
   selectEmitters,
 } from "../../src/model/selectors";
 import { Store } from "../../src/model/store";
+import { DEFAULT_VIEWPORT_VIEW } from "../../src/model/viewportView";
 import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { serializeProject } from "../../src/persistence/projectFile";
 import { loadedProject } from "../helpers/loadedProject";
@@ -187,7 +188,9 @@ describe("an effect of meshes only", () => {
     addVfxMesh(store);
     removeEmitter(store, emitterId);
 
-    const loaded = await loadedProject(await serializeProject(store.getSource()));
+    const loaded = await loadedProject(
+      await serializeProject(store.getSource(), DEFAULT_VIEWPORT_VIEW),
+    );
     expect(loaded?.scene.emitters).toEqual([]);
     expect(loaded?.scene.meshes).toHaveLength(1);
     expect(loaded?.scene.activeGraphKind).toBe("vfxMesh");

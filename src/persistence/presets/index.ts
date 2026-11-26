@@ -6,6 +6,7 @@
 
 import type { TKey } from "../../i18n";
 import { createInitialState, type SourceState } from "../../model/editorState";
+import type { ViewportView } from "../../model/viewportView";
 import { deserializeProject } from "../projectFile";
 
 export interface ProjectPreset {
@@ -49,9 +50,15 @@ export const PROJECT_PRESETS: readonly ProjectPreset[] = [
 
 export const DEFAULT_PROJECT_PRESET = EMPTY_PRESET;
 
+/** A preset's document and the viewport camera it was saved with, if any. */
+export interface LoadedPreset {
+  readonly source: SourceState;
+  readonly camera: ViewportView | undefined;
+}
+
 /** Never throws - an unreadable/unreachable preset falls back to the programmatic empty document,
  *  with a console warning, the same way a corrupt saved document does. */
-export async function loadPresetSource(preset: ProjectPreset): Promise<SourceState> {
+export async function loadPresetSource(preset: ProjectPreset): Promise<LoadedPreset> {
   try {
     // Resolve next to the bundle (dist/presets/...), mirroring the copy-locales build step
     // (i18n/index.ts) - a bare `preset.fileName` would resolve against the bundle chunk's own
@@ -59,11 +66,11 @@ export async function loadPresetSource(preset: ProjectPreset): Promise<SourceSta
     const response = await fetch(new URL(`presets/${preset.fileName}`, import.meta.url));
     const read = await deserializeProject(await response.text());
     if (read.kind === "loaded") {
-      return read.source;
+      return { source: read.source, camera: read.camera };
     }
     console.warn(`Preset "${preset.id}" is not a readable project file; starting empty`);
   } catch (error) {
     console.warn(`Failed to load preset "${preset.id}"; starting empty`, error);
   }
-  return createInitialState().source;
+  return { source: createInitialState().source, camera: undefined };
 }

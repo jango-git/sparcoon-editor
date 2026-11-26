@@ -6,19 +6,25 @@
  */
 
 import type { SourceState } from "../model/editorState";
+import type { ViewportView } from "../model/viewportView";
 import { readStoredSource } from "./loadState";
 import { encodeSourceCompressed } from "./payloadCodec";
 import { isNewerProject, unwrapProject, wrapProject } from "./projectEnvelope";
 
 /** What reading a project file gave. */
 export type ProjectRead =
-  | { readonly kind: "loaded"; readonly source: SourceState }
+  | {
+      readonly kind: "loaded";
+      readonly source: SourceState;
+      /** The viewport camera it was saved with, if any. */
+      readonly camera: ViewportView | undefined;
+    }
   | { readonly kind: "unreadable" }
   /** Saved in a later format, by `editor` when the file names it: refused whole. */
   | { readonly kind: "newer"; readonly editor: string | undefined };
 
-export async function serializeProject(source: SourceState): Promise<string> {
-  return JSON.stringify(wrapProject(await encodeSourceCompressed(source)), undefined, 2);
+export async function serializeProject(source: SourceState, camera: ViewportView): Promise<string> {
+  return JSON.stringify(wrapProject(await encodeSourceCompressed(source), camera), undefined, 2);
 }
 
 export async function deserializeProject(text: string): Promise<ProjectRead> {
@@ -33,5 +39,7 @@ export async function deserializeProject(text: string): Promise<ProjectRead> {
     return { kind: "newer", editor: stored.editor };
   }
   const source = await readStoredSource(stored);
-  return source === undefined ? { kind: "unreadable" } : { kind: "loaded", source };
+  return source === undefined
+    ? { kind: "unreadable" }
+    : { kind: "loaded", source, camera: stored.camera };
 }

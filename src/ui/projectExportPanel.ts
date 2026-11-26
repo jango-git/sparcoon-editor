@@ -75,7 +75,7 @@ export function exportBlock(context: EditorContext): { element: HTMLElement; syn
   });
 
   const saveButton = exportButton(assetIcons.download, "content.saveJson", "content.saveJsonTip");
-  saveButton.addEventListener("click", () => void saveProjectJson(store));
+  saveButton.addEventListener("click", () => void saveProjectJson(context));
   const loadButton = exportButton(assetIcons.upload, "content.loadJson", "content.loadJsonTip");
   loadButton.addEventListener("click", () => fileInput.click());
 
@@ -128,12 +128,14 @@ function exportButton(glyph: string, labelKey: TKey, tipKey: TKey): HTMLButtonEl
   return outlineButton(glyph, t(labelKey), t(tipKey), "content-export__button");
 }
 
-/** Serializes the current document to a JSON file and triggers a download named after the project.
- *  Exported so the Ctrl+S hotkey (installHotkeys in hotkeys.ts) can share this exact save path
- *  with the Import/Export panel's own Save button. */
-export async function saveProjectJson(store: Store): Promise<void> {
-  const source = store.getSource();
-  const text = await serializeProject(source);
+/** Serializes the current document with the viewport camera to a JSON file and triggers a download
+ *  named after the project. Exported so the Ctrl+S hotkey (installHotkeys in hotkeys.ts) can share
+ *  this exact save path with the Import/Export panel's own Save button. */
+export async function saveProjectJson(
+  context: Pick<EditorContext, "store" | "camera">,
+): Promise<void> {
+  const source = context.store.getSource();
+  const text = await serializeProject(source, context.camera.view);
   downloadFile(projectFileName(source.name, "json"), text, "application/json");
 }
 
@@ -176,7 +178,7 @@ async function importFromFile(file: File | undefined, context: EditorContext): P
   const read = await deserializeProject(await file.text());
   switch (read.kind) {
     case "loaded":
-      replaceDocument(context, read.source);
+      replaceDocument(context, read.source, read.camera);
       return;
     case "newer":
       window.alert(t("content.loadNewer", { file: file.name, editor: read.editor ?? "?" }));
@@ -219,8 +221,8 @@ function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
 /** Loads a preset's bundled JSON and replaces the document with it - the same path a picked JSON
  *  file goes through, viewport settings reset included. */
 async function applyPreset(context: EditorContext, preset: ProjectPreset): Promise<void> {
-  const source = await loadPresetSource(preset);
-  replaceDocument(context, source);
+  const loaded = await loadPresetSource(preset);
+  replaceDocument(context, loaded.source, loaded.camera);
 }
 
 /** A safe download stem from the project name: keep word characters, fall back when nothing remains. */

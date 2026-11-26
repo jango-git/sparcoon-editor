@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createInitialState, type SourceState } from "../../src/model/editorState";
+import { DEFAULT_VIEWPORT_VIEW, type ViewportView } from "../../src/model/viewportView";
 import { plainPayload } from "../../src/persistence/payloadCodec";
 import { wrapProject } from "../../src/persistence/projectEnvelope";
 import { deserializeProject, serializeProject } from "../../src/persistence/projectFile";
@@ -40,21 +41,23 @@ function sourceWithAsset(): SourceState {
 describe("projectFile: serialize/deserialize round-trip", () => {
   it("round-trips the whole document unchanged, its base64 assets included", async () => {
     const source = sourceWithAsset();
-    const restored = await loadedProject(await serializeProject(source));
+    const restored = await loadedProject(await serializeProject(source, DEFAULT_VIEWPORT_VIEW));
     expect(restored).toEqual(source);
     expect(restored?.assets[0]?.dataUrl).toBe(PIXEL_DATA_URL);
   });
 
   it("loads a project saved before the loop setting existed as looping, and keeps an explicit off", async () => {
     const source = createInitialState().source;
-    const legacy = JSON.parse(await serializeProject(source)) as {
+    const legacy = JSON.parse(await serializeProject(source, DEFAULT_VIEWPORT_VIEW)) as {
       source: { timeline: Record<string, unknown> };
     };
     delete legacy.source.timeline["loop"];
     expect((await loadedProject(JSON.stringify(legacy)))?.timeline.loop).toBe(true);
 
     const once = { ...source, timeline: { ...source.timeline, loop: false } };
-    expect((await loadedProject(await serializeProject(once)))?.timeline.loop).toBe(false);
+    expect(
+      (await loadedProject(await serializeProject(once, DEFAULT_VIEWPORT_VIEW)))?.timeline.loop,
+    ).toBe(false);
   });
 
   it("keeps an emitter's editor-only events flag, and leaves it off when absent", async () => {
@@ -64,10 +67,12 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       ...base,
       scene: { ...base.scene, emitters: [{ ...emitter, liveEvents: true }, ...rest] },
     };
-    expect((await loadedProject(await serializeProject(live)))?.scene.emitters[0]?.liveEvents).toBe(
-      true,
-    );
-    const restored = (await loadedProject(await serializeProject(base)))?.scene.emitters[0];
+    expect(
+      (await loadedProject(await serializeProject(live, DEFAULT_VIEWPORT_VIEW)))?.scene.emitters[0]
+        ?.liveEvents,
+    ).toBe(true);
+    const restored = (await loadedProject(await serializeProject(base, DEFAULT_VIEWPORT_VIEW)))
+      ?.scene.emitters[0];
     expect(restored !== undefined && "liveEvents" in restored).toBe(false);
   });
 
@@ -85,7 +90,7 @@ describe("projectFile: serialize/deserialize round-trip", () => {
       ...base,
       palette: [{ name: "swatch_1", label: "Accent", color: [1, 0.4, 0, 1] }],
     };
-    const restored = await loadedProject(await serializeProject(source));
+    const restored = await loadedProject(await serializeProject(source, DEFAULT_VIEWPORT_VIEW));
     expect(restored?.palette).toEqual(source.palette);
   });
 
@@ -130,17 +135,18 @@ describe("projectFile: serialize/deserialize round-trip", () => {
 
 describe("projectFile: format", () => {
   it("names the format's number and the editor that saved it", async () => {
-    const file = JSON.parse(await serializeProject(createInitialState().source)) as Record<
-      string,
-      unknown
-    >;
+    const file = JSON.parse(
+      await serializeProject(createInitialState().source, DEFAULT_VIEWPORT_VIEW),
+    ) as Record<string, unknown>;
     expect(file["format"]).toBe("sparcoon-project");
     expect(file["version"]).toBe(3);
     expect(file["editor"]).toBe(SPARCOON_EDITOR_VERSION);
   });
 
   it("refuses a project in a later format, naming the editor that saved it", async () => {
-    const file = JSON.parse(await serializeProject(createInitialState().source)) as object;
+    const file = JSON.parse(
+      await serializeProject(createInitialState().source, DEFAULT_VIEWPORT_VIEW),
+    ) as object;
     expect(
       await deserializeProject(JSON.stringify({ ...file, version: 4, editor: "9.0.0" })),
     ).toEqual({
@@ -150,9 +156,34 @@ describe("projectFile: format", () => {
   });
 
   it("reads a project without a number, or with one that is not a positive integer, as format 1", async () => {
-    const file = JSON.parse(await serializeProject(createInitialState().source)) as object;
+    const file = JSON.parse(
+      await serializeProject(createInitialState().source, DEFAULT_VIEWPORT_VIEW),
+    ) as object;
     for (const version of [undefined, "2", 1.5, 0, -3]) {
       expect((await deserializeProject(JSON.stringify({ ...file, version }))).kind).toBe("loaded");
+    }
+  });
+
+  it("round-trips the viewport camera beside the document", async () => {
+    const camera: ViewportView = { position: [1, 2, 3], target: [0, 0.5, 0], fov: 35 };
+    const read = await deserializeProject(
+      await serializeProject(createInitialState().source, camera),
+    );
+    expect(read.kind === "loaded" ? read.camera : undefined).toEqual(camera);
+  });
+
+  it("reads a project without a camera, or with a damaged one, as having none", async () => {
+    const file = JSON.parse(
+      await serializeProject(createInitialState().source, DEFAULT_VIEWPORT_VIEW),
+    ) as Record<string, unknown>;
+    for (const camera of [
+      undefined,
+      { position: [0, 1], target: [0, 0, 0], fov: 50 },
+      { fov: 0 },
+    ]) {
+      const read = await deserializeProject(JSON.stringify({ ...file, camera }));
+      expect(read.kind).toBe("loaded");
+      expect(read.kind === "loaded" ? read.camera : "missing").toBeUndefined();
     }
   });
 });
@@ -304,8 +335,8 @@ describe("projectFile: key curves", () => {
         ],
       },
     };
-    const keys = (await loadedProject(await serializeProject(source)))?.scene.emitters[0].tracks[0]
-      ?.keys;
+    const keys = (await loadedProject(await serializeProject(source, DEFAULT_VIEWPORT_VIEW)))?.scene
+      .emitters[0].tracks[0]?.keys;
     expect(keys?.[0]).toEqual({ id: "k1", time: 0, value: 0, ease: "inOut" });
     expect(keys?.[1]).toEqual({ id: "k2", time: 1, value: 1 });
   });
@@ -316,7 +347,9 @@ describe("projectFile: corrupt library entries", () => {
   async function loadWithLibraries(
     libraries: Record<string, unknown>,
   ): Promise<SourceState | undefined> {
-    const file = JSON.parse(await serializeProject(sourceWithAsset())) as { source: object };
+    const file = JSON.parse(await serializeProject(sourceWithAsset(), DEFAULT_VIEWPORT_VIEW)) as {
+      source: object;
+    };
     return loadedProject(JSON.stringify({ ...file, source: { ...file.source, ...libraries } }));
   }
 
@@ -440,7 +473,7 @@ describe("projectFile: payloads", () => {
         },
       ],
     };
-    const text = await serializeProject(source);
+    const text = await serializeProject(source, DEFAULT_VIEWPORT_VIEW);
     const file = JSON.parse(text) as {
       source: { environments: { bytes: { encoding: string; data: string } }[] };
     };

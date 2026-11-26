@@ -5,6 +5,25 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## 0.7.0 - 2026-11-26
+
+### Added
+
+- The viewport's Camera tab shows the camera's position, the point it orbits and looks at, and its
+  field of view, and moves the camera when they are edited.
+- A saved project file holds the viewport camera, and opening it, or a preset with one, puts the
+  camera there. A file without one opens with the default camera. Moving the camera is not an
+  undo step. A reload keeps the camera where it was.
+- The bundled presets open with the camera set on their effect.
+
+### Changed
+
+- The viewport camera orbits up to 50 units from the point it looks at, was 30.
+
+### Fixed
+
+- The project name field takes the width of the Project block, so long names fit.
+
 ## 0.6.0 - 2026-11-26
 
 ### Added

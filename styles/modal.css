@@ -207,7 +207,8 @@
 
 /* The block's prominent field - same height as the buttons below it; type size matches every other
    field in the sheet (nodes' own param inputs included), not a one-off larger size. */
-.content-export__input {
+input.content-export__input {
+  flex: none;
   width: 100%;
   height: 28px;
   padding: 0 8px;

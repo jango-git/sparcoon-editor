@@ -14,6 +14,7 @@ import { hasInfinitePlay, selectActiveGraphOwner } from "./model/selectors";
 import { Store } from "./model/store";
 import { TRANSFORM_CHANNELS } from "./model/transform";
 import { TransportStore } from "./model/transport";
+import { DEFAULT_VIEWPORT_VIEW } from "./model/viewportView";
 import { createAutosave } from "./persistence/autosave";
 import { loadInitialState } from "./persistence/loadState";
 import { saveSource } from "./persistence/localStore";
@@ -42,6 +43,7 @@ import { PreviewViewModeState } from "./ui/previewViewMode";
 import { commitEntitySelection } from "./ui/selection";
 import { installPreviewContextMenu } from "./ui/tools/previewContextMenu";
 import { TransformTool } from "./ui/tools/transformTool";
+import { ViewportCamera } from "./ui/viewportCamera";
 
 /** Builds the editor into `root`. The entry point (main.ts) has already applied the theme and
  *  loaded the interface dictionary. */
@@ -75,8 +77,12 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     true,
   );
 
-  const initialState = await loadInitialState(() => loadPresetSource(DEFAULT_PROJECT_PRESET));
-  const store = new Store(initialState);
+  const initial = await loadInitialState(() => loadPresetSource(DEFAULT_PROJECT_PRESET));
+  const store = new Store(initial.state);
+  const camera = new ViewportCamera(
+    (initial.preset === undefined ? ViewportCamera.stored() : initial.preset.camera) ??
+      DEFAULT_VIEWPORT_VIEW,
+  );
 
   const previewSettings = new PreviewSettingsStore();
   // Transient transport state. Loops over the length in `source.timeline`, read live.
@@ -122,6 +128,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     previewSettings,
     gizmoSettings,
     viewMode,
+    camera,
   };
   const shell = mountApplicationShell(root, context);
 
@@ -136,6 +143,9 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     () => transport.isPlaying(),
     shell.reportStats,
   );
+  coordinator.onViewChange((view) => camera.report(view));
+  camera.onRequest((view) => coordinator.setView(view));
+  coordinator.setView(camera.view);
   const applyInputMode = (): void => coordinator.setTouchpad(inputMode.mode === InputMode.Touchpad);
   inputMode.onChange(applyInputMode);
   applyInputMode();
@@ -270,7 +280,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     }
   });
 
-  installHotkeys(router, store, transport);
+  installHotkeys(router, context, transport);
   // Ctrl+Space opens the Content screen from any panel, alongside the middlebar's own button -
   // plain Space stays the Viewport/Timeline transport play/pause (transportKeymap in hotkeys.ts),
   // since the router's modifier match keeps the two chords distinct.
@@ -355,6 +365,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     transport,
     previewSettings,
     gizmoSettings,
+    camera,
     coordinator,
     focusEntity,
     entityObject: (entity) => sceneEmitters.entityObject(entity),

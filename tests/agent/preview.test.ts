@@ -5,8 +5,13 @@ import { createPreviewApi } from "../../src/agent/preview";
 import { createDefaultEmitter, createInitialState } from "../../src/model/editorState";
 import { Store } from "../../src/model/store";
 import { TransportStore } from "../../src/model/transport";
+import { DEFAULT_VIEWPORT_VIEW } from "../../src/model/viewportView";
 import type { OverdrawStats } from "../../src/render/overdrawPass";
-import type { CaptureShot, FrameCaptureOptions } from "../../src/render/sceneCoordinator";
+import type {
+  CaptureShot,
+  FrameCaptureOptions,
+  SceneCoordinator,
+} from "../../src/render/sceneCoordinator";
 
 /** A preview API over a fake coordinator that records what each capture was asked to render. */
 function previewWithRecorder() {
@@ -33,7 +38,7 @@ function previewWithRecorder() {
   ]);
   const steps: number[] = [];
   const counted: { count: string; shot: CaptureShot; parts: readonly Object3D[] }[] = [];
-  const views: { position: Vector3; target: Vector3; fov?: number }[] = [];
+  const views: Parameters<SceneCoordinator["setView"]>[0][] = [];
   // 10x10 frames: the first part draws 30 fragments, the second 120.
   const stats = (fragments: number, max: number): OverdrawStats => ({
     width: 10,
@@ -70,8 +75,8 @@ describe("agent preview viewport camera", () => {
     expect(preview.getView()).toEqual({ position: [0, 2, 7], target: [0, 0, 0], fov: 50 });
     preview.setView({ position: [1, 2, 3], target: [0, 1, 0] });
     preview.setView({ position: [1, 2, 3], target: [0, 1, 0], fov: 35 });
-    expect(views[0].position.toArray()).toEqual([1, 2, 3]);
-    expect(views[0].target.toArray()).toEqual([0, 1, 0]);
+    expect(views[0].position).toEqual([1, 2, 3]);
+    expect(views[0].target).toEqual([0, 1, 0]);
     expect(views[0].fov).toBeUndefined();
     expect(views[1].fov).toBe(35);
   });
@@ -193,6 +198,8 @@ describe("agent preview captures", () => {
         measureOverdraw: () => {
           throw new Error("GPU lost");
         },
+        getView: () => DEFAULT_VIEWPORT_VIEW,
+        setView: () => {},
       },
       focusEntity: () => {},
       entityObject: () => undefined,

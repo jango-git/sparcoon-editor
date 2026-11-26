@@ -153,6 +153,13 @@
   gap: 6px;
 }
 
+/* One width for the Item and Camera tabs, set here rather than by the name field's own default
+   width, which differs between browsers and which the Camera tab does not have. */
+.viewport-transform__name-row,
+.viewport-transform__section {
+  min-width: 196px;
+}
+
 /* The selected object's icon before the name field - emitter gem or VFX cube. */
 .viewport-transform__name-icon {
   flex: none;
@@ -171,8 +178,7 @@
 
 .viewport-transform__name {
   flex: 1;
-  /* A floor so the max-content panel still gives the name field a usable width. */
-  min-width: 110px;
+  width: 0;
   height: 22px;
   padding: 0 6px;
   font: inherit;

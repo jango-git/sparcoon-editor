@@ -23,6 +23,7 @@ import type { TransportStore } from "../model/transport";
 import type { SceneCoordinator } from "../render/sceneCoordinator";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
+import type { ViewportCamera } from "../ui/viewportCamera";
 import { type AssetsApi, createAssetsApi } from "./assets";
 import { type CatalogApi, createCatalogApi } from "./catalog";
 import { createEditApi, type EditApi } from "./editApi";
@@ -84,6 +85,7 @@ export interface AgentApiDependencies {
   readonly transport: TransportStore;
   readonly previewSettings: PreviewSettingsStore;
   readonly gizmoSettings: GizmoSettingsStore;
+  readonly camera: ViewportCamera;
   readonly coordinator: Pick<
     SceneCoordinator,
     "advance" | "capture" | "measureOverdraw" | "getView" | "setView"
