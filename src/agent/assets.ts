@@ -57,7 +57,7 @@ export interface AssetsApi {
   /**
    * Adds a `.glb`, or a `.gltf` with its buffers and images embedded, to the scene library as it
    * is, and returns it. Its name is made from `fileName` as a texture's is, and never takes a
-   * built-in scene's (`studio`, `void`).
+   * built-in scene's (`studio`).
    */
   addScene(fileName: string, data: AssetData): Promise<AssetReference>;
   /**
@@ -71,7 +71,7 @@ export interface AssetsApi {
   remove(kind: AssetKind, name: string): void;
   /** Lights the viewport with an environment asset; `undefined` restores the manual sun + sky. */
   setEnvironment(name: string | undefined): void;
-  /** Draws a scene around the effect: `"studio"` (the ground), `"void"` or a scene asset. */
+  /** Draws a scene around the effect: `"studio"` (the ground) or a scene asset. */
   setScene(name: string): void;
 }
 

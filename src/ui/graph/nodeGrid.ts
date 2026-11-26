@@ -12,19 +12,6 @@ export const COL_OUT_LABEL = 4;
 export const COL_OUT_DOT = 5;
 export const COL_END = -1;
 
-/** Node width bounds in grid cells: content-sized, then snapped up into this range. */
-export const MIN_NODE_CELLS = 6;
-export const MAX_NODE_CELLS = 16;
-
-/**
- * Slack (px) added to the measured natural width before snapping to whole cells. When the content
- * lands flush on a `GRID_SIZE` boundary, an `auto` label track with `overflow:hidden` (0 automatic
- * minimum) sub-pixel-clips to an ellipsis despite fitting; this pushes such a node to the next whole
- * cell. Applied inside the cell rounding, so the width stays a whole multiple of `GRID_SIZE` (the
- * shared layout grid - node placement/snapping is unaffected).
- */
-export const NODE_WIDTH_CLIP_GUARD = 2;
-
 /** One placed grid item: an element, its start column and optional span end (`-1` = grid end). */
 export interface Cell {
   readonly element: HTMLElement;

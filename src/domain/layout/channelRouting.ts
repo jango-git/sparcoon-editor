@@ -15,7 +15,14 @@
  * first.
  */
 
-import type { LayeredGraph, LayoutEntity, LayoutLink, LayoutSignal } from "./layeredGraph";
+import { ROUTE_INPUT_KEY, ROUTE_OUTPUT_KEY } from "../fakeNodes";
+import type {
+  LayeredGraph,
+  LayoutEntity,
+  LayoutLink,
+  LayoutSignal,
+  NodeMetrics,
+} from "./layeredGraph";
 import { sourceRow, targetRow } from "./rowPlacement";
 
 /** A route's geometry as the layout needs it. */
@@ -23,6 +30,16 @@ export interface RouteGeometry {
   readonly width: number;
   /** Its dots' centre height from its top edge (both dots share the row). */
   readonly row: number;
+}
+
+/** A route placed as an item of its own: one cell tall, both dots on its row. */
+export function routeMetrics(route: RouteGeometry, grid: number): NodeMetrics {
+  return {
+    width: route.width,
+    height: grid,
+    inputRows: { [ROUTE_INPUT_KEY]: route.row },
+    outputRows: { [ROUTE_OUTPUT_KEY]: route.row },
+  };
 }
 
 /** One signal's crossing of one channel. */

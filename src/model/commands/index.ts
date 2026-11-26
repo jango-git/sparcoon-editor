@@ -23,6 +23,7 @@ export {
 } from "./attributeCommands";
 export {
   addComment,
+  gatherIntoNewComment,
   moveCommentGroup,
   removeComment,
   renameComment,

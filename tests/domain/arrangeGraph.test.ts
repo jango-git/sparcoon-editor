@@ -5,7 +5,14 @@ import { describe, expect, it } from "vitest";
 import { ROUTE_TYPE } from "../../src/domain/fakeNodes";
 import { bindingSinkId } from "../../src/domain/graphEdges";
 import type { EditorGraph } from "../../src/domain/graphModel";
+import type { GraphComment } from "../../src/domain/graphModel";
 import { arrangeGraph, type NodeMetrics } from "../../src/domain/layout/arrangeGraph";
+import {
+  cardsIn,
+  COMMENT_PADDING_CELLS,
+  type CommentLevel,
+  commentTree,
+} from "../../src/domain/layout/commentTree";
 import { GraphKind } from "../../src/domain/nodePalette";
 import { serializeGraph } from "../../src/domain/serialize";
 import {
@@ -95,6 +102,7 @@ function arrange(graph: EditorGraph, kind: GraphKind): EditorGraph {
     grid: GRID_SIZE,
     route: ROUTE_GEOMETRY,
     measure: syntheticMetrics(graph, kind),
+    commentHeader: () => GRID_SIZE,
     mintId: (prefix) => `${prefix}_${++counter}`,
   });
 }
@@ -290,9 +298,11 @@ describe("arrangeGraph on the bundled presets", () => {
     "$name",
     ({ graph, kind }) => {
       const arranged = arrange(graph, kind);
+      const measure = syntheticMetrics(graph, kind);
       expect(serializeGraph(arranged, kind)).toEqual(serializeGraph(graph, kind));
-      expect(arranged.comments).toEqual([]);
-      expect(layoutProblems(arranged, kind, syntheticMetrics(graph, kind))).toEqual([]);
+      expect(arranged.comments).toHaveLength(graph.comments.length);
+      expect(layoutProblems(arranged, kind, measure)).toEqual([]);
+      expect(commentProblems(graph, arranged, measure)).toEqual([]);
     },
     PRESET_ARRANGE_TIMEOUT_MS,
   );
@@ -310,8 +320,144 @@ describe("arrangeGraph on the bundled presets", () => {
   );
 });
 
+/** Every comment of `level`, however deep, with what it holds. */
+function blocksOf(level: CommentLevel): { comment: GraphComment; cards: Set<string> }[] {
+  return level.blocks.flatMap((block) => [
+    { comment: block.comment, cards: new Set(cardsIn(block)) },
+    ...blocksOf(block),
+  ]);
+}
+
+/** The comment tree of `graph`, by where its cards and comments are. */
+function treeOf(graph: EditorGraph, measure: (id: string) => NodeMetrics): CommentLevel {
+  const cards = Object.values(graph.nodes)
+    .filter((node) => node.type !== ROUTE_TYPE)
+    .map((node) => ({
+      id: node.id,
+      box: { ...node.position, width: measure(node.id).width, height: measure(node.id).height },
+    }));
+  return commentTree(graph.comments, cards, []);
+}
+
+/** Everything the layout promises about the comments of `arranged`, as broken promises. */
+function commentProblems(
+  graph: EditorGraph,
+  arranged: EditorGraph,
+  measure: (id: string) => NodeMetrics,
+): string[] {
+  const problems: string[] = [];
+  const padding = COMMENT_PADDING_CELLS * GRID_SIZE;
+  const before = new Map(blocksOf(treeOf(graph, measure)).map((b) => [b.comment.id, b.cards]));
+  const after = blocksOf(treeOf(arranged, measure));
+  if (after.length !== arranged.comments.length) {
+    problems.push(`${arranged.comments.length - after.length} comments hold no card`);
+  }
+  const frame = (comment: GraphComment) => ({
+    left: comment.position.x,
+    top: comment.position.y,
+    right: comment.position.x + comment.size.width,
+    bottom: comment.position.y + comment.size.height,
+  });
+  for (const { comment, cards } of after) {
+    const box = frame(comment);
+    if (Object.values(box).some((value) => value % GRID_SIZE !== 0)) {
+      problems.push(`${comment.id} off the grid`);
+    }
+    for (const card of before.get(comment.id) ?? []) {
+      if (!cards.has(card)) {
+        problems.push(`${comment.id} lost ${card}`);
+      }
+    }
+    for (const node of Object.values(arranged.nodes)) {
+      const width = node.type === ROUTE_TYPE ? ROUTE_GEOMETRY.width : measure(node.id).width;
+      const height = node.type === ROUTE_TYPE ? GRID_SIZE : measure(node.id).height;
+      const overlaps =
+        node.position.x < box.right &&
+        box.left < node.position.x + width &&
+        node.position.y < box.bottom &&
+        box.top < node.position.y + height;
+      if (cards.has(node.id)) {
+        if (
+          node.position.x < box.left + padding ||
+          node.position.x + width > box.right - padding ||
+          node.position.y < box.top + padding + GRID_SIZE ||
+          node.position.y + height > box.bottom - padding
+        ) {
+          problems.push(`${node.id} not padded inside ${comment.id}`);
+        }
+      } else if (node.type !== ROUTE_TYPE && overlaps) {
+        problems.push(`${node.id} overlaps ${comment.id}, which does not hold it`);
+      }
+    }
+  }
+  for (const first of after) {
+    for (const second of after) {
+      const a = frame(first.comment);
+      const b = frame(second.comment);
+      const crossing = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      const inside =
+        b.left <= a.left && a.right <= b.right && b.top <= a.top && a.bottom <= b.bottom;
+      const holds =
+        a.left <= b.left && b.right <= a.right && a.top <= b.top && b.bottom <= a.bottom;
+      if (first !== second && crossing && !inside && !holds) {
+        problems.push(`${first.comment.id} crosses ${second.comment.id}`);
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * `graph` arranged, with comments laid over parts of it: a wide one, one nested in it, one beside
+ * it, and one holding no card.
+ */
+function commented(graph: EditorGraph, kind: GraphKind): EditorGraph {
+  const plain = arrange(graph, kind);
+  const measure = syntheticMetrics(graph, kind);
+  const cards = Object.values(plain.nodes).filter((node) => node.type !== ROUTE_TYPE);
+  const left = Math.min(...cards.map((node) => node.position.x));
+  const top = Math.min(...cards.map((node) => node.position.y));
+  const right = Math.max(...cards.map((node) => node.position.x + measure(node.id).width));
+  const bottom = Math.max(...cards.map((node) => node.position.y + measure(node.id).height));
+  const region = (id: string, x0: number, y0: number, x1: number, y1: number): GraphComment => ({
+    id,
+    text: id,
+    position: { x: left + (right - left) * x0, y: top + (bottom - top) * y0 },
+    size: { width: (right - left) * (x1 - x0), height: (bottom - top) * (y1 - y0) },
+  });
+  return {
+    ...plain,
+    comments: [
+      region("comment_wide", 0.2, 0, 0.65, 0.6),
+      region("comment_nested", 0.25, 0.05, 0.45, 0.35),
+      region("comment_beside", 0.65, 0.5, 1, 1),
+      region("comment_empty", 3, 3, 3.5, 3.5),
+    ],
+  };
+}
+
+describe("arrangeGraph with comments, over the bundled presets", () => {
+  it.each(presetGraphs.filter(({ graph }) => Object.keys(graph.nodes).length >= 8))(
+    "$name",
+    ({ graph, kind }) => {
+      const before = commented(graph, kind);
+      const arranged = arrange(before, kind);
+      const measure = syntheticMetrics(graph, kind);
+      expect(serializeGraph(arranged, kind)).toEqual(serializeGraph(graph, kind));
+      expect(layoutProblems(arranged, kind, measure)).toEqual([]);
+      expect(commentProblems(before, arranged, measure)).toEqual([]);
+      expect(arranged.comments.map((comment) => comment.id)).not.toContain("comment_empty");
+      const twice = arrange(arranged, kind);
+      expect(serializeGraph(twice, kind)).toEqual(serializeGraph(graph, kind));
+      expect(layoutProblems(twice, kind, measure)).toEqual([]);
+      expect(commentProblems(arranged, twice, measure)).toEqual([]);
+    },
+    PRESET_ARRANGE_TIMEOUT_MS,
+  );
+});
+
 describe("arrangeActiveGraph", () => {
-  it("is one undo step that also drops the comments", () => {
+  it("is one undo step that also drops a comment holding no card", () => {
     const store = new Store(createInitialState());
     const curve = addCatalogNode(store, "renderGraph", "life-ratio", { x: 0, y: 0 })!;
     const remap = addCatalogNode(store, "renderGraph", "remap", { x: 0, y: 0 })!;
@@ -321,7 +467,7 @@ describe("arrangeActiveGraph", () => {
       { nodeId: curve, socketKey: "out" },
       { nodeId: remap, socketKey: "value" },
     );
-    addComment(store, "renderGraph", { x: 0, y: 0 }, { width: 240, height: 120 });
+    addComment(store, "renderGraph", { x: -9600, y: -9600 }, { width: 240, height: 120 });
     const before = store.getSource();
 
     const graph = before.scene.emitters[0].renderGraph;
@@ -329,6 +475,7 @@ describe("arrangeActiveGraph", () => {
       grid: GRID_SIZE,
       route: ROUTE_GEOMETRY,
       measure: syntheticMetrics(graph, GraphKind.Render),
+      commentHeader: () => GRID_SIZE,
     });
     const after = store.getSource().scene.emitters[0].renderGraph;
     expect(after.comments).toEqual([]);

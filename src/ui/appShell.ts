@@ -13,7 +13,7 @@ import { EditorPanel } from "./focus/panelFocus";
 import { graphModeFor, GraphViewState } from "./graphViewState";
 import { createWorkspace } from "./layout/panelLayout";
 import { createMiddlebar } from "./middlebar";
-import { createGraphPanel } from "./panels/graphPanel";
+import { createGraphPanel, type ShownGraph } from "./panels/graphPanel";
 import { createOverdrawLegend } from "./panels/overdrawLegend";
 import { createPreviewPanel } from "./panels/previewPanel";
 import { createTimelinePanel } from "./panels/timelinePanel";
@@ -35,8 +35,8 @@ export interface ApplicationShell {
   /** Opens the Content screen (assets + import/export). The global keymap (in main.ts) binds it
    *  to Ctrl+Space, alongside the middlebar's own Content button. */
   readonly openAssets: () => void;
-  /** Shows the active owner's graph `name` and auto-arranges it (the graph's Arrange button). */
-  readonly arrangeGraph: (name: GraphName) => void;
+  /** Shows the active owner's graph `name`. */
+  readonly showGraph: (name: GraphName) => ShownGraph;
 }
 
 export function mountApplicationShell(root: HTMLElement, context: EditorContext): ApplicationShell {
@@ -103,6 +103,6 @@ export function mountApplicationShell(root: HTMLElement, context: EditorContext)
     reportOverdraw: stats.reportOverdraw,
     toggleTransformPanel: () => transformPanel.toggle(),
     openAssets: assets.open,
-    arrangeGraph: (name) => graphPanel.arrange(graphModeFor(name)),
+    showGraph: (name) => graphPanel.show(graphModeFor(name)),
   };
 }

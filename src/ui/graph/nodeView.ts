@@ -14,8 +14,7 @@ import type { AssetPickerOption } from "../components/assetPicker";
 import type { PaletteAccess } from "../components/colorPicker";
 import { attachTooltip } from "../components/tooltip";
 import { createElement } from "../dom";
-import { clamp } from "../primitives/math";
-import { GRID_SIZE } from "./grid";
+import { snappedCardWidth } from "./cardWidth";
 import { buildAssetRow } from "./nodeAssetRow";
 import {
   type AttributeNodeConfig,
@@ -33,10 +32,7 @@ import {
   COL_IN_LABEL,
   COL_OUT_DOT,
   COL_OUT_LABEL,
-  MAX_NODE_CELLS,
-  MIN_NODE_CELLS,
   mountBody,
-  NODE_WIDTH_CLIP_GUARD,
   type NodeRow,
 } from "./nodeGrid";
 import { buildHelpIcon } from "./nodeHelpIcon";
@@ -349,10 +345,9 @@ export class NodeView {
   }
 
   /**
-   * Sizes the card to its content and snaps the width up to a whole number of grid cells.
-   * Must run after the element is in the DOM (it measures `offsetWidth`); the canvas calls it
-   * right after mounting the node. The first paint can measure with fallback-font metrics (the
-   * web font loads async), so it re-snaps once fonts are ready - guarded for environments
+   * Sizes the card to its content in whole grid cells (`cardWidth.ts`). Must run after the element
+   * is in the DOM; the canvas calls it right after mounting the node. Text in a fallback font can
+   * be wider than the web font's, so it re-sizes once fonts are ready - guarded for environments
    * (tests) without the Font Loading API.
    */
   public finalizeSize(): void {
@@ -425,23 +420,14 @@ export class NodeView {
   }
 
   /**
-   * Measures the natural (content) width under `max-content` and pins the card to the next
-   * whole number of grid cells, clamped to `[MIN_NODE_CELLS, MAX_NODE_CELLS]`. A zero measure
-   * (an inactive/hidden panel, or a detached card) is left on the CSS `max-content` fallback
-   * so a bad size is never committed; a later call re-snaps once the card can be measured.
+   * Pins the card to its grid width. A card that cannot be measured yet (a hidden panel, or
+   * detached) keeps its width, the CSS `max-content` before the first pin; a later call pins it.
    */
   private snapWidth(): void {
-    this.element.style.width = "max-content";
-    const natural = this.element.offsetWidth;
-    if (natural === 0) {
-      return;
+    const width = snappedCardWidth(this.element);
+    if (width !== undefined) {
+      this.element.style.width = `${width}px`;
     }
-    const cells = clamp(
-      Math.ceil((natural + NODE_WIDTH_CLIP_GUARD) / GRID_SIZE),
-      MIN_NODE_CELLS,
-      MAX_NODE_CELLS,
-    );
-    this.element.style.width = `${cells * GRID_SIZE}px`;
   }
 
   /**

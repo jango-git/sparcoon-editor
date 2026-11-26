@@ -94,15 +94,27 @@ describe("standard-tier behavior kernel", () => {
     expect(body.join("\n")).toContain("gl_VertexID");
   });
 
-  it("resolves PARTICLE_AGE to a swizzle of the native lifecycle attribute", () => {
+  it("resolves PARTICLE_AGE to a swizzle of the native lifecycle attribute in update", () => {
     const graph = singleNodeBehaviorGraph(
       behaviorRegistry().create("read-state", { builtin: "PARTICLE_AGE" }),
+      "positionX",
+      FXBehaviorPhase.UPDATE,
+    );
+    const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets());
+    expect(compiled.update.body.join("\n")).toContain("in_lifecycle.x");
+  });
+
+  it("resolves a spawn phase's slot reads to the newborn's slot, not the slot's previous particle", () => {
+    const graph = singleNodeBehaviorGraph(
+      behaviorRegistry().create("read-state", { builtin: "PARTICLE_ID" }),
       "lifetime",
       FXBehaviorPhase.SPAWN,
     );
-    const compiled = compileBehaviorStandard(graph, buildParticleBehaviorTargets());
-    // PARTICLE_AGE (offset 0 of the 2-wide lifecycle buffer) swizzles off the native attribute.
-    expect(compiled.spawn!.body.join("\n")).toContain("in_lifecycle.x");
+    const body = compileBehaviorStandard(graph, buildParticleBehaviorTargets()).spawn!.body.join(
+      "\n",
+    );
+    expect(body).toContain("fx_newborn_lifecycle.z");
+    expect(body).not.toContain("in_lifecycle");
   });
 
   it("throws a clean, catchable build-time error for a JS-only function - never broken GLSL", () => {

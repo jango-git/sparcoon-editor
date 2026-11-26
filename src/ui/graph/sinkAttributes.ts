@@ -28,7 +28,6 @@ function typeSelect(
     onChange: (next): void => onChange(next as AttributeTypeName),
     scale,
   });
-  dropdown.element.classList.add("attr__type");
   return dropdown.element;
 }
 

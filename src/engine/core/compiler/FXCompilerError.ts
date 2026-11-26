@@ -152,9 +152,10 @@ export type FXCompilerErrorCode =
   | "ribbon-with-sort"
   | "sort-without-particles"
   | "emitter-draws-nothing"
-  // Ribbon warnings: births that do not follow one another (bursts, reactions), and a Head with
-  // no play to show it.
+  // Ribbon warnings: births that do not follow one another (bursts, reactions), spawns that are not
+  // whole sections, and a Head with no play to show it.
   | "ribbon-interleaved-births"
+  | "ribbon-section-misaligned"
   | "ribbon-head-without-play"
   // Depth Fade in a graph whose render mode writes depth; warning for Depth Sample on a CPU
   // emitter.

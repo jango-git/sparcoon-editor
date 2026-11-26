@@ -105,6 +105,11 @@ export interface FXKernelTarget {
   /** What the newborns inherit, its values read by the inputs with an `inheritOffset`; absent
    *  when nothing. Spawn targets only. */
   readonly inherit?: FXInheritPlan;
+  /**
+   * A spawn target: its slot reads see the newborn's slot as the runtime hands it over - zero but
+   * for the particle's birth age and id - not the state of the slot's previous particle.
+   */
+  readonly birth?: boolean;
 }
 
 /**
@@ -372,6 +377,7 @@ export function buildParticleBehaviorTargets(
       ...inheritInputs(inheritPlan),
     ],
     outputs: [...writeOutputs(true), ...attributeSlotEntries],
+    birth: true,
     ...(inheritPlan.layout.stride === 0 ? {} : { inherit: inheritPlan }),
   };
   const update: FXKernelTarget = {

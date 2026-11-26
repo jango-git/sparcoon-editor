@@ -13,7 +13,6 @@ import {
   type MeshAsset,
   STUDIO_SCENE_NAME,
   type TextureAsset,
-  VOID_SCENE_NAME,
   type VolumeAsset,
 } from "../model/editorState";
 import {
@@ -119,7 +118,7 @@ export function environmentRows(store: Store, onThumbnailReady: () => void): rea
   });
 }
 
-/** The built-in scenes, then the uploaded ones. `users` is 1 for the document's active scene. */
+/** The built-in scene, then the uploaded ones. `users` is 1 for the document's active scene. */
 export function sceneRows(store: Store): readonly AssetRow[] {
   const activeSceneName = store.getSource().activeSceneName;
   const activity = (name: string): Pick<AssetRow, "users" | "usersTooltip"> =>
@@ -135,7 +134,6 @@ export function sceneRows(store: Store): readonly AssetRow[] {
   });
   return [
     builtIn(STUDIO_SCENE_NAME, t("preview.sceneStudio"), t("content.sceneStudioTip")),
-    builtIn(VOID_SCENE_NAME, t("preview.sceneVoid"), t("content.sceneVoidTip")),
     ...selectSceneAssets(store).map((asset): AssetRow => ({
       name: asset.name,
       label: asset.label,

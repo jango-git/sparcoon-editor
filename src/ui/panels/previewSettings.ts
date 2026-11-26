@@ -6,7 +6,7 @@
 
 import { t } from "../../i18n";
 import { setActiveEnvironment, setActiveScene } from "../../model/commands";
-import { STUDIO_SCENE_NAME, VOID_SCENE_NAME } from "../../model/editorState";
+import { STUDIO_SCENE_NAME } from "../../model/editorState";
 import { selectEnvironmentAssets, selectSceneAssets } from "../../model/selectors";
 import type { Store } from "../../model/store";
 import { environmentThumbnails } from "../../render/assetThumbnails";
@@ -404,13 +404,12 @@ function presetRow(store: Store): HTMLElement {
 }
 
 /**
- * The active-scene picker: the built-in studio and void, then the scene library. `options` is
+ * The active-scene picker: the built-in studio, then the scene library. `options` is
  * mutated in place because AssetPicker reads it on each open.
  */
 function sceneRow(store: Store): HTMLElement {
   const builtIn: readonly AssetPickerOption[] = [
     { name: STUDIO_SCENE_NAME, label: t("preview.sceneStudio"), glyph: assetIcons.scene },
-    { name: VOID_SCENE_NAME, label: t("preview.sceneVoid"), glyph: assetIcons.scene },
   ];
   const options: AssetPickerOption[] = [];
   const populateOptions = (): void => {

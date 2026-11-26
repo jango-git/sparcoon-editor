@@ -98,6 +98,15 @@ export function glslBufferAttributeName(bufferName: string): string {
   return `in_${bufferName}`;
 }
 
+/**
+ * The local a spawn target's slot reads resolve to instead of the `in` attribute, which holds the
+ * slot's previous particle: the newborn's own slot, which the fused program's birth branch
+ * declares ahead of the spawn body (`FXKernelBuildStandard`).
+ */
+export function glslNewbornSlotName(bufferName: string): string {
+  return `fx_newborn_${bufferName}`;
+}
+
 /** The newborn's age and the model matrix as of its birth: locals the fused program's birth branch
  *  declares ahead of the spawn body (`FXKernelBuildStandard`), what an at-birth model-matrix read
  *  resolves to. */
@@ -640,7 +649,8 @@ function resolveTargetInputStandard(target: FXKernelTarget, name: string): strin
     throw new Error(`resolveTargetInputStandard: input "${name}" has no state offset`);
   }
   const bufferName = input.buffer ?? BUILTIN_BUFFER;
-  const attributeName = glslBufferAttributeName(bufferName);
+  const attributeName =
+    target.birth === true ? glslNewbornSlotName(bufferName) : glslBufferAttributeName(bufferName);
   if (input.offsets.length > 1) {
     // A whole-vector read; offsets exactly cover the buffer's stride.
     return attributeName;

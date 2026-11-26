@@ -1,6 +1,11 @@
 /** Comments never compile, so every edit commits "view". */
 
 import type { EditorGraph, GraphComment, GraphPosition, GraphSize } from "../../domain/graphModel";
+import {
+  type CommentMembers,
+  type GatherGeometry,
+  gatherIntoComment,
+} from "../../domain/layout/commentGather";
 import type { Store } from "../store";
 import { type GraphSlot, withGraph } from "./graphAccess.Internal";
 import { nextIdentifier } from "./identifier";
@@ -95,4 +100,23 @@ export function removeComment(store: Store, slot: GraphSlot, id: string): void {
     comments: comments(graph).filter((comment) => comment.id !== id),
   }));
   store.commit(next, "view");
+}
+
+/**
+ * Gathers nodes and comments of the active graph into a new comment (`commentGather.ts`). One
+ * commit; returns the comment's id.
+ */
+export function gatherIntoNewComment(
+  store: Store,
+  slot: GraphSlot,
+  text: string,
+  members: CommentMembers,
+  geometry: GatherGeometry,
+): string {
+  const id = nextIdentifier("comment");
+  const next = withGraph(store.getSource(), slot, (graph) =>
+    gatherIntoComment(graph, members, { id, text }, geometry),
+  );
+  store.commit(next, "view");
+  return id;
 }

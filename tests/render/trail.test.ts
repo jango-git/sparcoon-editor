@@ -48,6 +48,7 @@ import { unwrapProject } from "../../src/persistence/projectEnvelope";
 import { EmitterStrip } from "../../src/render/emitterStrip.Internal";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
+import { runtimePrivate } from "../helpers/runtimeInternals";
 import { createTestState } from "../helpers/testDocument";
 
 function setup(): { store: Store; emitters: SceneEmitters; emitterId: string } {
@@ -69,19 +70,21 @@ function runtimeEmitter(emitters: SceneEmitters, id: string): FXEmitter {
 }
 
 function trailMaterial(emitter: FXEmitter): ShaderMaterial {
-  const trail = (emitter as unknown as { strips: { strips: { trail: { mesh: Mesh } } } }).strips
-    .strips.trail;
-  return trail.mesh.material as ShaderMaterial;
+  const strips = runtimePrivate<{ trail: { mesh: Mesh } }>(
+    runtimePrivate(emitter, "strips"),
+    "strips",
+  );
+  return strips.trail.mesh.material as ShaderMaterial;
 }
 
 /** The runtime emitter's particle material. */
 function particleMaterial(emitter: FXEmitter): ShaderMaterial {
-  return (emitter as unknown as { mesh: Mesh }).mesh.material as ShaderMaterial;
+  return runtimePrivate<Mesh>(emitter, "mesh").material as ShaderMaterial;
 }
 
 /** The runtime emitter's trail object (replaced by every trail swap), or `undefined`. */
 function runtimeTrail(emitter: FXEmitter): unknown {
-  return (emitter as unknown as { strips: { strips: { trail: unknown } } }).strips.strips.trail;
+  return runtimePrivate<{ trail: unknown }>(runtimePrivate(emitter, "strips"), "strips").trail;
 }
 
 /** Wires `nodeId`'s `out` into the trail sink's ribbon `width`. */

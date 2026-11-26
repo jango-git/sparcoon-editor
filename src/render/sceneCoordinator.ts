@@ -60,6 +60,13 @@ function createSceneRenderer(
   }
 }
 
+/** The viewport camera's place: its position, the point it orbits and looks at, its vertical fov. */
+export interface ViewportView {
+  readonly position: [number, number, number];
+  readonly target: [number, number, number];
+  readonly fov: number;
+}
+
 /** Where an offscreen shot is taken from and at what size; the viewport camera is left alone. */
 export interface CaptureShot {
   readonly size?: { readonly width: number; readonly height: number };
@@ -258,6 +265,33 @@ export class SceneCoordinator {
    */
   public setTouchpad(enabled: boolean): void {
     this.touchpad = enabled;
+  }
+
+  /** The viewport camera: where it is, the point it orbits and looks at, its vertical fov in degrees. */
+  public getView(): ViewportView {
+    return {
+      position: this.camera.position.toArray(),
+      target: this.controls.target.toArray(),
+      fov: this.camera.fov,
+    };
+  }
+
+  /**
+   * Places the viewport camera at `position`, orbiting and looking at `target`, held to the orbit's
+   * distance and height limits. The vertical `fov` (degrees) changes only when given.
+   */
+  public setView(view: {
+    readonly position: Vector3;
+    readonly target: Vector3;
+    readonly fov?: number;
+  }): void {
+    this.controls.target.copy(view.target);
+    this.camera.position.copy(view.position);
+    if (view.fov !== undefined) {
+      this.camera.fov = view.fov;
+      this.camera.updateProjectionMatrix();
+    }
+    this.controls.update();
   }
 
   /**

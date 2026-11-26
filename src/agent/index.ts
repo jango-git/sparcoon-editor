@@ -9,7 +9,7 @@
  * - Top-level edits (`scene`, `graph(...)`, `timeline`) are one undo step each;
  *   `edit((transaction) => ...)` makes a whole body one step, all or nothing.
  * - A graph edit makes that graph's owner the active one, like a click on it in the editor.
- * - `arrange()` lays a graph out from its cards on the live canvas, so it shows that graph.
+ * - `arrange()` and `comment()` measure a graph's cards on the live canvas, so they show that graph.
  * - Reads are synchronous, except `status()`, `preview.capture*()`, `assets.add()`,
  *   `assets.bakeVolume()` and the `project` loads - those wait for the editor (a recompute, a
  *   decode, a bake, a fetch) and return a Promise to await.
@@ -18,18 +18,17 @@
 import type { Object3D } from "three";
 
 import type { SceneEntity } from "../model/entity";
-import type { GraphName } from "../model/graphSlots";
 import type { Store } from "../model/store";
 import type { TransportStore } from "../model/transport";
 import type { SceneCoordinator } from "../render/sceneCoordinator";
 import type { GizmoSettingsStore } from "../settings/gizmoSettings";
 import type { PreviewSettingsStore } from "../settings/previewSettings";
-import { arrangeOwnerGraph } from "./arrange.Internal";
 import { type AssetsApi, createAssetsApi } from "./assets";
 import { type CatalogApi, createCatalogApi } from "./catalog";
 import { createEditApi, type EditApi } from "./editApi";
 import { createPreviewApi, type PreviewApi } from "./preview";
 import { createProjectApi, type ProjectApi } from "./project";
+import { arrangeOwnerGraph, commentOwnerGraph, type ShowGraph } from "./shownGraph.Internal";
 import { readStatus } from "./status.Internal";
 import { liveSession, runTransaction, stagedSession } from "./transaction.Internal";
 import type { StatusView } from "./views";
@@ -37,7 +36,7 @@ import type { StatusView } from "./views";
 export { AgentError, type AgentErrorCode } from "./errors";
 
 /** Bumped on a breaking change to this surface. */
-const AGENT_API_VERSION = 3;
+const AGENT_API_VERSION = 4;
 
 export interface SparcoonAgentApi extends EditApi {
   readonly version: number;
@@ -59,11 +58,25 @@ export interface SparcoonAgentApi extends EditApi {
   status(ownerId?: string): Promise<StatusView>;
   /**
    * Auto-arranges `ownerId`'s `graph`, as the graph's Arrange button does: columns from inputs to
-   * the sinks, every wire at right angles (routes rebuilt), comments dropped. One undo step. It
+   * the sinks, every wire at right angles (routes rebuilt), each comment laid out as one block round
+   * the cards it holds and a comment holding none dropped. One undo step. It
    * lays the graph out from its cards as drawn, so the editor shows that graph afterwards; not
    * available inside `edit()`.
    */
   arrange(ownerId: string, graph: string): void;
+  /**
+   * Gathers `members` of `ownerId`'s `graph` into a new comment headed `text` and returns its id.
+   * They move below the rest of the graph, side by side, and the comment is framed round them, so
+   * it holds exactly them; `arrange()` then lays them out. A comment among them moves with what it
+   * holds, so comments nest. One undo step. It shows the graph, as `arrange()` does; not available
+   * inside `edit()`.
+   */
+  comment(
+    ownerId: string,
+    graph: string,
+    text: string,
+    members: { readonly nodes?: readonly string[]; readonly comments?: readonly string[] },
+  ): string;
 }
 
 export interface AgentApiDependencies {
@@ -71,13 +84,16 @@ export interface AgentApiDependencies {
   readonly transport: TransportStore;
   readonly previewSettings: PreviewSettingsStore;
   readonly gizmoSettings: GizmoSettingsStore;
-  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture" | "measureOverdraw">;
+  readonly coordinator: Pick<
+    SceneCoordinator,
+    "advance" | "capture" | "measureOverdraw" | "getView" | "setView"
+  >;
   /** Frames an entity in the viewport (the preview's `F`). */
   readonly focusEntity: (entity: SceneEntity) => void;
   /** The live viewport object of an entity, for framing a capture on it and counting it alone. */
   readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
-  /** Shows the active owner's graph `name` and auto-arranges it (the graph's Arrange button). */
-  readonly arrangeGraph: (name: GraphName) => void;
+  /** Shows the active owner's graph `name` on the canvas. */
+  readonly showGraph: ShowGraph;
 }
 
 declare global {
@@ -87,7 +103,7 @@ declare global {
 }
 
 export function createAgentApi(dependencies: AgentApiDependencies): SparcoonAgentApi {
-  const { store, transport, coordinator, focusEntity, entityObject, arrangeGraph } = dependencies;
+  const { store, transport, coordinator, focusEntity, entityObject, showGraph } = dependencies;
   return {
     version: AGENT_API_VERSION,
     ...createEditApi(liveSession(store)),
@@ -107,7 +123,9 @@ export function createAgentApi(dependencies: AgentApiDependencies): SparcoonAgen
       return available;
     },
     status: (ownerId) => readStatus(store, ownerId),
-    arrange: (ownerId, graph) => arrangeOwnerGraph(store, arrangeGraph, ownerId, graph),
+    arrange: (ownerId, graph) => arrangeOwnerGraph(store, showGraph, ownerId, graph),
+    comment: (ownerId, graph, text, members) =>
+      commentOwnerGraph(store, showGraph, ownerId, graph, text, members),
   };
 }
 

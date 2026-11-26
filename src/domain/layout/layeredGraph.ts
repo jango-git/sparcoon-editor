@@ -1,17 +1,13 @@
 /**
- * Layered view for the auto-layout. Every real node sits in a column (layer) by its longest path to
- * the sinks, which take layer 0, the rightmost column. Every wire is a signal (one source socket
- * with all the inputs it feeds) occupying one placeholder row (a dummy) in each column it crosses,
- * so a wire never runs through a card. Routes are spliced out, the layout rebuilds them.
+ * Layered view for the auto-layout. Every item (a card, a comment's block or a block's port) sits
+ * in a column (layer) by its longest path to the sinks, which take layer 0, the rightmost column.
+ * Every wire is a signal (one source socket with all the inputs it feeds) occupying one
+ * placeholder row (a dummy) in each column it crosses, so a wire never runs through an item.
  *
  * Entities carry a mutable `y` (top edge), written by row placement and read by channel routing.
  */
 
-import { isFakeNodeType, ROUTE_TYPE } from "../fakeNodes";
-import { bindingSinkId } from "../graphEdges";
-import type { EditorGraph, GraphOutputBinding, GraphSocketReference } from "../graphModel";
-import type { GraphKind } from "../nodePalette";
-import { isSink } from "../sinks";
+import type { GraphSocketReference } from "../graphModel";
 
 /** A card's measured geometry: its box and each socket dot's centre height from its top edge. */
 export interface NodeMetrics {
@@ -19,6 +15,16 @@ export interface NodeMetrics {
   readonly height: number;
   readonly inputRows: Readonly<Record<string, number>>;
   readonly outputRows: Readonly<Record<string, number>>;
+}
+
+/** One box the layout places, with its geometry. */
+export interface LayoutItem {
+  readonly id: string;
+  readonly metrics: NodeMetrics;
+  /** Top edge before the layout: it orders the sinks. */
+  readonly y: number;
+  /** A fixed layer: `"sink"` the rightmost, `"inlet"` left of every other item. */
+  readonly pin: "sink" | "inlet" | undefined;
 }
 
 /** A real node or a signal's placeholder row in one layer. */
@@ -39,12 +45,10 @@ export interface LayoutEntity {
   readonly outputRow: (socketKey: string) => number;
 }
 
-/** One authored edge (a connection, or a binding into a sink), with routes spliced out. */
+/** A wire between two items' sockets. */
 export interface LayoutEdge {
   readonly from: GraphSocketReference;
   readonly to: GraphSocketReference;
-  /** Set when the edge is an output binding: the layout re-points its `from`. */
-  readonly binding: GraphOutputBinding | undefined;
 }
 
 /** A source socket and every input it feeds. */
@@ -72,7 +76,7 @@ export interface LayoutLink {
 export interface LayeredGraph {
   /** Entities by layer, index 0 the sinks' (rightmost) column. */
   readonly layers: readonly LayoutEntity[][];
-  /** Every authored edge, in document order (connections, then bindings). */
+  /** Every edge, in the order given. */
   readonly edges: readonly LayoutEdge[];
   readonly signals: readonly LayoutSignal[];
   readonly links: readonly LayoutLink[];
@@ -85,37 +89,37 @@ const NODE_WEIGHT = 1;
 const DUMMY_WEIGHT = 0.6;
 
 export function buildLayeredGraph(
-  graph: EditorGraph,
-  kind: GraphKind,
-  measure: (nodeId: string) => NodeMetrics,
+  items: readonly LayoutItem[],
+  edges: readonly LayoutEdge[],
   grid: number,
 ): LayeredGraph {
-  const nodes = Object.values(graph.nodes).filter((node) => !isFakeNodeType(node.type));
-  const edges = authoredEdges(graph, kind).filter(
-    (edge) => edge.from.nodeId in graph.nodes && edge.to.nodeId in graph.nodes,
-  );
-
-  const targets = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const targets = new Map<string, string[]>(items.map((item) => [item.id, []]));
   for (const edge of edges) {
     targets.get(edge.from.nodeId)?.push(edge.to.nodeId);
   }
-  const layerOf = longestPathLayers(
-    nodes.map((node) => node.id),
+  const pathLayer = longestPathLayers(
+    items.map((item) => item.id),
     (id) => targets.get(id) ?? [],
-    (id) => isSink(graph.nodes[id]),
+    (id) => byId.get(id)?.pin === "sink",
   );
+  const inletLayer =
+    1 +
+    Math.max(0, ...items.filter((item) => item.pin !== "inlet").map((item) => pathLayer(item.id)));
+  const layerOf = (id: string): number =>
+    byId.get(id)?.pin === "inlet" ? inletLayer : pathLayer(id);
 
   const entities = new Map<string, LayoutEntity>();
-  for (const node of nodes) {
-    const metrics = measure(node.id);
-    entities.set(node.id, {
-      id: node.id,
-      layer: layerOf(node.id),
+  for (const item of items) {
+    const { metrics } = item;
+    entities.set(item.id, {
+      id: item.id,
+      layer: layerOf(item.id),
       width: metrics.width,
       height: Math.ceil(metrics.height / grid) * grid,
       signal: undefined,
       weight: NODE_WEIGHT,
-      y: node.position.y,
+      y: item.y,
       inputRow: (socketKey) => Math.round(metrics.inputRows[socketKey] ?? grid * 1.5),
       outputRow: (socketKey) => Math.round(metrics.outputRows[socketKey] ?? grid * 1.5),
     });
@@ -123,7 +127,7 @@ export function buildLayeredGraph(
   const entityOf = (nodeId: string): LayoutEntity => {
     const entity = entities.get(nodeId);
     if (entity === undefined) {
-      throw new Error(`Layout: no node "${nodeId}"`);
+      throw new Error(`Layout: no item "${nodeId}"`);
     }
     return entity;
   };
@@ -192,47 +196,6 @@ export function buildLayeredGraph(
     incoming.get(link.to.entity)?.push(link);
   }
   return { layers, edges, signals, links, outgoing, incoming };
-}
-
-/** Every connection and output binding, each traced back through routes to its real source. */
-function authoredEdges(graph: EditorGraph, kind: GraphKind): LayoutEdge[] {
-  const isRoute = (nodeId: string): boolean => graph.nodes[nodeId]?.type === ROUTE_TYPE;
-  const routeFeed = new Map<string, GraphSocketReference>();
-  for (const connection of graph.connections) {
-    if (isRoute(connection.to.nodeId)) {
-      routeFeed.set(connection.to.nodeId, connection.from);
-    }
-  }
-  const origin = (reference: GraphSocketReference): GraphSocketReference | undefined => {
-    let current: GraphSocketReference | undefined = reference;
-    const seen = new Set<string>();
-    while (current !== undefined && isRoute(current.nodeId)) {
-      if (seen.has(current.nodeId)) {
-        return undefined;
-      }
-      seen.add(current.nodeId);
-      current = routeFeed.get(current.nodeId);
-    }
-    return current;
-  };
-  const edges: LayoutEdge[] = [];
-  for (const connection of graph.connections) {
-    const from = origin(connection.from);
-    if (from !== undefined && !isRoute(connection.to.nodeId)) {
-      edges.push({ from, to: connection.to, binding: undefined });
-    }
-  }
-  for (const binding of graph.outputBindings) {
-    const from = origin(binding.from);
-    if (from !== undefined) {
-      edges.push({
-        from,
-        to: { nodeId: bindingSinkId(kind, binding), socketKey: binding.slot },
-        binding,
-      });
-    }
-  }
-  return edges;
 }
 
 /** Sinks take layer 0; any other node one more than its farthest-out target (1 with none). */

@@ -15,19 +15,32 @@ import {
   assembleGpuKernelArtifact,
 } from "../../src/engine/emit/assembleArtifacts";
 import { unlitArtifact } from "../helpers/artifacts";
-import { bind, graphOf } from "../helpers/graphBuild";
+import { bind, edge, graphOf } from "../helpers/graphBuild";
 import { fullBehaviorRegistry } from "../helpers/stdRegistry";
 
 const reg = fullBehaviorRegistry();
 
-/** A graph spawning each particle at the random-mesh-point `output` (position or normal). */
-function graphPlacingAt(output: "position" | "normal", mesh = "rock") {
+/**
+ * A graph spawning each particle at the random-mesh-point `output` (position or normal), seeded
+ * with `seed` (a constant vec3) when given, else with each particle's own.
+ */
+function graphPlacingAt(
+  output: "position" | "normal",
+  mesh = "rock",
+  seed?: { value: readonly number[]; salt: number },
+) {
   return graphOf(
     {
-      mesh: reg.create("random-mesh-point", { mesh }),
+      mesh: reg.create("random-mesh-point", {
+        mesh,
+        ...(seed !== undefined && { salt: seed.salt }),
+      }),
       life: reg.create("lifetime", { min: 5, max: 5 }),
+      ...(seed !== undefined && {
+        seed: reg.create("constant", { type: "vec3", value: [...seed.value] }),
+      }),
     },
-    [],
+    seed !== undefined ? [edge("seed", "out", "mesh", "seed")] : [],
     [bind("position", "mesh", output, "spawn"), bind("lifetime", "life", "value", "spawn")],
   );
 }
@@ -54,11 +67,13 @@ function rock(): BufferGeometry {
 }
 
 /** Where `count` newborns land on the CPU, read through the behavior's spawn as it runs. */
-function spawnedPositions(output: "position" | "normal", count: number): number[][] {
-  const { kernel } = compileBehaviorBundle(
-    graphPlacingAt(output),
-    particleBehaviorTargetsFor(graphPlacingAt(output)),
-  );
+function spawnedPositions(
+  output: "position" | "normal",
+  count: number,
+  seed?: { value: readonly number[]; salt: number },
+): number[][] {
+  const graph = graphPlacingAt(output, "rock", seed);
+  const { kernel } = compileBehaviorBundle(graph, particleBehaviorTargetsFor(graph));
   const behavior = assembleBehaviorArtifact(kernel);
   const stride = behavior.buffers.reduce((sum, buffer) => sum + buffer.stride, 0);
   let offset = 0;
@@ -108,6 +123,16 @@ describe("random-mesh-point", () => {
     }
     expect(onLarge / positions.length).toBeGreaterThan(0.87);
     expect(onLarge / positions.length).toBeLessThan(0.93);
+  });
+
+  it("puts every particle of one seed and salt at one point, and another salt elsewhere", () => {
+    const seed = { value: [3, 1, 4], salt: 0 };
+    const first = spawnedPositions("position", 20, seed);
+    for (const position of first) {
+      expect(position).toEqual(first[0]);
+    }
+    expect(spawnedPositions("position", 1, seed)[0]).toEqual(first[0]);
+    expect(spawnedPositions("position", 1, { ...seed, salt: 1 })[0]).not.toEqual(first[0]);
   });
 
   it("gives the normalized normal there", () => {

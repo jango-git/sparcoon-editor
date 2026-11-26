@@ -17,6 +17,7 @@ import type { FXRenderNode } from "../../src/engine/render/FXRenderNode";
 import { buildParticleTarget } from "../../src/engine/render/target/FXParticleRenderTarget";
 import { attributeSlot, readAttr, storeAttr } from "./attr";
 import { edge } from "./graphBuild";
+import { runtimePrivate } from "./runtimeInternals";
 import { type FieldBuffers, slotOf, splitFields } from "./slots";
 import { behaviorRegistry, renderRegistry } from "./stdRegistry";
 
@@ -89,7 +90,7 @@ interface ParticleMesh {
 }
 
 function particleY(emitter: FXEmitter): number | undefined {
-  const { slot, slots } = (emitter as unknown as { mesh: ParticleMesh }).mesh;
+  const { slot, slots } = runtimePrivate<ParticleMesh>(emitter, "mesh");
   const position = slot.fields.find((field) => field.name === "position");
   return position === undefined ? undefined : slots[position.offset + FX_POSITION_Y];
 }

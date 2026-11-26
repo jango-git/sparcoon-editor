@@ -20,10 +20,13 @@ export function targetRow(link: LayoutLink): number {
   return link.to.entity.y + link.to.entity.inputRow(link.to.socketKey);
 }
 
+/** The gap kept between two entities stacked in a layer: none between two placeholders. */
+function gapBetween(upper: LayoutEntity, lower: LayoutEntity, grid: number): number {
+  return upper.signal !== undefined && lower.signal !== undefined ? 0 : grid;
+}
+
 export function placeRows(layered: LayeredGraph, grid: number): void {
   const { layers, outgoing, incoming } = layered;
-  const gapBetween = (upper: LayoutEntity, lower: LayoutEntity): number =>
-    upper.signal !== undefined && lower.signal !== undefined ? 0 : grid;
 
   // Sinks keep their authored order, stacked; everything else starts as a plain column.
   const sinks = layers[0] ?? [];
@@ -49,14 +52,14 @@ export function placeRows(layered: LayeredGraph, grid: number): void {
     );
   const sweepLeftward = (): void => {
     for (const layer of layers.slice(1)) {
-      packLayer(layer, towardTargets, gapBetween, grid);
+      packLayer(layer, towardTargets, grid);
     }
   };
   const sweepRightward = (): void => {
     for (let index = layers.length - 2; index >= 0; index--) {
       const layer = layers[index];
       if (layer !== undefined) {
-        packLayer(layer, towardSources, gapBetween, grid);
+        packLayer(layer, towardSources, grid);
       }
     }
   };
@@ -66,79 +69,238 @@ export function placeRows(layered: LayeredGraph, grid: number): void {
     sweepRightward();
     sweepLeftward();
   }
-  untangleTradedRows(layered, grid);
+  closeComponentGaps(layered, grid);
+  untangleTurnCycles(layered, grid);
 }
 
-/** Passes of {@link untangleTradedRows}: each fix can expose a trade in a neighbouring channel. */
+/**
+ * Parts of a level no wire joins are placed independently by the sweeps and can drift apart,
+ * leaving empty space between them. Taken top to bottom, each part is moved up as far as the
+ * columns it shares with the parts above allow, spacing kept. A part that interleaves with those
+ * above in some column keeps its place.
+ */
+function closeComponentGaps(layered: LayeredGraph, grid: number): void {
+  const { layers, links } = layered;
+  const parent = new Map<LayoutEntity, LayoutEntity>();
+  const root = (entity: LayoutEntity): LayoutEntity => {
+    let current = entity;
+    for (;;) {
+      const next = parent.get(current);
+      if (next === undefined || next === current) {
+        return current;
+      }
+      current = next;
+    }
+  };
+  for (const link of links) {
+    const from = root(link.from.entity);
+    const to = root(link.to.entity);
+    if (from !== to) {
+      parent.set(from, to);
+    }
+  }
+  const components = new Map<LayoutEntity, LayoutEntity[]>();
+  for (const layer of layers) {
+    for (const entity of layer) {
+      const key = root(entity);
+      const members = components.get(key) ?? [];
+      members.push(entity);
+      components.set(key, members);
+    }
+  }
+  if (components.size < 2) {
+    return;
+  }
+  const top = (members: readonly LayoutEntity[]): number =>
+    Math.min(...members.map((entity) => entity.y));
+  const ordered = [...components.values()].sort((first, second) => top(first) - top(second));
+  /** The lowest entity placed so far in each layer. */
+  const lowest = new Map<number, LayoutEntity>();
+  const place = (members: readonly LayoutEntity[]): void => {
+    for (const entity of members) {
+      const known = lowest.get(entity.layer);
+      if (known === undefined || known.y + known.height < entity.y + entity.height) {
+        lowest.set(entity.layer, entity);
+      }
+    }
+  };
+  const [first, ...rest] = ordered;
+  place(first ?? []);
+  for (const members of rest) {
+    const highest = new Map<number, LayoutEntity>();
+    for (const entity of members) {
+      const known = highest.get(entity.layer);
+      if (known === undefined || entity.y < known.y) {
+        highest.set(entity.layer, entity);
+      }
+    }
+    let room = Infinity;
+    for (const [layer, upper] of highest) {
+      const above = lowest.get(layer);
+      if (above !== undefined) {
+        room = Math.min(room, upper.y - (above.y + above.height + gapBetween(above, upper, grid)));
+      }
+    }
+    if (room === Infinity) {
+      room = top(members) - Math.min(...[...lowest.values()].map((entity) => entity.y));
+    }
+    const shift = Math.floor(room / grid) * grid;
+    if (shift > 0) {
+      for (const entity of members) {
+        entity.y -= shift;
+      }
+    }
+    place(members);
+  }
+}
+
+/** Passes of {@link untangleTurnCycles}: each fix can expose a cycle in a neighbouring channel. */
 const UNTANGLE_PASSES = 6;
-/** How many cells a placeholder may be nudged to break a trade. */
+/** How many cells an entity may be nudged to break a cycle. */
 const NUDGE_CELLS = [1, -1, 2, -2, 3, -3];
 
+/** A signal's crossing of one channel: where it leaves, and its links that change row. */
+interface TurningCrossing {
+  readonly sourceRow: number;
+  readonly turns: readonly LayoutLink[];
+}
+
 /**
- * Two signals that trade rows across a channel - each leaving on the row the other arrives on -
- * cannot both turn on a single lane (each would have to turn before the other). Where both rows
- * on one side are placeholders, swapping those two lets both signals run straight; otherwise a
- * placeholder among the four moves to a free cell nearby, so the rows no longer coincide.
- * Placeholders are interchangeable one-cell slots, so either keeps the packing valid.
+ * In a channel a signal turning on a lane must turn before (left of) any signal arriving on the
+ * row it leaves. Those rules can form a cycle - two signals trading rows, or more passing rows round
+ * - and then no lanes satisfy them all. Each cycle is broken here by moving one of the entities on
+ * its coinciding rows: two placeholders on one side of a trade swap rows (both signals then run
+ * straight), otherwise a placeholder, or failing that a card, moves to a free cell nearby. A move
+ * that leaves both channels beside what moved free of cycles is taken first, so a trade is not just
+ * passed to the next channel or a card rocked back and forth. Either keeps the packing valid.
  */
-function untangleTradedRows(layered: LayeredGraph, grid: number): void {
+function untangleTurnCycles(layered: LayeredGraph, grid: number): void {
   const { layers, links } = layered;
-  const gapBetween = (upper: LayoutEntity, lower: LayoutEntity): number =>
-    upper.signal !== undefined && lower.signal !== undefined ? 0 : grid;
+  /** The links from layer `layer` to the one on its right. */
+  const channel = (layer: number): LayoutLink[] =>
+    links.filter((link) => link.from.entity.layer === layer && link.to.entity.layer === layer - 1);
   const fitsAt = (entity: LayoutEntity, y: number): boolean =>
     (layers[entity.layer] ?? []).every(
       (other) =>
         other === entity ||
-        other.y + other.height + gapBetween(other, entity) <= y ||
-        y + entity.height + gapBetween(entity, other) <= other.y,
+        other.y + other.height + gapBetween(other, entity, grid) <= y ||
+        y + entity.height + gapBetween(entity, other, grid) <= other.y,
     );
-  const untangle = (first: LayoutLink, second: LayoutLink): boolean => {
-    const right = [first.to.entity, second.to.entity] as const;
-    const left = [first.from.entity, second.from.entity] as const;
-    for (const [upper, lower] of [right, left]) {
-      if (upper.signal !== undefined && lower.signal !== undefined) {
-        [upper.y, lower.y] = [lower.y, upper.y];
-        return true;
+  /** Whether the channels on both sides of `entity` are free of cycles. */
+  const settled = (entity: LayoutEntity): boolean =>
+    turnCycle(channel(entity.layer)) === undefined &&
+    turnCycle(channel(entity.layer + 1)) === undefined;
+  /** Moves `entity` to a free cell nearby, one that settles it when `settling`. */
+  const nudge = (entity: LayoutEntity, settling: boolean): boolean => {
+    const start = entity.y;
+    for (const cells of NUDGE_CELLS) {
+      const y = start + cells * grid;
+      if (fitsAt(entity, y)) {
+        entity.y = y;
+        if (!settling || settled(entity)) {
+          return true;
+        }
       }
     }
-    for (const entity of [...right, ...left]) {
-      if (entity.signal === undefined) {
-        continue;
-      }
-      const target = NUDGE_CELLS.map((cells) => entity.y + cells * grid).find((y) =>
-        fitsAt(entity, y),
-      );
-      if (target !== undefined) {
-        entity.y = target;
-        return true;
-      }
-    }
+    entity.y = start;
     return false;
+  };
+  /** Breaks a cycle given as its links: each arrives on the row the previous crossing leaves. */
+  const untangle = (cycle: readonly LayoutLink[]): boolean => {
+    const first = cycle[0];
+    const second = cycle[1];
+    if (cycle.length === 2 && first !== undefined && second !== undefined) {
+      for (const [upper, lower] of [
+        [first.to.entity, second.to.entity],
+        [first.from.entity, second.from.entity],
+      ] as const) {
+        if (upper.signal !== undefined && lower.signal !== undefined) {
+          [upper.y, lower.y] = [lower.y, upper.y];
+          if (settled(upper)) {
+            return true;
+          }
+          [upper.y, lower.y] = [lower.y, upper.y];
+        }
+      }
+    }
+    const entities = cycle.flatMap((link) => [link.from.entity, link.to.entity]);
+    const placeholders = entities.filter((entity) => entity.signal !== undefined);
+    const cards = entities.filter((entity) => entity.signal === undefined);
+    return [true, false].some((settling) =>
+      [...placeholders, ...cards].some((entity) => nudge(entity, settling)),
+    );
   };
 
   for (let pass = 0; pass < UNTANGLE_PASSES; pass++) {
     let changed = false;
     for (let layer = layers.length - 1; layer >= 1; layer--) {
-      const channel = links.filter(
-        (link) => link.from.entity.layer === layer && link.to.entity.layer === layer - 1,
-      );
-      for (const first of channel) {
-        for (const second of channel) {
-          if (
-            first.signal !== second.signal &&
-            sourceRow(first) === targetRow(second) &&
-            sourceRow(second) === targetRow(first) &&
-            untangle(first, second)
-          ) {
-            changed = true;
-          }
-        }
+      const cycle = turnCycle(channel(layer));
+      if (cycle !== undefined && untangle(cycle)) {
+        changed = true;
       }
     }
     if (!changed) {
       return;
     }
   }
+}
+
+/**
+ * A cycle of the channel's turn-first rules, as the links that arrive on the row the previous
+ * crossing in the cycle leaves; `undefined` when there is none.
+ */
+function turnCycle(channel: readonly LayoutLink[]): LayoutLink[] | undefined {
+  const crossings = new Map<LayoutLink["signal"], TurningCrossing>();
+  for (const link of channel) {
+    const known = crossings.get(link.signal);
+    const turns = targetRow(link) === sourceRow(link) ? [] : [link];
+    crossings.set(link.signal, {
+      sourceRow: sourceRow(link),
+      turns: [...(known?.turns ?? []), ...turns],
+    });
+  }
+  const turning = [...crossings.values()].filter((crossing) => crossing.turns.length > 0);
+  /** The rules out of a crossing: each later crossing's link arriving on the row it leaves. */
+  const rulesOf = (crossing: TurningCrossing): { next: TurningCrossing; link: LayoutLink }[] =>
+    turning.flatMap((next) =>
+      next === crossing
+        ? []
+        : next.turns
+            .filter((link) => targetRow(link) === crossing.sourceRow)
+            .map((link) => ({ next, link })),
+    );
+  const state = new Map<TurningCrossing, "open" | "done">();
+  const path: LayoutLink[] = [];
+  const pathCrossings: TurningCrossing[] = [];
+  const visit = (crossing: TurningCrossing): LayoutLink[] | undefined => {
+    state.set(crossing, "open");
+    pathCrossings.push(crossing);
+    for (const { next, link } of rulesOf(crossing)) {
+      if (state.get(next) === "open") {
+        return [...path.slice(pathCrossings.indexOf(next)), link];
+      }
+      if (state.get(next) === undefined) {
+        path.push(link);
+        const found = visit(next);
+        if (found !== undefined) {
+          return found;
+        }
+        path.pop();
+      }
+    }
+    pathCrossings.pop();
+    state.set(crossing, "done");
+    return undefined;
+  };
+  for (const crossing of turning) {
+    if (state.get(crossing) === undefined) {
+      const found = visit(crossing);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -149,7 +311,6 @@ function untangleTradedRows(layered: LayeredGraph, grid: number): void {
 function packLayer(
   layer: LayoutEntity[],
   asks: (entity: LayoutEntity) => readonly number[],
-  gapBetween: (upper: LayoutEntity, lower: LayoutEntity) => number,
   grid: number,
 ): void {
   const ordered = layer
@@ -166,7 +327,7 @@ function packLayer(
   let previous: LayoutEntity | undefined;
   for (const { entity, wanted } of ordered) {
     if (previous !== undefined) {
-      offset += previous.height + gapBetween(previous, entity);
+      offset += previous.height + gapBetween(previous, entity, grid);
     }
     previous = entity;
     blocks.push({

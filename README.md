@@ -10,7 +10,7 @@ by the [`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
 
 <table>
   <tr>
-    <td align="center"><img src="assets/gallery/campfire.webp" width="400" alt="Campfire" /><br /><b>Campfire</b><br /><sub>flipbook, Half-Lit, ground collision</sub></td>
+    <td align="center"><img src="assets/gallery/campfire.webp" width="400" alt="Campfire" /><br /><b>Campfire</b><br /><sub>flipbook, Half-Lit, SDF collision</sub></td>
     <td align="center"><img src="assets/gallery/lightning-crack.webp" width="400" alt="Lightning Crack" /><br /><b>Lightning Crack</b><br /><sub>mesh particles, shadows, soft particles</sub></td>
   </tr>
   <tr>
@@ -22,8 +22,8 @@ by the [`sparcoon`](https://github.com/jango-git/sparcoon) runtime.
     <td align="center"><img src="assets/gallery/destruction.webp" width="400" alt="Destruction" /><br /><b>Destruction</b><br /><sub>mesh particles, shadows, lighting, collisions</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b><br /><sub>spawn on a mesh, curl noise</sub></td>
-    <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b><br /><sub>GPU simulation, collision, shadows</sub></td>
+    <td align="center"><img src="assets/gallery/fireflies.webp" width="400" alt="Fireflies" /><br /><b>Fireflies</b><br /><sub>spawn on a mesh, curl noise, SDF avoidance</sub></td>
+    <td align="center"><img src="assets/gallery/sparks.webp" width="400" alt="Sparks" /><br /><b>Sparks</b><br /><sub>GPU simulation, scene depth collision, shadows</sub></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="assets/editor.webp" width="100%" alt="The Portal preset in the editor" /><br /><b>Portal in the editor</b></td>
@@ -77,9 +77,10 @@ Every graph ends in sinks, the nodes its results flow into:
 - **Surface** of a ribbon graph - the band's color and width, and how its UV runs along it: each
   point's age over its lifetime, or a repeat every few particles. A ribbon joins each particle to
   the one born right after it, so it follows one stream of births, as a play makes; bursts of
-  several particles and reactions weave it between them. With Head on, while a play emits, the
-  ribbon reaches on to the particle a birth would seed now, so it does not lag behind a moving
-  emitter.
+  several particles and reactions weave it between them. Section breaks it into separate ribbons
+  of that many particles each, such as one per burst of that many. With Head on, while a play
+  emits, the ribbon reaches on to the particle a birth would seed now, so it does not lag behind a
+  moving emitter.
 
 If a material does not fit the device limits, its graph is marked with an error for WebGL2 or a
 warning for WebGL1.
@@ -161,9 +162,9 @@ only in the GPU simulation. On the CPU it finds no surface, and the node is mark
   exported, and in the game the effect is lit by the lights of its scene.
 - A `.glb` dropped on the **Scenes** section, or a `.gltf` with its buffers and images embedded,
   becomes a preview scene. It is kept whole, with its materials and textures. The viewport's Scene
-  tab draws one scene around the effect: **Studio** (the ground), **Void** (nothing) or an uploaded
-  one. Shadows fall on it, and Depth Fade and Depth Sample read its depth. Animations in the file
-  do not play. A scene is saved in the project and is not exported.
+  tab draws one scene around the effect: **Studio** (the ground) or an uploaded one. Shadows fall
+  on it, and Depth Fade and Depth Sample read its depth. Animations in the file do not play. A
+  scene is saved in the project and is not exported. Most presets come with a scene of their own.
 - Meshes and scenes may be meshopt-compressed. A file with Draco geometry or KTX2 textures does not
   load.
 
@@ -191,7 +192,7 @@ Using the effect in a game is described in the
 ## Interface
 
 The interface is in English, Russian and Ukrainian. A graph is laid out automatically with the
-Arrange button.
+Arrange button, each comment as one block round the nodes it holds.
 
 | Shortcut                     | Action                           |
 | ---------------------------- | -------------------------------- |
@@ -216,9 +217,11 @@ The editor publishes `window.sparcoon`, an API through which an agent builds an 
 
 - `scene`, `graph(...)`, `timeline` - edits to objects, graphs and the timeline.
 - `edit(body)` - several edits as one undo step, all or nothing.
+- `arrange(...)`, `comment(...)` - a graph laid out as the Arrange button does, and nodes gathered
+  into a comment.
 - `catalog` - a graph's nodes with their inputs, outputs and parameters.
 - `assets`, `project` - assets, projects, presets and export.
-- `preview` - playback and frame captures.
+- `preview` - playback, frame captures and the viewport camera.
 - `status()` - the compile result after the last edit.
 
 Inputs and outputs are JSON. `version` goes up on incompatible API changes.

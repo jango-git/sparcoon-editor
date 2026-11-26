@@ -74,9 +74,11 @@ export function emitterDrawsNothingWarnings(emitter: EmitterDoc): readonly FXCom
 /**
  * The warnings on `emitter`'s strip of `strip` that its spawns make, for a ribbon (a trail follows
  * each particle on its own, so none):
- * - births that do not follow one another - a burst of several particles, or a reaction (each
- *   source particle spawns its own) - since a ribbon joins each particle to the one born right
- *   after it, wherever that one was born;
+ * - without sections, births that do not follow one another - a burst of several particles, or a
+ *   reaction (each source particle spawns its own) - since a ribbon joins each particle to the one
+ *   born right after it, wherever that one was born;
+ * - with sections, a spawn that is not a whole number of them - a play, or a burst of another
+ *   count - since every section after it then straddles two spawns;
  * - a Head with no play to show it: the head shows only while a play emits from the emitter.
  */
 export function stripSpawnWarnings(
@@ -87,7 +89,20 @@ export function stripSpawnWarnings(
     return [];
   }
   const warnings: FXCompilerError[] = [];
-  if (
+  const { head, section } = readRibbonSinkConfig(emitter.ribbonGraph);
+  if (section > 0) {
+    if (
+      [...emitter.events, ...emitter.reactions].some(
+        (spawn) => spawn.kind !== "burst" || spawn.count % section !== 0,
+      )
+    ) {
+      warnings.push({
+        code: "ribbon-section-misaligned",
+        message: `this ribbon's sections hold ${String(section)} particles each, so every spawn of this emitter must be a burst of a multiple of ${String(section)}`,
+        nodeId: RENDER_SINK_ID,
+      });
+    }
+  } else if (
     emitter.reactions.length > 0 ||
     emitter.events.some((event) => event.kind === "burst" && event.count > 1)
   ) {
@@ -97,10 +112,7 @@ export function stripSpawnWarnings(
         "bursts of several particles or reactions weave this emitter's ribbon between births from different places",
     });
   }
-  if (
-    readRibbonSinkConfig(emitter.ribbonGraph).head &&
-    !emitter.events.some((event) => event.kind === "play")
-  ) {
+  if (head && !emitter.events.some((event) => event.kind === "play")) {
     warnings.push({
       code: "ribbon-head-without-play",
       message:

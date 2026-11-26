@@ -33,13 +33,16 @@ import { createGraphStats } from "./graphStats";
 
 /** Presses to confirm removing an emitter's trail or ribbon (see {@link attachCountdownConfirm}). */
 const REMOVE_STRIP_CLICKS = 3;
-/** Presses to confirm auto-arranging the graph: it rewires routes and drops comments (undoable). */
+/** Presses to confirm auto-arranging the graph: it rewires routes and moves comments (undoable). */
 const ARRANGE_CLICKS = 2;
+
+/** What can be done to a graph laid out from its cards as drawn, once it is shown. */
+export type ShownGraph = Pick<GraphCanvas, "arrange" | "gatherIntoComment">;
 
 export interface GraphPanel {
   readonly element: HTMLElement;
-  /** Shows graph `mode` of the active owner and auto-arranges it - the Arrange button's action. */
-  readonly arrange: (mode: GraphMode) => void;
+  /** Shows graph `mode` of the active owner. */
+  readonly show: (mode: GraphMode) => ShownGraph;
 }
 
 export function createGraphPanel(context: EditorContext, graphView: GraphViewState): GraphPanel {
@@ -98,9 +101,9 @@ export function createGraphPanel(context: EditorContext, graphView: GraphViewSta
 
   return {
     element: graph,
-    arrange: (mode): void => {
+    show: (mode): ShownGraph => {
       graphView.setMode(mode);
-      canvas.arrange();
+      return canvas;
     },
   };
 }

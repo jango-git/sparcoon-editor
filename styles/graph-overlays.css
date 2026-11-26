@@ -99,6 +99,8 @@
   pointer-events: auto;
   padding: 3px 8px;
   font-size: 12px;
+  /* In px, so the arranged frame leaves the header the same room in every browser. */
+  line-height: 16px;
   font-weight: 600;
   color: var(--panel-foreground);
   background: color-mix(in srgb, var(--muted) 22%, transparent);
@@ -216,10 +218,6 @@
 
 .attr__name--invalid {
   outline: 1px solid var(--danger);
-}
-
-.attr__type {
-  width: 52px;
 }
 
 .attr__add {

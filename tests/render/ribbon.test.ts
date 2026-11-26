@@ -14,6 +14,7 @@ import {
   RENDER_SINK_TYPE,
   RENDER_SORT_INTERVAL_PARAM,
   RIBBON_HEAD_PARAM_KEY,
+  RIBBON_SECTION_PARAM_KEY,
   RIBBON_TILE_PARAM_KEY,
   RIBBON_UV_PARAM_KEY,
   sinkMeta,
@@ -28,6 +29,7 @@ import { emitProjectModule } from "../../src/persistence/exportTypeScript";
 import { normalizeSource } from "../../src/persistence/loadState";
 import type { SceneEmitters } from "../../src/render/sceneEmitters";
 import { createPreview, destroyPreviews } from "../helpers/previewScene";
+import { runtimePrivate } from "../helpers/runtimeInternals";
 import { createTestState } from "../helpers/testDocument";
 
 function setup(): { store: Store; emitters: SceneEmitters; emitterId: string } {
@@ -49,13 +51,15 @@ function runtimeEmitter(emitters: SceneEmitters, id: string): FXEmitter {
 }
 
 function ribbonMaterial(emitter: FXEmitter): ShaderMaterial {
-  const ribbon = (emitter as unknown as { strips: { strips: { ribbon: { mesh: Mesh } } } }).strips
-    .strips.ribbon;
-  return ribbon.mesh.material as ShaderMaterial;
+  const strips = runtimePrivate<{ ribbon: { mesh: Mesh } }>(
+    runtimePrivate(emitter, "strips"),
+    "strips",
+  );
+  return strips.ribbon.mesh.material as ShaderMaterial;
 }
 
 function particleMesh(emitter: FXEmitter): Mesh {
-  return (emitter as unknown as { mesh: Mesh }).mesh;
+  return runtimePrivate<Mesh>(emitter, "mesh");
 }
 
 describe("emitter ribbon: document", () => {
@@ -107,6 +111,7 @@ describe("emitter ribbon: document", () => {
       RIBBON_UV_PARAM_KEY,
       RIBBON_TILE_PARAM_KEY,
       RIBBON_HEAD_PARAM_KEY,
+      RIBBON_SECTION_PARAM_KEY,
     ]);
   });
 
@@ -129,6 +134,31 @@ describe("emitter ribbon: document", () => {
     const { ribbonGraph, ...withoutRibbon } = burst;
     expect(ribbonGraph).toBeDefined();
     expect(stripSpawnWarnings("ribbon", withoutRibbon)).toEqual([]);
+  });
+
+  it("reads its Section off the surface sink and warns on a spawn that is not whole sections", () => {
+    const { store, emitterId } = setup();
+    setEmitterStrip(store, emitterId, "ribbon", true);
+    const ribbonGraph = (): NonNullable<EmitterDoc["ribbonGraph"]> => {
+      const graph = emitterDoc(store).ribbonGraph;
+      if (graph === undefined) {
+        throw new Error("no ribbon graph");
+      }
+      return graph;
+    };
+    expect(readRibbonSinkConfig(ribbonGraph()).section).toBe(0);
+    updateNodeParam(store, "ribbonGraph", RENDER_SINK_ID, RIBBON_SECTION_PARAM_KEY, "32");
+    expect(readRibbonSinkConfig(ribbonGraph()).section).toBe(32);
+    const emitter = emitterDoc(store);
+    const codes = (events: EmitterDoc["events"]): string[] =>
+      stripSpawnWarnings("ribbon", { ...emitter, events }).map((warning) => warning.code);
+    expect(codes([{ id: "e1", time: 0, kind: "burst", count: 64 }])).toEqual([]);
+    expect(codes([{ id: "e1", time: 0, kind: "burst", count: 48 }])).toEqual([
+      "ribbon-section-misaligned",
+    ]);
+    expect(codes([{ id: "e1", time: 0, kind: "play", rate: 30, duration: 1 }])).toEqual([
+      "ribbon-section-misaligned",
+    ]);
   });
 
   it("reads its Head off the surface sink, off by default, and warns when no play shows it", () => {
@@ -194,17 +224,18 @@ describe("emitter ribbon: live preview", () => {
     );
     expect(emitters.totalParticleCount()).toBe(8);
 
-    const ribbonPoints = (): { probe?: unknown } =>
-      (
-        runtimeEmitter(emitters, emitterId) as unknown as {
-          strips: { strips: { ribbon: { points: { probe?: unknown } } } };
-        }
-      ).strips.strips.ribbon.points;
-    expect(ribbonPoints().probe).toBeUndefined();
+    const ribbonProbe = (): unknown => {
+      const strips = runtimePrivate<{ ribbon: unknown }>(
+        runtimePrivate(runtimeEmitter(emitters, emitterId), "strips"),
+        "strips",
+      );
+      return runtimePrivate(runtimePrivate(strips.ribbon, "points"), "probe");
+    };
+    expect(ribbonProbe()).toBeUndefined();
     updateNodeParam(store, "ribbonGraph", RENDER_SINK_ID, RIBBON_HEAD_PARAM_KEY, true);
     const headed = emitters.sync(store.getSource().scene);
     expect(headed.strips?.ribbon?.status.status).toBe("recompiled");
-    expect(ribbonPoints().probe).toBeDefined();
+    expect(ribbonProbe()).toBeDefined();
     expect(emitters.totalParticleCount()).toBe(8);
 
     setEmitterStrip(store, emitterId, "ribbon", false);

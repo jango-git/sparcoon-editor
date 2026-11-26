@@ -14,6 +14,7 @@ import type {
 } from "../../domain/graphModel";
 import { createEmptyGraph, isKeyframeValue } from "../../domain/graphModel";
 import { computeNodeCosts, computeSinkCost } from "../../domain/graphStats";
+import type { CommentMembers } from "../../domain/layout/commentGather";
 import type { FXNodeMeta, FXSocketMeta, RenderHost } from "../../domain/nodePalette";
 import {
   GraphKind,
@@ -51,6 +52,7 @@ import {
   connectSockets,
   disconnectInput,
   dissolveRoute,
+  gatherIntoNewComment,
   type GraphFragment,
   type GraphSlot,
   moveCommentGroup,
@@ -347,8 +349,8 @@ export class GraphCanvas {
   }
 
   /**
-   * Auto-lays out the graph on screen (`domain/layout/arrangeGraph.ts`) from its cards as drawn -
-   * one undo step - then frames the result. Comments are dropped with the old arrangement.
+   * Auto-lays out the graph on screen (`domain/layout/arrangeGraph.ts`) from its cards and comments
+   * as drawn - one undo step - then frames the result.
    */
   public arrange(): void {
     arrangeActiveGraph(this.store, this.activeSlot(), {
@@ -361,11 +363,37 @@ export class GraphCanvas {
         }
         return view.layoutMetrics();
       },
+      commentHeader: (comment, width) => {
+        const view = this.commentViews.get(comment.id);
+        if (view === undefined) {
+          throw new Error(`No box on the canvas for comment "${comment.id}"`);
+        }
+        return view.headerHeight(width);
+      },
     });
     this.selected.clear();
     this.selectedComments.clear();
     this.refreshSelection();
     this.frameGraph();
+  }
+
+  /**
+   * Gathers nodes and comments into a new comment, measured as drawn (`commentGather.ts`), and
+   * returns its id. One undo step.
+   */
+  public gatherIntoComment(text: string, members: CommentMembers): string {
+    const id = gatherIntoNewComment(this.store, this.activeSlot(), text, members, {
+      grid: GRID_SIZE,
+      sizeOf: (nodeId) => {
+        const element = (this.nodeViews.get(nodeId) ?? this.routeViews.get(nodeId))?.element;
+        if (element === undefined) {
+          throw new Error(`No card on the canvas for node "${nodeId}"`);
+        }
+        return { width: element.offsetWidth, height: element.offsetHeight };
+      },
+    });
+    this.frameGraph();
+    return id;
   }
 
   private activeSlot(): GraphSlot {

@@ -349,17 +349,17 @@ describe("projectFile: corrupt library entries", () => {
     ]);
   });
 
-  it("keeps a scene, and makes a stale active scene the studio", async () => {
+  it("keeps a scene, and makes a stale active scene or the removed void the studio", async () => {
     const scene = { name: "arena", label: "arena.glb", bytes: plainPayload(BYTES), byteSize: 3 };
     const kept = await loadWithLibraries({
-      scenes: [scene, { ...scene, name: "void" }],
+      scenes: [scene, { ...scene, name: "studio" }],
       activeSceneName: "arena",
     });
     expect(kept?.scenes).toEqual([{ ...scene, bytes: BYTES }]);
     expect(kept?.activeSceneName).toBe("arena");
     const stale = await loadWithLibraries({ scenes: [], activeSceneName: "arena" });
     expect(stale?.activeSceneName).toBe("studio");
-    expect((await loadWithLibraries({ activeSceneName: "void" }))?.activeSceneName).toBe("void");
+    expect((await loadWithLibraries({ activeSceneName: "void" }))?.activeSceneName).toBe("studio");
   });
 
   it("keeps a mesh asset with whole geometry, zeroing what is not a finite number", async () => {

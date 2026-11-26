@@ -5,7 +5,7 @@ import { Vector2 } from "three";
 import { installAgentApi } from "./agent";
 import { initGraphText } from "./i18n";
 import { insertTransformKeyframes } from "./model/commands";
-import { STUDIO_SCENE_NAME, VOID_SCENE_NAME } from "./model/editorState";
+import { STUDIO_SCENE_NAME } from "./model/editorState";
 import { type SceneEntity, VFX_ENTITY } from "./model/entity";
 import { snapTimeToFrame } from "./model/frames";
 import { Pipeline } from "./model/pipeline";
@@ -169,10 +169,6 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     const name = store.getSource().activeSceneName;
     if (name === STUDIO_SCENE_NAME) {
       coordinator.setPreviewScene({ kind: "studio" });
-      return;
-    }
-    if (name === VOID_SCENE_NAME) {
-      coordinator.setPreviewScene({ kind: "void" });
       return;
     }
     const root = scenes.resolve(name);
@@ -362,7 +358,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     coordinator,
     focusEntity,
     entityObject: (entity) => sceneEmitters.entityObject(entity),
-    arrangeGraph: shell.arrangeGraph,
+    showGraph: shell.showGraph,
   });
 
   textures.sync(store.getSource().assets);

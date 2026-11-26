@@ -62,6 +62,26 @@ export function createElement<TTag extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
+/** An element's padding and border across (left and right), px. */
+export function horizontalFrame(style: CSSStyleDeclaration): number {
+  return (
+    Number.parseFloat(style.paddingLeft) +
+    Number.parseFloat(style.paddingRight) +
+    Number.parseFloat(style.borderLeftWidth) +
+    Number.parseFloat(style.borderRightWidth)
+  );
+}
+
+/** An element's padding and border down (top and bottom), px. */
+export function verticalFrame(style: CSSStyleDeclaration): number {
+  return (
+    Number.parseFloat(style.paddingTop) +
+    Number.parseFloat(style.paddingBottom) +
+    Number.parseFloat(style.borderTopWidth) +
+    Number.parseFloat(style.borderBottomWidth)
+  );
+}
+
 export function clearChildren(element: HTMLElement): void {
   let child = element.firstChild ?? undefined;
   while (child !== undefined) {

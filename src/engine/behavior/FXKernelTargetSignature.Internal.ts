@@ -72,6 +72,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
       target.inherit === undefined
         ? undefined
         : [target.inherit.layout.stride, target.inherit.layout.defaults],
+    birth: target.birth === true,
   } satisfies Record<keyof FXKernelTarget, unknown>;
   return JSON.stringify([
     "kernel",
@@ -83,6 +84,7 @@ function kernelTargetSignature(target: FXKernelTarget): string {
     parts.integration,
     parts.killSlot,
     parts.inherit,
+    parts.birth,
   ]);
 }
 

@@ -95,7 +95,6 @@ export function buildAttributeType(
     onChange: (next): void => onSetType(name, next as AttributeTypeName),
     scale,
   });
-  dropdown.element.classList.add("attr__type");
   dropdown.element.addEventListener("pointerdown", (event) => event.stopPropagation());
   return dropdown.element;
 }

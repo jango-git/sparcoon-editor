@@ -5,7 +5,8 @@
  */
 
 import { t } from "../../i18n";
-import { createElement } from "../dom";
+import { createElement, horizontalFrame, verticalFrame } from "../dom";
+import { monoAdvance, wrappedLineCount } from "./monoText";
 
 /**
  * Which edge or corner a resize gesture grabbed. A corner (`nw`/`ne`/`sw`/`se`) drags two
@@ -84,6 +85,20 @@ export class CommentView {
     if (!this.editing && this.header.textContent !== text) {
       this.header.textContent = text;
     }
+  }
+
+  /**
+   * The header's height in a box `width` wide, the same in every browser (`monoText.ts`): its
+   * lines wrapped at the most characters any browser fits on one.
+   */
+  public headerHeight(width: number): number {
+    const style = getComputedStyle(this.header);
+    const perLine = Math.floor(
+      (width - horizontalFrame(getComputedStyle(this.element)) - horizontalFrame(style)) /
+        monoAdvance(Number.parseFloat(style.fontSize)),
+    );
+    const lines = wrappedLineCount(this.header.textContent, perLine);
+    return lines * Number.parseFloat(style.lineHeight) + verticalFrame(style);
   }
 
   public setSelected(selected: boolean): void {

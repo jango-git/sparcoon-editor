@@ -1,8 +1,7 @@
 /* Nodes */
 
 .node {
-  /* Content-sized, then snapped to the grid: nodeView.finalizeSize() measures the natural
-     width and rounds it up to a whole number of cells (min 6, max 16). Height falls out of
+  /* Content-sized, then pinned to whole grid cells (ui/graph/cardWidth.ts). Height falls out of
      the flex column - the title cell plus the body grid's rows, each one cell tall - so the
      box lands on the grid lines. The 1px frame is an inset box-shadow, NOT a border: a real
      border would add its 2px (top+bottom) to the auto height and push the box 2px off the
@@ -12,8 +11,6 @@
   top: 0;
   left: 0;
   width: max-content;
-  min-width: 144px;
-  max-width: 384px;
   display: flex;
   flex-direction: column;
   background: var(--panel-background);

@@ -21,6 +21,7 @@ import type {
   CaptureView,
   FrameCaptureOptions,
   SceneCoordinator,
+  ViewportView,
 } from "../render/sceneCoordinator";
 import { resolveEntity } from "./address.Internal";
 import {
@@ -128,6 +129,18 @@ export interface PreviewApi {
   stop(): void;
   /** Frames an entity in the viewport (default: the whole VFX group). */
   focus(entityId?: string): void;
+  /** The viewport camera: `position`, the `target` it orbits and looks at, its vertical `fov` in degrees. */
+  getView(): ViewportView;
+  /**
+   * Places the viewport camera at `position` looking at `target`, both in world units, held to
+   * the viewport's orbit limits (a distance of 2 to 30 from the target, above the floor). `fov`,
+   * vertical in degrees, is kept when omitted.
+   */
+  setView(view: {
+    readonly position: readonly number[];
+    readonly target: readonly number[];
+    readonly fov?: number;
+  }): void;
   /** A PNG data URL of the viewport. After a timed capture the transport is left paused there. */
   capture(options?: CaptureOptions): Promise<string>;
   /** One PNG data URL laying out a capture per time in a labelled grid. */
@@ -139,7 +152,10 @@ export interface PreviewApi {
 export interface PreviewDependencies {
   readonly store: Store;
   readonly transport: TransportStore;
-  readonly coordinator: Pick<SceneCoordinator, "advance" | "capture" | "measureOverdraw">;
+  readonly coordinator: Pick<
+    SceneCoordinator,
+    "advance" | "capture" | "measureOverdraw" | "getView" | "setView"
+  >;
   readonly focusEntity: (entity: SceneEntity) => void;
   /** The live viewport object of an entity, for framing a capture on it and counting it alone. */
   readonly entityObject: (entity: SceneEntity) => Object3D | undefined;
@@ -174,7 +190,7 @@ function requireView(
       kind: "look",
       position: new Vector3(...requireVector3("camera.position", camera.position)),
       target: new Vector3(...requireVector3("camera.target", camera.target)),
-      ...(camera.fov !== undefined ? { fov: requireFov(camera.fov) } : {}),
+      ...(camera.fov !== undefined ? { fov: requireFov("camera.fov", camera.fov) } : {}),
     };
   }
   if (frame !== undefined) {
@@ -193,10 +209,10 @@ function requireView(
   return undefined;
 }
 
-function requireFov(value: unknown): number {
-  const fov = requireFiniteNumber("camera.fov", value);
+function requireFov(name: string, value: unknown): number {
+  const fov = requireFiniteNumber(name, value);
   if (fov <= 0 || fov >= 180) {
-    throw new AgentError("invalid_argument", "camera.fov must be within (0, 180) degrees.");
+    throw new AgentError("invalid_argument", `${name} must be within (0, 180) degrees.`);
   }
   return fov;
 }
@@ -369,6 +385,17 @@ export function createPreviewApi(dependencies: PreviewDependencies): PreviewApi 
 
     focus: (entityId) =>
       focusEntity(entityId === undefined ? VFX_ENTITY : resolveEntity(store.getSource(), entityId)),
+
+    getView: () => coordinator.getView(),
+
+    setView: (view): void => {
+      requireKnownKeys("view", view, ["position", "target", "fov"]);
+      coordinator.setView({
+        position: new Vector3(...requireVector3("view.position", view.position)),
+        target: new Vector3(...requireVector3("view.target", view.target)),
+        ...(view.fov !== undefined ? { fov: requireFov("view.fov", view.fov) } : {}),
+      });
+    },
 
     capture: async (options = {}): Promise<string> => {
       requireKnownKeys("options", options, ["time", ...FRAME_OPTION_KEYS]);

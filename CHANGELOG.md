@@ -5,6 +5,65 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## 0.6.0 - 2026-11-26
+
+### Added
+
+- A ribbon's Section splits it into ribbons of that many particles each, 2 to 256, so one burst of
+  that many draws one ribbon. A warning shows while a spawn of the emitter is not a burst of a
+  multiple of it.
+- Agent API version 4: `preview.getView()` gives the viewport camera's position, the point it
+  orbits and looks at, and its field of view, and `preview.setView({ position, target, fov })`
+  places it there. `comment(ownerId, graph, text, { nodes, comments })` gathers nodes and comments
+  into a new comment, which `arrange()` then lays out as one block.
+- Random Mesh Point has Seed and Salt inputs, as Hash has: the same seed and salt give the same
+  point, in either phase and in any emitter. The seed defaults to the particle's.
+
+### Removed
+
+- The Void scene. A project saved with it opens with the studio ground, and the agent API's
+  `assets.setScene("void")` throws as for any unknown scene.
+
+### Changed
+
+- Random Mesh Point in the update keeps a particle's point instead of drawing a new one every
+  frame. A seed that changes with time draws a new one.
+- Arrange keeps the comments. Each is laid out as one block round the nodes it holds, with nested
+  comments inside it, and a comment holding no node is removed. Parts of a graph that no wire joins
+  are kept next to each other.
+- Campfire, Destruction, Energy Shield, Fireflies, Lightning Crack and Sparks come with preview
+  scenes, which stay in the editor and are not exported. The presets' graphs carry comments naming
+  their stages.
+- Sparks bounces off the preview scene through Depth Sample instead of off a ground plane, so it
+  runs on the GPU simulation only.
+- Campfire burns under a tent. Its smoke slides along the tarp, and its embers and sparks collide
+  with it, through an SDF of the tarp.
+- Destruction's debris, sparks, dust and shockwave stop at the walls of a ruined house through an
+  SDF of the walls, and its pillar stands from the first frame.
+- Energy Shield discharges arcs into the objects round its pad, has a flowing sheet under the
+  hexagons, and throws off smoke and sparks at each hit.
+- Lightning Crack's storm walks a closed 16 s loop, so its timeline loops instead of playing
+  forever.
+- Fireflies fly round the trees, kept off the trunks by an SDF, and land back on their rock. The
+  flock is 3072 instead of 2500.
+- Portal draws its sparks in from a funnel in front of it, and has concrete grit crawling to its
+  foot and concrete shards hanging round it.
+- The preview's lights are brighter by default: the sun at 4 instead of 2.2, the sky and ground
+  fill at 2 instead of 0.7.
+
+### Fixed
+
+- A node card is as wide in Firefox as in Chromium, so a graph arranged in one keeps its wires
+  straight in the other.
+- The type of a behavior sink's attribute shows in full instead of cut off.
+- Arrange no longer runs two wires along one stretch where they swap rows between columns, as it
+  did in the Portal's Grit trail.
+- Destruction's shockwave no longer lights up the square of ground it never reaches as it fades.
+- On the GPU a spawn graph reads the newborn's own slot: its id, its birth age and zero for the
+  rest, as on the CPU. It used to read the state of the particle the slot held before, so a Read
+  State of the id, or a Hash or Random Mesh Point left on its default seed, gave every newborn of
+  a burst the same value on the emitter's first lap.
+
 ## 0.5.0 - 2026-11-25
 
 ### Added

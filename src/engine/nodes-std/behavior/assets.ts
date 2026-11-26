@@ -11,10 +11,15 @@ import {
 import { FX_NO_SURFACE_DISTANCE } from "sparcoon/helpers";
 
 import type { FXExpr } from "../../core/ir/FXExpr";
+import {
+  FX_SEED_HASH_CALL_COST,
+  seedHashFunctionName,
+} from "../../core/ir/noise/FXSeedHash.Internal";
 import type { FXNodeDefinition } from "../../core/nodes/defineNode";
 import { defineNode } from "../../core/nodes/defineNode";
+import { FX_RANDOM_SEED_INPUT } from "../../core/socket/FXReadableBuiltins";
 import { FX_VALUE_TYPES } from "../../core/socket/FXValueType";
-import { rand, unitOrZero } from "./common";
+import { unitOrZero } from "./common";
 
 /**
  * Standard-library behavior nodes sampling a content-library asset, which the app supplies by its
@@ -23,20 +28,24 @@ import { rand, unitOrZero } from "./common";
 
 const VEC3 = FX_VALUE_TYPES.vec3;
 
-/** With a mesh picked - 8 texel fetches at 8 (the texture node's figure for one), 4 draws (~2
- *  each), the column, alias coin and fold (~12), and two 3-corner vec3 blends with a normalize
+/** With a mesh picked - 8 texel fetches at 8 (the texture node's figure for one), one 4-wide seed
+ *  hash, the column, alias coin and fold (~12), and two 3-corner vec3 blends with a normalize
  *  (~30). */
-const RANDOM_MESH_POINT_COST = 114;
+const RANDOM_MESH_POINT_COST = 106 + FX_SEED_HASH_CALL_COST[4];
 
 /**
  * A random point uniform by area on the surface of a mesh asset, with the mesh's normal there
- * (interpolated across the triangle, normalized), both in the mesh's own space, drawn anew each
- * time it runs (once per particle in the spawn, every step in the update). The mesh is read into a
- * surface table by the runtime when the emitter is built (sparcoon's `surfaceTableLayout.ts`).
+ * (interpolated across the triangle, normalized), both in the mesh's own space. The point is a
+ * function of `seed` and `salt`, as the Hash node's value is: the same pair gives the same point in
+ * either phase, in any emitter, on either backend. The seed defaults to the particle's, so a
+ * particle keeps one point in the update too; a seed that changes with time draws a new one. The
+ * mesh is read into a surface table by the runtime when the emitter is built (sparcoon's
+ * `surfaceTableLayout.ts`).
  *
  * A triangle is drawn from the table's alias columns (a uniform column, then a coin against its
- * probability), and the point inside it from two draws folded back into the triangle. With no mesh
- * picked every particle sits at the origin.
+ * probability), and the point inside it from two draws folded back into the triangle - the four
+ * draws are the components of one hash of the seed. With no mesh picked every particle sits at the
+ * origin.
  */
 export const fxRandomMeshPoint = defineNode({
   type: "random-mesh-point",
@@ -44,16 +53,22 @@ export const fxRandomMeshPoint = defineNode({
   phase: "spawn",
   phaseFlexible: true,
   category: "spawn",
-  inputs: {},
+  inputs: {
+    seed: { type: "vec3", default: { targetInput: FX_RANDOM_SEED_INPUT } },
+    salt: { type: "float", value: 0, step: 1 },
+  },
   outputs: { position: { type: "vec3" }, normal: { type: "vec3" } },
   params: {},
   assets: { mesh: "mesh" },
   cost: ({ params }) => (params["mesh"] === "" ? 0 : RANDOM_MESH_POINT_COST),
-  build: ({ assets, local, fn }) => {
+  build: ({ inputs, assets, local, fn }) => {
     const table = assets["mesh"];
     if (table === undefined) {
       return { position: fn.litVec(0, 0, 0), normal: fn.litVec(0, 1, 0) };
     }
+    // A float id reaches here as is: the target-input default skips the socket's coercion.
+    const seed = fn.coerceNumeric(inputs["seed"], FX_VALUE_TYPES.vec3);
+    const draws = local("mp_draws", fn.call(seedHashFunctionName(4), seed, inputs["salt"]));
     const texel = (index: FXExpr): FXExpr => fn.call("meshFetch", table, index);
     // The first texel of triangle `triangle`, plus `offset`.
     const texelOf = (triangle: FXExpr, offset: number): FXExpr =>
@@ -65,17 +80,21 @@ export const fxRandomMeshPoint = defineNode({
     const count = local("mp_count", fn.swizzle(texel(fn.lit(0)), "x"));
     const column = local(
       "mp_column",
-      fn.call("min", fn.call("floor", fn.mul(rand(fn), count)), fn.sub(count, fn.lit(1))),
+      fn.call(
+        "min",
+        fn.call("floor", fn.mul(fn.swizzle(draws, "x"), count)),
+        fn.sub(count, fn.lit(1)),
+      ),
     );
     const probability = fn.swizzle(texel(texelOf(column, FX_SURFACE_VERTEX_A)), "w");
     const alias = fn.swizzle(texel(texelOf(column, FX_SURFACE_VERTEX_B)), "w");
     // 1 keeps the column's own triangle, 0 takes its alias.
-    const keep = fn.call("step", rand(fn), probability);
+    const keep = fn.call("step", fn.swizzle(draws, "y"), probability);
     const triangle = local("mp_triangle", fn.call("mix", alias, column, keep));
 
     // Two draws in the unit square, the half past the diagonal folded back onto the triangle.
-    const first = local("mp_u", rand(fn));
-    const second = local("mp_v", rand(fn));
+    const first = local("mp_u", fn.swizzle(draws, "z"));
+    const second = local("mp_v", fn.swizzle(draws, "w"));
     const fold = local("mp_fold", fn.call("step", fn.lit(1), fn.add(first, second)));
     const unfold = (value: FXExpr): FXExpr =>
       fn.add(value, fn.mul(fold, fn.sub(fn.lit(1), fn.mul(fn.lit(2), value))));

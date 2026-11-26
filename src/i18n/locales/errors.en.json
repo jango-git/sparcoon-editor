@@ -350,6 +350,9 @@
   "ribbon-interleaved-births": {
     "message": "bursts of several particles or reactions weave this emitter's ribbon between births from different places - a ribbon joins each particle to the one born right after it, so it follows one stream of births, as a play makes"
   },
+  "ribbon-section-misaligned": {
+    "message": "this ribbon's sections need every spawn of this emitter to be a burst of a whole number of sections - after a play or a burst of another count every section straddles two spawns; use such bursts or turn Section off"
+  },
   "ribbon-head-without-play": {
     "message": "this ribbon's Head never shows, since it shows only while a play emits from the emitter - add a play or turn Head off"
   },

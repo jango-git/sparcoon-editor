@@ -6,6 +6,7 @@
  */
 
 import type { EditorGraph, GraphComment, GraphPosition, GraphSize } from "../../domain/graphModel";
+import { commentFrame, encloses } from "../../domain/layout/commentTree";
 import { addComment, type GraphSlot, moveCommentGroup, resizeComment } from "../../model/commands";
 import type { Store } from "../../model/store";
 import { beginPointerDrag } from "../primitives/drag";
@@ -21,9 +22,6 @@ const DEFAULT_COMMENT_CELLS = { width: 8, height: 5 };
 
 /** Smallest a comment box may be resized to, in grid cells. */
 const MIN_COMMENT_CELLS = { width: 3, height: 2 };
-
-/** Padding (graph units) left around the selection when a comment wraps it - two grid steps. */
-const COMMENT_WRAP_PADDING = GRID_SIZE * 2;
 
 interface ViewLike {
   readonly element: HTMLElement;
@@ -197,7 +195,7 @@ export class CommentGestures {
 
   /**
    * Creates a comment (the "c" hotkey - the only way to make one). With a current selection it
-   * wraps the selection's bounding box (padded, grid-snapped); otherwise it drops a default-sized
+   * frames the selection, a cell left on top for its header; otherwise it drops a default-sized
    * box with its top-left at `anchor` (the cursor).
    */
   public create(anchor: GraphPoint): void {
@@ -211,16 +209,11 @@ export class CommentGestures {
         height: DEFAULT_COMMENT_CELLS.height * GRID_SIZE,
       };
     } else {
-      const padding = COMMENT_WRAP_PADDING;
-      // Leave extra room at the top for the header bar sitting above the wrapped nodes.
-      position = {
-        x: snapToGrid(bounds.minX - padding),
-        y: snapToGrid(bounds.minY - padding - GRID_SIZE),
-      };
-      size = {
-        width: snapToGrid(bounds.maxX + padding - position.x),
-        height: snapToGrid(bounds.maxY + padding - position.y),
-      };
+      ({ position, size } = commentFrame(
+        { left: bounds.minX, top: bounds.minY, right: bounds.maxX, bottom: bounds.maxY },
+        GRID_SIZE,
+        GRID_SIZE,
+      ));
     }
     const id = addComment(this.ctx.store, this.ctx.activeSlot(), position, size);
     this.ctx.selected.clear();
@@ -237,33 +230,25 @@ export class CommentGestures {
     readonly nodeIds: readonly string[];
     readonly comments: readonly GraphComment[];
   } {
-    const left = comment.position.x;
-    const top = comment.position.y;
-    const right = left + comment.size.width;
-    const bottom = top + comment.size.height;
-    const inside = (x: number, y: number): boolean =>
-      x >= left && x <= right && y >= top && y <= bottom;
     const graph = this.ctx.activeGraph();
-
     const nodeIds: string[] = [];
     for (const [id, view] of [...this.ctx.nodeViews, ...this.ctx.routeViews]) {
       const node = graph.nodes[id];
-      if (node === undefined) {
-        continue;
-      }
-      const centerX = node.position.x + view.element.offsetWidth / 2;
-      const centerY = node.position.y + view.element.offsetHeight / 2;
-      if (inside(centerX, centerY)) {
+      if (
+        node !== undefined &&
+        encloses(comment, {
+          ...node.position,
+          width: view.element.offsetWidth,
+          height: view.element.offsetHeight,
+        })
+      ) {
         nodeIds.push(id);
       }
     }
     const comments = graph.comments.filter(
       (candidate) =>
         candidate.id !== comment.id &&
-        inside(
-          candidate.position.x + candidate.size.width / 2,
-          candidate.position.y + candidate.size.height / 2,
-        ),
+        encloses(comment, { ...candidate.position, ...candidate.size }),
     );
     return { nodeIds, comments };
   }

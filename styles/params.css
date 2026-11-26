@@ -30,6 +30,12 @@
   border: 1px solid var(--border-mid);
 }
 
+/* A text field's own default width differs between browsers; a fixed one keeps a card's width the
+   same in all of them (ui/graph/cardWidth.ts). */
+input.param__input {
+  width: 96px;
+}
+
 .param__input:focus {
   outline: none;
   border-color: var(--accent);

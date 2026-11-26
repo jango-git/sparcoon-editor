@@ -54,6 +54,7 @@ export {
   type RenderMode,
   type RenderSinkConfig,
   RIBBON_HEAD_PARAM_KEY,
+  RIBBON_SECTION_PARAM_KEY,
   RIBBON_TILE_PARAM_KEY,
   RIBBON_UV_PARAM_KEY,
   type RibbonSinkConfig,

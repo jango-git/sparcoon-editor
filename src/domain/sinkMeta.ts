@@ -475,6 +475,35 @@ const RIBBON_HEAD_PARAM: FXParamMeta = {
 
 export const RIBBON_HEAD_PARAM_KEY = "ribbonHead";
 
+/** The ribbon sink's Section choices: off, or particles per section, a power of two. */
+const RIBBON_SECTION_OFF = "off";
+const RIBBON_SECTION_OPTIONS: readonly string[] = [
+  RIBBON_SECTION_OFF,
+  ...[2, 4, 8, 16, 32, 64, 128, 256].map(String),
+];
+
+/**
+ * The ribbon sink's Section: particles per ribbon, the ribbon breaking before every particle whose
+ * id is a multiple of it, or off. Structural: it is fixed when the ribbon is built.
+ */
+const RIBBON_SECTION_PARAM: FXParamMeta = {
+  kind: "structural",
+  type: "enum",
+  options: RIBBON_SECTION_OPTIONS,
+  default: RIBBON_SECTION_OFF,
+};
+
+export const RIBBON_SECTION_PARAM_KEY = "ribbonSection";
+
+/** Particles per section for a Section value, 0 for off or anything unreadable. */
+function coerceRibbonSection(value: unknown): number {
+  return typeof value === "string" &&
+    value !== RIBBON_SECTION_OFF &&
+    RIBBON_SECTION_OPTIONS.includes(value)
+    ? Number(value)
+    : 0;
+}
+
 /** A whole particle count of at least 1, defaulting on anything unreadable. */
 function coerceRibbonTile(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -482,13 +511,14 @@ function coerceRibbonTile(value: unknown): number {
 }
 
 /**
- * An emitter ribbon graph's runtime config: how it composites, how `p_uv.x` runs along it, and
- * whether it ends at the particle a birth would seed now.
+ * An emitter ribbon graph's runtime config: how it composites, how `p_uv.x` runs along it, whether
+ * it ends at the particle a birth would seed now, and its particles per section (0: none).
  */
 export interface RibbonSinkConfig {
   readonly renderMode: RenderMode;
   readonly uv: FXRibbonUV;
   readonly head: boolean;
+  readonly section: number;
 }
 
 /** Each strip's sink config. */
@@ -521,7 +551,7 @@ export function stripRuntimeFields<K extends StripHost>(
     readonly [H in StripHost]: (config: StripSinkConfigs[H]) => StripRuntimeFields[H];
   } = {
     trail: ({ frames, sampleInterval }) => ({ frames, sampleInterval }),
-    ribbon: ({ uv, head }) => ({ uv, head }),
+    ribbon: ({ uv, head, section }) => ({ uv, head, ...(section > 0 ? { section } : {}) }),
   };
   return fields[host](config);
 }
@@ -537,6 +567,7 @@ export function readRibbonSinkConfig(ribbonGraph: EditorGraph): RibbonSinkConfig
         : { mode: "stretch" },
     // Off unless set: a sink is created with an empty parameters bag.
     head: surface?.[RIBBON_HEAD_PARAM_KEY] === true,
+    section: coerceRibbonSection(surface?.[RIBBON_SECTION_PARAM_KEY]),
   };
 }
 
@@ -605,6 +636,7 @@ export function sinkMeta(type: string, options: SinkMetaOptions = {}): FXNodeMet
               [RIBBON_UV_PARAM_KEY]: RIBBON_UV_PARAM,
               [RIBBON_TILE_PARAM_KEY]: RIBBON_TILE_PARAM,
               [RIBBON_HEAD_PARAM_KEY]: RIBBON_HEAD_PARAM,
+              [RIBBON_SECTION_PARAM_KEY]: RIBBON_SECTION_PARAM,
             },
       reads: [],
     };

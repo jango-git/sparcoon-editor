@@ -15,9 +15,7 @@ export const GROUND_SIZE = 60;
 
 /** What the scene shows. An uploaded scene's root is owned by whoever decoded it. */
 export type PreviewSceneContent =
-  | { readonly kind: "studio" }
-  | { readonly kind: "void" }
-  | { readonly kind: "asset"; readonly root: Object3D };
+  { readonly kind: "studio" } | { readonly kind: "asset"; readonly root: Object3D };
 
 export class PreviewScene {
   private readonly groundGeometry = new PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
@@ -41,18 +39,15 @@ export class PreviewScene {
   }
 
   public show(content: PreviewSceneContent): void {
-    const next =
-      content.kind === "studio" ? this.ground : content.kind === "asset" ? content.root : undefined;
+    const next = content.kind === "studio" ? this.ground : content.root;
     if (next === this.shown) {
       return;
     }
     if (this.shown !== undefined) {
       this.scene.remove(this.shown);
     }
-    if (next !== undefined) {
-      markEditorScene(next);
-      this.scene.add(next);
-    }
+    markEditorScene(next);
+    this.scene.add(next);
     this.shown = next;
   }
 

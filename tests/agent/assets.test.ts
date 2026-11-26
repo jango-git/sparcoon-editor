@@ -164,11 +164,10 @@ describe("agent assets: scenes", () => {
     expect(api.list().activeScene).toBe("studio");
   });
 
-  it("switches between the built-in scenes and refuses an unknown or undecodable one", async () => {
+  it("refuses an unknown or undecodable scene", async () => {
     const { api } = assets();
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    api.setScene("void");
-    expect(api.list().activeScene).toBe("void");
+    expect(() => api.setScene("void")).toThrow(/not_found/);
     expect(() => api.setScene("missing")).toThrow(/not_found/);
     await expect(api.addScene("broken.glb", new Uint8Array([1, 2, 3]))).rejects.toThrow(/rejected/);
     await expect(api.addScene("sky.hdr", "AAEC")).rejects.toThrow(/rejected/);

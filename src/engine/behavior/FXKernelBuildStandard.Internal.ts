@@ -38,6 +38,7 @@ import {
   BIRTH_AGE_LOCAL,
   BIRTH_MODEL_MATRIX_LOCAL,
   glslBufferAttributeName,
+  glslNewbornSlotName,
 } from "./FXParticleBehaviorKernelStandard.Internal";
 
 /**
@@ -208,13 +209,22 @@ export function assembleTransformFeedbackProgram(
       ),
     ],
   ]);
+  const newbornLifecycle = glslNewbornSlotName(FX_CORE_LIFECYCLE);
+  const newbornSlots = buffers.flatMap((buffer) => {
+    const type = glslTypeForBuffer(buffer);
+    const name = glslNewbornSlotName(buffer.name);
+    return buffer.name === FX_CORE_LIFECYCLE
+      ? [
+          `${type} ${name} = ${type}(0.0);`,
+          `${name}[${String(FX_AGE)}] = ${BIRTH_AGE_LOCAL};`,
+          // Modulo the id range, as the runtime wraps the base (see FX_PARTICLE_ID_RANGE).
+          `${name}[${String(FX_ID)}] = float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)});`,
+        ]
+      : [`${type} ${name} = ${type}(0.0);`];
+  });
   const lifecycleBirthOverride = new Map([
     [FX_AGE, BIRTH_AGE_LOCAL],
-    // Modulo the id range, as the runtime wraps the base (see FX_PARTICLE_ID_RANGE).
-    [
-      FX_ID,
-      `float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)})`,
-    ],
+    [FX_ID, `${newbornLifecycle}[${String(FX_ID)}]`],
   ]);
 
   const spawnAssignments = buffers.flatMap((buffer) =>
@@ -264,7 +274,7 @@ void main(){
   int fx_relativeIndex = (fx_particleIndex - ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_START_UNIFORM} + ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM}) % ${FX_TRANSFORM_FEEDBACK_CAPACITY_UNIFORM};
   bool fx_isBirth = ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM} > 0 && fx_relativeIndex < ${FX_TRANSFORM_FEEDBACK_SPAWN_RANGE_COUNT_UNIFORM};
   if (fx_isBirth) {
-${[...BIRTH_PROLOGUE, ...spawn.body].map((line) => `    ${line}`).join("\n")}
+${[...BIRTH_PROLOGUE, ...newbornSlots, ...spawn.body].map((line) => `    ${line}`).join("\n")}
 ${spawnAssignments.join("\n")}
   } else if (${deadCondition}) {
 ${passThroughAssignments.join("\n")}

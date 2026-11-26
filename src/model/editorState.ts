@@ -310,10 +310,9 @@ export interface SceneAsset {
   readonly byteSize: number;
 }
 
-/** The scenes every project has: the studio ground, and nothing at all. */
+/** The scene every project has: the studio ground. */
 export const STUDIO_SCENE_NAME = "studio";
-export const VOID_SCENE_NAME = "void";
-export const BUILT_IN_SCENE_NAMES: readonly string[] = [STUDIO_SCENE_NAME, VOID_SCENE_NAME];
+export const BUILT_IN_SCENE_NAMES: readonly string[] = [STUDIO_SCENE_NAME];
 
 /** Whether `name` is a built-in scene's or one of `scenes`. */
 export function isSceneName(name: string, scenes: readonly SceneAsset[]): boolean {

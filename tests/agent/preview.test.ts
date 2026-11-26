@@ -33,6 +33,7 @@ function previewWithRecorder() {
   ]);
   const steps: number[] = [];
   const counted: { count: string; shot: CaptureShot; parts: readonly Object3D[] }[] = [];
+  const views: { position: Vector3; target: Vector3; fov?: number }[] = [];
   // 10x10 frames: the first part draws 30 fragments, the second 120.
   const stats = (fragments: number, max: number): OverdrawStats => ({
     width: 10,
@@ -54,12 +55,39 @@ function previewWithRecorder() {
         counted.push({ count, shot, parts });
         return { total: stats(150, 9), parts: [stats(30, 2), stats(120, 7)] };
       },
+      getView: () => ({ position: [0, 2, 7], target: [0, 0, 0], fov: 50 }),
+      setView: (view) => views.push(view),
     },
     focusEntity: () => {},
     entityObject: (entity) => (entity.kind === "emitter" ? objects.get(entity.id) : undefined),
   });
-  return { preview, transport, requests, steps, bolt, counted, objects };
+  return { preview, transport, requests, steps, bolt, counted, objects, views };
 }
+
+describe("agent preview viewport camera", () => {
+  it("reads the viewport camera and places it, keeping the fov when it is omitted", () => {
+    const { preview, views } = previewWithRecorder();
+    expect(preview.getView()).toEqual({ position: [0, 2, 7], target: [0, 0, 0], fov: 50 });
+    preview.setView({ position: [1, 2, 3], target: [0, 1, 0] });
+    preview.setView({ position: [1, 2, 3], target: [0, 1, 0], fov: 35 });
+    expect(views[0].position.toArray()).toEqual([1, 2, 3]);
+    expect(views[0].target.toArray()).toEqual([0, 1, 0]);
+    expect(views[0].fov).toBeUndefined();
+    expect(views[1].fov).toBe(35);
+  });
+
+  it("rejects a malformed view", () => {
+    const { preview, views } = previewWithRecorder();
+    expect(() => preview.setView({ position: [1, 2], target: [0, 0, 0] })).toThrow(/view.position/);
+    expect(() => preview.setView({ position: [1, 2, 3], target: [0, 0, 0], fov: 180 })).toThrow(
+      /view.fov/,
+    );
+    expect(() =>
+      preview.setView({ position: [1, 2, 3], target: [0, 0, 0], zoom: 2 } as never),
+    ).toThrow();
+    expect(views).toHaveLength(0);
+  });
+});
 
 describe("agent preview captures", () => {
   beforeEach(() => {

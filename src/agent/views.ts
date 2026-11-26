@@ -154,7 +154,7 @@ export interface AssetsView {
     readonly label: string;
     readonly byteSize: number;
   }[];
-  /** The uploaded scenes; the built-in `studio` and `void` are not listed. */
+  /** The uploaded scenes; the built-in `studio` is not listed. */
   readonly scenes: readonly {
     readonly name: string;
     readonly label: string;
@@ -171,7 +171,7 @@ export interface AssetsView {
     readonly bias: number;
   }[];
   readonly activeEnvironment: string | undefined;
-  /** `"studio"`, `"void"` or the name of an uploaded scene. */
+  /** `"studio"` or the name of an uploaded scene. */
   readonly activeScene: string;
 }
 

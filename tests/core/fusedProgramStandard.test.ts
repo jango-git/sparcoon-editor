@@ -152,8 +152,9 @@ describe("fused transform-feedback program assembly", () => {
     const program = compileMotionGraph();
     const [birthBranch] = fusedVertexSource(program).split("} else {");
     expect(birthBranch).toContain(
-      `out_lifecycle.z = float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)});`,
+      `fx_newborn_lifecycle[2] = float((${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM} + fx_relativeIndex) % ${String(FX_PARTICLE_ID_RANGE)});`,
     );
+    expect(birthBranch).toContain("out_lifecycle.z = fx_newborn_lifecycle[2];");
     expect(fusedVertexSource(program)).toContain(
       `uniform int ${FX_TRANSFORM_FEEDBACK_SPAWN_ID_BASE_UNIFORM};`,
     );
