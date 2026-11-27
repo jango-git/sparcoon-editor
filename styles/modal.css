@@ -241,36 +241,20 @@ input.content-export__input {
   gap: 6px;
 }
 
-/* The per-row apply button: same danger/counting look as a delete (.confirm-danger), sized like
-   the outline buttons above it rather than the square per-row action/remove icons. A fixed width
-   (not content-sized padding) so the countdown-confirm's digit swap-in (attachCountdownConfirm
-   replaces the whole label with a lone number) never visibly resizes the button. */
-.content-export__preset-apply {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 88px;
-  height: 28px;
-  font-size: var(--font-size-small);
-}
-
-.content-export__preset-apply svg {
-  width: 14px;
-  height: 14px;
-}
-
 /* A light outline setting an Examples row apart from a plain library asset-row (which carries no
    border of its own, only its fill). */
 .content-export__preset-row {
   border: 1px solid var(--border-soft);
 }
 
-/* A row: thick enough to hold a preview, no taller than it needs, set off by a fill (no border). */
+/* A row: the preview beside the name, its user count and the controls on one line, or the
+   controls of its kind on a second line - set off by a fill (no border). The preview is a little
+   taller than one line, or as tall as two. Controls sit at the right of their line. */
 .asset-row {
+  --asset-row-line: 26px;
+  --asset-row-line-gap: 4px;
+
   display: flex;
-  align-items: center;
   gap: 8px;
   padding: 6px 8px;
   background: color-mix(in srgb, var(--surface-raised) 45%, transparent);
@@ -287,6 +271,11 @@ input.content-export__input {
   overflow: hidden;
 }
 
+.asset-row--lines-2 .asset-row__preview {
+  width: calc(2 * var(--asset-row-line) + var(--asset-row-line-gap));
+  height: calc(2 * var(--asset-row-line) + var(--asset-row-line-gap));
+}
+
 .asset-row__thumb {
   width: 100%;
   height: 100%;
@@ -296,7 +285,25 @@ input.content-export__input {
     14px;
 }
 
+.asset-row__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--asset-row-line-gap);
+  min-width: 0;
+}
+
+.asset-row__line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: var(--asset-row-line);
+}
+
 .asset-row__title {
+  flex: 1;
   min-width: 0;
   font-size: var(--font-size-small);
   color: var(--panel-foreground);
@@ -305,18 +312,14 @@ input.content-export__input {
   text-overflow: ellipsis;
 }
 
-.asset-row__spacer {
-  flex: 1;
-}
-
-/* The user count in a boxed chip - the same height as the row's other controls. */
+/* The user count in a boxed chip - the same height as the row's controls. */
 .asset-row__count {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
-  height: 26px;
+  min-width: var(--asset-row-line);
+  height: var(--asset-row-line);
   padding: 0 6px;
   font-size: var(--font-size-small);
   font-variant-numeric: tabular-nums;
@@ -325,36 +328,57 @@ input.content-export__input {
   border: 1px solid var(--border-soft);
 }
 
-/* Row controls: flat square icon buttons carrying their colour at rest (like .middlebar__button), not
-   only on hover. The delete button also carries .confirm-danger (countdown-confirm) for its danger
-   tint and counting state. */
-.asset-row__action,
-.asset-row__remove {
+/* A row control, as tall as its line. A plain one carries its colour at rest (like
+   .middlebar__button), not only on hover, and is lit while on; a guarded one takes
+   .confirm-danger's tint instead. */
+.asset-row__control {
   flex: none;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-}
-
-.asset-row__action {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--panel-foreground);
-  background: var(--surface-raised);
-  border: 1px solid var(--border-mid);
+  gap: 6px;
+  height: var(--asset-row-line);
+  font-size: var(--font-size-small);
   cursor: pointer;
 }
 
-.asset-row__action:hover {
+.asset-row__control > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.asset-row__control--plain {
+  color: var(--panel-foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-mid);
+}
+
+.asset-row__control--plain:hover,
+.asset-row__control--active {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.asset-row__action svg,
-.asset-row__remove svg {
-  width: 14px;
-  height: 14px;
+/* An icon control. */
+.asset-row__control--square {
+  width: var(--asset-row-line);
+  padding: 0;
+}
+
+/* A labelled guarded button (a preset's load): a fixed width, not content-sized padding, so the
+   countdown's digit swap-in (attachCountdownConfirm replaces the whole label with a lone number)
+   never resizes it. */
+.asset-row__control--labelled {
+  width: 88px;
+}
+
+/* A choice: its option's name beside the caret, as wide as it needs up to a limit, as tall as the
+   line rather than a node field. */
+.asset-row__choice.dropdown {
+  flex: 0 1 auto;
+  max-width: 120px;
+  height: var(--asset-row-line);
+  padding: 0 6px;
 }
 
 /* The SDF baker: in place of the sheet's blocks, its 3D view on the left and its settings on the

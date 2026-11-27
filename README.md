@@ -115,7 +115,8 @@ If the particle was not born from a reaction, the node returns its default value
 
 ## Nodes
 
-- **Behavior:** random points in shapes and on mesh surfaces, forces (gravity, drag, point force,
+- **Behavior:** random points in shapes and on mesh surfaces, on a mesh of the game's scene (a
+  skinned one in its current pose) with the surface's velocity there, forces (gravity, drag, point force,
   vortex, turbulence), collisions (plane, box, sphere, cone, a surface given by a distance field),
   the distance and normal to a mesh from its SDF and to the rendered scene from its depth (Depth
   Sample), particle attributes.
@@ -149,8 +150,18 @@ only in the GPU simulation. On the CPU it finds no surface, and the node is mark
 ## Assets and preview
 
 - Images become textures, `.glb` and `.gltf` become meshes, `.hdr` becomes a preview environment.
-- Only geometry is taken from a `.glb`, one asset per mesh. The material comes from the render
-  graph.
+- A `.glb` gives one asset per mesh: its geometry and, for a skinned mesh, its skin, skeleton and
+  the clips that move its bones. The material comes from the render graph. Morph targets are left
+  out.
+- A mesh's eye button draws it in the preview scene where its file places it, for particles placed
+  on it to show what they sit on. It is not exported.
+- A mesh is sampled as a shape of the effect by Random Mesh Point, in its own space, or as a mesh
+  of the game's scene, in the world where the game draws it: by Random Scene Mesh Point without a
+  skin, by Random Skinned Mesh Point with one. The game passes the `Mesh` or `SkinnedMesh` it
+  draws, as the [runtime's README](https://github.com/jango-git/sparcoon#meshes-of-the-scene)
+  shows.
+- A skinned mesh plays one of its clips, picked in its row, at the timeline's time, and Random
+  Skinned Mesh Point samples it in that pose.
 - A mesh bakes into a volume, a signed distance field (SDF), on the screen its row's **Bake SDF**
   opens. A closed mesh bakes as a solid by default, an open one as a shell. The view beside the
   settings shows the surface the bake holds, and **Add to library** keeps it.

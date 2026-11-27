@@ -5,6 +5,40 @@ Every notable change to the Sparcoon Editor, as it affects someone making effect
 an exported effect needs from the game are in the
 [runtime's changelog](https://github.com/jango-git/sparcoon/blob/main/CHANGELOG.md).
 
+## Unreleased
+
+### Added
+
+- Random Scene Mesh Point and Random Skinned Mesh Point give a random point on a mesh of the
+  game's scene, in the world where the game draws it, a skinned one in the pose the game last drew
+  it in, and the surface's velocity there. Wired into the spawn, the velocity sends a particle off
+  with the surface's motion. In the update, with the particle's seed, a particle stays on its point
+  of the moving surface.
+- A mesh from a `.glb` keeps its place in the file, and a skinned one its skin, skeleton and the
+  clips that move its bones. Its row picks the clip the preview plays at the timeline's time.
+- A mesh's row shows the mesh in the preview scene, where its file places it.
+- The agent API's `assets.setMeshPreview` sets whether a mesh is shown in the preview scene and the
+  clip it plays, and `assets.list()` gives each mesh's settings and clips.
+
+### Changed
+
+- The bundled presets cost less to draw:
+  - round planes use the octagon geometry;
+  - Destruction's shockwave plane is shown only while its front runs, and its scorched foot is a
+    plane of its own, 1 m across;
+  - smoke and dust are shaded without a spherical normal;
+  - Shield's dome reads its pattern by the mesh's UV, and its veil flows on one noise;
+  - several noises use one octave;
+  - trail fades are straight lines between their keys;
+  - small debris casts no shadow;
+  - Campfire's flames hold each frame of their sheet.
+- The presets' preview scenes are one mesh with the colours in its vertices, drawn in one call
+  (Shield's in two, its lights apart), and their boxes have no chamfers.
+- A behavior graph computes only what its outputs read: an output of a node nothing reads, such as
+  the normal of a Random Mesh Point placing particles by its position, costs nothing. A graph whose
+  unread outputs draw random values draws other values for the rest, so its particles spawn at
+  other points. Re-export effects to have the cheaper kernels.
+
 ## 0.7.0 - 2026-11-26
 
 ### Added

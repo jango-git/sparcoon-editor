@@ -1,3 +1,5 @@
+import type { FXKernelResourceNames } from "sparcoon";
+
 import type { FXExpr } from "../core/ir/FXExpr";
 import type { FXJSHelperName } from "../core/ir/FXHelpers.Internal";
 import type { FXInheritPlan } from "./FXInheritPlan";
@@ -60,14 +62,10 @@ export interface FXKernelIntegration {
 
 /**
  * The fields naming the resources a compiled phase (or a GPU program) reads - each one's asset, by
- * the name it is read under - a binding of the JS kernel, a sampler uniform of the GPU program.
+ * the name it is read under - a binding of the JS kernel, a sampler uniform of the GPU program -
+ * in the field of the asset's kind (see `FX_ASSET_KINDS`). A field is absent when it names none.
  */
-export interface FXKernelResourceFields {
-  /** Mesh assets, read as their surface tables (`sampler2D`). Absent when none. */
-  readonly meshSurfaces?: Readonly<Record<string, string>>;
-  /** Volume assets, read as their R8 3D textures (`sampler3D`). Absent when none. */
-  readonly volumes?: Readonly<Record<string, string>>;
-}
+export type FXKernelResourceFields = FXKernelResourceNames;
 
 /**
  * One compiled phase (spawn or update) of a behavior kernel, SSA-style like the render IR.

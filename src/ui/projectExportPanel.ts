@@ -19,12 +19,11 @@ import {
 import { deserializeProject, serializeProject } from "../persistence/projectFile";
 import { replaceDocument } from "../persistence/replaceDocument";
 import { libraryZip } from "./assetFiles";
-import { attachCountdownConfirm } from "./components/countdownConfirm";
-import { attachTooltip } from "./components/tooltip";
+import { assetRowElement } from "./assetRows";
 import { createElement } from "./dom";
 import { downloadFile } from "./download";
 import type { EditorContext } from "./editorContext";
-import { assetIcons, icon, timelineIcons } from "./icons";
+import { assetIcons, timelineIcons } from "./icons";
 import { outlineButton } from "./outlineButton";
 
 /** Presses to confirm applying a preset (destructive - replaces the whole project - so guarded
@@ -189,33 +188,28 @@ async function importFromFile(file: File | undefined, context: EditorContext): P
 }
 
 /**
- * One Examples row, styled like an asset library row: a kind-glyph preview, the preset's name, a
- * countdown-guarded apply button - same guard/severity as a whole-project replace deserves.
+ * One Examples row, an asset library row with no users to count: a kind-glyph preview, the preset's
+ * name, and a guarded load, as a whole-project replace deserves.
  */
 function presetRow(context: EditorContext, preset: ProjectPreset): HTMLElement {
-  const preview = createElement("div", { className: "asset-row__preview" }, [
-    icon(PRESET_GLYPHS[preset.id] ?? assetIcons.blank),
-  ]);
-  const name = createElement("span", {
-    className: "asset-row__title",
-    textContent: t(preset.labelKey),
+  return assetRowElement({
+    label: t(preset.labelKey),
+    glyph: PRESET_GLYPHS[preset.id] ?? assetIcons.blank,
+    className: "content-export__preset-row",
+    controls: [
+      {
+        kind: "confirm",
+        glyph: assetIcons.upload,
+        label: t("content.applyPreset"),
+        title: t(preset.labelKey),
+        description: t("content.applyPresetTip"),
+        clicks: PRESET_APPLY_CLICKS,
+        run: (): void => {
+          void applyPreset(context, preset);
+        },
+      },
+    ],
   });
-  const applyContent = `${assetIcons.upload}<span>${t("content.applyPreset")}</span>`;
-  const applyButton = createElement("button", {
-    className: "content-export__preset-apply confirm-danger",
-    type: "button",
-  });
-  applyButton.innerHTML = applyContent;
-  attachTooltip(applyButton, t(preset.labelKey), t("content.applyPresetTip"));
-  attachCountdownConfirm(applyButton, applyContent, PRESET_APPLY_CLICKS, () => {
-    void applyPreset(context, preset);
-  });
-  return createElement("div", { className: "asset-row content-export__preset-row" }, [
-    preview,
-    name,
-    createElement("div", { className: "asset-row__spacer" }),
-    applyButton,
-  ]);
 }
 
 /** Loads a preset's bundled JSON and replaces the document with it - the same path a picked JSON

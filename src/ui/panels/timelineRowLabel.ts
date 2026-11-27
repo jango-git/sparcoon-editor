@@ -72,8 +72,8 @@ function buildVisibilityButton(hidden: boolean, onToggle: () => void): HTMLEleme
   return createToggleButton({
     baseClassName: "timeline-row__visibility",
     activeClassName: "is-hidden",
-    glyph: timelineIcons.visible,
-    activeGlyph: timelineIcons.hidden,
+    glyph: actionIcons.visible,
+    activeGlyph: actionIcons.hidden,
     value: hidden,
     title: hidden ? t("timeline.showObject") : t("timeline.hideObject"),
     description: hidden ? t("timeline.showObjectTip") : t("timeline.hideObjectTip"),

@@ -362,6 +362,12 @@
   "missing-mesh-asset": {
     "message": "No mesh asset \"{name}\" in the content library"
   },
+  "missing-scene-mesh-asset": {
+    "message": "No static mesh asset \"{name}\" in the content library"
+  },
+  "missing-skinned-mesh-asset": {
+    "message": "No skinned mesh asset \"{name}\" in the content library"
+  },
   "missing-volume-asset": {
     "message": "No volume asset \"{name}\" in the content library"
   },

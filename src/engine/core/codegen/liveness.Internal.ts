@@ -1,3 +1,4 @@
+import { refNames } from "../ir/visit.Internal";
 import type { FXRatedLocal } from "./rates.Internal";
 
 /**
@@ -19,4 +20,16 @@ export function liveLocals(
     }
   }
   return live;
+}
+
+/** `locals` without those `roots` do not read (dead-code elimination), in definition order. */
+export function withoutDeadLocals<L extends FXRatedLocal>(
+  locals: readonly L[],
+  roots: Iterable<string>,
+): L[] {
+  const reads = new Map(
+    locals.map((local) => [local.name, refNames(local.expr, "local", new Set())] as const),
+  );
+  const live = liveLocals(locals, reads, roots);
+  return locals.filter((local) => live.has(local.name));
 }

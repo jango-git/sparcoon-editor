@@ -4,6 +4,7 @@ import {
   commonSubexpressionElimination,
   partitionByInvariance,
 } from "../core/codegen/cse.Internal";
+import { withoutDeadLocals } from "../core/codegen/liveness.Internal";
 import { printJSLocals } from "../core/codegen/printJS.Internal";
 import { scalarComponentName, scalarize } from "../core/codegen/scalarize.Internal";
 import { FXJSNames } from "../core/codegen/uniqueName.Internal";
@@ -23,7 +24,8 @@ import type { FXExpr } from "../core/ir/FXExpr";
 import { construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { signaturesFrom } from "../core/ir/FXFunctions.Internal";
 import type { FXGLSLHelperName, FXJSHelperName } from "../core/ir/FXHelpers.Internal";
-import type { FXAssetKind } from "../core/nodes/FXAssetKind";
+import { refNamesIn } from "../core/ir/visit.Internal";
+import { FX_ASSET_KINDS, type FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
@@ -50,7 +52,7 @@ import {
   BUILTIN_BUFFER,
   FX_BEHAVIOR_ALL_FUNCTIONS,
   FXKernelResources,
-  KERNEL_RESOURCE_KINDS,
+  type FXResourceReads,
 } from "./FXKernelShared.Internal";
 import { behaviorNodeKey, previewBehaviorHash } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
@@ -84,6 +86,7 @@ class FXKernelState {
   private readonly helpers = new Set<FXJSHelperName>();
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
   private readonly resources = new FXKernelResources();
+  private resourceReads: FXResourceReads | undefined;
 
   /** `names` is the kernel's: shared with the other phase, whose bindings merge with this
    *  phase's by name. */
@@ -99,17 +102,19 @@ class FXKernelState {
   }
 
   /**
-   * Runs CSE over the plan, hoists particle-invariant locals before the loop, and prints the rest.
-   * Called once after every node has registered its locals.
+   * Drops the locals `roots` (what the phase writes) do not read, runs CSE over the rest, hoists
+   * particle-invariant locals before the loop, and prints the rest. Called once after every node
+   * has registered its locals.
    */
-  public finalize(target: FXKernelTarget): void {
+  public finalize(target: FXKernelTarget, roots: Iterable<string>): void {
     const isImpureCall = (fn: string): boolean =>
       FX_BEHAVIOR_ALL_FUNCTIONS.get(fn)?.impure === true;
     const optimized = commonSubexpressionElimination(
-      seedRandomDraws(this.localsIR, target),
+      seedRandomDraws(withoutDeadLocals(this.localsIR, roots), target),
       (hint) => this.uniqueName(hint),
       isImpureCall,
     );
+    this.resourceReads = this.resources.readIn(optimized.map((local) => local.expr));
     const { preLoop, body } = partitionByInvariance(
       optimized,
       (ref) => isInvariantKernelRef(target, ref),
@@ -147,7 +152,7 @@ class FXKernelState {
    *  binding, but the runtime adds it, so no value scrub reaches it. */
   public allocateAsset(kind: FXAssetKind, name: string): string {
     return this.resources.nameOf(kind, name, () =>
-      this.uniqueName(`b_${KERNEL_RESOURCE_KINDS[kind].hint}`),
+      this.uniqueName(`b_${FX_ASSET_KINDS[kind].hint}`),
     );
   }
 
@@ -180,7 +185,7 @@ class FXKernelState {
       epilogue,
       ...(kill === undefined ? {} : { kill }),
       bindings,
-      ...this.resources.fields(),
+      ...this.resourceReads?.fields,
       buffers,
       writtenBuffers: [...written],
     };
@@ -281,11 +286,7 @@ class FXParticleKernelContext
   }
 
   public allocateAsset(kind: FXAssetKind, name: string): FXExpr {
-    return ref(
-      "binding",
-      this.state.allocateAsset(kind, name),
-      KERNEL_RESOURCE_KINDS[kind].sampler,
-    );
+    return ref("binding", this.state.allocateAsset(kind, name), FX_ASSET_KINDS[kind].sampler);
   }
 
   /**
@@ -413,9 +414,16 @@ function compilePhase(
     }
   }
 
-  state.finalize(target);
-
   const integration = target.integration ?? [];
+  state.finalize(target, [
+    ...writes.map((write) => write.expr),
+    ...(kill === undefined ? [] : [kill]),
+    ...refNamesIn(
+      integration.map((step) => step.expr),
+      "local",
+    ),
+  ]);
+
   const epilogue = generateEpilogue(integration, target);
   return state.assemblePhase(
     writes,

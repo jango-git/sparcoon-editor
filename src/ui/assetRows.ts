@@ -7,10 +7,12 @@ import {
   removeSceneAsset,
   removeTextureAsset,
   removeVolumeAsset,
+  setMeshAssetPreview,
 } from "../model/commands";
 import {
   type EnvironmentAsset,
   type MeshAsset,
+  previewClipOf,
   STUDIO_SCENE_NAME,
   type TextureAsset,
   type VolumeAsset,
@@ -27,6 +29,8 @@ import type { Store } from "../model/store";
 import { environmentThumbnails, meshThumbnails } from "../render/assetThumbnails";
 import { type AssetFile, imageFile, meshFile, uploadedFile, volumeFile } from "./assetFiles";
 import { attachCountdownConfirm } from "./components/countdownConfirm";
+import { Dropdown, type DropdownOption } from "./components/dropdown";
+import { createToggleButton } from "./components/toggleButton";
 import { attachTooltip } from "./components/tooltip";
 import { createElement } from "./dom";
 import { downloadFile } from "./download";
@@ -35,19 +39,47 @@ import { actionIcons, assetIcons, icon } from "./icons";
 /** Presses to confirm a delete in the content sheet (see {@link attachCountdownConfirm}). */
 const DELETE_CLICKS = 4;
 
-/** A row's own action beside its download, an icon button. */
-export interface AssetRowAction {
-  readonly glyph: string;
+/** What every control of a row carries: its tooltip. */
+interface AssetRowControlText {
   readonly title: string;
   readonly description: string;
-  run(): void;
 }
+
+/**
+ * A control of a row's second line, before its download and delete: an icon button, an icon toggle,
+ * a choice among named options, or a guarded button (pressed `clicks` times, labelled when it has
+ * a `label`).
+ */
+export type AssetRowControl = AssetRowControlText &
+  (
+    | { readonly kind: "button"; readonly glyph: string; run(): void }
+    | {
+        readonly kind: "toggle";
+        readonly glyph: string;
+        readonly activeGlyph: string;
+        readonly value: boolean;
+        onChange(on: boolean): void;
+      }
+    | {
+        readonly kind: "choice";
+        readonly options: readonly DropdownOption[];
+        readonly value: string;
+        onChange(value: string): void;
+      }
+    | {
+        readonly kind: "confirm";
+        readonly glyph: string;
+        readonly label?: string;
+        readonly clicks: number;
+        run(): void;
+      }
+  );
 
 /** The uniform shape a row renders from, normalized across the asset kinds. */
 export interface AssetRow {
-  readonly name: string;
   readonly label: string;
-  readonly users: number;
+  /** How many use it, shown as a count; absent for a row with no users to count. */
+  readonly users?: number;
   /** Overrides the default "Used by {count} node(s)" tooltip body - an HDRI's or a scene's count
    *  means "is the active one" (0 or 1), not a node-reference tally. */
   readonly usersTooltip?: string;
@@ -57,10 +89,16 @@ export interface AssetRow {
   readonly thumbnailUrl?: string;
   /** Kind glyph used as the preview when there is no thumbnail. */
   readonly glyph: string;
-  /** Extra info line under the file name in the title's tooltip (dimensions or byte size). */
-  readonly detail: string;
-  /** Actions of its kind, before the download. */
-  readonly actions?: readonly AssetRowAction[];
+  /** Dimensions or byte size, shown with the name in its tooltip. A row without it has no tooltip
+   *  on its name. */
+  readonly detail?: string;
+  /** Lays the row out on two lines, the controls of its kind on the second - for a row whose
+   *  settings would crowd one line. */
+  readonly twoLines?: true;
+  /** A class of its own beside `asset-row`, for a row set apart from the library's. */
+  readonly className?: string;
+  /** Settings and actions of its kind. */
+  readonly controls?: readonly AssetRowControl[];
   /** Absent for a built-in entry, which has no file and cannot be deleted. */
   readonly download?: () => void;
   readonly remove?: () => void;
@@ -79,7 +117,6 @@ export function fillColumn(list: HTMLElement, emptyHint: string, rows: readonly 
 
 export function textureRows(store: Store, usage: ReadonlyMap<string, number>): readonly AssetRow[] {
   return selectTextureAssets(store).map((asset: TextureAsset) => ({
-    name: asset.name,
     label: asset.label,
     users: usage.get(asset.name) ?? 0,
     thumbnailUrl: asset.dataUrl,
@@ -103,7 +140,6 @@ export function environmentRows(store: Store, onThumbnailReady: () => void): rea
     const active = asset.name === activeEnvironmentName;
     const thumbnailUrl = thumbnails.get(asset.name);
     return {
-      name: asset.name,
       label: asset.label,
       users: active ? 1 : 0,
       usersTooltip: active
@@ -126,7 +162,6 @@ export function sceneRows(store: Store): readonly AssetRow[] {
       ? { users: 1, usersTooltip: t("content.sceneActiveTip") }
       : { users: 0, usersTooltip: t("content.sceneInactiveTip") };
   const builtIn = (name: string, label: string, detail: string): AssetRow => ({
-    name,
     label,
     ...activity(name),
     glyph: assetIcons.scene,
@@ -135,7 +170,6 @@ export function sceneRows(store: Store): readonly AssetRow[] {
   return [
     builtIn(STUDIO_SCENE_NAME, t("preview.sceneStudio"), t("content.sceneStudioTip")),
     ...selectSceneAssets(store).map((asset): AssetRow => ({
-      name: asset.name,
       label: asset.label,
       ...activity(asset.name),
       glyph: assetIcons.scene,
@@ -154,14 +188,16 @@ export function meshRows(store: Store, onBake: (mesh: MeshAsset) => void): reado
   return assets.map((asset: MeshAsset) => {
     const thumbnailUrl = thumbnails.get(asset.name);
     return {
-      name: asset.name,
       label: asset.label,
       users: usage.get(asset.name) ?? 0,
       ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
       glyph: assetIcons.mesh,
       detail: formatBytes(asset.byteSize),
-      actions: [
+      twoLines: true,
+      controls: [
+        ...meshPreviewControls(store, asset),
         {
+          kind: "button",
           glyph: assetIcons.bakeVolume,
           title: t("content.bakeVolume"),
           description: t("content.bakeVolumeTip"),
@@ -174,13 +210,44 @@ export function meshRows(store: Store, onBake: (mesh: MeshAsset) => void): reado
   });
 }
 
+/** How the preview draws a mesh: the clip a skinned one plays, and whether it is shown at the
+ *  scene's centre. */
+function meshPreviewControls(store: Store, asset: MeshAsset): readonly AssetRowControl[] {
+  const shown = asset.shownInScene === true;
+  const clips = asset.geometry.skin?.clips ?? [];
+  const clip = previewClipOf(asset);
+  return [
+    ...(clip === undefined
+      ? []
+      : [
+          {
+            kind: "choice",
+            options: clips.map((each) => ({ value: each.name, label: each.name })),
+            value: clip.name,
+            title: t("content.clip"),
+            description: t("content.clipTip"),
+            onChange: (name: string): void =>
+              setMeshAssetPreview(store, asset.name, { clip: name }),
+          } as const,
+        ]),
+    {
+      kind: "toggle",
+      glyph: actionIcons.hidden,
+      activeGlyph: actionIcons.visible,
+      value: shown,
+      title: t(shown ? "content.hideInScene" : "content.showInScene"),
+      description: t("content.showInSceneTip"),
+      onChange: (on: boolean): void => setMeshAssetPreview(store, asset.name, { shownInScene: on }),
+    },
+  ];
+}
+
 /** The volume rows - the slice atlas as the preview, downloaded as is. */
 export function volumeRows(store: Store): readonly AssetRow[] {
   const usage = selectAssetUsage(store, "volume");
   return selectVolumeAssets(store).map((asset: VolumeAsset) => {
     const size = asset.size.join("x");
     return {
-      name: asset.name,
       label: asset.label,
       users: usage.get(asset.name) ?? 0,
       ...(asset.dataUrl === "" ? {} : { thumbnailUrl: asset.dataUrl }),
@@ -192,8 +259,12 @@ export function volumeRows(store: Store): readonly AssetRow[] {
   });
 }
 
-/** One library row: preview, name, a flexible gap, the user count, then download and delete. */
-function assetRowElement(row: AssetRow): HTMLElement {
+/**
+ * One library row: the preview, the name and its user count, the controls of its kind, download and
+ * delete on one line. A two-line row keeps the name, count, download and delete on the first, and
+ * puts the controls of its kind on the second.
+ */
+export function assetRowElement(row: AssetRow): HTMLElement {
   const preview = createElement("div", { className: "asset-row__preview" });
   if (row.thumbnailUrl !== undefined) {
     const thumbnail = document.createElement("img");
@@ -207,62 +278,120 @@ function assetRowElement(row: AssetRow): HTMLElement {
   }
 
   const name = createElement("span", { className: "asset-row__title", textContent: row.label });
-  attachTooltip(name, row.label, row.detail);
-
-  const count = createElement("span", {
-    className: "asset-row__count",
-    textContent: String(row.users),
-  });
-  attachTooltip(
-    count,
-    t("content.usersTitle"),
-    row.usersTooltip ?? t("content.usersTip", { count: String(row.users) }),
-  );
+  if (row.detail !== undefined) {
+    attachTooltip(name, row.label, row.detail);
+  }
+  const heading = [name];
+  if (row.users !== undefined) {
+    const count = createElement("span", {
+      className: "asset-row__count",
+      textContent: String(row.users),
+    });
+    attachTooltip(
+      count,
+      t("content.usersTitle"),
+      row.usersTooltip ?? t("content.usersTip", { count: String(row.users) }),
+    );
+    heading.push(count);
+  }
 
   const download = row.download;
-  const actions = [
-    ...(row.actions ?? []),
+  const remove = row.remove;
+  const fileControls: AssetRowControl[] = [
     ...(download === undefined
       ? []
       : [
           {
+            kind: "button",
             glyph: assetIcons.download,
             title: t("content.download"),
             description: t("content.downloadTip"),
             run: download,
-          },
+          } as const,
         ]),
-  ].map((action) => {
-    const button = createElement("button", { className: "asset-row__action", type: "button" });
-    button.append(icon(action.glyph));
-    attachTooltip(button, action.title, action.description);
-    button.addEventListener("click", () => action.run());
-    return button;
-  });
+    ...(remove === undefined
+      ? []
+      : [
+          {
+            kind: "confirm",
+            glyph: actionIcons.trash,
+            title: t("content.deleteAsset"),
+            description: t("content.deleteAssetTip"),
+            clicks: DELETE_CLICKS,
+            run: remove,
+          } as const,
+        ]),
+  ];
 
-  return createElement("div", { className: "asset-row" }, [
+  const kindElements = (row.controls ?? []).map(controlElement);
+  const fileElements = fileControls.map(controlElement);
+  const lines =
+    row.twoLines !== true
+      ? [[...heading, ...kindElements, ...fileElements]]
+      : [[...heading, ...fileElements], kindElements];
+  const classes = ["asset-row", `asset-row--lines-${String(lines.length)}`, row.className ?? ""];
+  return createElement("div", { className: classes.join(" ").trim() }, [
     preview,
-    name,
-    createElement("div", { className: "asset-row__spacer" }),
-    count,
-    ...actions,
-    ...(row.remove === undefined ? [] : [removeButton(row.remove)]),
+    createElement(
+      "div",
+      { className: "asset-row__body" },
+      lines.map((line) => createElement("div", { className: "asset-row__line" }, line)),
+    ),
   ]);
 }
 
-/**
- * The delete button, guarded by the shared countdown-confirm control (four clicks): a stray click
- * never drops an asset, and the button counts down and reverts to the trash glyph if left idle.
- */
-function removeButton(remove: () => void): HTMLElement {
-  const button = createElement("button", {
-    className: "asset-row__remove confirm-danger",
-    type: "button",
-  });
-  button.innerHTML = actionIcons.trash;
-  attachTooltip(button, t("content.deleteAsset"), t("content.deleteAssetTip"));
-  attachCountdownConfirm(button, actionIcons.trash, DELETE_CLICKS, remove);
-  return button;
+/** A row control's element: as tall as the line, an icon one square, a guarded one tinted as
+ *  `.confirm-danger` and the others plain. */
+function controlElement(control: AssetRowControl): HTMLElement {
+  switch (control.kind) {
+    case "button": {
+      const button = createElement("button", {
+        className: "asset-row__control asset-row__control--plain asset-row__control--square",
+        type: "button",
+      });
+      button.append(icon(control.glyph));
+      attachTooltip(button, control.title, control.description);
+      button.addEventListener("click", () => control.run());
+      return button;
+    }
+    case "toggle":
+      return createToggleButton({
+        baseClassName: "asset-row__control",
+        className: "asset-row__control--plain asset-row__control--square",
+        glyph: control.glyph,
+        activeGlyph: control.activeGlyph,
+        value: control.value,
+        title: control.title,
+        description: control.description,
+        onChange: (on) => control.onChange(on),
+      }).element;
+    case "choice": {
+      const choice = new Dropdown({
+        options: control.options,
+        value: control.value,
+        onChange: (value): void => control.onChange(value),
+        className: "asset-row__control asset-row__control--plain asset-row__choice",
+        ariaLabel: control.title,
+      });
+      attachTooltip(choice.element, control.title, control.description);
+      return choice.element;
+    }
+    case "confirm": {
+      const content =
+        control.label === undefined
+          ? control.glyph
+          : `${control.glyph}<span>${control.label}</span>`;
+      const shape = control.label === undefined ? "square" : "labelled";
+      const button = createElement("button", {
+        className: `asset-row__control asset-row__control--${shape} confirm-danger`,
+        type: "button",
+      });
+      button.innerHTML = content;
+      attachTooltip(button, control.title, control.description);
+      attachCountdownConfirm(button, content, control.clicks, () => control.run());
+      return button;
+    }
+  }
 }
 
 /** Downloads an asset's file - a mesh's once its GLB is written. */

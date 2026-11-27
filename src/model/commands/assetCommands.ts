@@ -1,6 +1,7 @@
 /**
  * Content-library edits. Texture, mesh and volume edits are structural. Environment, scene and
- * palette edits are view edits, since no compiled graph reads them.
+ * palette edits, and how the preview draws a mesh, are view edits, since no compiled graph reads
+ * them.
  */
 
 import {
@@ -112,6 +113,47 @@ export function removeMeshAsset(store: Store, name: string): void {
     return;
   }
   store.commit({ ...source, meshAssets }, "structural");
+}
+
+/** How the preview draws a mesh asset: whether at the scene's centre, and a skinned one's clip. */
+export interface MeshAssetPreview {
+  readonly shownInScene?: boolean;
+  readonly clip?: string;
+}
+
+/**
+ * Sets how the preview draws mesh asset `name`; a field left out keeps its value. A view edit: an
+ * emitter sampling the mesh keeps running on the mesh as it is posed.
+ */
+export function setMeshAssetPreview(store: Store, name: string, preview: MeshAssetPreview): void {
+  const source = store.getSource();
+  const asset = source.meshAssets.find((existing) => existing.name === name);
+  if (asset === undefined) {
+    return;
+  }
+  const next = withPreview(
+    asset,
+    preview.shownInScene ?? asset.shownInScene === true,
+    preview.clip ?? asset.clip,
+  );
+  if (next.shownInScene === asset.shownInScene && next.clip === asset.clip) {
+    return;
+  }
+  const meshAssets = source.meshAssets.map((existing) => (existing === asset ? next : existing));
+  store.commit({ ...source, meshAssets }, "view");
+}
+
+/** `asset` drawn as `shownInScene` and `clip` say, each omitted when unset. */
+function withPreview(
+  { shownInScene: _shownInScene, clip: _clip, ...rest }: MeshAsset,
+  shownInScene: boolean,
+  clip: string | undefined,
+): MeshAsset {
+  return {
+    ...rest,
+    ...(shownInScene ? { shownInScene: true } : {}),
+    ...(clip === undefined ? {} : { clip }),
+  };
 }
 
 /** Adds a volume asset. A duplicate name is a no-op (see {@link addTextureAsset}). */

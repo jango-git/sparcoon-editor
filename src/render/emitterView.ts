@@ -50,6 +50,7 @@ import type { FXCompiledBehaviorBundle } from "../engine/behavior/FXCompiledBeha
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXInheritEntry } from "../engine/behavior/FXInheritPlan";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
+import { assetNamesOf } from "../engine/behavior/FXKernelShared.Internal";
 import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { FXBehaviorLiveBackend } from "../engine/behavior/live/FXBehaviorLiveBackend";
 import {
@@ -61,6 +62,7 @@ import { FXGraphReconciler } from "../engine/core/live/FXGraphReconciler";
 import { FXLiveGraph } from "../engine/core/live/FXLiveGraph";
 import type { FXNodeRegistry } from "../engine/core/live/FXNodeRegistry";
 import type { FXGraphSnapshotData } from "../engine/core/live/FXSnapshotData";
+import { FX_ASSET_KIND_LIST, FX_ASSET_KINDS } from "../engine/core/nodes/FXAssetKind";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
   assembleBehaviorArtifact,
@@ -863,13 +865,11 @@ export class EmitterView implements GraphApplier, FXSpawnTarget, FXParticleEvent
   }
 
   private sampledAssets(artifacts: PreviewArtifacts): readonly unknown[] {
-    const { geometries, volumes } = this.resolveAssets();
-    const named = (names: Readonly<Record<string, string>> | undefined): string[] =>
-      [...new Set(Object.values(names ?? {}))].sort();
-    return [
-      ...named(artifacts.behavior.meshSurfaces).map((name) => geometries[name]),
-      ...named(artifacts.behavior.volumes).map((name) => volumes[name]),
-    ];
+    const assets = this.resolveAssets();
+    const names = assetNamesOf(artifacts.behavior);
+    return FX_ASSET_KIND_LIST.flatMap((kind) =>
+      names[kind].map((name) => assets[FX_ASSET_KINDS[kind].appField][name]),
+    );
   }
 
   /**

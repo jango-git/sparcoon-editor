@@ -4,21 +4,16 @@
  */
 
 import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
-import type { FXCompilerError, FXCompilerErrorCode } from "../engine/core/compiler/FXCompilerError";
+import type { FXCompilerError } from "../engine/core/compiler/FXCompilerError";
 import { collectReachableNodeIds } from "../engine/core/compiler/FXGraphTraversal.Internal";
 import type { FXGraph } from "../engine/core/FXGraph";
-import type { FXAssetKind } from "../engine/core/nodes/FXAssetKind";
+import { FX_ASSET_KINDS, type FXAssetKind, mapAssetKinds } from "../engine/core/nodes/FXAssetKind";
 
 /** The content library's asset names, by kind. */
 export type LibraryAssetNames = Readonly<Record<FXAssetKind, readonly string[]>>;
 
 /** A library holding nothing. */
-export const NO_LIBRARY_ASSETS: LibraryAssetNames = { mesh: [], volume: [] };
-
-const MISSING: Readonly<Record<FXAssetKind, { code: FXCompilerErrorCode; noun: string }>> = {
-  mesh: { code: "missing-mesh-asset", noun: "mesh" },
-  volume: { code: "missing-volume-asset", noun: "volume" },
-};
+export const NO_LIBRARY_ASSETS: LibraryAssetNames = mapAssetKinds(() => []);
 
 /** Every reachable node of `graph` sampling an asset `library` does not hold. */
 export function missingAssetErrors(
@@ -29,7 +24,7 @@ export function missingAssetErrors(
   for (const id of [...collectReachableNodeIds(graph)].sort()) {
     for (const { kind, name } of graph.getNode(id)?.assetReads ?? []) {
       if (!library[kind].includes(name)) {
-        const { code, noun } = MISSING[kind];
+        const { code, noun } = FX_ASSET_KINDS[kind].missing;
         errors.push({
           code,
           message: `No ${noun} asset "${name}" in the content library`,

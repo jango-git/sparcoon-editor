@@ -144,10 +144,14 @@ export interface AssetsView {
     readonly width: number;
     readonly height: number;
   }[];
+  /** `clips` are a skinned mesh's animation clips, absent on a mesh without a skin. */
   readonly meshes: readonly {
     readonly name: string;
     readonly label: string;
     readonly vertexCount: number;
+    readonly shownInScene: boolean;
+    readonly clips?: readonly string[];
+    readonly clip?: string;
   }[];
   readonly environments: readonly {
     readonly name: string;
@@ -320,6 +324,11 @@ export function assetsView(source: SourceState): AssetsView {
       name: asset.name,
       label: asset.label,
       vertexCount: asset.geometry.position.length / 3,
+      shownInScene: asset.shownInScene === true,
+      ...(asset.geometry.skin === undefined
+        ? {}
+        : { clips: asset.geometry.skin.clips.map((clip) => clip.name) }),
+      ...(asset.clip === undefined ? {} : { clip: asset.clip }),
     })),
     environments: source.environments.map((asset) => ({
       name: asset.name,

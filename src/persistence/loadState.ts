@@ -24,6 +24,10 @@ import {
 import { nextIdentifier } from "../model/commands/identifier";
 import {
   type AnimationTrack,
+  type BakedBone,
+  type BakedClip,
+  type BakedMeshSkin,
+  type BakedTrack,
   BUILT_IN_SCENE_NAMES,
   createDefaultVfx,
   DEFAULT_TIMELINE,
@@ -34,6 +38,7 @@ import {
   type EnvironmentAsset,
   isSceneName,
   type Keyframe,
+  MATRIX_FLOATS,
   type MeshAsset,
   meshGraphs,
   type PaletteSwatch,
@@ -392,9 +397,102 @@ function normalizeBakedGeometry(raw: unknown): MeshAsset["geometry"] | undefined
   const normal = floatsOf(raw["normal"]);
   const uv = floatsOf(raw["uv"]);
   const index = indicesOf(raw["index"]);
-  return position === undefined || normal === undefined || uv === undefined || index === undefined
-    ? undefined
-    : { position, normal, uv, index };
+  if (position === undefined || normal === undefined || uv === undefined || index === undefined) {
+    return undefined;
+  }
+  const skin = normalizeBakedSkin(raw["skin"], position.length / 3);
+  const matrix = raw["matrix"];
+  return {
+    position,
+    normal,
+    uv,
+    index,
+    ...(isMatrix(matrix) ? { matrix } : {}),
+    ...(skin === undefined ? {} : { skin }),
+  };
+}
+
+function isMatrix(raw: unknown): raw is readonly number[] {
+  return Array.isArray(raw) && raw.length === MATRIX_FLOATS && raw.every(isFiniteNumber);
+}
+
+const IDENTITY_MATRIX: readonly number[] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+/** `raw` if it is a matrix, else the identity. */
+function matrixOr(raw: unknown): readonly number[] {
+  return isMatrix(raw) ? raw : IDENTITY_MATRIX;
+}
+
+/** A well-formed skin of a mesh of `vertices` vertices, else `undefined`: the mesh then loads
+ *  unskinned. */
+function normalizeBakedSkin(raw: unknown, vertices: number): BakedMeshSkin | undefined {
+  if (!isRecord(raw) || !Array.isArray(raw["bones"]) || !Array.isArray(raw["clips"])) {
+    return undefined;
+  }
+  const skinIndex = floatsOf(raw["skinIndex"]);
+  const skinWeight = floatsOf(raw["skinWeight"]);
+  const boneInverses = floatsOf(raw["boneInverses"]);
+  const bones = raw["bones"].map(normalizeBakedBone);
+  const count = bones.length;
+  if (
+    skinIndex?.length !== vertices * 4 ||
+    skinWeight?.length !== vertices * 4 ||
+    boneInverses?.length !== count * MATRIX_FLOATS ||
+    count === 0 ||
+    bones.some((bone) => bone === undefined || bone.parent >= count)
+  ) {
+    return undefined;
+  }
+  return {
+    skinIndex,
+    skinWeight,
+    bindMatrix: matrixOr(raw["bindMatrix"]),
+    bones: bones as BakedBone[],
+    boneInverses,
+    clips: raw["clips"].flatMap((clip) => normalizeBakedClip(clip) ?? []),
+  };
+}
+
+function normalizeBakedBone(raw: unknown): BakedBone | undefined {
+  if (
+    !isRecord(raw) ||
+    typeof raw["name"] !== "string" ||
+    !Number.isInteger(raw["parent"]) ||
+    (raw["parent"] as number) < -1 ||
+    !isMatrix(raw["matrix"])
+  ) {
+    return undefined;
+  }
+  const parentMatrix = raw["parentMatrix"];
+  return {
+    name: raw["name"],
+    parent: raw["parent"] as number,
+    matrix: raw["matrix"],
+    ...(isMatrix(parentMatrix) ? { parentMatrix } : {}),
+  };
+}
+
+function normalizeBakedClip(raw: unknown): BakedClip | undefined {
+  if (
+    !isRecord(raw) ||
+    typeof raw["name"] !== "string" ||
+    !isFiniteNumber(raw["duration"]) ||
+    !Array.isArray(raw["tracks"])
+  ) {
+    return undefined;
+  }
+  const tracks = raw["tracks"].flatMap((track: unknown): BakedTrack[] => {
+    if (!isRecord(track) || typeof track["name"] !== "string") {
+      return [];
+    }
+    const times = floatsOf(track["times"]);
+    const values = floatsOf(track["values"]);
+    const interpolation = track["interpolation"] === "discrete" ? "discrete" : "linear";
+    return times === undefined || values === undefined || times.length === 0
+      ? []
+      : [{ name: track["name"], interpolation, times, values }];
+  });
+  return { name: raw["name"], duration: raw["duration"], tracks };
 }
 
 /** Keeps well-formed mesh assets. An entry whose geometry did not survive is dropped, since the
@@ -417,6 +515,8 @@ function normalizeMeshAssets(raw: unknown): readonly MeshAsset[] {
       label: typeof value["label"] === "string" ? value["label"] : value["name"],
       geometry,
       byteSize: typeof value["byteSize"] === "number" ? value["byteSize"] : 0,
+      ...(value["shownInScene"] === true ? { shownInScene: true } : {}),
+      ...(typeof value["clip"] === "string" ? { clip: value["clip"] } : {}),
     });
   }
   return assets;

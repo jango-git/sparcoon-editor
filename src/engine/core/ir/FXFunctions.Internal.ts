@@ -1,4 +1,4 @@
-import { FX_SURFACE_TEXEL_FLOATS } from "sparcoon";
+import { FX_SURFACE_TEXEL_FLOATS, fxObjectInputNames } from "sparcoon";
 import { FX_NO_SURFACE_DISTANCE } from "sparcoon/helpers";
 
 import type { FXGLSLTypeName } from "../socket/FXValueType";
@@ -328,8 +328,42 @@ function buildFunctions(): Map<string, FXFunctionDef> {
     packed: true,
     glslStandard: (args) => `fxMeshFetch(${args[0]}, ${args[1]})`,
     glslStandardHelper: "FX_GLSL_MESH_FETCH",
-    js: (args) => `${args[0]}[${args[1]} * ${String(FX_SURFACE_TEXEL_FLOATS)} + ${args[2]}]`,
+    js: ([table = "", texel, component]) => texelReadJS(table, texel, component),
   });
+
+  // One column of a bone matrix of a skinned mesh surface, by its texel index in the bone
+  // matrices (of its current pose, `boneFetch`, or its previous one, `previousBoneFetch`), and one
+  // of an object surface's entries (sparcoon's `surfaceTableLayout.ts`) - `previousObjectEntry`
+  // for an entry only the velocity reads, so a kernel reading it is known to read the velocity.
+  // Each is read through the names `fxObjectInputNames` gives the surface's table, the first
+  // argument.
+  for (const [name, input] of [
+    ["boneFetch", "bones"],
+    ["previousBoneFetch", "previousBones"],
+  ] as const) {
+    definitions.push({
+      name,
+      signatures: [{ args: ["sampler2D", "float"], result: "vec4" }],
+      standardOnly: true,
+      packed: true,
+      glslStandard: ([table = "", texel]) =>
+        `fxMeshFetch(${fxObjectInputNames(table)[input]}, ${texel})`,
+      glslStandardHelper: "FX_GLSL_MESH_FETCH",
+      js: ([table = "", texel, component]) =>
+        texelReadJS(fxObjectInputNames(table)[input], texel, component),
+    });
+  }
+  for (const name of ["objectEntry", "previousObjectEntry"]) {
+    definitions.push({
+      name,
+      signatures: [{ args: ["sampler2D", "float"], result: "vec4" }],
+      standardOnly: true,
+      packed: true,
+      glslStandard: ([table = "", entry]) => `${fxObjectInputNames(table).entries}[int(${entry})]`,
+      js: ([table = "", entry, component]) =>
+        texelReadJS(fxObjectInputNames(table).entries, entry, component),
+    });
+  }
 
   // A volume (sparcoon's `volumeTableLayout.ts`) at texture coordinates `uvw`, filtered linearly
   // between texel centres and clamped to the edge texels - the R8 3D texture on the GPU, and the
@@ -369,6 +403,16 @@ function buildFunctions(): Map<string, FXFunctionDef> {
   });
 
   return new Map(definitions.map((definition) => [definition.name, definition]));
+}
+
+/** Component `component` of texel `texel` of the `Float32Array` `array`: four floats a texel, as
+ *  the data textures the GPU reads lay them out. */
+function texelReadJS(
+  array: string,
+  texel: string | undefined,
+  component: string | undefined,
+): string {
+  return `${array}[${String(texel)} * ${String(FX_SURFACE_TEXEL_FLOATS)} + ${String(component)}]`;
 }
 
 /** `sceneDepthContact` where there is no surface: an up normal and the no-surface distance. */

@@ -331,15 +331,65 @@ export interface PaletteSwatch {
 
 /**
  * Baked geometry: flat `position` and `normal` (vec3) and `uv` (vec2) arrays plus a triangle
- * `index` array, the same subset {@link buildPrimitiveGeometry} produces. No tangents, vertex
- * colors, extra UV sets or skinning. The uploaded GLB's bytes are not kept, so this data is the
- * source.
+ * `index` array, the same subset {@link buildPrimitiveGeometry} produces, the mesh's world matrix
+ * in its file's scene (`matrix`, {@link MATRIX_FLOATS} floats, the identity when omitted), and the
+ * skin of a skinned mesh. No tangents, vertex colors, extra UV sets or morph targets. The uploaded
+ * GLB's bytes are not kept, so this data is the source.
  */
 export interface BakedMeshGeometry {
   readonly position: Float32Array<ArrayBuffer>;
   readonly normal: Float32Array<ArrayBuffer>;
   readonly uv: Float32Array<ArrayBuffer>;
   readonly index: Uint32Array<ArrayBuffer>;
+  readonly matrix?: readonly number[];
+  readonly skin?: BakedMeshSkin;
+}
+
+/**
+ * A skinned mesh's skin: `skinIndex` and `skinWeight` (vec4 per vertex), the mesh's bind matrix,
+ * the skeleton's bones, each bone's inverse bind matrix (`boneInverses`, {@link MATRIX_FLOATS}
+ * floats per bone), and the animation clips of the bones.
+ */
+export interface BakedMeshSkin {
+  readonly skinIndex: Float32Array<ArrayBuffer>;
+  readonly skinWeight: Float32Array<ArrayBuffer>;
+  readonly bindMatrix: readonly number[];
+  readonly bones: readonly BakedBone[];
+  readonly boneInverses: Float32Array<ArrayBuffer>;
+  readonly clips: readonly BakedClip[];
+}
+
+/** Floats of a 4x4 matrix, column-major, as the skin stores one. */
+export const MATRIX_FLOATS = 16;
+
+/**
+ * One bone: its name (what clips animate it by), its parent's index in `bones` (-1 for a root),
+ * and its local matrix. A root's `parentMatrix` places its parent frame in the file's scene.
+ */
+export interface BakedBone {
+  readonly name: string;
+  readonly parent: number;
+  readonly matrix: readonly number[];
+  readonly parentMatrix?: readonly number[];
+}
+
+/** One animation clip of a skeleton's bones: its name, length in seconds and tracks. */
+export interface BakedClip {
+  readonly name: string;
+  readonly duration: number;
+  readonly tracks: readonly BakedTrack[];
+}
+
+/**
+ * One keyframe track, as three's `KeyframeTrack`: `name` is `<bone>.<property>`, the property one
+ * of those `meshGeometryBaking.ts` bakes (`position`, `quaternion`, `scale`), and the keys held
+ * (`discrete`) or blended (`linear`) between.
+ */
+export interface BakedTrack {
+  readonly name: string;
+  readonly interpolation: "discrete" | "linear";
+  readonly times: Float32Array<ArrayBuffer>;
+  readonly values: Float32Array<ArrayBuffer>;
 }
 
 /**
@@ -353,6 +403,17 @@ export interface MeshAsset {
   readonly label: string;
   readonly geometry: BakedMeshGeometry;
   readonly byteSize: number;
+  /** Drawn in the preview scene, where its file places it. Omitted when not. */
+  readonly shownInScene?: true;
+  /** The clip of a skinned mesh's skin the preview plays, by name; the first one when omitted. */
+  readonly clip?: string;
+}
+
+/** The clip of `asset`'s skin the preview plays: the one it names, else the first, `undefined`
+ *  without a skin or clips. */
+export function previewClipOf(asset: MeshAsset): BakedClip | undefined {
+  const clips = asset.geometry.skin?.clips ?? [];
+  return clips.find((clip) => clip.name === asset.clip) ?? clips[0];
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 
 import type { FXCompiledDrawStage, FXTypedLocal } from "../core/codegen/drawStage.Internal";
 import { liftDrawStage } from "../core/codegen/drawStage.Internal";
+import { withoutDeadLocals } from "../core/codegen/liveness.Internal";
 import { printGLSLStandard } from "../core/codegen/printGLSLStandard.Internal";
 import { classifyRates } from "../core/codegen/rates.Internal";
 import { FXGLSLNames } from "../core/codegen/uniqueName.Internal";
@@ -29,7 +30,7 @@ import type { FXExprBuilderApi } from "../core/ir/FXExprBuilder";
 import { coerceNumeric, construct, createBuilders, ref } from "../core/ir/FXExprBuilder";
 import { FX_FUNCTIONS, signaturesFrom } from "../core/ir/FXFunctions.Internal";
 import { collectGLSLHelper, type FXGLSLHelperName } from "../core/ir/FXHelpers.Internal";
-import type { FXAssetKind } from "../core/nodes/FXAssetKind";
+import { FX_ASSET_KINDS, type FXAssetKind } from "../core/nodes/FXAssetKind";
 import { socketRefKey } from "../core/socket/FXSocket";
 import type { FXValueType } from "../core/socket/FXValueType";
 import { FX_VALUE_TYPES } from "../core/socket/FXValueType";
@@ -44,11 +45,7 @@ import type {
 } from "./FXCompiledKernel";
 import type { FXKernelContext } from "./FXKernelContext";
 import { KERNEL_RATE, kernelDrawInputs, kernelRatePolicy } from "./FXKernelDrawInputs.Internal";
-import {
-  BUILTIN_BUFFER,
-  FXKernelResources,
-  KERNEL_RESOURCE_KINDS,
-} from "./FXKernelShared.Internal";
+import { BUILTIN_BUFFER, FXKernelResources, type FXResourceReads } from "./FXKernelShared.Internal";
 import { behaviorNodeKey } from "./FXKernelStructuralHash.Internal";
 import { behaviorTargetsSignature } from "./FXKernelTargetSignature.Internal";
 import {
@@ -179,6 +176,7 @@ class FXKernelStateStandard {
   private readonly uniforms: FXKernelUniform[] = [];
   private readonly bindingHandles: FXKernelBindingHandle[] = [];
   private readonly resources = new FXKernelResources();
+  private resourceReads: FXResourceReads | undefined;
   private readsSceneDepth = false;
 
   /** `names` is the fused program's: shared with the other phase, whose uniforms sit beside
@@ -214,20 +212,28 @@ class FXKernelStateStandard {
       }
     }
     const name = descriptor.name ?? this.uniqueName();
-    this.declareUniform(name, "float");
+    this.declareUniform({ name, glslTypeName: "float" });
     const handle: FXKernelBindingHandle = { name, value: descriptor.value };
     this.bindingHandles.push(handle);
     return handle;
   }
 
   /** The sampler uniform asset `name` of `kind` is read through - the runtime binds a texture to
-   *  it, not a value it uploads, so no binding. */
+   *  it and sets the inputs beside it, not values it uploads, so no binding. Declared, with the
+   *  inputs the code reads, by {@link declareResources}. */
   public allocateAsset(kind: FXAssetKind, name: string): string {
-    return this.resources.nameOf(kind, name, () => {
-      const uniform = this.uniqueName();
-      this.declareUniform(uniform, KERNEL_RESOURCE_KINDS[kind].sampler.glslTypeName);
-      return uniform;
-    });
+    return this.resources.nameOf(kind, name, () => this.uniqueName());
+  }
+
+  /** Declares the uniforms of the resources the locals `roots` (what the phase writes) read, once
+   *  every node has emitted its locals. */
+  public declareResources(roots: Iterable<string>): void {
+    this.resourceReads = this.resources.readIn(
+      withoutDeadLocals(this.locals, roots).map((local) => local.expr),
+    );
+    for (const uniform of this.resourceReads.declarations) {
+      this.declareUniform(uniform);
+    }
   }
 
   /**
@@ -260,7 +266,7 @@ class FXKernelStateStandard {
         fits: transformFeedbackUniformBudget([...otherUniforms, ...this.uniforms]),
         declareUniform: (type) => {
           const name = this.uniqueName();
-          this.declareUniform(name, type.glslTypeName);
+          this.declareUniform({ name, glslTypeName: type.glslTypeName });
           drawUniforms[name] = type;
           return name;
         },
@@ -301,7 +307,7 @@ class FXKernelStateStandard {
       writes,
       ...(kill === undefined ? {} : { kill }),
       bindings,
-      ...this.resources.fields(),
+      ...this.resourceReads?.fields,
       buffers,
       writtenBuffers: [...written],
       ...(lifted.stage === undefined
@@ -324,8 +330,8 @@ class FXKernelStateStandard {
     }
   }
 
-  private declareUniform(name: string, glslTypeName: string): void {
-    this.uniforms.push({ name, glslTypeName });
+  private declareUniform(uniform: FXKernelUniform): void {
+    this.uniforms.push(uniform);
   }
 }
 
@@ -402,11 +408,7 @@ class FXParticleKernelContextStandard
   }
 
   public allocateAsset(kind: FXAssetKind, name: string): FXExpr {
-    return ref(
-      "binding",
-      this.state.allocateAsset(kind, name),
-      KERNEL_RESOURCE_KINDS[kind].sampler,
-    );
+    return ref("binding", this.state.allocateAsset(kind, name), FX_ASSET_KINDS[kind].sampler);
   }
 
   public allocateValueParam(
@@ -536,6 +538,10 @@ function buildPhaseStandard(
     }
   }
 
+  state.declareResources([
+    ...writes.map((write) => write.variable),
+    ...(kill === undefined ? [] : [kill]),
+  ]);
   return {
     uniforms: state.declared,
     assemble: (otherUniforms) =>

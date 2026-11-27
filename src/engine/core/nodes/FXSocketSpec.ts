@@ -139,8 +139,9 @@ export interface FXCustomParamMeta {
    * `attribute-name` - a picker of declared attributes; `inherit-source` - a picker of what a
    * dying particle hands its newborns (its emitter's attributes, and core fields);
    * `texture`/`gradient` - a resource picker / gradient editor; `param-name` - a free-text field
-   * naming a param's stable uniform/binding slot. `mesh-asset`/`volume-asset` - a picker of the
-   * content library's mesh / volume assets (see `FX_ASSET_PARAM_KINDS`).
+   * naming a param's stable uniform/binding slot. `mesh-asset`, `scene-mesh-asset`,
+   * `skinned-mesh-asset` and `volume-asset` - a picker of the content library's assets of a kind
+   * (see `FX_ASSET_KINDS`).
    */
   readonly kind:
     | "attribute-name"
@@ -149,6 +150,8 @@ export interface FXCustomParamMeta {
     | "gradient"
     | "param-name"
     | "mesh-asset"
+    | "scene-mesh-asset"
+    | "skinned-mesh-asset"
     | "volume-asset";
   readonly required: boolean;
 }

@@ -5,7 +5,7 @@ import type { EditorGraph } from "../domain/graphModel";
 import { computeGraphStats } from "../domain/graphStats";
 import { GraphKind, metaFor } from "../domain/nodePalette";
 import { coerceGeometrySource, RENDER_SINK_TYPE } from "../domain/sinkMeta";
-import { assetParamsOf, type FXAssetKind } from "../engine/core/nodes/FXAssetKind";
+import { assetParamsOf, type FXAssetKind, mapAssetKinds } from "../engine/core/nodes/FXAssetKind";
 import type {
   AnimationTrack,
   EmitterDoc,
@@ -58,20 +58,47 @@ export function selectVolumeAssets(store: Store): readonly VolumeAsset[] {
   return store.getSource().volumeAssets;
 }
 
+/** The content library each kind of asset a node picks is one of. */
+export type AssetLibrary = "mesh" | "volume";
+
+/** The library of each kind of asset, and which of its entries are of the kind. */
+const KIND_LIBRARIES: Readonly<
+  Record<
+    FXAssetKind,
+    | { readonly library: "mesh"; readonly accepts: (asset: MeshAsset) => boolean }
+    | { readonly library: "volume" }
+  >
+> = {
+  mesh: { library: "mesh", accepts: () => true },
+  sceneMesh: { library: "mesh", accepts: (asset) => asset.geometry.skin === undefined },
+  skinnedMesh: { library: "mesh", accepts: (asset) => asset.geometry.skin !== undefined },
+  volume: { library: "volume" },
+};
+
+/** The library's assets of `kind`, in library order, with the library they are of. */
+export function kindAssets(
+  source: SourceState,
+  kind: FXAssetKind,
+):
+  | { readonly library: "mesh"; readonly assets: readonly MeshAsset[] }
+  | { readonly library: "volume"; readonly assets: readonly VolumeAsset[] } {
+  const entry = KIND_LIBRARIES[kind];
+  return entry.library === "volume"
+    ? { library: "volume", assets: source.volumeAssets }
+    : { library: "mesh", assets: source.meshAssets.filter(entry.accepts) };
+}
+
 /** The names of the content library's assets nodes sample, by kind. */
 export function libraryAssetNames(source: SourceState): LibraryAssetNames {
-  return {
-    mesh: source.meshAssets.map((asset) => asset.name),
-    volume: source.volumeAssets.map((asset) => asset.name),
-  };
+  return mapAssetKinds((kind) => kindAssets(source, kind).assets.map((asset) => asset.name));
 }
 
 /**
- * How many nodes use each asset of `kind`, keyed by name - every node picking it (Random Mesh Point,
- * SDF Sample) and, for a mesh, every surface sink drawing it as the geometry. Names with no users
- * are absent (caller reads 0).
+ * How many nodes use each asset of `library`, keyed by name - every node picking it (Random Mesh
+ * Point, Random Scene Mesh Point, Random Skinned Mesh Point, SDF Sample) and, for a mesh, every
+ * surface sink drawing it as the geometry. Names with no users are absent (caller reads 0).
  */
-export function selectAssetUsage(store: Store, kind: FXAssetKind): ReadonlyMap<string, number> {
+export function selectAssetUsage(store: Store, library: AssetLibrary): ReadonlyMap<string, number> {
   const usage = new Map<string, number>();
   const count = (name: unknown): void => {
     if (typeof name === "string" && name !== "") {
@@ -82,14 +109,14 @@ export function selectAssetUsage(store: Store, kind: FXAssetKind): ReadonlyMap<s
   for (const owner of [...scene.emitters, ...scene.meshes]) {
     for (const { name, graph } of authoredGraphs(owner)) {
       for (const node of Object.values(graph.nodes)) {
-        if (kind === "mesh" && node.type === RENDER_SINK_TYPE) {
+        if (library === "mesh" && node.type === RENDER_SINK_TYPE) {
           const geometry = coerceGeometrySource(node.parameters["geometry"]);
           if (geometry.kind === "custom") {
             count(geometry.meshAssetName);
           }
         }
         for (const parameter of assetParamsOf(metaFor(GRAPH_SLOTS[name].kind, node.type))) {
-          if (parameter.kind === kind) {
+          if (KIND_LIBRARIES[parameter.kind].library === library) {
             count(node.parameters[parameter.key]);
           }
         }

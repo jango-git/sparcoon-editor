@@ -14,7 +14,7 @@ import {
   isStripHost,
   metaFor,
 } from "../domain/nodePalette";
-import { assetParamsOf } from "../engine/core/nodes/FXAssetKind";
+import { assetParamsOf, FX_ASSET_KINDS } from "../engine/core/nodes/FXAssetKind";
 import {
   addAttribute,
   addCatalogNode,
@@ -290,7 +290,8 @@ function requireAssets(
       continue;
     }
     if (typeof name !== "string" || !library[kind].includes(name)) {
-      throw new AgentError("not_found", `No ${kind} asset "${String(name)}".`);
+      const { noun } = FX_ASSET_KINDS[kind].missing;
+      throw new AgentError("not_found", `No ${noun} asset "${String(name)}".`);
     }
   }
 }

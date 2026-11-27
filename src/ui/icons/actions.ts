@@ -32,4 +32,13 @@ export const actionIcons = {
     <rect x="10.5" y="10.5" width="4" height="3"/>
     <path d="M5.5 4h5M8 4v8h2.5"/>
   </svg>`,
+
+  visible: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8Z"/>
+    <circle cx="8" cy="8" r="1.7"/>
+  </svg>`,
+  hidden: `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M1.8 8S4.3 3.6 8 3.6c1.1 0 2.1.3 3 .8M14.2 8s-1.5 2.6-4.2 3.9M9.6 9.6a1.8 1.8 0 0 1-2.6-2.5"/>
+    <path d="M2 2l12 12"/>
+  </svg>`,
 };

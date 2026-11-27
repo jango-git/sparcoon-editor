@@ -102,7 +102,9 @@ describe("agent assets: add", () => {
     const view = api.list();
     expect(view.textures).toEqual([{ name: "spark", label: "spark.PNG", width: 8, height: 4 }]);
     expect(view.environments).toEqual([{ name: "studio", label: "studio.hdr", byteSize: 3 }]);
-    expect(view.meshes).toEqual([{ name: "Tri", label: "Tri", vertexCount: 3 }]);
+    expect(view.meshes).toEqual([
+      { name: "Tri", label: "Tri", vertexCount: 3, shownInScene: false },
+    ]);
   });
 
   it("names a texture as a shader identifier, numbered on a clash", async () => {

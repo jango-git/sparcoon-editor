@@ -6,7 +6,7 @@ import type { FXGLSLTypeName, FXValueType } from "../socket/FXValueType";
 import { deepFreeze } from "./deepFreeze.Internal";
 import type { FXDescriptorBuild } from "./defineNode.Internal";
 import { FXDescriptorNode, narrowestGenericType } from "./defineNode.Internal";
-import { FX_ASSET_PARAM_KINDS, type FXAssetKind } from "./FXAssetKind";
+import { FX_ASSET_KINDS, type FXAssetKind } from "./FXAssetKind";
 import type { FXCurveData, FXGradientData, FXParamSpec } from "./FXParamSpec";
 import type {
   FXNodeCategory,
@@ -547,7 +547,7 @@ export function defineNode<
           ? {
               customParams: Object.entries(descriptor.assets).map(([key, kind]) => ({
                 key,
-                kind: FX_ASSET_PARAM_KINDS[kind],
+                kind: FX_ASSET_KINDS[kind].paramKind,
                 required: false,
               })),
             }

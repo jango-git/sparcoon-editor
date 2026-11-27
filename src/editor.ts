@@ -20,7 +20,7 @@ import { loadInitialState } from "./persistence/loadState";
 import { saveSource } from "./persistence/localStore";
 import { DEFAULT_PROJECT_PRESET, loadPresetSource } from "./persistence/presets";
 import { type DecodedEnvironment, EnvironmentTextureRegistry } from "./render/environmentTexture";
-import { MeshGeometryRegistry } from "./render/meshGeometryRegistry";
+import { MeshAssetScene } from "./render/meshAssetScene";
 import { SceneAssetRegistry } from "./render/sceneAssetRegistry";
 import { SceneCoordinator } from "./render/sceneCoordinator";
 import { SceneEmitters } from "./render/sceneEmitters";
@@ -188,7 +188,8 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   }
   const scenes = new SceneAssetRegistry(applyActiveScene);
   // Synchronous, unlike TextureRegistry: no load callback.
-  const meshGeometries = new MeshGeometryRegistry();
+  const meshAssets = new MeshAssetScene(coordinator.scene, coordinator.getRenderer());
+  coordinator.setBeforeRender(() => meshAssets.pose(poseTime()));
   const volumes = new VolumeTextureRegistry(() => pipeline.scheduleRecompute());
   const sceneEmitters = new SceneEmitters(
     coordinator.scene,
@@ -197,7 +198,11 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     coordinator.getRenderer(),
     renderBackend,
     poseTime,
-    () => ({ geometries: meshGeometries.resolveAll(), volumes: volumes.resolveAll() }),
+    () => ({
+      geometries: meshAssets.geometries(),
+      meshes: meshAssets.meshes(),
+      volumes: volumes.resolveAll(),
+    }),
   );
   // The FPS readout reports the live particle count alongside it; wire the source now that the
   // scene emitters exist (before the first frame).
@@ -235,7 +240,8 @@ export async function startEditor(root: HTMLElement): Promise<void> {
     }
   });
   store.events.sourceStructureChanged.on(() => textures.sync(store.getSource().assets));
-  store.events.sourceStructureChanged.on(() => meshGeometries.sync(store.getSource().meshAssets));
+  store.events.sourceStructureChanged.on(() => meshAssets.sync(store.getSource().meshAssets));
+  store.events.sourceViewChanged.on(() => meshAssets.sync(store.getSource().meshAssets));
   store.events.sourceStructureChanged.on(() => volumes.sync(store.getSource().volumeAssets));
   store.events.sourceStructureChanged.on(() => pipeline.scheduleRecompute());
   store.events.sourceStructureChanged.on(() => autosave.schedule());
@@ -373,7 +379,7 @@ export async function startEditor(root: HTMLElement): Promise<void> {
   });
 
   textures.sync(store.getSource().assets);
-  meshGeometries.sync(store.getSource().meshAssets);
+  meshAssets.sync(store.getSource().meshAssets);
   volumes.sync(store.getSource().volumeAssets);
   environments.sync(store.getSource().environments);
   scenes.sync(store.getSource().scenes);

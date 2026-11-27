@@ -47,7 +47,7 @@ import type { FXBehaviorNode } from "../engine/behavior/FXBehaviorNode";
 import { compileBehaviorBundle } from "../engine/behavior/FXCompiledBehaviorBundle";
 import type { FXCompiledKernel } from "../engine/behavior/FXCompiledKernel";
 import type { FXFusedProgramStandard } from "../engine/behavior/FXKernelBuildStandard.Internal";
-import { kernelResources } from "../engine/behavior/FXKernelShared.Internal";
+import { assetNamesOf, kernelResourceFields } from "../engine/behavior/FXKernelShared.Internal";
 import { particleBehaviorTargetsFor } from "../engine/behavior/FXParticleBehaviorTarget";
 import { registerManualBehaviorNodes } from "../engine/behavior/nodes/FXManualBehaviorNodes";
 import { collectAttributeRequests } from "../engine/core/compiler/collectAttributeRequests";
@@ -326,10 +326,7 @@ export function compileEmitter(
     behaviorAttributes,
     gpuProgram: bundle.standardProgram,
     geometry: toArtifactGeometrySource(config.geometry),
-    sampledAssets: {
-      mesh: [...new Set(Object.values(kernelResources(bundle.kernel, "mesh") ?? {}))],
-      volume: [...new Set(Object.values(kernelResources(bundle.kernel, "volume") ?? {}))],
-    },
+    sampledAssets: assetNamesOf(kernelResourceFields(bundle.kernel)),
     renderMode: config.renderMode,
     sortInterval: config.sortInterval,
     castShadow: config.castShadow,

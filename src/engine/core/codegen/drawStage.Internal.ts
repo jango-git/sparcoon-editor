@@ -192,7 +192,11 @@ export function liftDrawStage<L extends FXTypedLocal>(
     roots = frontier(all, selected, shared, reads, live, slotReads);
   }
   if (roots.length === 0) {
-    return { stages, renamed: new Map(), stage: undefined };
+    return {
+      stages: stages.map((locals) => locals.filter((local) => live.has(local.name))),
+      renamed: new Map(),
+      stage: undefined,
+    };
   }
 
   // What the CPU computes: the roots and what they read (shared locals among it).

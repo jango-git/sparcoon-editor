@@ -1,4 +1,5 @@
 export { TRANSFORM_CHANNELS } from "../transform";
+export type { MeshAssetPreview } from "./assetCommands";
 export {
   addEnvironmentAsset,
   addMeshAsset,
@@ -14,6 +15,7 @@ export {
   removeVolumeAsset,
   setActiveEnvironment,
   setActiveScene,
+  setMeshAssetPreview,
 } from "./assetCommands";
 export {
   addAttribute,

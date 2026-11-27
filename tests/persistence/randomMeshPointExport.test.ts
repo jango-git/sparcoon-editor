@@ -19,13 +19,34 @@ const ROCK: MeshAsset = {
   byteSize: 0,
 };
 
-/** The default emitter spawning on `mesh` instead of its sphere, simulated on the GPU. */
-function spawningOn(mesh: string): EmitterDoc {
-  const emitter = createDefaultEmitter("emitter_a", "A");
+/** A skinned {@link ROCK}: every vertex bound to its one bone. */
+const ARM: MeshAsset = {
+  ...ROCK,
+  name: "arm",
+  label: "arm",
+  geometry: {
+    ...ROCK.geometry,
+    skin: {
+      skinIndex: new Float32Array(12),
+      skinWeight: Float32Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]),
+      bindMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+      bones: [
+        { name: "root", parent: -1, matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+      ],
+      boneInverses: Float32Array.from([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
+      clips: [],
+    },
+  },
+};
+
+/** The default emitter `id` spawning on `mesh` by the node `type` instead of its sphere,
+ *  simulated on the GPU. */
+function spawningOn(mesh: string, type = "random-mesh-point", id = "emitter_a"): EmitterDoc {
+  const emitter = createDefaultEmitter(id, id);
   const nodes = Object.fromEntries(
     Object.values(emitter.behaviorGraph.nodes).map((node) => {
       if (node.id === "n_pos") {
-        return [node.id, { ...node, type: "random-mesh-point", parameters: { mesh } }];
+        return [node.id, { ...node, type, parameters: { mesh } }];
       }
       if (node.type === SPAWN_SINK_TYPE) {
         return [
@@ -39,12 +60,16 @@ function spawningOn(mesh: string): EmitterDoc {
   return { ...emitter, behaviorGraph: { ...emitter.behaviorGraph, nodes } };
 }
 
-function sourceWith(emitter: EmitterDoc, meshAssets: readonly MeshAsset[]): SourceState {
+function sourceWith(
+  emitters: EmitterDoc | readonly EmitterDoc[],
+  meshAssets: readonly MeshAsset[],
+): SourceState {
   const { source } = createInitialState();
+  const list = Array.isArray(emitters) ? emitters : [emitters as EmitterDoc];
   return {
     ...source,
     meshAssets,
-    scene: { ...source.scene, emitters: [emitter], activeEmitterId: emitter.id },
+    scene: { ...source.scene, emitters: list, activeEmitterId: list[0]?.id ?? source.scene.activeEmitterId },
   };
 }
 
@@ -60,5 +85,39 @@ describe("exporting an emitter that spawns on a mesh", () => {
     expect(() => emitProjectModule(sourceWith(spawningOn(MESH), []))).toThrow(
       /No mesh asset "rock\.glb #1"/,
     );
+  });
+
+  it("asks for a mesh of the scene as a Mesh, and a skinned one as a SkinnedMesh", () => {
+    const module = emitProjectModule(
+      sourceWith(
+        [
+          spawningOn(MESH, "random-scene-mesh-point"),
+          spawningOn("arm", "random-skinned-mesh-point", "emitter_b"),
+        ],
+        [ROCK, ARM],
+      ),
+    );
+    expect(module).toContain(`  ${JSON.stringify(MESH)}: Mesh;`);
+    expect(module).toContain("  arm: SkinnedMesh;");
+    expect(module).toContain('import { type Mesh, type SkinnedMesh } from "three";');
+    expect(module.match(/objectSurfaces: \{"[^"]+":"rock\.glb #1"\}/g)).toHaveLength(2);
+    expect(module.match(/skinnedSurfaces: \{"[^"]+":"arm"\}/g)).toHaveLength(2);
+  });
+
+  it("asks once, as a Mesh, for a mesh sampled both as a shape and as a mesh of the scene", () => {
+    const module = emitProjectModule(
+      sourceWith(
+        [spawningOn(MESH), spawningOn(MESH, "random-scene-mesh-point", "emitter_b")],
+        [ROCK],
+      ),
+    );
+    expect(module).toContain(`  ${JSON.stringify(MESH)}: Mesh;`);
+    expect(module).not.toContain("BufferGeometry");
+  });
+
+  it("refuses a skinned mesh for a static mesh of the scene", () => {
+    expect(() =>
+      emitProjectModule(sourceWith(spawningOn("arm", "random-scene-mesh-point"), [ARM])),
+    ).toThrow(/No static mesh asset "arm"/);
   });
 });

@@ -28,7 +28,9 @@ function harnessWithMeshGeometries(): {
   geometries: Record<string, BufferGeometry>;
 } {
   const geometries: Record<string, BufferGeometry> = {};
-  const emitters = createPreview({ assets: () => ({ geometries, volumes: {} }) });
+  const emitters = createPreview({
+    assets: () => ({ geometries, meshes: {}, volumes: {} }),
+  });
   return { store: new Store(createTestState()), emitters, geometries };
 }
 
@@ -145,7 +147,7 @@ describe("SceneEmitters: custom mesh-asset geometry", () => {
     emitters.sync(store.getSource().scene);
     expect((emitters.entityObject(vfxMeshEntity(id)) as Mesh).geometry).toBe(wheel);
 
-    // Delete the asset from the resolver (mirrors MeshGeometryRegistry.sync dropping it on
+    // Delete the asset from the resolver (mirrors MeshAssetScene.sync dropping it on
     // removeMeshAsset) - the graph's own `geometry` param string is untouched, so only the
     // resolved-reference tracking (not the encoded key) can catch this.
     delete geometries["wheel"];
@@ -165,7 +167,7 @@ describe("SceneEmitters: custom mesh-asset geometry", () => {
     emitters.sync(store.getSource().scene);
     expect((emitters.entityObject(vfxMeshEntity(id)) as Mesh).geometry).toBe(first);
 
-    // A re-upload replaces the cached object at the same name (MeshGeometryRegistry.sync builds a
+    // A re-upload replaces the cached object at the same name (MeshAssetScene.sync builds a
     // fresh BufferGeometry whenever the baked source changed).
     const second = new BufferGeometry();
     geometries["wheel"] = second;

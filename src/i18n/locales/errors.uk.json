@@ -362,6 +362,12 @@
   "missing-mesh-asset": {
     "message": "Меш-ассета \"{name}\" немає в бібліотеці контенту"
   },
+  "missing-scene-mesh-asset": {
+    "message": "Статичного меш-ассета \"{name}\" немає в бібліотеці контенту"
+  },
+  "missing-skinned-mesh-asset": {
+    "message": "Меш-ассета зі скіном \"{name}\" немає в бібліотеці контенту"
+  },
   "missing-volume-asset": {
     "message": "Об'єму \"{name}\" немає в бібліотеці контенту"
   },

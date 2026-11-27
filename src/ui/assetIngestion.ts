@@ -11,7 +11,7 @@ import {
   addSceneAsset,
   addTextureAsset,
 } from "../model/commands";
-import { BUILT_IN_SCENE_NAMES, type MeshAsset } from "../model/editorState";
+import { BUILT_IN_SCENE_NAMES } from "../model/editorState";
 import {
   selectEnvironmentAssets,
   selectMeshAssets,
@@ -19,8 +19,9 @@ import {
   selectTextureAssets,
 } from "../model/selectors";
 import type { Store } from "../model/store";
+import { geometryPayloadBytes } from "../persistence/payloadCodec";
 import { createGltfLoader } from "../render/gltfLoader";
-import { bakeGeometryArrays } from "../render/meshGeometryBaking";
+import { bakeMeshArrays } from "../render/meshGeometryBaking";
 
 /** Loaded image bytes plus intrinsic size - everything a texture asset needs beyond its name. */
 interface LoadedImage {
@@ -103,24 +104,14 @@ async function ingestEnvironment(file: File, store: Store): Promise<void> {
   addEnvironmentAsset(store, { name, label: file.name, bytes, byteSize: file.size });
 }
 
-/** Four bytes per component (Float32/Uint32) - an honest size for what is actually stored,
- *  not the (discarded) original upload's byte count. */
-function bakedByteSize(geometry: MeshAsset["geometry"]): number {
-  return (
-    (geometry.position.length +
-      geometry.normal.length +
-      geometry.uv.length +
-      geometry.index.length) *
-    4
-  );
-}
-
 /**
- * Parses a GLB/GLTF and adds each mesh as its own {@link MeshAsset}. Named from the mesh or node
- * name, else `<file name> #<N>`. A name collision drops only that mesh.
+ * Parses a GLB/GLTF and adds each mesh as its own mesh asset, a skinned one with its skin
+ * and the file's clips of its bones. Named from the mesh or node name, else `<file name> #<N>`. A
+ * name collision drops only that mesh.
  */
 async function ingestMesh(file: File, store: Store): Promise<void> {
   const gltf = await createGltfLoader().parseAsync(await file.arrayBuffer(), "");
+  gltf.scene.updateMatrixWorld(true);
   const meshes: Mesh[] = [];
   gltf.scene.traverse((object) => {
     if (object instanceof Mesh) {
@@ -138,8 +129,8 @@ async function ingestMesh(file: File, store: Store): Promise<void> {
       return;
     }
     taken.add(name);
-    const geometry = bakeGeometryArrays(mesh.geometry);
-    addMeshAsset(store, { name, label: name, geometry, byteSize: bakedByteSize(geometry) });
+    const geometry = bakeMeshArrays(mesh, gltf.animations);
+    addMeshAsset(store, { name, label: name, geometry, byteSize: geometryPayloadBytes(geometry) });
   });
 }
 

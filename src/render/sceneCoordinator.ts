@@ -209,6 +209,11 @@ export class SceneCoordinator {
     return this.renderer;
   }
 
+  /** `callback` runs every frame before the render, after the simulation steps. */
+  public setBeforeRender(callback: () => void): void {
+    this.beforeRender = callback;
+  }
+
   public setAfterRender(callback: () => void): void {
     this.afterRender = callback;
   }
@@ -385,6 +390,7 @@ export class SceneCoordinator {
   private getParticleCount: () => number = () => 0;
   // Births lost to full emitters, sampled alongside the particle count; `undefined` = unknown.
   private getParticleOverflow: () => ParticleOverflow | undefined = () => undefined;
+  private beforeRender: () => void = () => undefined;
   private afterRender: () => void = () => undefined;
 
   private applyViewLayers(settings: PreviewSettings): void {
@@ -468,6 +474,7 @@ export class SceneCoordinator {
 
     this.advance(this.isSimulating() ? deltaSeconds : 0);
     this.controls.update();
+    this.beforeRender();
     this.renderViewport();
     this.afterRender();
     this.frameHandle = requestAnimationFrame((next) => this.frame(next));

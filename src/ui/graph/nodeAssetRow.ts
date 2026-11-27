@@ -11,6 +11,8 @@ const ASSET_ROW_TEXT: Readonly<
   Record<FXAssetKind, { readonly label: TKey; readonly empty: TKey }>
 > = {
   mesh: { label: "graph.mesh", empty: "graph.uploadMeshHint" },
+  sceneMesh: { label: "graph.mesh", empty: "graph.uploadSceneMeshHint" },
+  skinnedMesh: { label: "graph.mesh", empty: "graph.uploadSkinnedMeshHint" },
   volume: { label: "graph.volume", empty: "graph.bakeVolumeHint" },
 };
 

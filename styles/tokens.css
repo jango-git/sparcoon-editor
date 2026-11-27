@@ -80,13 +80,13 @@
   --node-output: var(--accent);
   --node-timeline-value: hsl(272 55% var(--accent-lightness));
 
-  /* Screen-space overlay stacking, centralised (exact legacy values; higher sits on top). Small
+  /* Screen-space overlay stacking, centralised (higher sits on top). Small
      local z-indexes - an active tab, the marquee over the nodes - stay as inline literals. */
   --z-add-node-menu: 1100;
-  --z-popover: 1200; /* dropdown menu + node help card */
-  --z-color-picker: 1300;
   --z-modal-scrim: 2000;
   --z-modal-sheet: 2001;
+  --z-popover: 2010; /* dropdown menu + node help card, over a sheet's own dropdowns too */
+  --z-color-picker: 2020;
   --z-timeline-marquee: 2050;
   --z-context-menu: 2100;
   --z-tooltip: 2200; /* shared hover tooltip - non-interactive, sits above every surface */

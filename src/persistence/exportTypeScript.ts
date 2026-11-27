@@ -13,6 +13,7 @@ import { linkReaction, reactionSourceOf } from "../domain/reactionLinking";
 import { effectiveSpawnConfig } from "../domain/reactions";
 import { STRIP_GEOMETRY } from "../domain/stripChecks";
 import type { FXJSHelperName } from "../engine/core/ir/FXHelpers.Internal";
+import { FX_ASSET_KIND_LIST, mapAssetKinds } from "../engine/core/nodes/FXAssetKind";
 import type { FXAttributeRequest } from "../engine/core/socket/FXAttribute";
 import {
   behaviorArtifactBody,
@@ -35,11 +36,13 @@ import {
   classNameFor,
   type EmitterArtifactNames,
   emitterSpecLiteral,
+  type ExternalAssetNames,
   importLine,
   meshSpecLiteral,
   needsLiveGetter,
   projectSpecLiteral,
   type RenderArtifactNames,
+  threeAssetTypes,
 } from "./exportLiterals";
 
 /** The GLSL tiers every render artifact ships in, in the order their constants are written. */
@@ -66,8 +69,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     }
   };
   const externalTextureNames = new Set<string>();
-  const externalGeometryNames = new Set<string>();
-  const externalVolumeNames = new Set<string>();
+  const externalAssetNames = mapAssetKinds(() => new Set<string>());
   const artifactBlocks: string[] = [];
   const emitterSpecs: string[] = [];
   const meshSpecs: string[] = [];
@@ -101,7 +103,7 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
 
   const collectGeometryName = (geometry: FXGeometrySource): void => {
     if (geometry.type === "custom") {
-      externalGeometryNames.add(geometry.external);
+      externalAssetNames.mesh.add(geometry.external);
     }
   };
 
@@ -176,8 +178,9 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     ];
     slots.forEach((name) => externalTextureNames.add(name));
     collectGeometryName(ir.geometry);
-    ir.sampledAssets.mesh.forEach((name) => externalGeometryNames.add(name));
-    ir.sampledAssets.volume.forEach((name) => externalVolumeNames.add(name));
+    for (const kind of FX_ASSET_KIND_LIST) {
+      ir.sampledAssets[kind].forEach((name) => externalAssetNames[kind].add(name));
+    }
     emitterSpecs.push(
       emitterSpecLiteral(
         emitter,
@@ -206,11 +209,11 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
   assertUniqueLiveNames(source.scene.meshes, "VFX mesh");
 
   const specLiteral = projectSpecLiteral(source, emitterSpecs, meshSpecs);
-  const assetsBlock = assetsInterface(className, {
+  const externalNames: ExternalAssetNames = {
     textures: [...externalTextureNames],
-    geometries: [...externalGeometryNames],
-    volumes: [...externalVolumeNames],
-  });
+    ...mapAssetKinds((kind) => [...externalAssetNames[kind]]),
+  };
+  const assetsBlock = assetsInterface(className, externalNames);
   const needsEmitterType = source.scene.emitters.some(needsLiveGetter);
   const needsMeshType = source.scene.meshes.some(needsLiveGetter);
 
@@ -230,10 +233,8 @@ export function emitProjectModule(source: SourceState, options: EmitProjectOptio
     ),
   );
   const threeTypeImports = [
-    ...(needsMeshType ? ["type Mesh"] : []),
-    ...(externalGeometryNames.size > 0 ? ["type BufferGeometry"] : []),
-    ...(externalVolumeNames.size > 0 ? ["type Data3DTexture"] : []),
-  ];
+    ...new Set([...(needsMeshType ? ["Mesh"] : []), ...threeAssetTypes(externalNames)]),
+  ].map((type) => `type ${type}`);
   if (threeTypeImports.length > 0) {
     lines.push(`import { ${threeTypeImports.join(", ")} } from "three";`);
   }

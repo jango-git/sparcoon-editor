@@ -2,11 +2,17 @@
  * The binary payloads of a stored project - HDRI and scene files, mesh geometry - as JSON. A
  * payload is `{ encoding, data }`: `data` is base64 of the bytes as they are (`"none"`) or gzipped
  * (`"gzip"`). The project file writes `"gzip"`. The autosaved document and the format upgrades
- * write `"none"`, which is synchronous. A mesh attribute's bytes are its `Float32Array` or
- * `Uint32Array` in the platform's byte order, little-endian wherever a browser runs.
+ * write `"none"`, which is synchronous. A mesh attribute's bytes, and those of a skin's arrays and
+ * clip keys, are its `Float32Array` or `Uint32Array` in the platform's byte order, little-endian
+ * wherever a browser runs.
  */
 
-import type { BakedMeshGeometry, SourceState } from "../model/editorState";
+import type {
+  BakedMeshGeometry,
+  BakedMeshSkin,
+  BakedTrack,
+  SourceState,
+} from "../model/editorState";
 import { arrayBufferBytes, base64ToBytes, bytesToBase64, pipeBytes } from "../util/bytes";
 import { isRecord } from "../util/guards";
 
@@ -18,17 +24,50 @@ export interface StoredPayload {
 /** Each element of an array, in a {@link PAYLOAD_PATHS} path. */
 const EACH = "*";
 
+/** Where a mesh asset's geometry holds its payloads: its attributes, and a skin's arrays and clip
+ *  keys. */
+const GEOMETRY_PAYLOAD_PATHS: readonly (readonly string[])[] = [
+  ...(["position", "normal", "uv", "index"] satisfies (keyof BakedMeshGeometry)[]).map((key) => [
+    key,
+  ]),
+  ...(["skinIndex", "skinWeight", "boneInverses"] satisfies (keyof BakedMeshSkin)[]).map((key) => [
+    "skin",
+    key,
+  ]),
+  ...(["times", "values"] satisfies (keyof BakedTrack)[]).map((key) => [
+    "skin",
+    "clips",
+    EACH,
+    "tracks",
+    EACH,
+    key,
+  ]),
+];
+
 /** Where a source holds its payloads. */
 const PAYLOAD_PATHS: readonly (readonly string[])[] = [
   ["environments", EACH, "bytes"],
   ["scenes", EACH, "bytes"],
-  ...(["position", "normal", "uv", "index"] satisfies (keyof BakedMeshGeometry)[]).map((key) => [
-    "meshAssets",
-    EACH,
-    "geometry",
-    key,
-  ]),
+  ...GEOMETRY_PAYLOAD_PATHS.map((path) => ["meshAssets", EACH, "geometry", ...path]),
 ];
+
+/** The bytes `geometry`'s payloads take as they are stored. */
+export function geometryPayloadBytes(geometry: BakedMeshGeometry): number {
+  return GEOMETRY_PAYLOAD_PATHS.flatMap((path) => fieldsAt(geometry, path)).reduce<number>(
+    (bytes, field) => bytes + fieldBytes(field).byteLength,
+    0,
+  );
+}
+
+/** What lies at `path` in `value`, every element at a {@link EACH} step. */
+function fieldsAt(value: unknown, path: readonly string[]): unknown[] {
+  const fields: unknown[] = [];
+  mapAt(value, path, (field) => {
+    fields.push(field);
+    return field;
+  });
+  return fields;
+}
 
 export function isStoredPayload(raw: unknown): raw is StoredPayload {
   return (

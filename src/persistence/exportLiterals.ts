@@ -7,6 +7,11 @@
 import { FX_RUNTIME_VERSION } from "sparcoon/editor";
 
 import {
+  FX_ASSET_KIND_LIST,
+  FX_ASSET_KINDS,
+  type FXAssetKind,
+} from "../engine/core/nodes/FXAssetKind";
+import {
   type AnimationTrack,
   emissionBasisField,
   type EmitterDoc,
@@ -317,30 +322,41 @@ export function importLine(
   return lines.join("\n");
 }
 
-/** The names of an exported effect's external assets, by what the app supplies for each. */
-export interface ExternalAssetNames {
-  /** Texture-node parameters - an `FXExternalTexture`. */
-  readonly textures: readonly string[];
-  /** Custom geometries and the mesh surfaces a behavior samples - a `BufferGeometry`. */
-  readonly geometries: readonly string[];
-  /** The volumes a behavior samples - an R8 `Data3DTexture`. */
-  readonly volumes: readonly string[];
+/** The names of an exported effect's external assets, by what the app supplies for each: Texture
+ *  node parameters as an `FXExternalTexture`, the assets of each kind as that kind asks for them
+ *  (`FX_ASSET_KINDS`), a custom geometry among the meshes. */
+export type ExternalAssetNames = Readonly<Record<"textures" | FXAssetKind, readonly string[]>>;
+
+const EXTERNAL_LISTS: readonly (keyof ExternalAssetNames)[] = ["textures", ...FX_ASSET_KIND_LIST];
+
+/** The type the app supplies an asset of `list` as. */
+function externalTypeOf(list: keyof ExternalAssetNames): string {
+  return list === "textures" ? "FXExternalTexture" : FX_ASSET_KINDS[list].appType;
 }
 
-/** The type the app supplies an asset of each list as. */
-const EXTERNAL_ASSET_TYPES: Readonly<Record<keyof ExternalAssetNames, string>> = {
-  textures: "FXExternalTexture",
-  geometries: "BufferGeometry",
-  volumes: "Data3DTexture",
-};
+/** `names` with a mesh of the scene left out of the meshes read as a shape: the runtime takes a
+ *  `Mesh`'s geometry as the geometry of its name, so the effect asks for the mesh once. */
+function askedNames(names: ExternalAssetNames): ExternalAssetNames {
+  const objects = new Set([...names.sceneMesh, ...names.skinnedMesh]);
+  return { ...names, mesh: names.mesh.filter((name) => !objects.has(name)) };
+}
+
+/** The three types the app supplies `names` as, to import as types. */
+export function threeAssetTypes(names: ExternalAssetNames): readonly string[] {
+  const asked = askedNames(names);
+  return [
+    ...new Set(FX_ASSET_KIND_LIST.filter((kind) => asked[kind].length > 0).map(externalTypeOf)),
+  ];
+}
 
 /** The `<Name>Assets` constructor-parameter interface. One entry per external asset, in a single
  *  flat namespace shared by every kind. A texture slot takes `FXExternalTexture` (a `Texture`, or
- *  an atlas region of one). */
-export function assetsInterface(className: string, names: ExternalAssetNames): string {
-  const lists = Object.keys(EXTERNAL_ASSET_TYPES) as (keyof ExternalAssetNames)[];
+ *  an atlas region of one). A mesh of the scene is asked for once, as a `Mesh` or `SkinnedMesh`,
+ *  where an effect also draws or samples its geometry as a shape. */
+export function assetsInterface(className: string, allNames: ExternalAssetNames): string {
+  const names = askedNames(allNames);
   const owners = new Map<string, keyof ExternalAssetNames>();
-  for (const list of lists) {
+  for (const list of EXTERNAL_LISTS) {
     for (const name of names[list]) {
       const owner = owners.get(name);
       if (owner !== undefined) {
@@ -355,11 +371,9 @@ export function assetsInterface(className: string, names: ExternalAssetNames): s
   if (owners.size === 0) {
     return `export type ${className}Assets = Record<string, never>;`;
   }
-  const fields = lists
-    .flatMap((list) =>
-      names[list].map((name) => `  ${propertyKey(name)}: ${EXTERNAL_ASSET_TYPES[list]};`),
-    )
-    .join("\n");
+  const fields = EXTERNAL_LISTS.flatMap((list) =>
+    names[list].map((name) => `  ${propertyKey(name)}: ${externalTypeOf(list)};`),
+  ).join("\n");
   return `export interface ${className}Assets {\n${fields}\n}`;
 }
 

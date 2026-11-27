@@ -15,6 +15,7 @@ import {
 } from "../domain/volumeBake";
 import {
   addVolumeAsset,
+  type MeshAssetPreview,
   removeEnvironmentAsset,
   removeMeshAsset,
   removeSceneAsset,
@@ -22,6 +23,7 @@ import {
   removeVolumeAsset,
   setActiveEnvironment,
   setActiveScene,
+  setMeshAssetPreview,
 } from "../model/commands";
 import { isSceneName, type SourceState } from "../model/editorState";
 import { libraryAssetNames } from "../model/selectors";
@@ -73,6 +75,12 @@ export interface AssetsApi {
   setEnvironment(name: string | undefined): void;
   /** Draws a scene around the effect: `"studio"` (the ground) or a scene asset. */
   setScene(name: string): void;
+  /**
+   * Sets how the preview draws mesh asset `name`: `shownInScene` draws it at the scene's centre,
+   * `clip` names the animation clip a skinned mesh plays (one of its `clips` in `list()`). A field
+   * left out keeps its value.
+   */
+  setMeshPreview(name: string, preview: MeshAssetPreview): void;
 }
 
 /** Raster MIME types by extension; ingestion only routes `image/*` files to the texture library. */
@@ -233,6 +241,18 @@ export function createAssetsApi(store: Store): AssetsApi {
         throw new AgentError("not_found", `No scene "${name}".`);
       }
       setActiveScene(store, name);
+    },
+
+    setMeshPreview: (name, preview): void => {
+      const mesh = store.getSource().meshAssets.find((asset) => asset.name === name);
+      if (mesh === undefined) {
+        throw new AgentError("not_found", `No mesh asset "${name}".`);
+      }
+      const clips = mesh.geometry.skin?.clips.map((clip) => clip.name) ?? [];
+      if (preview.clip !== undefined && !clips.includes(preview.clip)) {
+        throw new AgentError("not_found", `Mesh asset "${name}" has no clip "${preview.clip}".`);
+      }
+      setMeshAssetPreview(store, name, preview);
     },
   };
 }

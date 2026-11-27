@@ -1441,7 +1441,7 @@
     "searchTags": ["rand", "jitter", "hash", "noise", "range", "vector"]
   },
   "random-mesh-point": {
-    "description": "A random point on the surface of a mesh asset, uniform by area, and the mesh normal there, both in the mesh's own space. A new point each time it runs: once per particle in the spawn, every step in the update. The app supplies the mesh geometry under the asset's name.",
+    "description": "A random point on the surface of a mesh asset, uniform by area, and the mesh normal there, both in the mesh's own space: the mesh as a shape of the effect, which goes where the effect does through World Matrix. The point depends only on Seed and Salt: with the particle's seed, the default, a particle keeps its point in the update too. The app supplies the mesh geometry under the asset's name.",
     "label": "Random Mesh Point",
     "outputs": {
       "normal": {
@@ -1452,6 +1452,49 @@
       }
     },
     "searchTags": ["random", "point", "sample", "surface", "geometry", "model", "shape", "emit"]
+  },
+  "random-scene-mesh-point": {
+    "description": "Random Mesh Point on a mesh of the scene, in the world, where the app draws the mesh: the point taken through the mesh's world matrix, the normal through its normal matrix. In the update, with the particle's seed, a particle stays on its point of the moving mesh. The app supplies the Mesh under the asset's name. Velocity is how fast that point moves, from the previous pose of the mesh to this one: zero while the mesh holds still or has only one pose yet. Wired into the spawn, it sends a particle off with the mesh's motion.",
+    "label": "Random Scene Mesh Point",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": ["random", "point", "sample", "surface", "scene", "object", "world", "emit"]
+  },
+  "random-skinned-mesh-point": {
+    "description": "Random Mesh Point on a skinned mesh of the scene, posed as the app last rendered the mesh, in the world, where the app draws it: each corner of the triangle skinned by its bones, position and normal alike. Until the mesh is first rendered the surface keeps its unposed shape. Points are drawn by the areas of the unposed triangles, so a stretched part of the pose gets fewer points per area. In the update, with the particle's seed, a particle stays on its point of the moving surface. The app supplies the SkinnedMesh under the asset's name. Velocity is how fast that point of the surface moves, from the previous pose to this one, the whole mesh's move included: zero while the mesh holds still or has only one pose yet. Wired into the spawn, it sends a particle off with the surface's motion.",
+    "label": "Random Skinned Mesh Point",
+    "outputs": {
+      "normal": {
+        "label": "Normal"
+      },
+      "position": {
+        "label": "Position"
+      },
+      "velocity": {
+        "label": "Velocity"
+      }
+    },
+    "searchTags": [
+      "random",
+      "point",
+      "sample",
+      "surface",
+      "skinned",
+      "skeleton",
+      "bones",
+      "character",
+      "animation",
+      "emit"
+    ]
   },
   "sdf-sample": {
     "description": "The signed distance from Position to the surface a volume asset holds (an SDF), negative inside, and the outward normal there. The volume fills the box from Box Min to Box Max, in the space Position is in, and a texel's value v (its byte over 255) is the distance v * Scale + Bias; picking a volume sets these from its bake. Outside the box the distance grows by the distance to the box. The app supplies the volume as an R8 3D texture under the asset's name.",

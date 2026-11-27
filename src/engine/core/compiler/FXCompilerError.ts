@@ -167,8 +167,11 @@ export type FXCompilerErrorCode =
   | "attribute-never-written"
   // Warning: an emitter whose longest particle lifetime cannot be read off its graph.
   | "lifetime-unbounded"
-  // A node samples a mesh or volume asset the content library does not hold.
+  // A node samples a mesh, mesh of the scene, skinned mesh or volume asset the content library
+  // does not hold.
   | "missing-mesh-asset"
+  | "missing-scene-mesh-asset"
+  | "missing-skinned-mesh-asset"
   | "missing-volume-asset"
   | "inherit-missing"
   | "inherit-mistyped"
